@@ -1,0 +1,10 @@
+version: v2
+modules:
+  - path: .
+    name: buf.build/golgoth31/sreportal
+lint:
+  use:
+    - STANDARD
+breaking:
+  use:
+    - FILE

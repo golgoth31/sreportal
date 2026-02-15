@@ -1,0 +1,75 @@
+# This ConfigMap contains the operator configuration.
+# It should be mounted as a file in the operator deployment at /etc/sreportal/config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sreportal-config
+  namespace: sreportal-system
+data:
+  config.yaml: |
+    sources:
+      # Service source - discovers DNS names from Kubernetes Services
+      # Services must have the annotation: external-dns.alpha.kubernetes.io/hostname
+      service:
+        enabled: true
+        namespace: ""  # Empty = all namespaces
+        # annotationFilter uses label selector syntax to filter services
+        # Empty string = all services with hostname annotation are included
+        # Example: "app=web" would only include services with label app=web
+        annotationFilter: ""
+        # Service types to include. Options: LoadBalancer, ClusterIP, NodePort, ExternalName
+        # For local testing without cloud/MetalLB, include ClusterIP
+        serviceTypeFilter:
+          - LoadBalancer
+          - ClusterIP
+        publishInternal: true   # Publish ClusterIP for ClusterIP services
+        publishHostIP: false
+
+      # Ingress source - discovers DNS names from Kubernetes Ingresses
+      ingress:
+        enabled: true
+        namespace: ""  # Empty = all namespaces
+        ingressClassNames: []  # Empty = all ingress classes
+
+      # DNSEndpoint source - reads external-dns DNSEndpoint CRDs
+      # Requires external-dns CRDs to be installed
+      dnsEndpoint:
+        enabled: false  # Disabled by default - enable if you have external-dns CRDs
+        namespace: ""   # Empty = all namespaces
+
+      # Istio Gateway source - discovers DNS names from Istio Gateway resources
+      # Requires Istio CRDs to be installed
+      istioGateway:
+        enabled: false  # Disabled by default - enable if you have Istio installed
+        namespace: ""   # Empty = all namespaces
+        annotationFilter: ""
+        fqdnTemplate: ""
+        combineFqdnAndAnnotation: false
+        ignoreHostnameAnnotation: false
+
+      # Istio VirtualService source - discovers DNS names from Istio VirtualService resources
+      # Requires Istio CRDs to be installed
+      istioVirtualService:
+        enabled: false  # Disabled by default - enable if you have Istio installed
+        namespace: ""   # Empty = all namespaces
+        annotationFilter: ""
+        fqdnTemplate: ""
+        combineFqdnAndAnnotation: false
+        ignoreHostnameAnnotation: false
+
+    # Group mapping - organizes FQDNs into groups for the UI
+    groupMapping:
+      defaultGroup: "Services"
+      # Use endpoint label for grouping (if set on the resource)
+      labelKey: "sreportal.my.domain/group"
+      # Map namespaces to group names
+      byNamespace:
+        production: "Production"
+        staging: "Staging"
+        monitoring: "Observability"
+        default: "Development"
+
+    # Reconciliation timing
+    reconciliation:
+      interval: 30s   # Shorter interval for testing
+      retryOnError: 10s

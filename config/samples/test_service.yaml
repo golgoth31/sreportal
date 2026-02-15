@@ -1,0 +1,33 @@
+# Test Service with external-dns annotation
+# Use ClusterIP for local testing (works without MetalLB)
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-web-app
+  namespace: default
+  annotations:
+    # This annotation is used by external-dns to determine the hostname
+    external-dns.alpha.kubernetes.io/hostname: "myapp.example.com"
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 8080
+  selector:
+    app: my-web-app
+---
+# Alternative: LoadBalancer service (requires MetalLB or cloud provider)
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-lb-app
+  namespace: default
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: "lb.example.com"
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 443
+      targetPort: 8443
+  selector:
+    app: my-lb-app

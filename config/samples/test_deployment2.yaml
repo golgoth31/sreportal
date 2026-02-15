@@ -1,0 +1,39 @@
+# Simple deployment with LoadBalancer service for testing external-dns integration
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-test2
+  namespace: default
+  labels:
+    app: nginx-test2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-test2
+  template:
+    metadata:
+      labels:
+        app: nginx-test2
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-test2
+  namespace: default
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: "nginx2.example.com"
+    sreportal.io/group: Applications
+spec:
+  type: LoadBalancer
+  selector:
+    app: nginx-test2
+  ports:
+    - port: 80
+      targetPort: 80

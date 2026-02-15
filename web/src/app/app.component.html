@@ -1,0 +1,25 @@
+<div class="app-container">
+  <nav class="navbar">
+    <div class="nav-brand">
+      <a routerLink="/">{{ title }}</a>
+    </div>
+    <div class="nav-links">
+      @for (portal of portals(); track portal.name) {
+        <a [routerLink]="getPortalPath(portal)" routerLinkActive="active">
+          {{ portal.title }}
+        </a>
+      }
+      @if (portals().length === 0) {
+        <a routerLink="/main/links" routerLinkActive="active">Links</a>
+      }
+    </div>
+  </nav>
+
+  <main class="main-content">
+    <router-outlet />
+  </main>
+
+  <footer class="footer">
+    <p>SRE Portal - Kubernetes DNS Discovery</p>
+  </footer>
+</div>

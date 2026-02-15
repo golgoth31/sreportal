@@ -1,0 +1,23 @@
+apiVersion: sreportal.my.domain/v1alpha1
+kind: Portal
+metadata:
+  labels:
+    app.kubernetes.io/name: sreportal
+    app.kubernetes.io/managed-by: kustomize
+  name: main
+  namespace: sreportal-system
+spec:
+  title: "Main Portal"
+  main: true
+---
+apiVersion: sreportal.my.domain/v1alpha1
+kind: Portal
+metadata:
+  labels:
+    app.kubernetes.io/name: sreportal
+    app.kubernetes.io/managed-by: kustomize
+  name: production
+  namespace: sreportal-system
+spec:
+  title: "Production Services"
+  subPath: "production"

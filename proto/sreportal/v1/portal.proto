@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package sreportal.v1;
+
+// PortalService provides portal management
+service PortalService {
+  // ListPortals returns all available portals
+  rpc ListPortals(ListPortalsRequest) returns (ListPortalsResponse);
+}
+
+// ListPortalsRequest is the request for listing portals
+message ListPortalsRequest {
+  // namespace filters portals by namespace (empty for all namespaces)
+  string namespace = 1;
+}
+
+// ListPortalsResponse contains the list of portals
+message ListPortalsResponse {
+  // portals is the list of available portals
+  repeated Portal portals = 1;
+}
+
+// Portal represents a portal with its metadata
+message Portal {
+  // name is the portal resource name
+  string name = 1;
+
+  // title is the display title
+  string title = 2;
+
+  // main indicates if this is the default portal
+  bool main = 3;
+
+  // sub_path is the URL subpath for this portal
+  string sub_path = 4;
+
+  // namespace is the portal resource namespace
+  string namespace = 5;
+
+  // ready indicates if the portal is fully configured
+  bool ready = 6;
+}

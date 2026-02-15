@@ -1,0 +1,27 @@
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: github.com/golgoth31/sreportal/internal/grpc/gen
+plugins:
+  # Go protobuf
+  - remote: buf.build/protocolbuffers/go
+    out: ../internal/grpc/gen
+    opt:
+      - paths=source_relative
+  # Connect-Go
+  - remote: buf.build/connectrpc/go
+    out: ../internal/grpc/gen
+    opt:
+      - paths=source_relative
+  # TypeScript/ES for web
+  - remote: buf.build/bufbuild/es
+    out: ../web/src/gen
+    opt:
+      - target=ts
+  # Connect-ES for web
+  - remote: buf.build/connectrpc/es
+    out: ../web/src/gen
+    opt:
+      - target=ts

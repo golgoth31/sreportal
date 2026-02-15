@@ -1,0 +1,39 @@
+apiVersion: sreportal.my.domain/v1alpha1
+kind: DNS
+metadata:
+  labels:
+    app.kubernetes.io/name: sreportal
+    app.kubernetes.io/managed-by: kustomize
+  name: dns-sample
+  namespace: default
+spec:
+  portalRef: main
+  groups:
+    - name: APIs
+      description: Backend API services
+      entries:
+        - fqdn: api.example.com
+          description: Main API endpoint
+        - fqdn: graphql.example.com
+          description: GraphQL API
+    - name: Applications
+      description: Web applications
+      entries:
+        - fqdn: app.example.com
+          description: Main web application
+        - fqdn: admin.example.com
+          description: Admin dashboard
+    - name: Monitoring
+      description: Observability tools
+      entries:
+        - fqdn: grafana.example.com
+          description: Grafana dashboards
+        - fqdn: prometheus.example.com
+          description: Prometheus metrics
+    - name: DevOps
+      description: DevOps tools
+      entries:
+        - fqdn: argocd.example.com
+          description: GitOps deployment tool
+        - fqdn: jenkins.example.com
+          description: CI/CD pipeline

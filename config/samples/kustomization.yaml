@@ -1,0 +1,5 @@
+## Append samples of your project ##
+resources:
+- sreportal_v1alpha1_dns.yaml
+- sreportal_v1alpha1_portal.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples

@@ -1,0 +1,17 @@
+# DNS resource that will be updated by the source controller with discovered FQDNs
+apiVersion: sreportal.my.domain/v1alpha1
+kind: DNS
+metadata:
+  name: main-portal
+  namespace: default
+spec:
+  portalRef: main
+  # Manual DNS entries (these will be preserved alongside discovered ones)
+  groups:
+    - name: "Manual Entries"
+      description: "Manually configured DNS entries"
+      entries:
+        - fqdn: "docs.example.com"
+          description: "Documentation site"
+        - fqdn: "status.example.com"
+          description: "Status page"

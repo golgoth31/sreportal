@@ -1,0 +1,6 @@
+{
+  "enabledPlugins": {
+    "claude-code-setup@claude-plugins-official": true,
+    "gopls-lsp@claude-plugins-official": true
+  }
+}

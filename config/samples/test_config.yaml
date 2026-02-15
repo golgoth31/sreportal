@@ -1,0 +1,30 @@
+# Minimal configuration for local testing
+sources:
+  service:
+    enabled: true
+    # Empty annotationFilter = include all services with the hostname annotation
+    annotationFilter: ""
+    serviceTypeFilter:
+      - LoadBalancer
+      - ClusterIP
+    # publishInternal exposes cluster-internal IPs (useful for local testing without real LoadBalancer)
+    publishInternal: true
+
+  ingress:
+    enabled: true
+    ingressClassNames: []  # Empty = all ingress classes
+
+  # DNSEndpoint disabled - requires external-dns CRDs
+  dnsEndpoint:
+    enabled: false
+
+groupMapping:
+  defaultGroup: "Discovered Services"
+  labelKey: "sreportal.my.domain/group"
+  byNamespace:
+    production: "Production"
+    default: "Development"
+
+reconciliation:
+  interval: 30s
+  retryOnError: 10s

@@ -1,0 +1,124 @@
+<div class="links-container">
+  <header class="links-header">
+    <h1>DNS Links</h1>
+    <p class="subtitle">Aggregated FQDNs organized by group</p>
+  </header>
+
+  <div class="controls">
+    <div class="search-box">
+      <input
+        type="text"
+        [(ngModel)]="searchInput"
+        (input)="onSearch()"
+        placeholder="Search FQDNs..."
+        class="search-input"
+      />
+    </div>
+
+    <div class="filters">
+      <select (change)="onGroupFilter($any($event.target).value)" class="group-select">
+        <option value="">All Groups</option>
+        @for (group of state.groups(); track group) {
+          <option [value]="group">{{ group }}</option>
+        }
+      </select>
+
+      @if (state.searchTerm() || state.groupFilter()) {
+        <button (click)="clearFilters()" class="clear-btn">Clear Filters</button>
+      }
+    </div>
+
+    <div class="stats">
+      <span>{{ state.filteredCount() }} of {{ state.totalCount() }} FQDNs</span>
+    </div>
+  </div>
+
+  @if (state.loading()) {
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Loading FQDNs...</p>
+    </div>
+  }
+
+  @if (state.error()) {
+    <div class="error">
+      <p>{{ state.error() }}</p>
+      <button (click)="loadFqdns()">Retry</button>
+    </div>
+  }
+
+  @if (!state.loading() && !state.error()) {
+    <div class="fqdn-list">
+      @for (entry of state.groupedByGroup() | keyvalue; track entry.key) {
+        <section class="group-section">
+          <h2 class="group-header">
+            <span class="group-icon">
+              @if (entry.value[0]?.source === 'external-dns') {
+                <span class="source-badge source-external">E</span>
+              } @else {
+                <span class="source-badge source-manual">M</span>
+              }
+            </span>
+            {{ entry.key }}
+            <span class="count">({{ entry.value.length }})</span>
+          </h2>
+
+          <div class="fqdn-cards">
+            @for (fqdn of entry.value; track fqdn.name) {
+              <div class="fqdn-card">
+                <div class="fqdn-main">
+                  <a
+                    [href]="'https://' + fqdn.name"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="fqdn-name"
+                  >
+                    {{ fqdn.name }}
+                  </a>
+                  <button
+                    (click)="copyToClipboard(fqdn.name)"
+                    class="copy-btn"
+                    title="Copy to clipboard"
+                  >
+                    Copy
+                  </button>
+                </div>
+
+                @if (fqdn.description) {
+                  <p class="fqdn-description">{{ fqdn.description }}</p>
+                }
+
+                <div class="fqdn-meta">
+                  @if (fqdn.recordType) {
+                    <span class="record-type">{{ fqdn.recordType }}</span>
+                  }
+                  @if (fqdn.targets && fqdn.targets.length > 0) {
+                    <span class="targets">{{ fqdn.targets.join(', ') }}</span>
+                  }
+                  <span class="source-label" [class]="getSourceClass(fqdn.source)">
+                    {{ fqdn.source }}
+                  </span>
+                </div>
+
+                @if (fqdn.dnsResourceName) {
+                  <div class="fqdn-source">
+                    <span>{{ fqdn.dnsResourceNamespace }}/{{ fqdn.dnsResourceName }}</span>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </section>
+      }
+
+      @if (state.filteredCount() === 0) {
+        <div class="empty-state">
+          <p>No FQDNs found</p>
+          @if (state.searchTerm() || state.groupFilter()) {
+            <button (click)="clearFilters()">Clear Filters</button>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>
