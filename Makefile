@@ -197,6 +197,14 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	"$(KUSTOMIZE)" build config/default | "$(KUBECTL)" delete --ignore-not-found=$(ignore-not-found) -f -
 
+.PHONY: helm
+helm: manifests generate kustomize helmify
+	$(KUSTOMIZE) build config/default | $(HELMIFY) -generate-defaults helm
+
+.PHONY: doc
+doc: manifests generate api2md
+	$(API2MD) --source-path=./api --config="./hack/api-docs/config.yaml" --output-path=./docs/content/docs/api.md
+
 ##@ Dependencies
 
 ## Location to install dependencies to
@@ -211,10 +219,14 @@ KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
+HELMIFY = $(LOCALBIN)/helmify
+API2MD = $(LOCALBIN)/api2md
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.7.1
 CONTROLLER_TOOLS_VERSION ?= v0.20.0
+HELMIFY_VERSION ?= v0.4.19
+API2MD_VERSION ?= main
 
 #ENVTEST_VERSION is the version of controller-runtime release branch to fetch the envtest setup script (i.e. release-0.20)
 ENVTEST_VERSION ?= $(shell v='$(call gomodver,sigs.k8s.io/controller-runtime)'; \
@@ -254,6 +266,16 @@ $(ENVTEST): $(LOCALBIN)
 golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
 $(GOLANGCI_LINT): $(LOCALBIN)
 	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/v2/cmd/golangci-lint,$(GOLANGCI_LINT_VERSION))
+
+.PHONY: helmify
+helmify: $(HELMIFY) ## Download golangci-lint locally if necessary.
+$(HELMIFY): $(LOCALBIN)
+	$(call go-install-tool,$(HELMIFY),github.com/arttor/helmify/cmd/helmify,$(HELMIFY_VERSION))
+
+.PHONY: api2md
+api2md: $(API2MD) ## Download api2md locally if necessary.
+$(API2MD): $(LOCALBIN)
+	$(call go-install-tool,$(API2MD),github.com/golgoth31/api2md,$(API2MD_VERSION))
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary

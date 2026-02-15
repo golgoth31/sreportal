@@ -1,0 +1,27 @@
+baseURL: https://sreportal.io/
+languageCode: en-us
+title: sreportal
+
+module:
+  imports:
+    - path: github.com/imfing/hextra
+menu:
+  main:
+    - name: Documentation
+      pageRef: /docs
+      weight: 1
+      params:
+        icon: book-open
+    - name: GitHub
+      weight: 5
+      url: "https://github.com/golgoth31/sreportal"
+      params:
+        icon: github
+markup:
+  goldmark:
+    renderer:
+      unsafe: true
+  highlight:
+    noClasses: false
+
+enableInlineShortcodes: true

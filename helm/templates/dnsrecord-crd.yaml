@@ -1,0 +1,199 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: dnsrecords.sreportal.my.domain
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.20.0
+  labels:
+  {{- include "helm.labels" . | nindent 4 }}
+spec:
+  group: sreportal.my.domain
+  names:
+    kind: DNSRecord
+    listKind: DNSRecordList
+    plural: dnsrecords
+    shortNames:
+    - dnsrec
+    singular: dnsrecord
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.sourceType
+      name: Source
+      type: string
+    - jsonPath: .spec.portalRef
+      name: Portal
+      type: string
+    - jsonPath: .status.endpoints
+      name: Endpoints
+      type: integer
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: |-
+          DNSRecord is the Schema for the dnsrecords API.
+          It represents DNS endpoints discovered from a specific external-dns source.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: spec defines the desired state of DNSRecord
+            properties:
+              portalRef:
+                description: portalRef is the name of the Portal this record belongs
+                  to
+                minLength: 1
+                type: string
+              sourceType:
+                description: sourceType indicates the external-dns source type that
+                  provides this record
+                enum:
+                - service
+                - ingress
+                - dnsendpoint
+                - istio-gateway
+                - istio-virtualservice
+                type: string
+            required:
+            - portalRef
+            - sourceType
+            type: object
+          status:
+            description: status defines the observed state of DNSRecord
+            properties:
+              conditions:
+                description: conditions represent the current state of the DNSRecord
+                  resource
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              endpoints:
+                description: endpoints contains the DNS endpoints discovered from this
+                  source
+                items:
+                  description: EndpointStatus represents a single DNS endpoint discovered
+                    from external-dns
+                  properties:
+                    dnsName:
+                      description: dnsName is the fully qualified domain name
+                      type: string
+                    labels:
+                      additionalProperties:
+                        type: string
+                      description: labels contains the endpoint labels from external-dns
+                      type: object
+                    lastSeen:
+                      description: lastSeen is the timestamp when this endpoint was
+                        last observed
+                      format: date-time
+                      type: string
+                    recordType:
+                      description: recordType is the DNS record type (A, AAAA, CNAME,
+                        TXT, etc.)
+                      type: string
+                    targets:
+                      description: targets is the list of target addresses for this
+                        endpoint
+                      items:
+                        type: string
+                      type: array
+                    ttl:
+                      description: ttl is the DNS record TTL in seconds
+                      format: int64
+                      type: integer
+                  required:
+                  - dnsName
+                  - lastSeen
+                  type: object
+                type: array
+              lastReconcileTime:
+                description: lastReconcileTime is the timestamp of the last reconciliation
+                format: date-time
+                type: string
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

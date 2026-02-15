@@ -1,0 +1,11 @@
+processor:
+  ignoreGroupVersions:
+    - "GVK"
+  ignoreTypes:
+    - "(DNS|DNSRecord|Portal)List$"
+  ignoreFields:
+    # - "status$"
+    - "TypeMeta$"
+
+render:
+  kubernetesVersion: 1.33

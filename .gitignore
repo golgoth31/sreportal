@@ -29,3 +29,7 @@ go.work
 # Kubeconfig might contain secrets
 *.kubeconfig
 tmp
+
+# Hugo build output
+docs/public/
+docs/.hugo_build.lock

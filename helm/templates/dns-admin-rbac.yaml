@@ -1,0 +1,19 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "helm.fullname" . }}-dns-admin-role
+  labels:
+  {{- include "helm.labels" . | nindent 4 }}
+rules:
+- apiGroups:
+  - sreportal.my.domain
+  resources:
+  - dnsrecords
+  verbs:
+  - '*'
+- apiGroups:
+  - sreportal.my.domain
+  resources:
+  - dnsrecords/status
+  verbs:
+  - get
