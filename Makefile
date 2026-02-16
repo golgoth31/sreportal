@@ -136,7 +136,7 @@ generate-all: manifests generate proto ## Generate all code (CRDs, DeepCopy, pro
 
 .PHONY: run
 run: manifests generate fmt vet generate-certs ## Run a controller from your host.
-	go run ./cmd/main.go -zap-devel --webhook-cert-path=$(CERTSDIR) --config=./tmp/config.yaml
+	go run ./cmd/main.go -zap-devel --webhook-cert-path=$(CERTSDIR) --config=./config/samples/test_config.yaml
 
 # If you wish to build the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64). However, you must enable docker buildKit for it.

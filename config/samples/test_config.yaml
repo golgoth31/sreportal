@@ -7,16 +7,20 @@ sources:
     serviceTypeFilter:
       - LoadBalancer
       - ClusterIP
+      - ExternalName
     # publishInternal exposes cluster-internal IPs (useful for local testing without real LoadBalancer)
     publishInternal: true
 
   ingress:
-    enabled: true
-    ingressClassNames: []  # Empty = all ingress classes
+    enabled: false
+    ingressClassNames: [] # Empty = all ingress classes
 
   # DNSEndpoint disabled - requires external-dns CRDs
   dnsEndpoint:
     enabled: false
+
+  istioGateway:
+    enabled: true
 
 groupMapping:
   defaultGroup: "Discovered Services"
