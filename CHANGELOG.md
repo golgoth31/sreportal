@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.3](https://github.com/golgoth31/sreportal/compare/v0.3.2...v0.3.3) (2026-02-17)
+
+
+### Bug Fixes
+
+* **links:** prevent link source check from silently passing on bad data ([1330aba](https://github.com/golgoth31/sreportal/commit/1330abaddef6649ad0f80a5795f4cce878334278))
+
 ## [0.3.2](https://github.com/golgoth31/sreportal/compare/v0.3.1...v0.3.2) (2026-02-17)
 
 
