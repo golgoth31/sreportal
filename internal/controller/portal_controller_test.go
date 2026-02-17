@@ -28,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	"github.com/golgoth31/sreportal/internal/remoteclient"
 )
 
 var _ = Describe("Portal Controller", func() {
@@ -72,8 +73,9 @@ var _ = Describe("Portal Controller", func() {
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
 			controllerReconciler := &PortalReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:       k8sClient,
+				Scheme:       k8sClient.Scheme(),
+				RemoteClient: remoteclient.NewClient(),
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{

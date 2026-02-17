@@ -185,14 +185,31 @@ type PortalSpec struct {
     Title   string `json:"title"`              // Display title
     Main    bool   `json:"main,omitempty"`     // Default portal flag
     SubPath string `json:"subPath,omitempty"`  // URL subpath (defaults to name)
+    URL     string `json:"url,omitempty"`      // Remote portal URL (cannot be set if Main=true)
 }
 
 // Status
 type PortalStatus struct {
     Ready      bool
     Conditions []metav1.Condition
+    RemoteSync *RemoteSyncStatus  // Only populated when URL is set
+}
+
+// RemoteSyncStatus contains status for remote portal synchronization
+type RemoteSyncStatus struct {
+    LastSyncTime  *metav1.Time  // Last successful sync timestamp
+    LastSyncError string        // Error from last failed sync (empty if success)
+    RemoteTitle   string        // Title fetched from remote portal
+    FQDNCount     int           // Number of FQDNs fetched from remote
 }
 ```
+
+**Remote Portal Feature:**
+- When `spec.url` is set, the Portal fetches DNS data from a remote SRE Portal instance
+- The main portal (`spec.main=true`) cannot have a URL (validated by webhook)
+- Remote portals are excluded from local source collection (SourceController)
+- PortalReconciler periodically syncs with remote portals (every 5 minutes)
+- Remote portal status includes sync time, error state, and FQDN count
 
 ## Controller Pattern: Chain of Responsibility
 

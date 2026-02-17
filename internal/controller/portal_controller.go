@@ -18,27 +18,38 @@ package controller
 
 import (
 	"context"
+	"fmt"
+	"time"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	"github.com/golgoth31/sreportal/internal/remoteclient"
 )
+
+// DefaultRemoteSyncInterval is the default interval for syncing remote portals.
+const DefaultRemoteSyncInterval = 5 * time.Minute
 
 // PortalReconciler reconciles a Portal object
 type PortalReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme       *runtime.Scheme
+	RemoteClient *remoteclient.Client
 }
 
 // NewPortalReconciler creates a new PortalReconciler
 func NewPortalReconciler(c client.Client, scheme *runtime.Scheme) *PortalReconciler {
 	return &PortalReconciler{
-		Client: c,
-		Scheme: scheme,
+		Client:       c,
+		Scheme:       scheme,
+		RemoteClient: remoteclient.NewClient(),
 	}
 }
 
@@ -57,8 +68,22 @@ func (r *PortalReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	log.Info("reconciling Portal", "name", portal.Name, "namespace", portal.Namespace)
 
-	// Update status
+	// Check if this is a remote portal
+	if portal.Spec.Remote != nil {
+		return r.reconcileRemotePortal(ctx, &portal)
+	}
+
+	return r.reconcileLocalPortal(ctx, &portal)
+}
+
+// reconcileLocalPortal handles reconciliation for local portals (no URL specified).
+func (r *PortalReconciler) reconcileLocalPortal(ctx context.Context, portal *sreportalv1alpha1.Portal) (ctrl.Result, error) {
+	log := logf.FromContext(ctx)
+
+	// Update status for local portal
 	portal.Status.Ready = true
+	portal.Status.RemoteSync = nil // Clear any previous remote sync status
+
 	readyCondition := metav1.Condition{
 		Type:               "Ready",
 		Status:             metav1.ConditionTrue,
@@ -68,12 +93,114 @@ func (r *PortalReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 	setPortalCondition(&portal.Status.Conditions, readyCondition)
 
-	if err := r.Status().Update(ctx, &portal); err != nil {
+	if err := r.Status().Update(ctx, portal); err != nil {
 		log.Error(err, "failed to update Portal status")
 		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil
+}
+
+// reconcileRemotePortal handles reconciliation for remote portals (Remote specified).
+func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sreportalv1alpha1.Portal) (ctrl.Result, error) {
+	log := logf.FromContext(ctx)
+
+	remote := portal.Spec.Remote
+	log.Info("reconciling remote portal", "url", remote.URL, "remotePortal", remote.Portal)
+
+	// Initialize RemoteSync status if nil
+	if portal.Status.RemoteSync == nil {
+		portal.Status.RemoteSync = &sreportalv1alpha1.RemoteSyncStatus{}
+	}
+
+	// Perform health check on remote portal
+	err := r.RemoteClient.HealthCheck(ctx, remote.URL)
+	if err != nil {
+		log.Error(err, "remote portal health check failed", "url", remote.URL)
+
+		portal.Status.Ready = false
+		portal.Status.RemoteSync.LastSyncError = err.Error()
+
+		readyCondition := metav1.Condition{
+			Type:               "Ready",
+			Status:             metav1.ConditionFalse,
+			Reason:             "RemoteConnectionFailed",
+			Message:            "Failed to connect to remote portal: " + err.Error(),
+			LastTransitionTime: metav1.Now(),
+		}
+		setPortalCondition(&portal.Status.Conditions, readyCondition)
+
+		if updateErr := r.Status().Update(ctx, portal); updateErr != nil {
+			log.Error(updateErr, "failed to update Portal status")
+			return ctrl.Result{}, updateErr
+		}
+
+		// Requeue to retry connection
+		return ctrl.Result{RequeueAfter: DefaultRemoteSyncInterval}, nil
+	}
+
+	// Fetch remote portal info
+	result, err := r.RemoteClient.FetchFQDNs(ctx, remote.URL, remote.Portal)
+	if err != nil {
+		log.Error(err, "failed to fetch FQDNs from remote portal", "url", remote.URL, "remotePortal", remote.Portal)
+
+		portal.Status.Ready = false
+		portal.Status.RemoteSync.LastSyncError = err.Error()
+
+		readyCondition := metav1.Condition{
+			Type:               "Ready",
+			Status:             metav1.ConditionFalse,
+			Reason:             "RemoteFetchFailed",
+			Message:            "Failed to fetch data from remote portal: " + err.Error(),
+			LastTransitionTime: metav1.Now(),
+		}
+		setPortalCondition(&portal.Status.Conditions, readyCondition)
+
+		if updateErr := r.Status().Update(ctx, portal); updateErr != nil {
+			log.Error(updateErr, "failed to update Portal status")
+			return ctrl.Result{}, updateErr
+		}
+
+		return ctrl.Result{RequeueAfter: DefaultRemoteSyncInterval}, nil
+	}
+
+	// Update status with successful sync
+	now := metav1.Now()
+	portal.Status.Ready = true
+	portal.Status.RemoteSync.LastSyncTime = &now
+	portal.Status.RemoteSync.LastSyncError = ""
+	portal.Status.RemoteSync.RemoteTitle = result.RemoteTitle
+	portal.Status.RemoteSync.FQDNCount = result.FQDNCount
+
+	// Create or update DNS CR with fetched FQDNs
+	if err := r.reconcileRemoteDNS(ctx, portal, result); err != nil {
+		log.Error(err, "failed to reconcile DNS for remote portal")
+		// Don't fail the whole reconciliation, just log the error
+	}
+
+	readyCondition := metav1.Condition{
+		Type:               "Ready",
+		Status:             metav1.ConditionTrue,
+		Reason:             "RemoteSyncSuccess",
+		Message:            "Successfully synced with remote portal",
+		LastTransitionTime: metav1.Now(),
+	}
+	setPortalCondition(&portal.Status.Conditions, readyCondition)
+
+	if err := r.Status().Update(ctx, portal); err != nil {
+		log.Error(err, "failed to update Portal status")
+		return ctrl.Result{}, err
+	}
+
+	log.Info("remote portal sync successful",
+		"url", remote.URL,
+		"remotePortal", remote.Portal,
+		"fqdnCount", result.FQDNCount,
+		"groupCount", len(result.Groups),
+		"remoteTitle", result.RemoteTitle)
+
+	// Requeue to periodically sync with remote
+	return ctrl.Result{RequeueAfter: DefaultRemoteSyncInterval}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -86,6 +213,105 @@ func (r *PortalReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 // setPortalCondition sets or updates a condition in the conditions slice.
 func setPortalCondition(conditions *[]metav1.Condition, newCondition metav1.Condition) {
+	if conditions == nil {
+		return
+	}
+
+	for i, c := range *conditions {
+		if c.Type == newCondition.Type {
+			if c.Status != newCondition.Status {
+				(*conditions)[i] = newCondition
+			} else {
+				newCondition.LastTransitionTime = c.LastTransitionTime
+				(*conditions)[i] = newCondition
+			}
+			return
+		}
+	}
+
+	*conditions = append(*conditions, newCondition)
+}
+
+// remoteDNSName returns the name of the DNS CR for a remote portal.
+func remoteDNSName(portalName string) string {
+	return fmt.Sprintf("remote-%s", portalName)
+}
+
+// reconcileRemoteDNS creates or updates a DNS CR with FQDNs fetched from a remote portal.
+func (r *PortalReconciler) reconcileRemoteDNS(ctx context.Context, portal *sreportalv1alpha1.Portal, result *remoteclient.FetchResult) error {
+	log := logf.FromContext(ctx)
+
+	dnsName := remoteDNSName(portal.Name)
+	dns := &sreportalv1alpha1.DNS{}
+
+	// Try to get existing DNS CR
+	err := r.Get(ctx, types.NamespacedName{Name: dnsName, Namespace: portal.Namespace}, dns)
+	if err != nil && !errors.IsNotFound(err) {
+		return fmt.Errorf("failed to get DNS: %w", err)
+	}
+
+	isNew := errors.IsNotFound(err)
+	if isNew {
+		// Create new DNS CR
+		dns = &sreportalv1alpha1.DNS{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      dnsName,
+				Namespace: portal.Namespace,
+			},
+			Spec: sreportalv1alpha1.DNSSpec{
+				PortalRef: portal.Name,
+			},
+		}
+	}
+
+	// Set owner reference so DNS is deleted when Portal is deleted
+	if err := controllerutil.SetControllerReference(portal, dns, r.Scheme); err != nil {
+		return fmt.Errorf("failed to set controller reference: %w", err)
+	}
+
+	if isNew {
+		if err := r.Create(ctx, dns); err != nil {
+			return fmt.Errorf("failed to create DNS: %w", err)
+		}
+		log.Info("created DNS CR for remote portal", "dns", dnsName, "portal", portal.Name)
+	} else {
+		// Update spec if needed (portalRef might have changed)
+		dns.Spec.PortalRef = portal.Name
+		if err := r.Update(ctx, dns); err != nil {
+			return fmt.Errorf("failed to update DNS: %w", err)
+		}
+	}
+
+	// Update status with fetched groups
+	now := metav1.Now()
+	dns.Status.Groups = result.Groups
+	dns.Status.LastReconcileTime = &now
+
+	// Set condition
+	readyCondition := metav1.Condition{
+		Type:               "Ready",
+		Status:             metav1.ConditionTrue,
+		Reason:             "RemoteSyncSuccess",
+		Message:            fmt.Sprintf("Successfully synced %d FQDNs from remote portal", result.FQDNCount),
+		LastTransitionTime: now,
+	}
+	setDNSCondition(&dns.Status.Conditions, readyCondition)
+
+	if err := r.Status().Update(ctx, dns); err != nil {
+		return fmt.Errorf("failed to update DNS status: %w", err)
+	}
+
+	log.Info("updated DNS status with remote FQDNs",
+		"dns", dnsName,
+		"portal", portal.Name,
+		"fqdnCount", result.FQDNCount,
+		"groupCount", len(result.Groups))
+
+	return nil
+}
+
+// setDNSCondition sets or updates a condition in the DNS conditions slice.
+func setDNSCondition(conditions *[]metav1.Condition, newCondition metav1.Condition) {
 	if conditions == nil {
 		return
 	}

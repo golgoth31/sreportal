@@ -86,8 +86,8 @@ type FQDNGroupStatus struct {
 	// +optional
 	Description string `json:"description,omitempty"`
 
-	// source indicates where this group came from (manual or external-dns)
-	// +kubebuilder:validation:Enum=manual;external-dns
+	// source indicates where this group came from (manual, external-dns, or remote)
+	// +kubebuilder:validation:Enum=manual;external-dns;remote
 	Source string `json:"source"`
 
 	// fqdns is the list of FQDNs in this group

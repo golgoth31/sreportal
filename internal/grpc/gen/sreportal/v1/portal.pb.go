@@ -127,7 +127,13 @@ type Portal struct {
 	// namespace is the portal resource namespace
 	Namespace string `protobuf:"bytes,5,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// ready indicates if the portal is fully configured
-	Ready         bool `protobuf:"varint,6,opt,name=ready,proto3" json:"ready,omitempty"`
+	Ready bool `protobuf:"varint,6,opt,name=ready,proto3" json:"ready,omitempty"`
+	// url is the URL of a remote portal (empty for local portals)
+	Url string `protobuf:"bytes,7,opt,name=url,proto3" json:"url,omitempty"`
+	// is_remote indicates if this portal fetches data from a remote source
+	IsRemote bool `protobuf:"varint,8,opt,name=is_remote,json=isRemote,proto3" json:"is_remote,omitempty"`
+	// remote_sync contains status information for remote portals
+	RemoteSync    *RemoteSyncStatus `protobuf:"bytes,9,opt,name=remote_sync,json=remoteSync,proto3" json:"remote_sync,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -204,6 +210,100 @@ func (x *Portal) GetReady() bool {
 	return false
 }
 
+func (x *Portal) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *Portal) GetIsRemote() bool {
+	if x != nil {
+		return x.IsRemote
+	}
+	return false
+}
+
+func (x *Portal) GetRemoteSync() *RemoteSyncStatus {
+	if x != nil {
+		return x.RemoteSync
+	}
+	return nil
+}
+
+// RemoteSyncStatus contains status information about remote portal synchronization
+type RemoteSyncStatus struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// last_sync_time is the timestamp of the last successful sync (RFC3339 format)
+	LastSyncTime string `protobuf:"bytes,1,opt,name=last_sync_time,json=lastSyncTime,proto3" json:"last_sync_time,omitempty"`
+	// last_sync_error contains the error from the last failed sync attempt
+	LastSyncError string `protobuf:"bytes,2,opt,name=last_sync_error,json=lastSyncError,proto3" json:"last_sync_error,omitempty"`
+	// remote_title is the title of the remote portal
+	RemoteTitle string `protobuf:"bytes,3,opt,name=remote_title,json=remoteTitle,proto3" json:"remote_title,omitempty"`
+	// fqdn_count is the number of FQDNs fetched from the remote portal
+	FqdnCount     int32 `protobuf:"varint,4,opt,name=fqdn_count,json=fqdnCount,proto3" json:"fqdn_count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoteSyncStatus) Reset() {
+	*x = RemoteSyncStatus{}
+	mi := &file_sreportal_v1_portal_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoteSyncStatus) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoteSyncStatus) ProtoMessage() {}
+
+func (x *RemoteSyncStatus) ProtoReflect() protoreflect.Message {
+	mi := &file_sreportal_v1_portal_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoteSyncStatus.ProtoReflect.Descriptor instead.
+func (*RemoteSyncStatus) Descriptor() ([]byte, []int) {
+	return file_sreportal_v1_portal_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *RemoteSyncStatus) GetLastSyncTime() string {
+	if x != nil {
+		return x.LastSyncTime
+	}
+	return ""
+}
+
+func (x *RemoteSyncStatus) GetLastSyncError() string {
+	if x != nil {
+		return x.LastSyncError
+	}
+	return ""
+}
+
+func (x *RemoteSyncStatus) GetRemoteTitle() string {
+	if x != nil {
+		return x.RemoteTitle
+	}
+	return ""
+}
+
+func (x *RemoteSyncStatus) GetFqdnCount() int32 {
+	if x != nil {
+		return x.FqdnCount
+	}
+	return 0
+}
+
 var File_sreportal_v1_portal_proto protoreflect.FileDescriptor
 
 const file_sreportal_v1_portal_proto_rawDesc = "" +
@@ -212,14 +312,24 @@ const file_sreportal_v1_portal_proto_rawDesc = "" +
 	"\x12ListPortalsRequest\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\"E\n" +
 	"\x13ListPortalsResponse\x12.\n" +
-	"\aportals\x18\x01 \x03(\v2\x14.sreportal.v1.PortalR\aportals\"\x95\x01\n" +
+	"\aportals\x18\x01 \x03(\v2\x14.sreportal.v1.PortalR\aportals\"\x85\x02\n" +
 	"\x06Portal\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x12\n" +
 	"\x04main\x18\x03 \x01(\bR\x04main\x12\x19\n" +
 	"\bsub_path\x18\x04 \x01(\tR\asubPath\x12\x1c\n" +
 	"\tnamespace\x18\x05 \x01(\tR\tnamespace\x12\x14\n" +
-	"\x05ready\x18\x06 \x01(\bR\x05ready2c\n" +
+	"\x05ready\x18\x06 \x01(\bR\x05ready\x12\x10\n" +
+	"\x03url\x18\a \x01(\tR\x03url\x12\x1b\n" +
+	"\tis_remote\x18\b \x01(\bR\bisRemote\x12?\n" +
+	"\vremote_sync\x18\t \x01(\v2\x1e.sreportal.v1.RemoteSyncStatusR\n" +
+	"remoteSync\"\xa2\x01\n" +
+	"\x10RemoteSyncStatus\x12$\n" +
+	"\x0elast_sync_time\x18\x01 \x01(\tR\flastSyncTime\x12&\n" +
+	"\x0flast_sync_error\x18\x02 \x01(\tR\rlastSyncError\x12!\n" +
+	"\fremote_title\x18\x03 \x01(\tR\vremoteTitle\x12\x1d\n" +
+	"\n" +
+	"fqdn_count\x18\x04 \x01(\x05R\tfqdnCount2c\n" +
 	"\rPortalService\x12R\n" +
 	"\vListPortals\x12 .sreportal.v1.ListPortalsRequest\x1a!.sreportal.v1.ListPortalsResponseB\xbb\x01\n" +
 	"\x10com.sreportal.v1B\vPortalProtoP\x01ZIgithub.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1;sreportalv1\xa2\x02\x03SXX\xaa\x02\fSreportal.V1\xca\x02\fSreportal\\V1\xe2\x02\x18Sreportal\\V1\\GPBMetadata\xea\x02\rSreportal::V1b\x06proto3"
@@ -236,21 +346,23 @@ func file_sreportal_v1_portal_proto_rawDescGZIP() []byte {
 	return file_sreportal_v1_portal_proto_rawDescData
 }
 
-var file_sreportal_v1_portal_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_sreportal_v1_portal_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_sreportal_v1_portal_proto_goTypes = []any{
 	(*ListPortalsRequest)(nil),  // 0: sreportal.v1.ListPortalsRequest
 	(*ListPortalsResponse)(nil), // 1: sreportal.v1.ListPortalsResponse
 	(*Portal)(nil),              // 2: sreportal.v1.Portal
+	(*RemoteSyncStatus)(nil),    // 3: sreportal.v1.RemoteSyncStatus
 }
 var file_sreportal_v1_portal_proto_depIdxs = []int32{
 	2, // 0: sreportal.v1.ListPortalsResponse.portals:type_name -> sreportal.v1.Portal
-	0, // 1: sreportal.v1.PortalService.ListPortals:input_type -> sreportal.v1.ListPortalsRequest
-	1, // 2: sreportal.v1.PortalService.ListPortals:output_type -> sreportal.v1.ListPortalsResponse
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	3, // 1: sreportal.v1.Portal.remote_sync:type_name -> sreportal.v1.RemoteSyncStatus
+	0, // 2: sreportal.v1.PortalService.ListPortals:input_type -> sreportal.v1.ListPortalsRequest
+	1, // 3: sreportal.v1.PortalService.ListPortals:output_type -> sreportal.v1.ListPortalsResponse
+	3, // [3:4] is the sub-list for method output_type
+	2, // [2:3] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_sreportal_v1_portal_proto_init() }
@@ -264,7 +376,7 @@ func file_sreportal_v1_portal_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_sreportal_v1_portal_proto_rawDesc), len(file_sreportal_v1_portal_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

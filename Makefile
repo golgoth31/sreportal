@@ -138,6 +138,10 @@ generate-all: manifests generate proto ## Generate all code (CRDs, DeepCopy, pro
 run: manifests generate fmt vet generate-certs ## Run a controller from your host.
 	go run ./cmd/main.go -zap-devel --webhook-cert-path=$(CERTSDIR) --config=./config/samples/test_config.yaml
 
+.PHONY: run2
+run2: manifests generate fmt vet generate-certs2 ## Run a controller from your host.
+	go run ./cmd/main.go -zap-devel --web-bind-address=:8082 --health-probe-bind-address=:9091 --webhook-port=9444 --webhook-cert-path=$(CERTSDIR) --config=./config/samples/test_config.yaml
+
 # If you wish to build the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64). However, you must enable docker buildKit for it.
 # More info: https://docs.docker.com/develop/develop-images/build_enhancements/
@@ -304,3 +308,10 @@ generate-certs: ## Generates the certs required to run webhooks locally
 	cd $(CERTSDIR) && \
 		openssl genrsa 2048 > tls.key && \
 		openssl req -new -x509 -nodes -sha256 -days 365 -key tls.key -out tls.crt -subj "/C=XX"
+
+.PHONY: generate-certs2
+generate-certs2: ## Generates the certs required to run webhooks locally
+	mkdir -p $(CERTSDIR)
+	cd $(CERTSDIR) && \
+		openssl genrsa 2048 > tls.key2 && \
+		openssl req -new -x509 -nodes -sha256 -days 365 -key tls.key2 -out tls.crt2 -subj "/C=XX"

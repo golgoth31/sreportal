@@ -190,11 +190,12 @@ spec:
                       description: name is the group name
                       type: string
                     source:
-                      description: source indicates where this group came from (manual
-                        or external-dns)
+                      description: source indicates where this group came from (manual,
+                        external-dns, or remote)
                       enum:
                       - manual
                       - external-dns
+                      - remote
                       type: string
                   required:
                   - name

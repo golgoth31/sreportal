@@ -3,7 +3,7 @@ controllerManager:
     args:
     - --metrics-bind-address=:8443
     - --leader-elect
-    - --health-probe-bind-address=:8081
+    - --health-probe-bind-address=:9090
     - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
     containerSecurityContext:
       allowPrivilegeEscalation: false

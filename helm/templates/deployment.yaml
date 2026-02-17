@@ -33,7 +33,7 @@ spec:
         livenessProbe:
           httpGet:
             path: /healthz
-            port: 8081
+            port: 9090
           initialDelaySeconds: 15
           periodSeconds: 20
         name: manager
@@ -44,7 +44,7 @@ spec:
         readinessProbe:
           httpGet:
             path: /readyz
-            port: 8081
+            port: 9090
           initialDelaySeconds: 5
           periodSeconds: 10
         resources: {{- toYaml .Values.controllerManager.manager.resources | nindent 10

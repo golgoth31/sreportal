@@ -18,9 +18,11 @@ package portal
 
 import (
 	"context"
+	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
@@ -36,21 +38,36 @@ const (
 // EnsureMainPortalRunnable creates a manager.Runnable that ensures a main portal
 // exists at startup. If no portal has spec.main=true, it creates one.
 type EnsureMainPortalRunnable struct {
-	client    client.Client
-	namespace string
+	client      client.Client
+	cacheReader cache.Cache
+	namespace   string
 }
 
 // NewEnsureMainPortalRunnable creates a new EnsureMainPortalRunnable.
-func NewEnsureMainPortalRunnable(c client.Client, namespace string) *EnsureMainPortalRunnable {
+func NewEnsureMainPortalRunnable(c client.Client, cacheReader cache.Cache, namespace string) *EnsureMainPortalRunnable {
 	return &EnsureMainPortalRunnable{
-		client:    c,
-		namespace: namespace,
+		client:      c,
+		cacheReader: cacheReader,
+		namespace:   namespace,
 	}
 }
 
 // Start implements manager.Runnable. It runs once at startup to ensure the main portal exists.
 func (r *EnsureMainPortalRunnable) Start(ctx context.Context) error {
 	log := ctrl.Log.WithName("ensure-main-portal")
+
+	// Wait for the cache to be synced before listing portals
+	log.Info("waiting for cache to sync")
+	if !r.cacheReader.WaitForCacheSync(ctx) {
+		if ctx.Err() != nil {
+			log.Error(ctx.Err(), "context cancelled while waiting for cache sync")
+			return ctx.Err()
+		}
+		err := fmt.Errorf("cache sync failed - ensure CRDs are installed (run: make install)")
+		log.Error(err, "failed to wait for cache sync")
+		return err
+	}
+	log.Info("cache synced successfully")
 
 	// List all portals
 	var portalList sreportalv1alpha1.PortalList

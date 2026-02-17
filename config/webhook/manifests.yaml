@@ -24,6 +24,26 @@ webhooks:
     resources:
     - dnsrecords
   sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-sreportal-my-domain-v1alpha1-portal
+  failurePolicy: Fail
+  name: mportal-v1alpha1.kb.io
+  rules:
+  - apiGroups:
+    - sreportal.my.domain
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - portals
+  sideEffects: None
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
@@ -49,4 +69,24 @@ webhooks:
     - UPDATE
     resources:
     - dnsrecords
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-sreportal-my-domain-v1alpha1-portal
+  failurePolicy: Fail
+  name: vportal-v1alpha1.kb.io
+  rules:
+  - apiGroups:
+    - sreportal.my.domain
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - portals
   sideEffects: None

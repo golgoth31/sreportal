@@ -39,4 +39,28 @@ message Portal {
 
   // ready indicates if the portal is fully configured
   bool ready = 6;
+
+  // url is the URL of a remote portal (empty for local portals)
+  string url = 7;
+
+  // is_remote indicates if this portal fetches data from a remote source
+  bool is_remote = 8;
+
+  // remote_sync contains status information for remote portals
+  RemoteSyncStatus remote_sync = 9;
+}
+
+// RemoteSyncStatus contains status information about remote portal synchronization
+message RemoteSyncStatus {
+  // last_sync_time is the timestamp of the last successful sync (RFC3339 format)
+  string last_sync_time = 1;
+
+  // last_sync_error contains the error from the last failed sync attempt
+  string last_sync_error = 2;
+
+  // remote_title is the title of the remote portal
+  string remote_title = 3;
+
+  // fqdn_count is the number of FQDNs fetched from the remote portal
+  int32 fqdn_count = 4;
 }

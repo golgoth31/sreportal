@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file sreportal/v1/portal.proto.
  */
 export const file_sreportal_v1_portal: GenFile = /*@__PURE__*/
-  fileDesc("ChlzcmVwb3J0YWwvdjEvcG9ydGFsLnByb3RvEgxzcmVwb3J0YWwudjEiJwoSTGlzdFBvcnRhbHNSZXF1ZXN0EhEKCW5hbWVzcGFjZRgBIAEoCSI8ChNMaXN0UG9ydGFsc1Jlc3BvbnNlEiUKB3BvcnRhbHMYASADKAsyFC5zcmVwb3J0YWwudjEuUG9ydGFsImcKBlBvcnRhbBIMCgRuYW1lGAEgASgJEg0KBXRpdGxlGAIgASgJEgwKBG1haW4YAyABKAgSEAoIc3ViX3BhdGgYBCABKAkSEQoJbmFtZXNwYWNlGAUgASgJEg0KBXJlYWR5GAYgASgIMmMKDVBvcnRhbFNlcnZpY2USUgoLTGlzdFBvcnRhbHMSIC5zcmVwb3J0YWwudjEuTGlzdFBvcnRhbHNSZXF1ZXN0GiEuc3JlcG9ydGFsLnYxLkxpc3RQb3J0YWxzUmVzcG9uc2VCuwEKEGNvbS5zcmVwb3J0YWwudjFCC1BvcnRhbFByb3RvUAFaSWdpdGh1Yi5jb20vZ29sZ290aDMxL3NyZXBvcnRhbC9pbnRlcm5hbC9ncnBjL2dlbi9zcmVwb3J0YWwvdjE7c3JlcG9ydGFsdjGiAgNTWFiqAgxTcmVwb3J0YWwuVjHKAgxTcmVwb3J0YWxcVjHiAhhTcmVwb3J0YWxcVjFcR1BCTWV0YWRhdGHqAg1TcmVwb3J0YWw6OlYxYgZwcm90bzM");
+  fileDesc("ChlzcmVwb3J0YWwvdjEvcG9ydGFsLnByb3RvEgxzcmVwb3J0YWwudjEiJwoSTGlzdFBvcnRhbHNSZXF1ZXN0EhEKCW5hbWVzcGFjZRgBIAEoCSI8ChNMaXN0UG9ydGFsc1Jlc3BvbnNlEiUKB3BvcnRhbHMYASADKAsyFC5zcmVwb3J0YWwudjEuUG9ydGFsIrwBCgZQb3J0YWwSDAoEbmFtZRgBIAEoCRINCgV0aXRsZRgCIAEoCRIMCgRtYWluGAMgASgIEhAKCHN1Yl9wYXRoGAQgASgJEhEKCW5hbWVzcGFjZRgFIAEoCRINCgVyZWFkeRgGIAEoCBILCgN1cmwYByABKAkSEQoJaXNfcmVtb3RlGAggASgIEjMKC3JlbW90ZV9zeW5jGAkgASgLMh4uc3JlcG9ydGFsLnYxLlJlbW90ZVN5bmNTdGF0dXMibQoQUmVtb3RlU3luY1N0YXR1cxIWCg5sYXN0X3N5bmNfdGltZRgBIAEoCRIXCg9sYXN0X3N5bmNfZXJyb3IYAiABKAkSFAoMcmVtb3RlX3RpdGxlGAMgASgJEhIKCmZxZG5fY291bnQYBCABKAUyYwoNUG9ydGFsU2VydmljZRJSCgtMaXN0UG9ydGFscxIgLnNyZXBvcnRhbC52MS5MaXN0UG9ydGFsc1JlcXVlc3QaIS5zcmVwb3J0YWwudjEuTGlzdFBvcnRhbHNSZXNwb25zZUK7AQoQY29tLnNyZXBvcnRhbC52MUILUG9ydGFsUHJvdG9QAVpJZ2l0aHViLmNvbS9nb2xnb3RoMzEvc3JlcG9ydGFsL2ludGVybmFsL2dycGMvZ2VuL3NyZXBvcnRhbC92MTtzcmVwb3J0YWx2MaICA1NYWKoCDFNyZXBvcnRhbC5WMcoCDFNyZXBvcnRhbFxWMeICGFNyZXBvcnRhbFxWMVxHUEJNZXRhZGF0YeoCDVNyZXBvcnRhbDo6VjFiBnByb3RvMw");
 
 /**
  * ListPortalsRequest is the request for listing portals
@@ -101,6 +101,27 @@ export type Portal = Message<"sreportal.v1.Portal"> & {
    * @generated from field: bool ready = 6;
    */
   ready: boolean;
+
+  /**
+   * url is the URL of a remote portal (empty for local portals)
+   *
+   * @generated from field: string url = 7;
+   */
+  url: string;
+
+  /**
+   * is_remote indicates if this portal fetches data from a remote source
+   *
+   * @generated from field: bool is_remote = 8;
+   */
+  isRemote: boolean;
+
+  /**
+   * remote_sync contains status information for remote portals
+   *
+   * @generated from field: sreportal.v1.RemoteSyncStatus remote_sync = 9;
+   */
+  remoteSync?: RemoteSyncStatus;
 };
 
 /**
@@ -109,6 +130,48 @@ export type Portal = Message<"sreportal.v1.Portal"> & {
  */
 export const PortalSchema: GenMessage<Portal> = /*@__PURE__*/
   messageDesc(file_sreportal_v1_portal, 2);
+
+/**
+ * RemoteSyncStatus contains status information about remote portal synchronization
+ *
+ * @generated from message sreportal.v1.RemoteSyncStatus
+ */
+export type RemoteSyncStatus = Message<"sreportal.v1.RemoteSyncStatus"> & {
+  /**
+   * last_sync_time is the timestamp of the last successful sync (RFC3339 format)
+   *
+   * @generated from field: string last_sync_time = 1;
+   */
+  lastSyncTime: string;
+
+  /**
+   * last_sync_error contains the error from the last failed sync attempt
+   *
+   * @generated from field: string last_sync_error = 2;
+   */
+  lastSyncError: string;
+
+  /**
+   * remote_title is the title of the remote portal
+   *
+   * @generated from field: string remote_title = 3;
+   */
+  remoteTitle: string;
+
+  /**
+   * fqdn_count is the number of FQDNs fetched from the remote portal
+   *
+   * @generated from field: int32 fqdn_count = 4;
+   */
+  fqdnCount: number;
+};
+
+/**
+ * Describes the message sreportal.v1.RemoteSyncStatus.
+ * Use `create(RemoteSyncStatusSchema)` to create a new message.
+ */
+export const RemoteSyncStatusSchema: GenMessage<RemoteSyncStatus> = /*@__PURE__*/
+  messageDesc(file_sreportal_v1_portal, 3);
 
 /**
  * PortalService provides portal management

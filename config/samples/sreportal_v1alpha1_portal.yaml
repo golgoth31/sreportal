@@ -1,23 +1,26 @@
+# apiVersion: sreportal.my.domain/v1alpha1
+# kind: Portal
+# metadata:
+#   labels:
+#     app.kubernetes.io/name: sreportal
+#     app.kubernetes.io/managed-by: kustomize
+#   name: main
+#   namespace: sreportal-system
+# spec:
+#   title: "Main Portal"
+#   main: true
+# ---
 apiVersion: sreportal.my.domain/v1alpha1
 kind: Portal
 metadata:
   labels:
     app.kubernetes.io/name: sreportal
     app.kubernetes.io/managed-by: kustomize
-  name: main
+  name: dev-core-1
   namespace: sreportal-system
 spec:
-  title: "Main Portal"
-  main: true
----
-apiVersion: sreportal.my.domain/v1alpha1
-kind: Portal
-metadata:
-  labels:
-    app.kubernetes.io/name: sreportal
-    app.kubernetes.io/managed-by: kustomize
-  name: production
-  namespace: sreportal-system
-spec:
-  title: "Production Services"
-  subPath: "production"
+  title: "Dev Core 1"
+  subPath: "dev-core-1"
+  remote:
+    url: "http://127.0.0.1:8082"
+    portal: main

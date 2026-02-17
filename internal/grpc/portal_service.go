@@ -61,14 +61,34 @@ func (s *PortalService) ListPortals(
 			subPath = p.Name
 		}
 
-		portals = append(portals, &portalv1.Portal{
+		portal := &portalv1.Portal{
 			Name:      p.Name,
 			Title:     p.Spec.Title,
 			Main:      p.Spec.Main,
 			SubPath:   subPath,
 			Namespace: p.Namespace,
 			Ready:     p.Status.Ready,
-		})
+			IsRemote:  p.Spec.Remote != nil,
+		}
+
+		// Include remote URL if available
+		if p.Spec.Remote != nil {
+			portal.Url = p.Spec.Remote.URL
+		}
+
+		// Include remote sync status if available
+		if p.Status.RemoteSync != nil {
+			portal.RemoteSync = &portalv1.RemoteSyncStatus{
+				LastSyncError: p.Status.RemoteSync.LastSyncError,
+				RemoteTitle:   p.Status.RemoteSync.RemoteTitle,
+				FqdnCount:     int32(p.Status.RemoteSync.FQDNCount),
+			}
+			if p.Status.RemoteSync.LastSyncTime != nil {
+				portal.RemoteSync.LastSyncTime = p.Status.RemoteSync.LastSyncTime.Format("2006-01-02T15:04:05Z07:00")
+			}
+		}
+
+		portals = append(portals, portal)
 	}
 
 	return connect.NewResponse(&portalv1.ListPortalsResponse{

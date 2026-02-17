@@ -158,21 +158,36 @@ func (r *SourceReconciler) reconcile(ctx context.Context) error {
 		return nil
 	}
 
-	// Find the main portal
+	// Find the main portal and filter out remote portals
 	var mainPortal *sreportalv1alpha1.Portal
 	portalsByName := make(map[string]*sreportalv1alpha1.Portal)
+	localPortals := make([]*sreportalv1alpha1.Portal, 0)
+
 	for i := range portalList.Items {
 		p := &portalList.Items[i]
 		portalsByName[p.Name] = p
+
+		// Skip remote portals for local source collection
+		if p.Spec.Remote != nil {
+			log.V(1).Info("skipping remote portal for source collection", "name", p.Name, "url", p.Spec.Remote.URL)
+			continue
+		}
+
+		localPortals = append(localPortals, p)
 		if p.Spec.Main {
 			mainPortal = p
 		}
 	}
 
 	if mainPortal == nil {
-		// Fallback: use first portal if no main portal found
-		mainPortal = &portalList.Items[0]
-		log.Info("no main portal found, using first portal as fallback", "name", mainPortal.Name)
+		// Fallback: use first local portal if no main portal found
+		if len(localPortals) > 0 {
+			mainPortal = localPortals[0]
+			log.Info("no main portal found, using first local portal as fallback", "name", mainPortal.Name)
+		} else {
+			log.Info("no local portals found, skipping source reconciliation")
+			return nil
+		}
 	}
 
 	// Collect all endpoints from all sources
@@ -200,15 +215,32 @@ func (r *SourceReconciler) reconcile(ctx context.Context) error {
 		// Route each endpoint to the appropriate portal
 		for _, ep := range endpoints {
 			portalName := adapter.ResolvePortal(ep)
+			targetPortal := mainPortal
+
 			if portalName == "" {
 				// No annotation -> route to main portal
 				portalName = mainPortal.Name
-			} else if _, exists := portalsByName[portalName]; !exists {
+			} else if p, exists := portalsByName[portalName]; !exists {
 				// Annotated portal doesn't exist -> route to main portal
 				log.V(1).Info("portal not found, routing to main portal",
 					"annotatedPortal", portalName,
 					"endpoint", ep.DNSName)
 				portalName = mainPortal.Name
+			} else if p.Spec.Remote != nil {
+				// Annotated portal is a remote portal -> route to main portal
+				log.V(1).Info("portal is remote, routing to main portal",
+					"annotatedPortal", portalName,
+					"endpoint", ep.DNSName)
+				portalName = mainPortal.Name
+			} else {
+				targetPortal = p
+			}
+
+			// Ensure we have a valid local portal
+			if targetPortal == nil || targetPortal.Spec.Remote != nil {
+				log.V(1).Info("no valid local portal for endpoint, skipping",
+					"endpoint", ep.DNSName)
+				continue
 			}
 
 			key := portalSourceKey{portalName: portalName, sourceType: ts.Type}
@@ -219,15 +251,18 @@ func (r *SourceReconciler) reconcile(ctx context.Context) error {
 	// Create/update DNSRecords for each (portal, sourceType) pair
 	for key, endpoints := range endpointsByPortalSource {
 		portal := portalsByName[key.portalName]
+		// Skip remote portals
+		if portal == nil || portal.Spec.Remote != nil {
+			continue
+		}
 		if err := r.reconcileDNSRecord(ctx, portal, key.sourceType, endpoints); err != nil {
 			log.Error(err, "failed to reconcile DNSRecord",
 				"portal", key.portalName, "sourceType", key.sourceType)
 		}
 	}
 
-	// Clean up orphaned DNSRecords
-	for i := range portalList.Items {
-		portal := &portalList.Items[i]
+	// Clean up orphaned DNSRecords (only for local portals)
+	for _, portal := range localPortals {
 		if err := r.deleteOrphanedDNSRecords(ctx, portal, endpointsByPortalSource); err != nil {
 			log.Error(err, "failed to delete orphaned DNSRecords", "portal", portal.Name)
 		}

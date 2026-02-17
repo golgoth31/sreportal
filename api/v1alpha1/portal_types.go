@@ -34,6 +34,26 @@ type PortalSpec struct {
 	// subPath is the URL subpath for this portal (defaults to metadata.name)
 	// +optional
 	SubPath string `json:"subPath,omitempty"`
+
+	// remote configures this portal to fetch data from a remote SRE Portal instance.
+	// When set, the operator will fetch DNS information from the remote portal
+	// instead of collecting data from the local cluster.
+	// This field cannot be set when main is true.
+	// +optional
+	Remote *RemotePortalSpec `json:"remote,omitempty"`
+}
+
+// RemotePortalSpec defines the configuration for fetching data from a remote portal.
+type RemotePortalSpec struct {
+	// url is the base URL of the remote SRE Portal instance.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Pattern=`^https?://.*`
+	URL string `json:"url"`
+
+	// portal is the name of the portal to target on the remote instance.
+	// If not set, the main portal of the remote instance will be used.
+	// +optional
+	Portal string `json:"portal,omitempty"`
 }
 
 // PortalStatus defines the observed state of Portal.
@@ -47,6 +67,31 @@ type PortalStatus struct {
 	// +listMapKey=type
 	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
+
+	// remoteSync contains the status of synchronization with a remote portal.
+	// This is only populated when spec.remote is set.
+	// +optional
+	RemoteSync *RemoteSyncStatus `json:"remoteSync,omitempty"`
+}
+
+// RemoteSyncStatus contains status information about remote portal synchronization.
+type RemoteSyncStatus struct {
+	// lastSyncTime is the timestamp of the last successful synchronization.
+	// +optional
+	LastSyncTime *metav1.Time `json:"lastSyncTime,omitempty"`
+
+	// lastSyncError contains the error message from the last failed synchronization attempt.
+	// Empty if the last sync was successful.
+	// +optional
+	LastSyncError string `json:"lastSyncError,omitempty"`
+
+	// remoteTitle is the title of the remote portal as fetched from the remote server.
+	// +optional
+	RemoteTitle string `json:"remoteTitle,omitempty"`
+
+	// fqdnCount is the number of FQDNs fetched from the remote portal.
+	// +optional
+	FQDNCount int `json:"fqdnCount,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -54,6 +99,7 @@ type PortalStatus struct {
 // +kubebuilder:resource:path=portals,scope=Namespaced
 // +kubebuilder:printcolumn:name="Title",type=string,JSONPath=`.spec.title`
 // +kubebuilder:printcolumn:name="Main",type=boolean,JSONPath=`.spec.main`
+// +kubebuilder:printcolumn:name="Remote URL",type=string,JSONPath=`.spec.remote.url`,priority=1
 // +kubebuilder:printcolumn:name="Ready",type=boolean,JSONPath=`.status.ready`
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 

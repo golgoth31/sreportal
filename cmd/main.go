@@ -85,12 +85,14 @@ func main() {
 		"Path to the operator configuration file.")
 	flag.StringVar(&portalNamespace, "portal-namespace", "sreportal-system",
 		"The namespace where the main portal will be auto-created.")
-	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	flag.StringVar(&probeAddr, "health-probe-bind-address", ":9090", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.BoolVar(&secureMetrics, "metrics-secure", true,
 		"If set, the metrics endpoint is served securely via HTTPS. Use --metrics-secure=false to use HTTP instead.")
+	var webhookPort int
+	flag.IntVar(&webhookPort, "webhook-port", 9443, "The port the webhook server binds to.")
 	flag.StringVar(&webhookCertPath, "webhook-cert-path", "", "The directory that contains the webhook certificate.")
 	flag.StringVar(&webhookCertName, "webhook-cert-name", "tls.crt", "The name of the webhook certificate file.")
 	flag.StringVar(&webhookCertKey, "webhook-cert-key", "tls.key", "The name of the webhook key file.")
@@ -135,6 +137,7 @@ func main() {
 	webhookTLSOpts := tlsOpts
 	webhookServerOptions := webhook.Options{
 		TLSOpts: webhookTLSOpts,
+		Port:    webhookPort,
 	}
 
 	if len(webhookCertPath) > 0 {
@@ -277,6 +280,10 @@ func main() {
 			setupLog.Error(err, "unable to create webhook", "webhook", "DNS")
 			os.Exit(1)
 		}
+		if err := webhookv1alpha1.SetupPortalWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "Portal")
+			os.Exit(1)
+		}
 	}
 	if err := controller.NewPortalReconciler(
 		mgr.GetClient(),
@@ -289,6 +296,7 @@ func main() {
 	// Add runnable to ensure main portal exists at startup
 	if err := mgr.Add(portalctrl.NewEnsureMainPortalRunnable(
 		mgr.GetClient(),
+		mgr.GetCache(),
 		portalNamespace,
 	)); err != nil {
 		setupLog.Error(err, "unable to add main portal ensure runnable")

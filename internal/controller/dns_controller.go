@@ -83,6 +83,15 @@ func (r *DNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	// Skip DNS resources owned by a Portal (these are managed by PortalReconciler for remote portals)
+	for _, ownerRef := range resource.OwnerReferences {
+		if ownerRef.Kind == "Portal" && ownerRef.Controller != nil && *ownerRef.Controller {
+			log.V(1).Info("skipping DNS resource owned by Portal (remote portal)",
+				"name", resource.Name, "namespace", resource.Namespace, "portal", ownerRef.Name)
+			return ctrl.Result{}, nil
+		}
+	}
+
 	log.Info("reconciling DNS resource", "name", resource.Name, "namespace", resource.Namespace)
 
 	// Create reconcile context

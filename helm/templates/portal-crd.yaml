@@ -22,6 +22,10 @@ spec:
     - jsonPath: .spec.main
       name: Main
       type: boolean
+    - jsonPath: .spec.remote.url
+      name: Remote URL
+      priority: 1
+      type: string
     - jsonPath: .status.ready
       name: Ready
       type: boolean
@@ -57,6 +61,25 @@ spec:
                 description: main marks this portal as the default portal for unmatched
                   FQDNs
                 type: boolean
+              remote:
+                description: |-
+                  remote configures this portal to fetch data from a remote SRE Portal instance.
+                  When set, the operator will fetch DNS information from the remote portal
+                  instead of collecting data from the local cluster.
+                  This field cannot be set when main is true.
+                properties:
+                  portal:
+                    description: |-
+                      portal is the name of the portal to target on the remote instance.
+                      If not set, the main portal of the remote instance will be used.
+                    type: string
+                  url:
+                    description: url is the base URL of the remote SRE Portal instance.
+                    pattern: ^https?://.*
+                    type: string
+                required:
+                - url
+                type: object
               subPath:
                 description: subPath is the URL subpath for this portal (defaults to
                   metadata.name)
@@ -134,6 +157,30 @@ spec:
               ready:
                 description: ready indicates if the portal is fully configured
                 type: boolean
+              remoteSync:
+                description: |-
+                  remoteSync contains the status of synchronization with a remote portal.
+                  This is only populated when spec.remote is set.
+                properties:
+                  fqdnCount:
+                    description: fqdnCount is the number of FQDNs fetched from the remote
+                      portal.
+                    type: integer
+                  lastSyncError:
+                    description: |-
+                      lastSyncError contains the error message from the last failed synchronization attempt.
+                      Empty if the last sync was successful.
+                    type: string
+                  lastSyncTime:
+                    description: lastSyncTime is the timestamp of the last successful
+                      synchronization.
+                    format: date-time
+                    type: string
+                  remoteTitle:
+                    description: remoteTitle is the title of the remote portal as fetched
+                      from the remote server.
+                    type: string
+                type: object
             type: object
         required:
         - spec
