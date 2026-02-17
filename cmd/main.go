@@ -43,6 +43,7 @@ import (
 	"github.com/golgoth31/sreportal/internal/config"
 	"github.com/golgoth31/sreportal/internal/controller"
 	portalctrl "github.com/golgoth31/sreportal/internal/controller/portal"
+	"github.com/golgoth31/sreportal/internal/mcp"
 	webhookv1alpha1 "github.com/golgoth31/sreportal/internal/webhook/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/webserver"
 	// +kubebuilder:scaffold:imports
@@ -76,6 +77,9 @@ func main() {
 	var enableHTTP2 bool
 	var configPath string
 	var portalNamespace string
+	var enableMCP bool
+	var mcpTransport string
+	var mcpAddr string
 	var tlsOpts []func(*tls.Config)
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
@@ -102,6 +106,12 @@ func main() {
 	flag.StringVar(&metricsCertKey, "metrics-cert-key", "tls.key", "The name of the metrics server key file.")
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+	flag.BoolVar(&enableMCP, "enable-mcp", false,
+		"If set, the MCP (Model Context Protocol) server will be enabled for AI assistant integration.")
+	flag.StringVar(&mcpTransport, "mcp-transport", "stdio",
+		"The transport to use for the MCP server: 'stdio' or 'sse'.")
+	flag.StringVar(&mcpAddr, "mcp-bind-address", ":8081",
+		"The address the MCP SSE server binds to (only used when mcp-transport is 'sse').")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -325,6 +335,30 @@ func main() {
 			setupLog.Error(err, "web server error")
 		}
 	}()
+
+	// Start MCP server if enabled
+	if enableMCP {
+		mcpServer := mcp.New(mgr.GetClient(), &operatorConfig.GroupMapping)
+		switch mcpTransport {
+		case "stdio":
+			go func() {
+				setupLog.Info("starting MCP server", "transport", "stdio")
+				if err := mcpServer.ServeStdio(); err != nil {
+					setupLog.Error(err, "MCP server error")
+				}
+			}()
+		case "sse":
+			go func() {
+				setupLog.Info("starting MCP server", "transport", "sse", "address", mcpAddr)
+				if err := mcpServer.ServeSSE(mcpAddr); err != nil {
+					setupLog.Error(err, "MCP server error")
+				}
+			}()
+		default:
+			setupLog.Error(nil, "unknown MCP transport", "transport", mcpTransport)
+			os.Exit(1)
+		}
+	}
 
 	ctx := ctrl.SetupSignalHandler()
 
