@@ -54,6 +54,11 @@ patches:
   target:
     kind: Deployment
 
+# [WEB+MCP] Add web server (port 8090) and MCP server (port 8091) port definitions.
+- path: manager_web_mcp_patch.yaml
+  target:
+    kind: Deployment
+
 # [CERTMANAGER] To enable cert-manager, uncomment all sections with 'CERTMANAGER' prefix.
 # Uncomment the following replacements to add the cert-manager CA injection annotations
 replacements:

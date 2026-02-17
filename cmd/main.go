@@ -44,6 +44,7 @@ import (
 	"github.com/golgoth31/sreportal/internal/controller"
 	portalctrl "github.com/golgoth31/sreportal/internal/controller/portal"
 	"github.com/golgoth31/sreportal/internal/mcp"
+	"github.com/golgoth31/sreportal/internal/version"
 	webhookv1alpha1 "github.com/golgoth31/sreportal/internal/webhook/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/webserver"
 	// +kubebuilder:scaffold:imports
@@ -83,7 +84,7 @@ func main() {
 	var tlsOpts []func(*tls.Config)
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
-	flag.StringVar(&webAddr, "web-bind-address", ":8080", "The address the web UI server binds to.")
+	flag.StringVar(&webAddr, "web-bind-address", ":8090", "The address the web UI server binds to.")
 	flag.StringVar(&webRoot, "web-root", "web/dist/web/browser", "The path to the Angular dist directory.")
 	flag.StringVar(&configPath, "config", config.DefaultConfigPath,
 		"Path to the operator configuration file.")
@@ -110,7 +111,7 @@ func main() {
 		"If set, the MCP (Model Context Protocol) server will be enabled for AI assistant integration.")
 	flag.StringVar(&mcpTransport, "mcp-transport", "stdio",
 		"The transport to use for the MCP server: 'stdio' or 'sse'.")
-	flag.StringVar(&mcpAddr, "mcp-bind-address", ":8081",
+	flag.StringVar(&mcpAddr, "mcp-bind-address", ":8091",
 		"The address the MCP SSE server binds to (only used when mcp-transport is 'sse').")
 	opts := zap.Options{
 		Development: true,
@@ -119,6 +120,8 @@ func main() {
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+
+	setupLog.Info("sreportal", "version", version.Version, "commit", version.Commit, "date", version.Date)
 
 	// Load operator configuration from file
 	operatorConfig, err := config.LoadFromFile(configPath)

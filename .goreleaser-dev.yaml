@@ -1,0 +1,53 @@
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+    - npm ci --prefix web
+    - npm run build --prefix web
+
+builds:
+  - id: manager
+    main: ./cmd
+    binary: manager
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/golgoth31/sreportal/internal/version.Version={{ .Version }}
+      - -X github.com/golgoth31/sreportal/internal/version.Commit={{ .Commit }}
+      - -X github.com/golgoth31/sreportal/internal/version.Date={{ .Date }}
+
+dockers_v2:
+  - id: sreportal-dev
+    ids:
+      - manager
+    images:
+      - "ghcr.io/golgoth31/sreportal/dev"
+    tags:
+      - "{{ .ShortCommit }}"
+      - "latest"
+    dockerfile: Dockerfile.goreleaser
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    extra_files:
+      - web/dist/web/browser
+
+archives:
+  - id: default
+    formats:
+      - tar.gz
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+
+changelog:
+  disable: true
+
+release:
+  disable: true
