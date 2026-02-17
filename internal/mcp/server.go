@@ -17,6 +17,8 @@ limitations under the License.
 package mcp
 
 import (
+	"fmt"
+
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -115,6 +117,9 @@ func (s *Server) ServeStdio() error {
 
 // ServeSSE starts the MCP server using SSE transport
 func (s *Server) ServeSSE(address string) error {
-	sseServer := server.NewSSEServer(s.mcpServer)
+	baseURL := fmt.Sprintf("http://localhost%s", address)
+	sseServer := server.NewSSEServer(s.mcpServer,
+		server.WithBaseURL(baseURL),
+	)
 	return sseServer.Start(address)
 }

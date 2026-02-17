@@ -3,9 +3,19 @@
 **
 
 # Re-include Go source files (but not *_test.go)
-!**/*.go
+!cmd/**
+!api/**
+!internal/**
 **/*_test.go
 
 # Re-include Go module files
 !go.mod
 !go.sum
+
+# Re-include web UI source files
+!web/package.json
+!web/package-lock.json
+!web/angular.json
+!web/tsconfig.json
+!web/tsconfig.app.json
+!web/src/**

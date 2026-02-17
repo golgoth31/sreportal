@@ -1,0 +1,27 @@
+# This patch adds the container port definitions for the web server and MCP server.
+
+# Add the web server port
+- op: add
+  path: /spec/template/spec/containers/0/ports/-
+  value:
+    containerPort: 8090
+    name: web
+    protocol: TCP
+
+# Add the MCP server port (SSE transport)
+- op: add
+  path: /spec/template/spec/containers/0/ports/-
+  value:
+    containerPort: 8091
+    name: mcp
+    protocol: TCP
+
+# Enable MCP server
+- op: add
+  path: /spec/template/spec/containers/0/args/-
+  value: --enable-mcp
+
+# Set MCP transport to SSE (required for network access)
+- op: add
+  path: /spec/template/spec/containers/0/args/-
+  value: --mcp-transport=sse

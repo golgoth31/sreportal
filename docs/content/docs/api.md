@@ -123,7 +123,7 @@ _Appears in:_
 | --- | --- | --- | --- |
 | `name` _string_ | name is the group name |   |   |
 | `description` _string_ | description is the group description |   |   |
-| `source` _string_ | source indicates where this group came from (manual or external-dns) |   | Enum: [manual external-dns] |
+| `source` _string_ | source indicates where this group came from (manual, external-dns, or remote) |   | Enum: [manual external-dns remote] |
 | `fqdns` _[sreportal.my.domain/v1alpha1.FQDNStatus](#sreportalmydomainv1alpha1fqdnstatus) array_ | fqdns is the list of FQDNs in this group |   |   |
 
 
@@ -205,6 +205,21 @@ _Appears in:_
 | `title` _string_ | title is the display title for this portal |   |   |
 | `main` _boolean_ | main marks this portal as the default portal for unmatched FQDNs |   |   |
 | `subPath` _string_ | subPath is the URL subpath for this portal (defaults to metadata.name) |   |   |
+| `remote` _[sreportal.my.domain/v1alpha1.RemotePortalSpec](#sreportalmydomainv1alpha1remoteportalspec)_ | remote configures this portal to fetch data from a remote SRE Portal instance. When set, the operator will fetch DNS information from the remote portal instead of collecting data from the local cluster. This field cannot be set when main is true. |   |   |
+
+
+
+#### sreportal.my.domain/v1alpha1.RemotePortalSpec
+
+RemotePortalSpec defines the configuration for fetching data from a remote portal.
+
+_Appears in:_
+- [sreportal.my.domain/v1alpha1.PortalSpec](#sreportalmydomainv1alpha1portalspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `url` _string_ | url is the base URL of the remote SRE Portal instance. |   | Pattern: `^https?://.*` |
+| `portal` _string_ | portal is the name of the portal to target on the remote instance. If not set, the main portal of the remote instance will be used. |   |   |
 
 
 
@@ -219,6 +234,23 @@ _Appears in:_
 | --- | --- | --- | --- |
 | `ready` _boolean_ | ready indicates if the portal is fully configured |   |   |
 | `conditions` _[Condition](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#condition-v1-meta) array_ | conditions represent the current state of the Portal resource. |   |   |
+| `remoteSync` _[sreportal.my.domain/v1alpha1.RemoteSyncStatus](#sreportalmydomainv1alpha1remotesyncstatus)_ | remoteSync contains the status of synchronization with a remote portal. This is only populated when spec.remote is set. |   |   |
+
+
+
+#### sreportal.my.domain/v1alpha1.RemoteSyncStatus
+
+RemoteSyncStatus contains status information about remote portal synchronization.
+
+_Appears in:_
+- [sreportal.my.domain/v1alpha1.PortalStatus](#sreportalmydomainv1alpha1portalstatus)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `lastSyncTime` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | lastSyncTime is the timestamp of the last successful synchronization. |   |   |
+| `lastSyncError` _string_ | lastSyncError contains the error message from the last failed synchronization attempt. Empty if the last sync was successful. |   |   |
+| `remoteTitle` _string_ | remoteTitle is the title of the remote portal as fetched from the remote server. |   |   |
+| `fqdnCount` _integer_ | fqdnCount is the number of FQDNs fetched from the remote portal. |   |   |
 
 
 

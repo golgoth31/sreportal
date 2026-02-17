@@ -33,3 +33,5 @@ tmp
 # Hugo build output
 docs/public/
 docs/.hugo_build.lock
+
+/node_modules

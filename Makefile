@@ -1,5 +1,5 @@
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+IMG ?= ghcr.io/golgoth31/sreportal:latest
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -136,7 +136,7 @@ generate-all: manifests generate proto ## Generate all code (CRDs, DeepCopy, pro
 
 .PHONY: run
 run: manifests generate fmt vet generate-certs ## Run a controller from your host.
-	go run ./cmd/main.go -zap-devel --webhook-cert-path=$(CERTSDIR) --config=./config/samples/test_config.yaml
+	go run ./cmd/main.go -zap-devel --enable-mcp --mcp-transport sse --webhook-cert-path=$(CERTSDIR) --config=./config/samples/test_config.yaml
 
 .PHONY: run2
 run2: manifests generate fmt vet generate-certs2 ## Run a controller from your host.
@@ -175,6 +175,16 @@ build-installer: manifests generate kustomize ## Generate a consolidated YAML wi
 	mkdir -p dist
 	cd config/manager && "$(KUSTOMIZE)" edit set image controller=${IMG}
 	"$(KUSTOMIZE)" build config/default > dist/install.yaml
+
+##@ Release
+
+.PHONY: release-snapshot
+release-snapshot: ## Run GoReleaser in snapshot mode (no publish).
+	goreleaser release --snapshot --clean
+
+.PHONY: release-dev-snapshot
+release-dev-snapshot: ## Run GoReleaser dev config in snapshot mode (no publish).
+	goreleaser release -f .goreleaser-dev.yaml --snapshot --clean
 
 ##@ Deployment
 

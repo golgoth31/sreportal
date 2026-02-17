@@ -5,6 +5,8 @@ controllerManager:
     - --leader-elect
     - --health-probe-bind-address=:9090
     - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
+    - --enable-mcp
+    - --mcp-transport=sse
     containerSecurityContext:
       allowPrivilegeEscalation: false
       capabilities:
@@ -12,7 +14,7 @@ controllerManager:
         - ALL
       readOnlyRootFilesystem: true
     image:
-      repository: controller
+      repository: ghcr.io/golgoth31/sreportal
       tag: latest
     resources:
       limits:
@@ -32,7 +34,7 @@ controllerManager:
 kubernetesClusterDomain: cluster.local
 metricsService:
   ports:
-  - name: https
+  - name: metrics
     port: 8443
     protocol: TCP
     targetPort: 8443
