@@ -53,7 +53,7 @@
         <section class="group-section">
           <h2 class="group-header">
             <span class="group-icon">
-              @if (entry.value[0]?.source === 'external-dns') {
+              @if (entry.value[0].source === 'external-dns') {
                 <span class="source-badge source-external">E</span>
               } @else {
                 <span class="source-badge source-manual">M</span>
