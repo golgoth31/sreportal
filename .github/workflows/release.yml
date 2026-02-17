@@ -82,7 +82,7 @@ jobs:
       - name: Run chart-releaser
         uses: bitdeps/helm-oci-charts-releaser@main
         with:
-          oci_registry: ghcr.io/kubecloudscaler/charts
+          oci_registry: ghcr.io/sreportal/charts
           oci_username: username
           oci_password: ${{ secrets.GITHUB_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
