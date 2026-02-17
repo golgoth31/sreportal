@@ -42,9 +42,9 @@ import (
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/config"
 	"github.com/golgoth31/sreportal/internal/controller"
-	"github.com/golgoth31/sreportal/internal/version"
 	portalctrl "github.com/golgoth31/sreportal/internal/controller/portal"
 	"github.com/golgoth31/sreportal/internal/mcp"
+	"github.com/golgoth31/sreportal/internal/version"
 	webhookv1alpha1 "github.com/golgoth31/sreportal/internal/webhook/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/webserver"
 	// +kubebuilder:scaffold:imports
