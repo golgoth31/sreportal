@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/golgoth31/sreportal/compare/v0.3.0...v0.3.1) (2026-02-17)
+
+
+### Bug Fixes
+
+* **ci:** restrict release workflows to semver tags ([04d0d2b](https://github.com/golgoth31/sreportal/commit/04d0d2b9275171e4260c7c1b0c4c38881b88aefd))
+
 ## [0.3.0](https://github.com/golgoth31/sreportal/compare/v0.2.0...v0.3.0) (2026-02-17)
 
 
