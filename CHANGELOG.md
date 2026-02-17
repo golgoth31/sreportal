@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.4](https://github.com/golgoth31/sreportal/compare/v0.3.3...v0.3.4) (2026-02-17)
+
+
+### Bug Fixes
+
+* **docker:** correct COPY path for web assets in goreleaser Dockerfile ([351826c](https://github.com/golgoth31/sreportal/commit/351826c295c1747047d421cb4d644ce849e9e067))
+
 ## [0.3.3](https://github.com/golgoth31/sreportal/compare/v0.3.2...v0.3.3) (2026-02-17)
 
 
