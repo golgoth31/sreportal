@@ -2,7 +2,7 @@ FROM gcr.io/distroless/static:nonroot
 ARG TARGETPLATFORM
 WORKDIR /
 COPY ${TARGETPLATFORM}/manager /manager
-COPY browser /web/dist/web/browser
+COPY web/dist/web/browser /web/dist/web/browser
 USER 65532:65532
 
 ENTRYPOINT ["/manager"]
