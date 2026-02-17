@@ -51,8 +51,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Push Docker images
-        run: |
-          docker images --format '{{.Repository}}:{{.Tag}}' | grep 'ghcr.io/golgoth31/sreportal/dev' | while read image; do
-            docker push "$image"
-          done
+      # - name: Push Docker images
+      #   run: |
+      #     docker images --format '{{.Repository}}:{{.Tag}}' | grep 'ghcr.io/golgoth31/sreportal/dev' | while read image; do
+      #       docker push "$image"
+      #     done
