@@ -8,5 +8,6 @@
         "helm/Chart.yaml"
       ]
     }
-  }
+  },
+  "include-component-in-tag": false
 }
