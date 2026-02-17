@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.5](https://github.com/golgoth31/sreportal/compare/v0.3.4...v0.3.5) (2026-02-17)
+
+
+### Bug Fixes
+
+* **ci:** publish releases to the new OCI registry location ([cc90607](https://github.com/golgoth31/sreportal/commit/cc90607ac04960b803b0c0ca6d51acd8f8bea202))
+
 ## [0.3.4](https://github.com/golgoth31/sreportal/compare/v0.3.3...v0.3.4) (2026-02-17)
 
 
