@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/golgoth31/sreportal/compare/v0.3.1...v0.3.2) (2026-02-17)
+
+
+### Bug Fixes
+
+* CI ([adaa7e0](https://github.com/golgoth31/sreportal/commit/adaa7e0b049cb5bdb8bedef93de45ba32dacaaee))
+
 ## [0.3.1](https://github.com/golgoth31/sreportal/compare/v0.3.0...v0.3.1) (2026-02-17)
 
 
