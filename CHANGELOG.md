@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.5.0](https://github.com/golgoth31/sreportal/compare/v0.4.1...v0.5.0) (2026-02-18)
+
+
+### Features
+
+* add sreportal.io/ignore annotation to exclude endpoints from discovery ([4e5dcb6](https://github.com/golgoth31/sreportal/commit/4e5dcb6eb46a556ed6d9e99d0150ca4c18f5cdbd))
+* support multi-group FQDNs via comma-separated annotation ([#14](https://github.com/golgoth31/sreportal/issues/14)) ([b671a4d](https://github.com/golgoth31/sreportal/commit/b671a4df107a3fa6dc5742b91ba00b2ee30427bc))
+
+
+### Bug Fixes
+
+* **helm:** expose web and MCP endpoints for external access ([20678a3](https://github.com/golgoth31/sreportal/commit/20678a3f6675a37e0081cf8711a1f6d6efb49f10))
+
 ## [0.4.1](https://github.com/golgoth31/sreportal/compare/v0.4.0...v0.4.1) (2026-02-18)
 
 
