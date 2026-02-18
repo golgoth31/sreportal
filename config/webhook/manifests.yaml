@@ -22,7 +22,7 @@ webhooks:
     - CREATE
     - UPDATE
     resources:
-    - dnsrecords
+    - dns
   sideEffects: None
 - admissionReviewVersions:
   - v1
@@ -68,7 +68,7 @@ webhooks:
     - CREATE
     - UPDATE
     resources:
-    - dnsrecords
+    - dns
   sideEffects: None
 - admissionReviewVersions:
   - v1

@@ -42,7 +42,7 @@ func SetupDNSWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// +kubebuilder:webhook:path=/mutate-sreportal-my-domain-v1alpha1-dns,mutating=true,failurePolicy=fail,sideEffects=None,groups=sreportal.my.domain,resources=dnsrecords,verbs=create;update,versions=v1alpha1,name=mdns-v1alpha1.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/mutate-sreportal-my-domain-v1alpha1-dns,mutating=true,failurePolicy=fail,sideEffects=None,groups=sreportal.my.domain,resources=dns,verbs=create;update,versions=v1alpha1,name=mdns-v1alpha1.kb.io,admissionReviewVersions=v1
 
 // DNSCustomDefaulter struct is responsible for setting default values on the custom resource of the
 // Kind DNS when those are created or updated.
@@ -58,7 +58,7 @@ func (d *DNSCustomDefaulter) Default(_ context.Context, obj *sreportalv1alpha1.D
 	return nil
 }
 
-// +kubebuilder:webhook:path=/validate-sreportal-my-domain-v1alpha1-dns,mutating=false,failurePolicy=fail,sideEffects=None,groups=sreportal.my.domain,resources=dnsrecords,verbs=create;update,versions=v1alpha1,name=vdns-v1alpha1.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/validate-sreportal-my-domain-v1alpha1-dns,mutating=false,failurePolicy=fail,sideEffects=None,groups=sreportal.my.domain,resources=dns,verbs=create;update,versions=v1alpha1,name=vdns-v1alpha1.kb.io,admissionReviewVersions=v1
 
 // DNSCustomValidator struct is responsible for validating the DNS resource
 // when it is created, updated, or deleted.
