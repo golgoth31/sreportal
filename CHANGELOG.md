@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.0](https://github.com/golgoth31/sreportal/compare/v0.3.6...v0.4.0) (2026-02-18)
+
+
+### Features
+
+* **web:** support embedded UI with dev-mode filesystem override ([1e60eee](https://github.com/golgoth31/sreportal/commit/1e60eeeb4c88ebf5d2fc44a4fd2bec5bbe704aeb))
+
+
+### Bug Fixes
+
+* **release:** align helm chart version updates with release automation ([73d58bd](https://github.com/golgoth31/sreportal/commit/73d58bdbdcbd442c4baf511cea15dc8da1d1e47f))
+
 ## [0.3.6](https://github.com/golgoth31/sreportal/compare/v0.3.5...v0.3.6) (2026-02-18)
 
 
