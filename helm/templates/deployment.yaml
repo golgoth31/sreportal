@@ -24,7 +24,7 @@ spec:
       containers:
       - args: {{- toYaml .Values.controllerManager.manager.args | nindent 8 }}
         command:
-        - /manager
+        - /sreportal
         env:
         - name: KUBERNETES_CLUSTER_DOMAIN
           value: {{ quote .Values.kubernetesClusterDomain }}
