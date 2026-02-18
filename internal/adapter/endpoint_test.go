@@ -267,6 +267,86 @@ var _ = Describe("EndpointsToGroups", func() {
 	})
 })
 
+var _ = Describe("IsIgnored", func() {
+	It("should return true when ignore label is 'true'", func() {
+		ep := newTestEndpointWithLabels("test.example.com", map[string]string{
+			IgnoreAnnotationKey: "true",
+		})
+		Expect(IsIgnored(ep)).To(BeTrue())
+	})
+
+	It("should return false when ignore label is absent", func() {
+		ep := newTestEndpoint("test.example.com")
+		Expect(IsIgnored(ep)).To(BeFalse())
+	})
+
+	It("should return false when ignore label is not 'true'", func() {
+		ep := newTestEndpointWithLabels("test.example.com", map[string]string{
+			IgnoreAnnotationKey: "false",
+		})
+		Expect(IsIgnored(ep)).To(BeFalse())
+	})
+
+	It("should return false for nil endpoint", func() {
+		Expect(IsIgnored(nil)).To(BeFalse())
+	})
+})
+
+var _ = Describe("IsEndpointStatusIgnored", func() {
+	It("should return true when ignore label is 'true'", func() {
+		ep := &sreportalv1alpha1.EndpointStatus{
+			DNSName: "test.example.com",
+			Labels:  map[string]string{IgnoreAnnotationKey: "true"},
+		}
+		Expect(IsEndpointStatusIgnored(ep)).To(BeTrue())
+	})
+
+	It("should return false when ignore label is absent", func() {
+		ep := &sreportalv1alpha1.EndpointStatus{
+			DNSName: "test.example.com",
+			Labels:  map[string]string{},
+		}
+		Expect(IsEndpointStatusIgnored(ep)).To(BeFalse())
+	})
+
+	It("should return false for nil endpoint", func() {
+		Expect(IsEndpointStatusIgnored(nil)).To(BeFalse())
+	})
+})
+
+var _ = Describe("EndpointsToGroups with ignored endpoints", func() {
+	It("should skip ignored endpoints", func() {
+		eps := []*endpoint.Endpoint{
+			newTestEndpointWithLabels("ignored.example.com", map[string]string{
+				IgnoreAnnotationKey: "true",
+			}),
+		}
+		mapping := &config.GroupMappingConfig{DefaultGroup: "Default"}
+
+		result := EndpointsToGroups(eps, mapping)
+
+		Expect(result).To(BeEmpty())
+	})
+
+	It("should preserve non-ignored endpoints alongside ignored ones", func() {
+		eps := []*endpoint.Endpoint{
+			newTestEndpoint("visible.example.com"),
+			newTestEndpointWithLabels("ignored.example.com", map[string]string{
+				IgnoreAnnotationKey: "true",
+			}),
+			newTestEndpoint("also-visible.example.com"),
+		}
+		mapping := &config.GroupMappingConfig{DefaultGroup: "Default"}
+
+		result := EndpointsToGroups(eps, mapping)
+
+		Expect(result).To(HaveLen(1))
+		Expect(result[0].FQDNs).To(HaveLen(2))
+		Expect(result[0].FQDNs[0].FQDN).To(Equal("also-visible.example.com"))
+		Expect(result[0].FQDNs[1].FQDN).To(Equal("visible.example.com"))
+	})
+})
+
 var _ = Describe("MergeGroups", func() {
 	Context("with only manual groups", func() {
 		It("should preserve all manual groups", func() {

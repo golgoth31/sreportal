@@ -3,7 +3,7 @@ title: Annotations
 weight: 4
 ---
 
-SRE Portal uses two annotations on Kubernetes resources to control how discovered endpoints are routed and grouped.
+SRE Portal uses annotations on Kubernetes resources to control how discovered endpoints are routed, grouped, and filtered.
 
 ## `sreportal.io/portal`
 
@@ -68,6 +68,30 @@ spec:
 ```
 
 This service will appear in both the `APIs` and `Shared Services` groups. Whitespace around group names is trimmed.
+
+## `sreportal.io/ignore`
+
+Excludes a resource's endpoints from DNS discovery entirely. When set to `"true"`, all endpoints from the resource are silently dropped during group conversion and will not appear in the gRPC API or web UI.
+
+This is useful for resources that have external-dns annotations for DNS management but should not be listed in the SRE Portal dashboard.
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: internal-api
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: "internal.example.com"
+    sreportal.io/ignore: "true"
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 8080
+  selector:
+    app: internal-api
+```
+
+Only the value `"true"` activates the ignore behavior. Any other value (including `"false"`) is treated as not ignored.
 
 ## How Enrichment Works
 

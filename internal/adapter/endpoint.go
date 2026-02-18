@@ -40,11 +40,16 @@ const (
 	// to assign them to one or more groups (comma-separated). Takes highest
 	// priority over other grouping rules (labelKey, namespace mapping, default group).
 	GroupsAnnotationKey = "sreportal.io/groups"
+
+	// IgnoreAnnotationKey is the label key used on external-dns endpoints
+	// to exclude them from DNS discovery. When set to "true", the endpoint
+	// is silently dropped during group conversion.
+	IgnoreAnnotationKey = "sreportal.io/ignore"
 )
 
 // SreportalAnnotations lists the annotation keys that should be propagated
 // from K8s resource annotations to endpoint labels.
-var SreportalAnnotations = []string{PortalAnnotationKey, GroupsAnnotationKey}
+var SreportalAnnotations = []string{PortalAnnotationKey, GroupsAnnotationKey, IgnoreAnnotationKey}
 
 // EnrichEndpointLabels copies sreportal annotations from K8s resource annotations
 // to the endpoint's labels. Existing endpoint labels are not overwritten.
@@ -76,6 +81,22 @@ func ResolvePortal(ep *endpoint.Endpoint) string {
 	return ""
 }
 
+// IsIgnored returns true when the endpoint has the sreportal.io/ignore label set to "true".
+func IsIgnored(ep *endpoint.Endpoint) bool {
+	if ep == nil {
+		return false
+	}
+	return ep.Labels[IgnoreAnnotationKey] == "true"
+}
+
+// IsEndpointStatusIgnored returns true when the EndpointStatus has the sreportal.io/ignore label set to "true".
+func IsEndpointStatusIgnored(ep *sreportalv1alpha1.EndpointStatus) bool {
+	if ep == nil {
+		return false
+	}
+	return ep.Labels[IgnoreAnnotationKey] == "true"
+}
+
 // EndpointsToGroups converts external-dns endpoints to DNS CR status groups.
 // It groups endpoints based on the provided mapping configuration.
 func EndpointsToGroups(endpoints []*endpoint.Endpoint, mapping *config.GroupMappingConfig) []sreportalv1alpha1.FQDNGroupStatus {
@@ -90,6 +111,10 @@ func EndpointsToGroups(endpoints []*endpoint.Endpoint, mapping *config.GroupMapp
 	now := metav1.Now()
 
 	for _, ep := range endpoints {
+		if IsIgnored(ep) {
+			continue
+		}
+
 		groupNames := resolveGroups(ep, mapping)
 
 		fqdn := sreportalv1alpha1.FQDNStatus{
@@ -254,6 +279,10 @@ func EndpointStatusToGroups(endpoints []sreportalv1alpha1.EndpointStatus, mappin
 	groups := make(map[string]*sreportalv1alpha1.FQDNGroupStatus)
 
 	for _, ep := range endpoints {
+		if IsEndpointStatusIgnored(&ep) {
+			continue
+		}
+
 		groupNames := resolveGroupsFromEndpointStatus(&ep, mapping)
 
 		fqdn := sreportalv1alpha1.FQDNStatus{
