@@ -2,14 +2,14 @@ version: 2
 
 before:
   hooks:
-    - go mod tidy
+    - go mod download
     - npm ci --prefix web
     - npm run build --prefix web
 
 builds:
-  - id: manager
+  - id: sreportal
     main: ./cmd
-    binary: manager
+    binary: sreportal
     env:
       - CGO_ENABLED=0
     goos:
@@ -17,36 +17,23 @@ builds:
     goarch:
       - amd64
       - arm64
+    goamd64:
+      - v2
     ldflags:
       - -s -w
       - -X github.com/golgoth31/sreportal/internal/version.Version={{ .Version }}
       - -X github.com/golgoth31/sreportal/internal/version.Commit={{ .Commit }}
       - -X github.com/golgoth31/sreportal/internal/version.Date={{ .Date }}
 
-dockers_v2:
-  - id: sreportal
-    ids:
-      - manager
-    images:
-      - "ghcr.io/golgoth31/sreportal"
-    tags:
-      - "{{ .Tag }}"
-      - "v{{ .Major }}"
-      - "v{{ .Major }}.{{ .Minor }}"
-      - "latest"
-    dockerfile: Dockerfile.goreleaser
-    platforms:
-      - linux/amd64
-      - linux/arm64
-    extra_files:
-      - web/dist/web/browser
-
 archives:
   - id: default
     formats:
       - tar.gz
     name_template: >-
-      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else }}{{ .Arch }}{{ end }}
 
 changelog:
   sort: asc
@@ -56,10 +43,40 @@ changelog:
       - "^test:"
       - "^ci:"
       - "^chore:"
+      - "^Merge pull request"
+  use: github
 
 release:
-  github:
-    owner: golgoth31
-    name: sreportal
-  draft: false
-  prerelease: auto
+  mode: replace
+  replace_existing_artifacts: true
+
+kos:
+  - build: sreportal
+    base_image: cgr.dev/chainguard/static
+    labels:
+      "org.opencontainers.image.created": "{{.Date}}"
+      "org.opencontainers.image.name": "{{.ProjectName}}"
+      "org.opencontainers.image.revision": "{{.FullCommit}}"
+      "org.opencontainers.image.version": "{{.Version}}"
+      "org.opencontainers.image.source": "{{.GitURL}}"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    tags:
+      - "{{ .Tag }}"
+      - "v{{ .Major }}"
+      - "v{{ .Major }}.{{ .Minor }}"
+      - "{{ .Major }}"
+      - "{{ .Major }}.{{ .Minor }}"
+      - "{{ .Version }}"
+      - "{{ if .IsNightly }}nightly{{ end }}"
+      - "{{ if not .IsNightly }}latest{{ end }}"
+    creation_time: "{{.CommitTimestamp}}"
+    ko_data_creation_time: "{{.CommitTimestamp}}"
+    sbom: spdx
+    repositories:
+      - ghcr.io/golgoth31/sreportal
+    bare: true
+
+snapshot:
+  version_template: "v0.0.0-snapshot"

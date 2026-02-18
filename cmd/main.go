@@ -20,6 +20,7 @@ import (
 	"context"
 	"crypto/tls"
 	"flag"
+	"io/fs"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -39,6 +40,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	externaldnsv1alpha1 "sigs.k8s.io/external-dns/apis/v1alpha1"
 
+	sreportal "github.com/golgoth31/sreportal"
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/config"
 	"github.com/golgoth31/sreportal/internal/controller"
@@ -74,6 +76,7 @@ func main() {
 	var probeAddr string
 	var webAddr string
 	var webRoot string
+	var devMode bool
 	var secureMetrics bool
 	var enableHTTP2 bool
 	var configPath string
@@ -85,7 +88,10 @@ func main() {
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
 	flag.StringVar(&webAddr, "web-bind-address", ":8090", "The address the web UI server binds to.")
-	flag.StringVar(&webRoot, "web-root", "web/dist/web/browser", "The path to the Angular dist directory.")
+	flag.StringVar(&webRoot, "web-root", "web/dist/web/browser",
+		"The path to the Angular dist directory (only used in dev mode).")
+	flag.BoolVar(&devMode, "dev-mode", false,
+		"Enable dev mode: serve the web UI from the filesystem (--web-root) instead of the embedded binary.")
 	flag.StringVar(&configPath, "config", config.DefaultConfigPath,
 		"Path to the operator configuration file.")
 	flag.StringVar(&portalNamespace, "portal-namespace", "sreportal-system",
@@ -327,10 +333,25 @@ func main() {
 	}
 
 	// Start the web server in a goroutine
-	webServer := webserver.New(webserver.Config{
+	webCfg := webserver.Config{
 		Address: webAddr,
-		WebRoot: webRoot,
-	}, mgr.GetClient(), operatorConfig)
+	}
+	if devMode {
+		setupLog.Info("dev mode enabled: serving web UI from filesystem", "web-root", webRoot)
+		webCfg.WebRoot = webRoot
+	} else {
+		// Serve the web UI from the embedded filesystem.
+		// The embed.FS contains files under "web/dist/web/browser/...",
+		// so we strip that prefix to serve from the root.
+		subFS, err := fs.Sub(sreportal.WebUI, "web/dist/web/browser")
+		if err != nil {
+			setupLog.Error(err, "unable to create sub filesystem for embedded web UI")
+			os.Exit(1)
+		}
+		setupLog.Info("serving web UI from embedded filesystem")
+		webCfg.WebFS = subFS
+	}
+	webServer := webserver.New(webCfg, mgr.GetClient(), operatorConfig)
 
 	go func() {
 		setupLog.Info("starting web server", "address", webAddr)
