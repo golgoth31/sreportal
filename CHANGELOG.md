@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.2](https://github.com/golgoth31/sreportal/compare/v0.6.1...v0.6.2) (2026-02-18)
+
+
+### Bug Fixes
+
+* **webhook:** align webhook resources with DNS CRD naming ([9c54681](https://github.com/golgoth31/sreportal/commit/9c546819da058f13c71554bf7601e191bd2e9b91))
+
 ## [0.6.1](https://github.com/golgoth31/sreportal/compare/v0.6.0...v0.6.1) (2026-02-18)
 
 
