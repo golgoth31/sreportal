@@ -133,7 +133,7 @@ groupMapping:
 
 The group for each endpoint is resolved in priority order:
 
-1. `sreportal.io/group` annotation on the source resource (highest priority)
+1. `sreportal.io/groups` annotation on the source resource (highest priority, supports comma-separated values)
 2. Endpoint label matching `labelKey`
 3. Namespace mapping via `byNamespace`
 4. `defaultGroup` fallback

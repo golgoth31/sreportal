@@ -27,7 +27,7 @@ export class DnsState {
 
     return fqdns.filter(fqdn => {
       const matchesSearch = !search || fqdn.name.toLowerCase().includes(search);
-      const matchesGroup = !group || fqdn.group === group;
+      const matchesGroup = !group || fqdn.groups.includes(group);
       return matchesSearch && matchesGroup;
     });
   });
@@ -37,11 +37,13 @@ export class DnsState {
     const groups = new Map<string, FQDN[]>();
 
     for (const fqdn of fqdns) {
-      const group = fqdn.group || 'Ungrouped';
-      if (!groups.has(group)) {
-        groups.set(group, []);
+      const fqdnGroups = fqdn.groups.length > 0 ? fqdn.groups : ['Ungrouped'];
+      for (const group of fqdnGroups) {
+        if (!groups.has(group)) {
+          groups.set(group, []);
+        }
+        groups.get(group)!.push(fqdn);
       }
-      groups.get(group)!.push(fqdn);
     }
 
     return groups;
@@ -54,8 +56,8 @@ export class DnsState {
     const fqdns = this._fqdns();
     const groups = new Set<string>();
     for (const fqdn of fqdns) {
-      if (fqdn.group) {
-        groups.add(fqdn.group);
+      for (const group of fqdn.groups) {
+        groups.add(group);
       }
     }
     return Array.from(groups).sort();

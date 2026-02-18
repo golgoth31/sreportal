@@ -29,7 +29,7 @@ metadata:
   namespace: default
   annotations:
     external-dns.alpha.kubernetes.io/hostname: "nginx2.example.com"
-    sreportal.io/group: Applications
+    sreportal.io/groups: Applications
 spec:
   type: LoadBalancer
   selector:

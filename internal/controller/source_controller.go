@@ -462,7 +462,7 @@ func setDNSRecordCondition(conditions *[]metav1.Condition, newCondition metav1.C
 }
 
 // enrichEndpoints looks up the original K8s resources and copies sreportal annotations
-// (sreportal.io/portal, sreportal.io/group) to endpoint labels.
+// (sreportal.io/portal, sreportal.io/groups) to endpoint labels.
 func (r *SourceReconciler) enrichEndpoints(ctx context.Context, sourceType srcfactory.SourceType, endpoints []*endpoint.Endpoint) {
 	if r.dynamicClient == nil {
 		return

@@ -89,7 +89,7 @@ The source controller implements `manager.Runnable` for periodic reconciliation 
 
 1. Builds external-dns sources (Service, Ingress, DNSEndpoint, Istio Gateway, Istio VirtualService) based on operator configuration
 2. Fetches endpoints from each source
-3. Enriches endpoints with `sreportal.io/portal` and `sreportal.io/group` annotations from the original K8s resources
+3. Enriches endpoints with `sreportal.io/portal` and `sreportal.io/groups` annotations from the original K8s resources
 4. Routes endpoints to the appropriate portal (falls back to the main portal if the annotation is missing or references a non-existent portal)
 5. Creates or updates a DNSRecord CR per `(portal, sourceType)` pair
 
@@ -126,7 +126,7 @@ K8s Resources (Service, Ingress, ...)
     ▼
 Source Controller (periodic)
     │
-    │  Enrich with sreportal.io/portal and sreportal.io/group
+    │  Enrich with sreportal.io/portal and sreportal.io/groups
     │  Route to portal
     │
     ▼

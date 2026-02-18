@@ -206,19 +206,9 @@ func convertToGroups(fqdns []*sreportalv1.FQDN) []sreportalv1alpha1.FQDNGroupSta
 	groupMap := make(map[string]*sreportalv1alpha1.FQDNGroupStatus)
 
 	for _, fqdn := range fqdns {
-		groupName := fqdn.Group
-		if groupName == "" {
-			groupName = "default"
-		}
-
-		group, exists := groupMap[groupName]
-		if !exists {
-			group = &sreportalv1alpha1.FQDNGroupStatus{
-				Name:   groupName,
-				Source: "remote",
-				FQDNs:  []sreportalv1alpha1.FQDNStatus{},
-			}
-			groupMap[groupName] = group
+		groupNames := fqdn.Groups
+		if len(groupNames) == 0 {
+			groupNames = []string{"default"}
 		}
 
 		var lastSeen time.Time
@@ -228,13 +218,27 @@ func convertToGroups(fqdns []*sreportalv1.FQDN) []sreportalv1alpha1.FQDNGroupSta
 			lastSeen = time.Now()
 		}
 
-		group.FQDNs = append(group.FQDNs, sreportalv1alpha1.FQDNStatus{
+		fqdnStatus := sreportalv1alpha1.FQDNStatus{
 			FQDN:        fqdn.Name,
 			Description: fqdn.Description,
 			RecordType:  fqdn.RecordType,
 			Targets:     fqdn.Targets,
 			LastSeen:    metav1.Time{Time: lastSeen},
-		})
+		}
+
+		for _, groupName := range groupNames {
+			group, exists := groupMap[groupName]
+			if !exists {
+				group = &sreportalv1alpha1.FQDNGroupStatus{
+					Name:   groupName,
+					Source: "remote",
+					FQDNs:  []sreportalv1alpha1.FQDNStatus{},
+				}
+				groupMap[groupName] = group
+			}
+
+			group.FQDNs = append(group.FQDNs, fqdnStatus)
+		}
 	}
 
 	// Convert map to slice

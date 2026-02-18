@@ -302,8 +302,8 @@ type FQDN struct {
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// source indicates where this FQDN came from (manual or external-dns)
 	Source string `protobuf:"bytes,2,opt,name=source,proto3" json:"source,omitempty"`
-	// group is the name of the group this FQDN belongs to
-	Group string `protobuf:"bytes,3,opt,name=group,proto3" json:"group,omitempty"`
+	// groups is the list of groups this FQDN belongs to
+	Groups []string `protobuf:"bytes,3,rep,name=groups,proto3" json:"groups,omitempty"`
 	// description is an optional human-readable description
 	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
 	// record_type is the DNS record type (A, AAAA, CNAME, etc.)
@@ -364,11 +364,11 @@ func (x *FQDN) GetSource() string {
 	return ""
 }
 
-func (x *FQDN) GetGroup() string {
+func (x *FQDN) GetGroups() []string {
 	if x != nil {
-		return x.Group
+		return x.Groups
 	}
-	return ""
+	return nil
 }
 
 func (x *FQDN) GetDescription() string {
@@ -429,11 +429,11 @@ const file_sreportal_v1_dns_proto_rawDesc = "" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\"k\n" +
 	"\x13StreamFQDNsResponse\x12,\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x18.sreportal.v1.UpdateTypeR\x04type\x12&\n" +
-	"\x04fqdn\x18\x02 \x01(\v2\x12.sreportal.v1.FQDNR\x04fqdn\"\xc0\x02\n" +
+	"\x04fqdn\x18\x02 \x01(\v2\x12.sreportal.v1.FQDNR\x04fqdn\"\xc2\x02\n" +
 	"\x04FQDN\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
-	"\x06source\x18\x02 \x01(\tR\x06source\x12\x14\n" +
-	"\x05group\x18\x03 \x01(\tR\x05group\x12 \n" +
+	"\x06source\x18\x02 \x01(\tR\x06source\x12\x16\n" +
+	"\x06groups\x18\x03 \x03(\tR\x06groups\x12 \n" +
 	"\vdescription\x18\x04 \x01(\tR\vdescription\x12\x1f\n" +
 	"\vrecord_type\x18\x05 \x01(\tR\n" +
 	"recordType\x12\x18\n" +
