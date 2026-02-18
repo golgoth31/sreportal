@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/golgoth31/sreportal/compare/v0.5.0...v0.6.0) (2026-02-18)
+
+
+### Features
+
+* add operator ConfigMap to kustomize and fix CI pipelines ([2f19dca](https://github.com/golgoth31/sreportal/commit/2f19dca6c210eaae891745da1100578eb78039e0))
+
 ## [0.5.0](https://github.com/golgoth31/sreportal/compare/v0.4.1...v0.5.0) (2026-02-18)
 
 
