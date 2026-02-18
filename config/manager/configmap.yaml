@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config
+  namespace: system
+data:
+  config.yaml: |
+    sources:
+      service:
+        enabled: true
+        namespace: ""
+        annotationFilter: ""
+        serviceTypeFilter:
+          - LoadBalancer
+          - ClusterIP
+        publishInternal: true
+        publishHostIP: false
+
+      ingress:
+        enabled: true
+        namespace: ""
+        ingressClassNames: []
+
+      dnsEndpoint:
+        enabled: false
+        namespace: ""
+
+      istioGateway:
+        enabled: true
+        namespace: ""
+
+      istioVirtualService:
+        enabled: false
+        namespace: ""
+
+    groupMapping:
+      defaultGroup: "Services"
+
+    reconciliation:
+      interval: 5m
+      retryOnError: 30s

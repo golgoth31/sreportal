@@ -61,6 +61,9 @@ spec:
         - mountPath: /tmp/k8s-webhook-server/serving-certs
           name: webhook-certs
           readOnly: true
+        - mountPath: /etc/sreportal
+          name: operator-config
+          readOnly: true
       nodeSelector: {{- toYaml .Values.controllerManager.nodeSelector | nindent 8 }}
       securityContext: {{- toYaml .Values.controllerManager.podSecurityContext | nindent
         8 }}
@@ -73,3 +76,9 @@ spec:
       - name: webhook-certs
         secret:
           secretName: webhook-server-cert
+      - configMap:
+          items:
+          - key: config.yaml
+            path: config.yaml
+          name: {{ include "helm.fullname" . }}-config
+        name: operator-config

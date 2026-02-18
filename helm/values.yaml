@@ -1,21 +1,51 @@
+config:
+  configYaml: |-
+    sources:
+      service:
+        enabled: true
+        namespace: ""
+        annotationFilter: ""
+        serviceTypeFilter:
+          - LoadBalancer
+          - ClusterIP
+        publishInternal: true
+        publishHostIP: false
+      ingress:
+        enabled: true
+        namespace: ""
+        ingressClassNames: []
+      dnsEndpoint:
+        enabled: false
+        namespace: ""
+      istioGateway:
+        enabled: true
+        namespace: ""
+      istioVirtualService:
+        enabled: false
+        namespace: ""
+    groupMapping:
+      defaultGroup: "Services"
+    reconciliation:
+      interval: 5m
+      retryOnError: 30s
 controllerManager:
   manager:
     args:
-      - '--metrics-bind-address=:8443'
-      - '--leader-elect'
-      - '--health-probe-bind-address=:9090'
-      - '--webhook-cert-path=/tmp/k8s-webhook-server/serving-certs'
-      - '--enable-mcp'
-      - '--mcp-transport=sse'
+    - --metrics-bind-address=:8443
+    - --leader-elect
+    - --health-probe-bind-address=:9090
+    - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
+    - --enable-mcp
+    - --mcp-transport=sse
     containerSecurityContext:
       allowPrivilegeEscalation: false
       capabilities:
         drop:
-          - ALL
+        - ALL
       readOnlyRootFilesystem: true
     image:
       repository: ghcr.io/golgoth31/sreportal
-      tag: 0.5.0
+      tag: latest
     resources:
       limits:
         cpu: 500m
@@ -34,30 +64,30 @@ controllerManager:
 kubernetesClusterDomain: cluster.local
 metricsService:
   ports:
-    - name: metrics
-      port: 8443
-      protocol: TCP
-      targetPort: 8443
+  - name: metrics
+    port: 8443
+    protocol: TCP
+    targetPort: 8443
   type: ClusterIP
 serviceAccount:
   annotations: {}
   automount: true
   create: true
-  name: ''
+  name: ""
 webMcpService:
   ports:
-    - name: web
-      port: 8090
-      protocol: TCP
-      targetPort: 8090
-    - name: mcp
-      port: 8091
-      protocol: TCP
-      targetPort: 8091
+  - name: web
+    port: 8090
+    protocol: TCP
+    targetPort: 8090
+  - name: mcp
+    port: 8091
+    protocol: TCP
+    targetPort: 8091
   type: ClusterIP
 webhookService:
   ports:
-    - port: 443
-      protocol: TCP
-      targetPort: 9443
+  - port: 443
+    protocol: TCP
+    targetPort: 9443
   type: ClusterIP
