@@ -113,7 +113,7 @@ func TestFetchFQDNs(t *testing.T) {
 					Description: "Application endpoint",
 					RecordType:  "A",
 					Targets:     []string{"192.168.1.1"},
-					Group:       "production",
+					Groups:      []string{"production"},
 					LastSeen:    timestamppb.New(now),
 				},
 				{
@@ -121,7 +121,7 @@ func TestFetchFQDNs(t *testing.T) {
 					Description: "API endpoint",
 					RecordType:  "CNAME",
 					Targets:     []string{"lb.example.com"},
-					Group:       "production",
+					Groups:      []string{"production"},
 					LastSeen:    timestamppb.New(now),
 				},
 				{
@@ -129,7 +129,7 @@ func TestFetchFQDNs(t *testing.T) {
 					Description: "Dev endpoint",
 					RecordType:  "A",
 					Targets:     []string{"10.0.0.1"},
-					Group:       "development",
+					Groups:      []string{"development"},
 					LastSeen:    timestamppb.New(now),
 				},
 			},
@@ -194,7 +194,7 @@ func TestFetchFQDNs(t *testing.T) {
 					Name:       "app.example.com",
 					RecordType: "A",
 					Targets:    []string{"192.168.1.1"},
-					Group:      "default",
+					Groups:     []string{"default"},
 				},
 			},
 		}
@@ -349,7 +349,7 @@ func TestConvertToGroups(t *testing.T) {
 				Description: "App 1",
 				RecordType:  "A",
 				Targets:     []string{"192.168.1.1"},
-				Group:       "production",
+				Groups:      []string{"production"},
 				LastSeen:    timestamppb.New(now),
 			},
 			{
@@ -357,7 +357,7 @@ func TestConvertToGroups(t *testing.T) {
 				Description: "App 2",
 				RecordType:  "A",
 				Targets:     []string{"192.168.1.2"},
-				Group:       "production",
+				Groups:      []string{"production"},
 				LastSeen:    timestamppb.New(now),
 			},
 			{
@@ -365,7 +365,7 @@ func TestConvertToGroups(t *testing.T) {
 				Description: "Dev",
 				RecordType:  "A",
 				Targets:     []string{"10.0.0.1"},
-				Group:       "development",
+				Groups:      []string{"development"},
 				LastSeen:    timestamppb.New(now),
 			},
 		}
@@ -412,7 +412,7 @@ func TestConvertToGroups(t *testing.T) {
 				Name:       "app.example.com",
 				RecordType: "A",
 				Targets:    []string{"192.168.1.1"},
-				Group:      "", // Empty group
+				Groups:     []string{}, // Empty groups
 			},
 		}
 
@@ -433,7 +433,7 @@ func TestConvertToGroups(t *testing.T) {
 				Name:       "app.example.com",
 				RecordType: "A",
 				Targets:    []string{"192.168.1.1"},
-				Group:      "default",
+				Groups:     []string{"default"},
 				LastSeen:   nil,
 			},
 		}

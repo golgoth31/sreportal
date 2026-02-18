@@ -36,15 +36,15 @@ const (
 	// to route them to a specific portal.
 	PortalAnnotationKey = "sreportal.io/portal"
 
-	// GroupAnnotationKey is the label key used on external-dns endpoints
-	// to assign them to a specific group. Takes highest priority over other
-	// grouping rules (labelKey, namespace mapping, default group).
-	GroupAnnotationKey = "sreportal.io/group"
+	// GroupsAnnotationKey is the label key used on external-dns endpoints
+	// to assign them to one or more groups (comma-separated). Takes highest
+	// priority over other grouping rules (labelKey, namespace mapping, default group).
+	GroupsAnnotationKey = "sreportal.io/groups"
 )
 
 // SreportalAnnotations lists the annotation keys that should be propagated
 // from K8s resource annotations to endpoint labels.
-var SreportalAnnotations = []string{PortalAnnotationKey, GroupAnnotationKey}
+var SreportalAnnotations = []string{PortalAnnotationKey, GroupsAnnotationKey}
 
 // EnrichEndpointLabels copies sreportal annotations from K8s resource annotations
 // to the endpoint's labels. Existing endpoint labels are not overwritten.
@@ -90,15 +90,7 @@ func EndpointsToGroups(endpoints []*endpoint.Endpoint, mapping *config.GroupMapp
 	now := metav1.Now()
 
 	for _, ep := range endpoints {
-		groupName := resolveGroup(ep, mapping)
-
-		if _, exists := groups[groupName]; !exists {
-			groups[groupName] = &sreportalv1alpha1.FQDNGroupStatus{
-				Name:   groupName,
-				Source: SourceExternalDNS,
-				FQDNs:  []sreportalv1alpha1.FQDNStatus{},
-			}
-		}
+		groupNames := resolveGroups(ep, mapping)
 
 		fqdn := sreportalv1alpha1.FQDNStatus{
 			FQDN:       ep.DNSName,
@@ -107,13 +99,17 @@ func EndpointsToGroups(endpoints []*endpoint.Endpoint, mapping *config.GroupMapp
 			LastSeen:   now,
 		}
 
-		// Add TTL if present
-		if ep.RecordTTL > 0 {
-			// TTL is stored in the endpoint as a TTL type (int64)
-			fqdn.RecordType = ep.RecordType
-		}
+		for _, groupName := range groupNames {
+			if _, exists := groups[groupName]; !exists {
+				groups[groupName] = &sreportalv1alpha1.FQDNGroupStatus{
+					Name:   groupName,
+					Source: SourceExternalDNS,
+					FQDNs:  []sreportalv1alpha1.FQDNStatus{},
+				}
+			}
 
-		groups[groupName].FQDNs = append(groups[groupName].FQDNs, fqdn)
+			groups[groupName].FQDNs = append(groups[groupName].FQDNs, fqdn)
+		}
 	}
 
 	// Convert map to sorted slice
@@ -134,17 +130,29 @@ func EndpointsToGroups(endpoints []*endpoint.Endpoint, mapping *config.GroupMapp
 	return result
 }
 
-// resolveGroup determines the group name for an endpoint based on mapping rules.
-func resolveGroup(ep *endpoint.Endpoint, mapping *config.GroupMappingConfig) string {
-	// 1. Check sreportal.io/group annotation (highest priority)
-	if val, ok := ep.Labels[GroupAnnotationKey]; ok && val != "" {
-		return val
+// resolveGroups determines the group names for an endpoint based on mapping rules.
+// The annotation supports comma-separated values for multiple groups.
+// LabelKey, ByNamespace, and default group always return a single group.
+func resolveGroups(ep *endpoint.Endpoint, mapping *config.GroupMappingConfig) []string {
+	// 1. Check sreportal.io/groups annotation (highest priority, supports comma-separated)
+	if val, ok := ep.Labels[GroupsAnnotationKey]; ok && val != "" {
+		parts := strings.Split(val, ",")
+		groups := make([]string, 0, len(parts))
+		for _, p := range parts {
+			g := strings.TrimSpace(p)
+			if g != "" {
+				groups = append(groups, g)
+			}
+		}
+		if len(groups) > 0 {
+			return groups
+		}
 	}
 
 	// 2. Check endpoint label if labelKey is configured
 	if mapping.LabelKey != "" {
 		if val, ok := ep.Labels[mapping.LabelKey]; ok && val != "" {
-			return val
+			return []string{val}
 		}
 	}
 
@@ -153,17 +161,17 @@ func resolveGroup(ep *endpoint.Endpoint, mapping *config.GroupMappingConfig) str
 		ns := extractNamespace(resource)
 		if ns != "" && mapping.ByNamespace != nil {
 			if groupName, ok := mapping.ByNamespace[ns]; ok {
-				return groupName
+				return []string{groupName}
 			}
 		}
 	}
 
 	// 4. Fall back to default group
 	if mapping.DefaultGroup != "" {
-		return mapping.DefaultGroup
+		return []string{mapping.DefaultGroup}
 	}
 
-	return "Services"
+	return []string{"Services"}
 }
 
 // extractNamespace extracts the namespace from a resource label.
@@ -246,15 +254,7 @@ func EndpointStatusToGroups(endpoints []sreportalv1alpha1.EndpointStatus, mappin
 	groups := make(map[string]*sreportalv1alpha1.FQDNGroupStatus)
 
 	for _, ep := range endpoints {
-		groupName := resolveGroupFromEndpointStatus(&ep, mapping)
-
-		if _, exists := groups[groupName]; !exists {
-			groups[groupName] = &sreportalv1alpha1.FQDNGroupStatus{
-				Name:   groupName,
-				Source: SourceExternalDNS,
-				FQDNs:  []sreportalv1alpha1.FQDNStatus{},
-			}
-		}
+		groupNames := resolveGroupsFromEndpointStatus(&ep, mapping)
 
 		fqdn := sreportalv1alpha1.FQDNStatus{
 			FQDN:       ep.DNSName,
@@ -263,7 +263,17 @@ func EndpointStatusToGroups(endpoints []sreportalv1alpha1.EndpointStatus, mappin
 			LastSeen:   ep.LastSeen,
 		}
 
-		groups[groupName].FQDNs = append(groups[groupName].FQDNs, fqdn)
+		for _, groupName := range groupNames {
+			if _, exists := groups[groupName]; !exists {
+				groups[groupName] = &sreportalv1alpha1.FQDNGroupStatus{
+					Name:   groupName,
+					Source: SourceExternalDNS,
+					FQDNs:  []sreportalv1alpha1.FQDNStatus{},
+				}
+			}
+
+			groups[groupName].FQDNs = append(groups[groupName].FQDNs, fqdn)
+		}
 	}
 
 	// Convert map to sorted slice
@@ -284,17 +294,28 @@ func EndpointStatusToGroups(endpoints []sreportalv1alpha1.EndpointStatus, mappin
 	return result
 }
 
-// resolveGroupFromEndpointStatus determines the group name for an EndpointStatus based on mapping rules.
-func resolveGroupFromEndpointStatus(ep *sreportalv1alpha1.EndpointStatus, mapping *config.GroupMappingConfig) string {
-	// 1. Check sreportal.io/group annotation (highest priority)
-	if val, ok := ep.Labels[GroupAnnotationKey]; ok && val != "" {
-		return val
+// resolveGroupsFromEndpointStatus determines the group names for an EndpointStatus based on mapping rules.
+// The annotation supports comma-separated values for multiple groups.
+func resolveGroupsFromEndpointStatus(ep *sreportalv1alpha1.EndpointStatus, mapping *config.GroupMappingConfig) []string {
+	// 1. Check sreportal.io/groups annotation (highest priority, supports comma-separated)
+	if val, ok := ep.Labels[GroupsAnnotationKey]; ok && val != "" {
+		parts := strings.Split(val, ",")
+		groups := make([]string, 0, len(parts))
+		for _, p := range parts {
+			g := strings.TrimSpace(p)
+			if g != "" {
+				groups = append(groups, g)
+			}
+		}
+		if len(groups) > 0 {
+			return groups
+		}
 	}
 
 	// 2. Check endpoint label if labelKey is configured
 	if mapping.LabelKey != "" {
 		if val, ok := ep.Labels[mapping.LabelKey]; ok && val != "" {
-			return val
+			return []string{val}
 		}
 	}
 
@@ -303,15 +324,15 @@ func resolveGroupFromEndpointStatus(ep *sreportalv1alpha1.EndpointStatus, mappin
 		ns := extractNamespace(resource)
 		if ns != "" && mapping.ByNamespace != nil {
 			if groupName, ok := mapping.ByNamespace[ns]; ok {
-				return groupName
+				return []string{groupName}
 			}
 		}
 	}
 
 	// 4. Fall back to default group
 	if mapping.DefaultGroup != "" {
-		return mapping.DefaultGroup
+		return []string{mapping.DefaultGroup}
 	}
 
-	return "Services"
+	return []string{"Services"}
 }

@@ -207,6 +207,64 @@ var _ = Describe("EndpointsToGroups", func() {
 			Expect(result[0].FQDNs[0].Targets).To(Equal([]string{"lb.example.com"}))
 		})
 	})
+
+	Context("with comma-separated groups annotation", func() {
+		It("should place FQDN in multiple groups", func() {
+			eps := []*endpoint.Endpoint{
+				newTestEndpointWithLabels("shared.example.com", map[string]string{
+					GroupsAnnotationKey: "APIs, Applications",
+				}),
+				newTestEndpoint("single.example.com"),
+			}
+			mapping := &config.GroupMappingConfig{DefaultGroup: "Default"}
+
+			result := EndpointsToGroups(eps, mapping)
+
+			Expect(result).To(HaveLen(3))
+			// Sorted: APIs, Applications, Default
+			Expect(result[0].Name).To(Equal("APIs"))
+			Expect(result[0].FQDNs).To(HaveLen(1))
+			Expect(result[0].FQDNs[0].FQDN).To(Equal("shared.example.com"))
+
+			Expect(result[1].Name).To(Equal("Applications"))
+			Expect(result[1].FQDNs).To(HaveLen(1))
+			Expect(result[1].FQDNs[0].FQDN).To(Equal("shared.example.com"))
+
+			Expect(result[2].Name).To(Equal("Default"))
+			Expect(result[2].FQDNs).To(HaveLen(1))
+			Expect(result[2].FQDNs[0].FQDN).To(Equal("single.example.com"))
+		})
+
+		It("should trim whitespace around group names", func() {
+			eps := []*endpoint.Endpoint{
+				newTestEndpointWithLabels("test.example.com", map[string]string{
+					GroupsAnnotationKey: " Group A , Group B , Group C ",
+				}),
+			}
+			mapping := &config.GroupMappingConfig{DefaultGroup: "Default"}
+
+			result := EndpointsToGroups(eps, mapping)
+
+			Expect(result).To(HaveLen(3))
+			Expect(result[0].Name).To(Equal("Group A"))
+			Expect(result[1].Name).To(Equal("Group B"))
+			Expect(result[2].Name).To(Equal("Group C"))
+		})
+
+		It("should handle single group in annotation (no comma)", func() {
+			eps := []*endpoint.Endpoint{
+				newTestEndpointWithLabels("test.example.com", map[string]string{
+					GroupsAnnotationKey: "SingleGroup",
+				}),
+			}
+			mapping := &config.GroupMappingConfig{DefaultGroup: "Default"}
+
+			result := EndpointsToGroups(eps, mapping)
+
+			Expect(result).To(HaveLen(1))
+			Expect(result[0].Name).To(Equal("SingleGroup"))
+		})
+	})
 })
 
 var _ = Describe("MergeGroups", func() {

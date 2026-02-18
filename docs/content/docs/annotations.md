@@ -27,9 +27,11 @@ spec:
     app: api-server
 ```
 
-## `sreportal.io/group`
+## `sreportal.io/groups`
 
-Assigns endpoints from a resource to a custom group in the web dashboard. This annotation has the highest priority in the group resolution chain.
+Assigns endpoints from a resource to one or more groups in the web dashboard. This annotation has the highest priority in the group resolution chain.
+
+The value supports **comma-separated group names**, allowing a single FQDN to appear in multiple groups simultaneously.
 
 ```yaml
 apiVersion: v1
@@ -38,7 +40,7 @@ metadata:
   name: nginx
   annotations:
     external-dns.alpha.kubernetes.io/hostname: "nginx.example.com"
-    sreportal.io/group: "Applications"
+    sreportal.io/groups: "Applications"
 spec:
   type: LoadBalancer
   ports:
@@ -46,6 +48,26 @@ spec:
   selector:
     app: nginx
 ```
+
+### Multiple Groups
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: shared-api
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: "shared-api.example.com"
+    sreportal.io/groups: "APIs, Shared Services"
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 443
+  selector:
+    app: shared-api
+```
+
+This service will appear in both the `APIs` and `Shared Services` groups. Whitespace around group names is trimmed.
 
 ## How Enrichment Works
 
@@ -58,14 +80,16 @@ The source controller enriches discovered endpoints with annotation values from 
 
 ## Group Resolution Priority
 
-When determining which group an endpoint belongs to, the operator checks these rules in order (first match wins):
+When determining which group(s) an endpoint belongs to, the operator checks these rules in order (first match wins):
 
 | Priority | Source | Description |
 |----------|--------|-------------|
-| 1 | `sreportal.io/group` annotation | Annotation on the K8s resource |
+| 1 | `sreportal.io/groups` annotation | Annotation on the K8s resource (supports comma-separated values) |
 | 2 | `labelKey` config | Endpoint label matching the configured `groupMapping.labelKey` |
 | 3 | `byNamespace` config | Namespace-to-group mapping from `groupMapping.byNamespace` |
 | 4 | `defaultGroup` config | Fallback from `groupMapping.defaultGroup` (default: `"Services"`) |
+
+Only the `sreportal.io/groups` annotation supports multiple groups. The `labelKey` and `byNamespace` config always resolve to a single group.
 
 ## Examples
 
@@ -80,7 +104,7 @@ metadata:
   annotations:
     external-dns.alpha.kubernetes.io/hostname: "grafana.example.com"
     sreportal.io/portal: "production"
-    sreportal.io/group: "Observability"
+    sreportal.io/groups: "Observability"
 spec:
   type: ClusterIP
   ports:
@@ -100,7 +124,7 @@ metadata:
   name: web-app
   annotations:
     sreportal.io/portal: "production"
-    sreportal.io/group: "Applications"
+    sreportal.io/groups: "Applications"
 spec:
   rules:
     - host: app.example.com
@@ -124,7 +148,7 @@ metadata:
   name: api-gateway
   annotations:
     sreportal.io/portal: "production"
-    sreportal.io/group: "APIs"
+    sreportal.io/groups: "APIs"
 spec:
   selector:
     istio: ingressgateway

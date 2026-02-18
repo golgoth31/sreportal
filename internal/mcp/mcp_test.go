@@ -1077,7 +1077,7 @@ var _ = Describe("MCP Server", func() {
 								RecordType: "A",
 								Targets:    []string{"10.0.0.10"},
 								Labels: map[string]string{
-									"sreportal.io/group": "ingress-group",
+									"sreportal.io/groups": "ingress-group",
 								},
 							},
 						},

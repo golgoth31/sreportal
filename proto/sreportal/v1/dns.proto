@@ -65,8 +65,8 @@ message FQDN {
   // source indicates where this FQDN came from (manual or external-dns)
   string source = 2;
 
-  // group is the name of the group this FQDN belongs to
-  string group = 3;
+  // groups is the list of groups this FQDN belongs to
+  repeated string groups = 3;
 
   // description is an optional human-readable description
   string description = 4;

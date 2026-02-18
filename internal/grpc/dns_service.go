@@ -67,8 +67,8 @@ func (s *DNSService) ListFQDNs(
 	}
 
 	// Aggregate FQDNs from all DNS resources (flatten groups)
-	var fqdns []*dnsv1.FQDN
-	seen := make(map[string]bool)
+	// Use a map to accumulate groups for FQDNs that appear in multiple groups
+	seen := make(map[string]*dnsv1.FQDN)
 
 	for _, dns := range dnsList.Items {
 		for _, group := range dns.Status.Groups {
@@ -86,18 +86,23 @@ func (s *DNSService) ListFQDNs(
 					continue
 				}
 
-				seen[fqdnStatus.FQDN] = true
-				fqdns = append(fqdns, &dnsv1.FQDN{
-					Name:                 fqdnStatus.FQDN,
-					Source:               group.Source,
-					Group:                group.Name,
-					Description:          fqdnStatus.Description,
-					RecordType:           fqdnStatus.RecordType,
-					Targets:              fqdnStatus.Targets,
-					LastSeen:             timestamppb.New(fqdnStatus.LastSeen.Time),
-					DnsResourceName:      dns.Name,
-					DnsResourceNamespace: dns.Namespace,
-				})
+				if existing, ok := seen[fqdnStatus.FQDN]; ok {
+					// FQDN already seen in another group, append this group
+					existing.Groups = append(existing.Groups, group.Name)
+				} else {
+					f := &dnsv1.FQDN{
+						Name:                 fqdnStatus.FQDN,
+						Source:               group.Source,
+						Groups:               []string{group.Name},
+						Description:          fqdnStatus.Description,
+						RecordType:           fqdnStatus.RecordType,
+						Targets:              fqdnStatus.Targets,
+						LastSeen:             timestamppb.New(fqdnStatus.LastSeen.Time),
+						DnsResourceName:      dns.Name,
+						DnsResourceNamespace: dns.Namespace,
+					}
+					seen[fqdnStatus.FQDN] = f
+				}
 			}
 		}
 	}
@@ -131,9 +136,6 @@ func (s *DNSService) ListFQDNs(
 				continue
 			}
 			for _, fqdnStatus := range group.FQDNs {
-				if seen[fqdnStatus.FQDN] {
-					continue
-				}
 				if req.Msg.Search != "" && !strings.Contains(
 					strings.ToLower(fqdnStatus.FQDN),
 					strings.ToLower(req.Msg.Search),
@@ -141,17 +143,28 @@ func (s *DNSService) ListFQDNs(
 					continue
 				}
 
-				seen[fqdnStatus.FQDN] = true
-				fqdns = append(fqdns, &dnsv1.FQDN{
-					Name:       fqdnStatus.FQDN,
-					Source:     group.Source,
-					Group:      group.Name,
-					RecordType: fqdnStatus.RecordType,
-					Targets:    fqdnStatus.Targets,
-					LastSeen:   timestamppb.New(fqdnStatus.LastSeen.Time),
-				})
+				if existing, ok := seen[fqdnStatus.FQDN]; ok {
+					// FQDN already seen, append this group
+					existing.Groups = append(existing.Groups, group.Name)
+				} else {
+					f := &dnsv1.FQDN{
+						Name:       fqdnStatus.FQDN,
+						Source:     group.Source,
+						Groups:     []string{group.Name},
+						RecordType: fqdnStatus.RecordType,
+						Targets:    fqdnStatus.Targets,
+						LastSeen:   timestamppb.New(fqdnStatus.LastSeen.Time),
+					}
+					seen[fqdnStatus.FQDN] = f
+				}
 			}
 		}
+	}
+
+	// Collect all FQDNs from the map
+	fqdns := make([]*dnsv1.FQDN, 0, len(seen))
+	for _, f := range seen {
+		fqdns = append(fqdns, f)
 	}
 
 	return connect.NewResponse(&dnsv1.ListFQDNsResponse{
@@ -250,8 +263,16 @@ func fqdnEqual(a, b *dnsv1.FQDN) bool {
 	if a.Name != b.Name || a.Source != b.Source || a.Description != b.Description {
 		return false
 	}
-	if a.RecordType != b.RecordType || a.Group != b.Group {
+	if a.RecordType != b.RecordType {
 		return false
+	}
+	if len(a.Groups) != len(b.Groups) {
+		return false
+	}
+	for i, g := range a.Groups {
+		if g != b.Groups[i] {
+			return false
+		}
 	}
 	if len(a.Targets) != len(b.Targets) {
 		return false
