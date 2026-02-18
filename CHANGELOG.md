@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/golgoth31/sreportal/compare/v0.6.0...v0.6.1) (2026-02-18)
+
+
+### Bug Fixes
+
+* **rbac:** grant access needed to discover service endpoints ([8d0b109](https://github.com/golgoth31/sreportal/commit/8d0b1093c6ff53db0a3b5bc1efa1fa6913d2d196))
+
 ## [0.6.0](https://github.com/golgoth31/sreportal/compare/v0.5.0...v0.6.0) (2026-02-18)
 
 
