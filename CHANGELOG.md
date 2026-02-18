@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.1](https://github.com/golgoth31/sreportal/compare/v0.4.0...v0.4.1) (2026-02-18)
+
+
+### Bug Fixes
+
+* **build:** simplify dev release pipeline after retiring custom setup ([e58f57a](https://github.com/golgoth31/sreportal/commit/e58f57a0d69ff043f0f16fb7ad601a201d4a9878))
+* **helm:** centralize metrics monitoring and drop redundant RBAC ([4ba6d46](https://github.com/golgoth31/sreportal/commit/4ba6d4605b38b9dde3a5018ea15dc1b76539dc88))
+
 ## [0.4.0](https://github.com/golgoth31/sreportal/compare/v0.3.6...v0.4.0) (2026-02-18)
 
 

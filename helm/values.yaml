@@ -1,21 +1,21 @@
 controllerManager:
   manager:
     args:
-    - --metrics-bind-address=:8443
-    - --leader-elect
-    - --health-probe-bind-address=:9090
-    - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
-    - --enable-mcp
-    - --mcp-transport=sse
+      - '--metrics-bind-address=:8443'
+      - '--leader-elect'
+      - '--health-probe-bind-address=:9090'
+      - '--webhook-cert-path=/tmp/k8s-webhook-server/serving-certs'
+      - '--enable-mcp'
+      - '--mcp-transport=sse'
     containerSecurityContext:
       allowPrivilegeEscalation: false
       capabilities:
         drop:
-        - ALL
+          - ALL
       readOnlyRootFilesystem: true
     image:
       repository: controller
-      tag: latest
+      tag: 0.4.1
     resources:
       limits:
         cpu: 500m
@@ -34,19 +34,19 @@ controllerManager:
 kubernetesClusterDomain: cluster.local
 metricsService:
   ports:
-  - name: metrics
-    port: 8443
-    protocol: TCP
-    targetPort: 8443
+    - name: metrics
+      port: 8443
+      protocol: TCP
+      targetPort: 8443
   type: ClusterIP
 serviceAccount:
   annotations: {}
   automount: true
   create: true
-  name: ""
+  name: ''
 webhookService:
   ports:
-  - port: 443
-    protocol: TCP
-    targetPort: 9443
+    - port: 443
+      protocol: TCP
+      targetPort: 9443
   type: ClusterIP
