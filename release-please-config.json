@@ -3,10 +3,7 @@
   "packages": {
     ".": {
       "release-type": "go",
-      "component": "sreportal",
-      "extra-files": [
-        "helm/Chart.yaml"
-      ]
+      "component": "sreportal"
     }
   },
   "extra-files": [
@@ -14,6 +11,11 @@
       "type": "yaml",
       "path": "helm/Chart.yaml",
       "jsonpath": "$.appVersion"
+    },
+    {
+      "type": "yaml",
+      "path": "helm/Chart.yaml",
+      "jsonpath": "$.version"
     },
     {
       "type": "yaml",
