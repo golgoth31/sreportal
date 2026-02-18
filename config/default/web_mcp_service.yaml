@@ -5,14 +5,18 @@ metadata:
     control-plane: controller-manager
     app.kubernetes.io/name: sreportal
     app.kubernetes.io/managed-by: kustomize
-  name: metrics-service
+  name: web-mcp-service
   namespace: system
 spec:
   ports:
-    - name: metrics
-      port: 8443
+    - name: web
+      port: 8090
       protocol: TCP
-      targetPort: 8443
+      targetPort: 8090
+    - name: mcp
+      port: 8091
+      protocol: TCP
+      targetPort: 8091
   selector:
     control-plane: controller-manager
     app.kubernetes.io/name: sreportal

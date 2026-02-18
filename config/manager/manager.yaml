@@ -59,11 +59,11 @@ spec:
           type: RuntimeDefault
       containers:
         - command:
-            - /sreportal
+            - /ko-app/cmd
           args:
             - --leader-elect
             - --health-probe-bind-address=:9090
-          image: controller:latest
+          image: ghcr.io/golgoth31/sreportal:latest
           name: manager
           ports: []
           securityContext:
