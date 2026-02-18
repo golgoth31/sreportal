@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.6](https://github.com/golgoth31/sreportal/compare/v0.3.5...v0.3.6) (2026-02-18)
+
+
+### Bug Fixes
+
+* **release-please:** keep Helm appVersion and image tag in sync ([8a78051](https://github.com/golgoth31/sreportal/commit/8a780515e3abd3d3a45a67ba91a1fcca67b4c4b8))
+
 ## [0.3.5](https://github.com/golgoth31/sreportal/compare/v0.3.4...v0.3.5) (2026-02-17)
 
 
