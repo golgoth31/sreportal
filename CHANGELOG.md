@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.3](https://github.com/golgoth31/sreportal/compare/v0.6.2...v0.6.3) (2026-02-19)
+
+
+### Bug Fixes
+
+* **helm:** align webhook resource name to avoid admission failures ([ca07164](https://github.com/golgoth31/sreportal/commit/ca07164a14c8d369bac41bbe8b7f6dbe9b13c8ea))
+
 ## [0.6.2](https://github.com/golgoth31/sreportal/compare/v0.6.1...v0.6.2) (2026-02-18)
 
 
