@@ -332,6 +332,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Derive a cancellable context from the signal handler so that fatal
+	// errors in background servers (web, MCP) can trigger a clean shutdown.
+	signalCtx := ctrl.SetupSignalHandler()
+	ctx, cancel := context.WithCancel(signalCtx)
+	defer cancel()
+
 	// Start the web server in a goroutine
 	webCfg := webserver.Config{
 		Address: webAddr,
@@ -356,7 +362,8 @@ func main() {
 	go func() {
 		setupLog.Info("starting web server", "address", webAddr)
 		if err := webServer.Start(); err != nil {
-			setupLog.Error(err, "web server error")
+			setupLog.Error(err, "web server failed, initiating shutdown")
+			cancel()
 		}
 	}()
 
@@ -368,14 +375,16 @@ func main() {
 			go func() {
 				setupLog.Info("starting MCP server", "transport", "stdio")
 				if err := mcpServer.ServeStdio(); err != nil {
-					setupLog.Error(err, "MCP server error")
+					setupLog.Error(err, "MCP server failed, initiating shutdown")
+					cancel()
 				}
 			}()
 		case "sse":
 			go func() {
 				setupLog.Info("starting MCP server", "transport", "sse", "address", mcpAddr)
 				if err := mcpServer.ServeSSE(mcpAddr); err != nil {
-					setupLog.Error(err, "MCP server error")
+					setupLog.Error(err, "MCP server failed, initiating shutdown")
+					cancel()
 				}
 			}()
 		default:
@@ -383,8 +392,6 @@ func main() {
 			os.Exit(1)
 		}
 	}
-
-	ctx := ctrl.SetupSignalHandler()
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctx); err != nil {

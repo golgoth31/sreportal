@@ -197,8 +197,13 @@ func (s *DNSService) StreamFQDNs(
 		}
 	}
 
-	// Keep streaming updates by polling
-	// In a production system, you would use a watch/informer instead
+	// Keep streaming updates by polling every 5 seconds.
+	//
+	// Known limitation: each open stream issues a full ListFQDNs call on every
+	// tick, so cost scales as O(streams × portals × groups). For a small number
+	// of concurrent streams this is acceptable. To eliminate polling entirely,
+	// replace this with a K8s informer/watch on DNS resources and push updates
+	// only when the underlying data changes.
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 

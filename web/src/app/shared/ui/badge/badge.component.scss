@@ -1,0 +1,49 @@
+/* shadcn badge primitives */
+:host {
+  display: contents;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: calc(var(--radius) - 2px);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid transparent;
+  white-space: nowrap;
+
+  /* Variants */
+  &--default {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+  }
+
+  &--secondary {
+    background: hsl(var(--secondary));
+    color: hsl(var(--secondary-foreground));
+  }
+
+  &--outline {
+    background: transparent;
+    color: hsl(var(--foreground));
+    border-color: hsl(var(--border));
+  }
+
+  &--destructive {
+    background: hsl(var(--destructive));
+    color: hsl(var(--destructive-foreground));
+  }
+
+  &--success {
+    background: hsl(var(--success));
+    color: hsl(var(--success-foreground));
+  }
+
+  &--external {
+    background: hsl(var(--external));
+    color: hsl(var(--external-foreground));
+  }
+}

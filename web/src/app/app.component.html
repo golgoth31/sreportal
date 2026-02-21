@@ -5,7 +5,7 @@
     </div>
     <div class="nav-links">
       @for (portal of portals(); track portal.name) {
-        <a [routerLink]="getPortalPath(portal)" routerLinkActive="active">
+        <a [routerLink]="'/' + (portal.subPath || portal.name) + '/links'" routerLinkActive="active">
           {{ portal.title }}
         </a>
       }

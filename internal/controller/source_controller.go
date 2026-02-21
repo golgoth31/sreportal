@@ -48,6 +48,10 @@ const (
 	// PortalAnnotationKey is the annotation key used on external-dns endpoints
 	// to route them to a specific portal.
 	PortalAnnotationKey = "sreportal.io/portal"
+
+	// maxSourceConsecutiveFailures is the threshold after which a persistently
+	// failing source is surfaced as a NotReady condition on its DNSRecord.
+	maxSourceConsecutiveFailures = 5
 )
 
 // portalSourceKey identifies a unique (portal, sourceType) pair.
@@ -68,6 +72,11 @@ type SourceReconciler struct {
 
 	mu           sync.RWMutex
 	typedSources []srcfactory.TypedSource
+
+	// sourceFailures tracks consecutive endpoint-collection failures per source
+	// type. It is only accessed from the Start() goroutine (reconcile is called
+	// sequentially from the ticker loop), so no synchronization is required.
+	sourceFailures map[srcfactory.SourceType]int
 }
 
 // NewSourceReconciler creates a new SourceReconciler.
@@ -84,13 +93,14 @@ func NewSourceReconciler(
 	}
 
 	return &SourceReconciler{
-		Client:        c,
-		Scheme:        scheme,
-		KubeClient:    kubeClient,
-		RestConfig:    restConfig,
-		Config:        cfg,
-		sourceFactory: srcfactory.NewFactory(kubeClient, restConfig),
-		dynamicClient: dynClient,
+		Client:         c,
+		Scheme:         scheme,
+		KubeClient:     kubeClient,
+		RestConfig:     restConfig,
+		Config:         cfg,
+		sourceFactory:  srcfactory.NewFactory(kubeClient, restConfig),
+		dynamicClient:  dynClient,
+		sourceFailures: make(map[srcfactory.SourceType]int),
 	}
 }
 
@@ -203,8 +213,20 @@ func (r *SourceReconciler) reconcile(ctx context.Context) error {
 	for _, ts := range typedSources {
 		endpoints, err := ts.Source.Endpoints(ctx)
 		if err != nil {
-			log.Error(err, "failed to get endpoints from source", "sourceType", ts.Type)
+			r.sourceFailures[ts.Type]++
+			count := r.sourceFailures[ts.Type]
+			log.Error(err, "failed to get endpoints from source",
+				"sourceType", ts.Type, "consecutiveFailures", count)
+			if count >= maxSourceConsecutiveFailures {
+				r.markSourceDegraded(ctx, mainPortal, ts.Type, err, count)
+			}
 			continue
+		}
+
+		if prev := r.sourceFailures[ts.Type]; prev > 0 {
+			log.Info("source recovered after consecutive failures",
+				"sourceType", ts.Type, "previousFailures", prev)
+			r.sourceFailures[ts.Type] = 0
 		}
 
 		log.V(1).Info("collected endpoints from source",
@@ -519,6 +541,40 @@ func gvrForSourceType(sourceType srcfactory.SourceType) (schema.GroupVersionReso
 		return schema.GroupVersionResource{Group: "networking.istio.io", Version: "v1", Resource: "virtualservices"}, true
 	default:
 		return schema.GroupVersionResource{}, false
+	}
+}
+
+// markSourceDegraded sets a NotReady condition on the DNSRecord that corresponds
+// to the given portal and source type, surfacing a persistent collection failure.
+// If the DNSRecord does not yet exist no action is taken (it will be created
+// once the source recovers).
+func (r *SourceReconciler) markSourceDegraded(
+	ctx context.Context,
+	portal *sreportalv1alpha1.Portal,
+	sourceType srcfactory.SourceType,
+	cause error,
+	count int,
+) {
+	log := logf.FromContext(ctx).WithName("source")
+	name := fmt.Sprintf("%s-%s", portal.Name, sourceType)
+
+	var rec sreportalv1alpha1.DNSRecord
+	if err := r.Get(ctx, client.ObjectKey{Namespace: portal.Namespace, Name: name}, &rec); err != nil {
+		// DNSRecord may not exist yet; skip condition update.
+		return
+	}
+
+	now := metav1.Now()
+	setDNSRecordCondition(&rec.Status.Conditions, metav1.Condition{
+		Type:               "Ready",
+		Status:             metav1.ConditionFalse,
+		Reason:             "SourceUnavailable",
+		Message:            fmt.Sprintf("Source failed %d consecutive times: %v", count, cause),
+		LastTransitionTime: now,
+	})
+
+	if err := r.Status().Update(ctx, &rec); err != nil {
+		log.Error(err, "failed to update degraded condition on DNSRecord", "dnsRecord", name)
 	}
 }
 

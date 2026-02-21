@@ -20,7 +20,7 @@ sources:
     enabled: false
 
   istioGateway:
-    enabled: true
+    enabled: false
 
 groupMapping:
   defaultGroup: "Discovered Services"

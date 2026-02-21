@@ -1,0 +1,95 @@
+<div class="group-card">
+  <!-- Collapsible trigger header -->
+  <div class="group-card__header">
+    <button
+      class="group-trigger"
+      type="button"
+      (click)="toggle()"
+      [attr.aria-expanded]="isOpen()"
+      [attr.aria-controls]="'group-' + group().name"
+    >
+      <span class="group-trigger__content">
+        <app-badge [variant]="sourceBadgeVariant()" aria-hidden="true">
+          {{ sourceIcon() }}
+        </app-badge>
+        <span class="group-trigger__name">{{ group().name }}</span>
+        <span class="group-trigger__count" [attr.aria-label]="group().fqdns.length + ' entries'">
+          ({{ group().fqdns.length }})
+        </span>
+      </span>
+
+      <svg
+        class="group-trigger__chevron"
+        [class.group-trigger__chevron--closed]="!isOpen()"
+        xmlns="http://www.w3.org/2000/svg"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <polyline points="6 9 12 15 18 9" />
+      </svg>
+    </button>
+  </div>
+
+  <!-- Collapsible content — CSS Grid trick: 0fr → 1fr, no JS needed -->
+  <div
+    [id]="'group-' + group().name"
+    class="group-card__body"
+    [class.group-card__body--open]="isOpen()"
+    role="region"
+    [attr.aria-labelledby]="'trigger-' + group().name"
+  >
+    <div class="group-card__body-inner">
+      <div class="fqdn-grid">
+        @for (fqdn of group().fqdns; track fqdn.name) {
+          <div class="fqdn-card">
+            <div class="fqdn-card__main">
+              <a
+                [href]="'https://' + fqdn.name"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="fqdn-card__name"
+              >
+                {{ fqdn.name }}
+              </a>
+              <app-button
+                variant="ghost"
+                size="sm"
+                [attr.aria-label]="'Copy ' + fqdn.name + ' to clipboard'"
+                (click)="copyToClipboard(fqdn.name)"
+              >
+                Copy
+              </app-button>
+            </div>
+
+            @if (fqdn.description) {
+              <p class="fqdn-card__description">{{ fqdn.description }}</p>
+            }
+
+            <div class="fqdn-card__meta">
+              @if (fqdn.recordType) {
+                <app-badge variant="secondary">{{ fqdn.recordType }}</app-badge>
+              }
+              @if (fqdn.targets.length > 0) {
+                <span class="fqdn-card__targets">{{ fqdn.targets.join(', ') }}</span>
+              }
+              <app-badge [variant]="sourceLabelVariant()">{{ fqdn.source }}</app-badge>
+            </div>
+
+            @if (fqdn.dnsResourceName) {
+              <div class="fqdn-card__origin">
+                <span>{{ fqdn.dnsResourceNamespace }}/{{ fqdn.dnsResourceName }}</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+</div>

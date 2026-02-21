@@ -484,6 +484,58 @@ var _ = Describe("extractNamespace", func() {
 	})
 })
 
+// Benchmarks — these are standard Go benchmarks (not Ginkgo), placed in the
+// same package test file so they can reuse the helper constructors below.
+
+func BenchmarkEndpointsToGroups_SmallFlat(b *testing.B) {
+	mapping := &config.GroupMappingConfig{DefaultGroup: "Services"}
+	eps := []*endpoint.Endpoint{
+		newTestEndpoint("api.example.com"),
+		newTestEndpoint("web.example.com"),
+		newTestEndpoint("admin.example.com"),
+		newTestEndpoint("db.example.com"),
+		newTestEndpoint("cache.example.com"),
+	}
+	b.ResetTimer()
+	for b.Loop() {
+		EndpointsToGroups(eps, mapping)
+	}
+}
+
+func BenchmarkEndpointsToGroups_MultiGroup(b *testing.B) {
+	mapping := &config.GroupMappingConfig{DefaultGroup: "Default"}
+	groups := []string{"Alpha", "Beta", "Gamma", "Delta", "Epsilon"}
+	eps := make([]*endpoint.Endpoint, 50)
+	for i := range eps {
+		eps[i] = newTestEndpointWithLabels(
+			"svc.example.com",
+			map[string]string{GroupsAnnotationKey: groups[i%len(groups)]},
+		)
+	}
+	b.ResetTimer()
+	for b.Loop() {
+		EndpointsToGroups(eps, mapping)
+	}
+}
+
+func BenchmarkEndpointsToGroups_NamespaceMapping(b *testing.B) {
+	mapping := &config.GroupMappingConfig{
+		DefaultGroup: "Default",
+		ByNamespace:  map[string]string{"production": "Prod", "staging": "Stage", "dev": "Dev"},
+	}
+	namespaces := []string{"production", "staging", "dev", "other"}
+	eps := make([]*endpoint.Endpoint, 50)
+	for i := range eps {
+		eps[i] = newTestEndpointWithLabels("svc.example.com", map[string]string{
+			endpoint.ResourceLabelKey: "service/" + namespaces[i%len(namespaces)] + "/svc",
+		})
+	}
+	b.ResetTimer()
+	for b.Loop() {
+		EndpointsToGroups(eps, mapping)
+	}
+}
+
 // Test helper functions
 
 func newTestEndpoint(dnsName string) *endpoint.Endpoint {

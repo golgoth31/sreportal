@@ -79,5 +79,21 @@ func (c *OperatorConfig) LogSummary() map[string]any {
 		summary["sources.dnsEndpoint"] = nil
 	}
 
+	if c.Sources.IstioGateway != nil {
+		summary["sources.istioGateway.enabled"] = c.Sources.IstioGateway.Enabled
+		summary["sources.istioGateway.namespace"] = c.Sources.IstioGateway.Namespace
+		summary["sources.istioGateway.annotationFilter"] = c.Sources.IstioGateway.AnnotationFilter
+	} else {
+		summary["sources.istioGateway"] = nil
+	}
+
+	if c.Sources.IstioVirtualService != nil {
+		summary["sources.istioVirtualService.enabled"] = c.Sources.IstioVirtualService.Enabled
+		summary["sources.istioVirtualService.namespace"] = c.Sources.IstioVirtualService.Namespace
+		summary["sources.istioVirtualService.annotationFilter"] = c.Sources.IstioVirtualService.AnnotationFilter
+	} else {
+		summary["sources.istioVirtualService"] = nil
+	}
+
 	return summary
 }

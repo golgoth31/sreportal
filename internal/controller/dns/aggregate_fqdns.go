@@ -62,28 +62,38 @@ func (h *AggregateFQDNsHandler) Handle(ctx context.Context, rc *reconciler.Recon
 		log.V(1).Info("added external groups from DNSRecords", "count", len(externalGroups))
 	}
 
-	// Process manual groups (override external groups with same name)
+	// Process manual groups — merge FQDNs with any external group of the same name.
 	if groups, ok := rc.Data[DataKeyManualGroups].([]sreportalv1alpha1.DNSGroup); ok {
 		for _, group := range groups {
-			fqdns := make([]sreportalv1alpha1.FQDNStatus, 0, len(group.Entries))
+			manualFQDNs := make([]sreportalv1alpha1.FQDNStatus, 0, len(group.Entries))
 			for _, entry := range group.Entries {
-				fqdns = append(fqdns, sreportalv1alpha1.FQDNStatus{
+				manualFQDNs = append(manualFQDNs, sreportalv1alpha1.FQDNStatus{
 					FQDN:        entry.FQDN,
 					Description: entry.Description,
 					LastSeen:    now,
 				})
 			}
 
-			// Sort FQDNs within the group
-			sort.Slice(fqdns, func(i, j int) bool {
-				return fqdns[i].FQDN < fqdns[j].FQDN
-			})
-
-			groupMap[group.Name] = &sreportalv1alpha1.FQDNGroupStatus{
-				Name:        group.Name,
-				Description: group.Description,
-				Source:      SourceManual,
-				FQDNs:       fqdns,
+			if existing, ok := groupMap[group.Name]; ok {
+				// Same name: append manual FQDNs to the external group and keep both.
+				existing.FQDNs = append(existing.FQDNs, manualFQDNs...)
+				if group.Description != "" {
+					existing.Description = group.Description
+				}
+				sort.Slice(existing.FQDNs, func(i, j int) bool {
+					return existing.FQDNs[i].FQDN < existing.FQDNs[j].FQDN
+				})
+			} else {
+				// No external group with this name: create a pure manual group.
+				sort.Slice(manualFQDNs, func(i, j int) bool {
+					return manualFQDNs[i].FQDN < manualFQDNs[j].FQDN
+				})
+				groupMap[group.Name] = &sreportalv1alpha1.FQDNGroupStatus{
+					Name:        group.Name,
+					Description: group.Description,
+					Source:      SourceManual,
+					FQDNs:       manualFQDNs,
+				}
 			}
 		}
 	}

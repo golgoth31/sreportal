@@ -172,10 +172,26 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 	portal.Status.RemoteSync.RemoteTitle = result.RemoteTitle
 	portal.Status.RemoteSync.FQDNCount = result.FQDNCount
 
-	// Create or update DNS CR with fetched FQDNs
+	// Create or update DNS CR with fetched FQDNs. A failure here does not
+	// block the portal being marked Ready — the remote connection succeeded —
+	// but we surface it as a separate DNSSynced condition so operators can act.
 	if err := r.reconcileRemoteDNS(ctx, portal, result); err != nil {
 		log.Error(err, "failed to reconcile DNS for remote portal")
-		// Don't fail the whole reconciliation, just log the error
+		setPortalCondition(&portal.Status.Conditions, metav1.Condition{
+			Type:               "DNSSynced",
+			Status:             metav1.ConditionFalse,
+			Reason:             "DNSSyncFailed",
+			Message:            fmt.Sprintf("Failed to sync DNS from remote portal: %v", err),
+			LastTransitionTime: metav1.Now(),
+		})
+	} else {
+		setPortalCondition(&portal.Status.Conditions, metav1.Condition{
+			Type:               "DNSSynced",
+			Status:             metav1.ConditionTrue,
+			Reason:             "DNSSyncSuccess",
+			Message:            fmt.Sprintf("Synced %d FQDNs from remote portal", result.FQDNCount),
+			LastTransitionTime: metav1.Now(),
+		})
 	}
 
 	readyCondition := metav1.Condition{

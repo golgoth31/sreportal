@@ -1,3 +1,9 @@
+/**
+ * @deprecated DnsState has been superseded by DnsFacade.
+ * All signal state and computed values now live in DnsFacade,
+ * which is provided at the route level via LinksComponent.providers.
+ * This file is no longer imported by any component and can be deleted.
+ */
 import { Injectable, signal, computed } from '@angular/core';
 import type { FQDN } from '../../gen/sreportal/v1/dns_pb';
 

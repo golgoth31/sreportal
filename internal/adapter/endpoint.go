@@ -26,6 +26,7 @@ import (
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/config"
+	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 )
 
 const (
@@ -97,14 +98,23 @@ func IsEndpointStatusIgnored(ep *sreportalv1alpha1.EndpointStatus) bool {
 	return ep.Labels[IgnoreAnnotationKey] == "true"
 }
 
+// strategyFromConfig builds a GroupMappingStrategy from the provided config.
+// A nil mapping yields a strategy with the "Services" default group.
+func strategyFromConfig(mapping *config.GroupMappingConfig) domaindns.GroupMappingStrategy {
+	if mapping == nil {
+		return domaindns.GroupMappingStrategy{DefaultGroup: "Services"}
+	}
+	return domaindns.GroupMappingStrategy{
+		DefaultGroup: mapping.DefaultGroup,
+		LabelKey:     mapping.LabelKey,
+		ByNamespace:  mapping.ByNamespace,
+	}
+}
+
 // EndpointsToGroups converts external-dns endpoints to DNS CR status groups.
 // It groups endpoints based on the provided mapping configuration.
 func EndpointsToGroups(endpoints []*endpoint.Endpoint, mapping *config.GroupMappingConfig) []sreportalv1alpha1.FQDNGroupStatus {
-	if mapping == nil {
-		mapping = &config.GroupMappingConfig{
-			DefaultGroup: "Services",
-		}
-	}
+	strategy := strategyFromConfig(mapping)
 
 	// Group endpoints by mapping rules
 	groups := make(map[string]*sreportalv1alpha1.FQDNGroupStatus)
@@ -115,7 +125,8 @@ func EndpointsToGroups(endpoints []*endpoint.Endpoint, mapping *config.GroupMapp
 			continue
 		}
 
-		groupNames := resolveGroups(ep, mapping)
+		ns := extractNamespace(ep.Labels[endpoint.ResourceLabelKey])
+		groupNames := strategy.Resolve(ep.Labels, ns)
 
 		fqdn := sreportalv1alpha1.FQDNStatus{
 			FQDN:       ep.DNSName,
@@ -153,50 +164,6 @@ func EndpointsToGroups(endpoints []*endpoint.Endpoint, mapping *config.GroupMapp
 	})
 
 	return result
-}
-
-// resolveGroups determines the group names for an endpoint based on mapping rules.
-// The annotation supports comma-separated values for multiple groups.
-// LabelKey, ByNamespace, and default group always return a single group.
-func resolveGroups(ep *endpoint.Endpoint, mapping *config.GroupMappingConfig) []string {
-	// 1. Check sreportal.io/groups annotation (highest priority, supports comma-separated)
-	if val, ok := ep.Labels[GroupsAnnotationKey]; ok && val != "" {
-		parts := strings.Split(val, ",")
-		groups := make([]string, 0, len(parts))
-		for _, p := range parts {
-			g := strings.TrimSpace(p)
-			if g != "" {
-				groups = append(groups, g)
-			}
-		}
-		if len(groups) > 0 {
-			return groups
-		}
-	}
-
-	// 2. Check endpoint label if labelKey is configured
-	if mapping.LabelKey != "" {
-		if val, ok := ep.Labels[mapping.LabelKey]; ok && val != "" {
-			return []string{val}
-		}
-	}
-
-	// 3. Check resource label for namespace mapping
-	if resource, ok := ep.Labels[endpoint.ResourceLabelKey]; ok {
-		ns := extractNamespace(resource)
-		if ns != "" && mapping.ByNamespace != nil {
-			if groupName, ok := mapping.ByNamespace[ns]; ok {
-				return []string{groupName}
-			}
-		}
-	}
-
-	// 4. Fall back to default group
-	if mapping.DefaultGroup != "" {
-		return []string{mapping.DefaultGroup}
-	}
-
-	return []string{"Services"}
 }
 
 // extractNamespace extracts the namespace from a resource label.
@@ -269,11 +236,7 @@ func ToEndpointStatus(endpoints []*endpoint.Endpoint) []sreportalv1alpha1.Endpoi
 // EndpointStatusToGroups converts EndpointStatus slice to FQDNGroupStatus slice.
 // This is used when aggregating endpoints from DNSRecord resources into DNS status.
 func EndpointStatusToGroups(endpoints []sreportalv1alpha1.EndpointStatus, mapping *config.GroupMappingConfig) []sreportalv1alpha1.FQDNGroupStatus {
-	if mapping == nil {
-		mapping = &config.GroupMappingConfig{
-			DefaultGroup: "Services",
-		}
-	}
+	strategy := strategyFromConfig(mapping)
 
 	// Group endpoints by mapping rules
 	groups := make(map[string]*sreportalv1alpha1.FQDNGroupStatus)
@@ -283,7 +246,8 @@ func EndpointStatusToGroups(endpoints []sreportalv1alpha1.EndpointStatus, mappin
 			continue
 		}
 
-		groupNames := resolveGroupsFromEndpointStatus(&ep, mapping)
+		ns := extractNamespace(ep.Labels[endpoint.ResourceLabelKey])
+		groupNames := strategy.Resolve(ep.Labels, ns)
 
 		fqdn := sreportalv1alpha1.FQDNStatus{
 			FQDN:       ep.DNSName,
@@ -321,47 +285,4 @@ func EndpointStatusToGroups(endpoints []sreportalv1alpha1.EndpointStatus, mappin
 	})
 
 	return result
-}
-
-// resolveGroupsFromEndpointStatus determines the group names for an EndpointStatus based on mapping rules.
-// The annotation supports comma-separated values for multiple groups.
-func resolveGroupsFromEndpointStatus(ep *sreportalv1alpha1.EndpointStatus, mapping *config.GroupMappingConfig) []string {
-	// 1. Check sreportal.io/groups annotation (highest priority, supports comma-separated)
-	if val, ok := ep.Labels[GroupsAnnotationKey]; ok && val != "" {
-		parts := strings.Split(val, ",")
-		groups := make([]string, 0, len(parts))
-		for _, p := range parts {
-			g := strings.TrimSpace(p)
-			if g != "" {
-				groups = append(groups, g)
-			}
-		}
-		if len(groups) > 0 {
-			return groups
-		}
-	}
-
-	// 2. Check endpoint label if labelKey is configured
-	if mapping.LabelKey != "" {
-		if val, ok := ep.Labels[mapping.LabelKey]; ok && val != "" {
-			return []string{val}
-		}
-	}
-
-	// 3. Check resource label for namespace mapping
-	if resource, ok := ep.Labels[endpoint.ResourceLabelKey]; ok {
-		ns := extractNamespace(resource)
-		if ns != "" && mapping.ByNamespace != nil {
-			if groupName, ok := mapping.ByNamespace[ns]; ok {
-				return []string{groupName}
-			}
-		}
-	}
-
-	// 4. Fall back to default group
-	if mapping.DefaultGroup != "" {
-		return []string{mapping.DefaultGroup}
-	}
-
-	return []string{"Services"}
 }

@@ -8,114 +8,60 @@
     <div class="search-box">
       <input
         type="text"
-        [(ngModel)]="searchInput"
-        (input)="onSearch()"
+        [value]="facade.searchTerm()"
+        (input)="onSearch($event)"
         placeholder="Search FQDNs..."
         class="search-input"
+        aria-label="Search FQDNs"
       />
     </div>
 
     <div class="filters">
-      <select (change)="onGroupFilter($any($event.target).value)" class="group-select">
+      <select (change)="onGroupFilter($event)" class="group-select" aria-label="Filter by group">
         <option value="">All Groups</option>
-        @for (group of state.groups(); track group) {
+        @for (group of facade.groups(); track group) {
           <option [value]="group">{{ group }}</option>
         }
       </select>
 
-      @if (state.searchTerm() || state.groupFilter()) {
-        <button (click)="clearFilters()" class="clear-btn">Clear Filters</button>
+      @if (facade.searchTerm() || facade.groupFilter()) {
+        <app-button variant="outline" size="sm" (click)="clearFilters()">
+          Clear Filters
+        </app-button>
       }
     </div>
 
     <div class="stats">
-      <span>{{ state.filteredCount() }} of {{ state.totalCount() }} FQDNs</span>
+      <span>{{ facade.filteredCount() }} of {{ facade.totalCount() }} FQDNs</span>
     </div>
   </div>
 
-  @if (state.loading()) {
-    <div class="loading">
+  @if (facade.loading()) {
+    <div class="loading" aria-live="polite">
       <div class="spinner"></div>
       <p>Loading FQDNs...</p>
     </div>
   }
 
-  @if (state.error()) {
-    <div class="error">
-      <p>{{ state.error() }}</p>
-      <button (click)="loadFqdns()">Retry</button>
+  @if (facade.error()) {
+    <div class="error" role="alert">
+      <p>{{ facade.error() }}</p>
     </div>
   }
 
-  @if (!state.loading() && !state.error()) {
+  @if (!facade.loading() && !facade.error()) {
     <div class="fqdn-list">
-      @for (entry of state.groupedByGroup() | keyvalue; track entry.key) {
-        <section class="group-section">
-          <h2 class="group-header">
-            <span class="group-icon">
-              @if (entry.value[0].source === 'external-dns') {
-                <span class="source-badge source-external">E</span>
-              } @else {
-                <span class="source-badge source-manual">M</span>
-              }
-            </span>
-            {{ entry.key }}
-            <span class="count">({{ entry.value.length }})</span>
-          </h2>
-
-          <div class="fqdn-cards">
-            @for (fqdn of entry.value; track fqdn.name) {
-              <div class="fqdn-card">
-                <div class="fqdn-main">
-                  <a
-                    [href]="'https://' + fqdn.name"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="fqdn-name"
-                  >
-                    {{ fqdn.name }}
-                  </a>
-                  <button
-                    (click)="copyToClipboard(fqdn.name)"
-                    class="copy-btn"
-                    title="Copy to clipboard"
-                  >
-                    Copy
-                  </button>
-                </div>
-
-                @if (fqdn.description) {
-                  <p class="fqdn-description">{{ fqdn.description }}</p>
-                }
-
-                <div class="fqdn-meta">
-                  @if (fqdn.recordType) {
-                    <span class="record-type">{{ fqdn.recordType }}</span>
-                  }
-                  @if (fqdn.targets && fqdn.targets.length > 0) {
-                    <span class="targets">{{ fqdn.targets.join(', ') }}</span>
-                  }
-                  <span class="source-label" [class]="getSourceClass(fqdn.source)">
-                    {{ fqdn.source }}
-                  </span>
-                </div>
-
-                @if (fqdn.dnsResourceName) {
-                  <div class="fqdn-source">
-                    <span>{{ fqdn.dnsResourceNamespace }}/{{ fqdn.dnsResourceName }}</span>
-                  </div>
-                }
-              </div>
-            }
-          </div>
-        </section>
+      @for (group of facade.groupedByGroup(); track group.name) {
+        <app-fqdn-group [group]="group" />
       }
 
-      @if (state.filteredCount() === 0) {
+      @if (facade.filteredCount() === 0) {
         <div class="empty-state">
           <p>No FQDNs found</p>
-          @if (state.searchTerm() || state.groupFilter()) {
-            <button (click)="clearFilters()">Clear Filters</button>
+          @if (facade.searchTerm() || facade.groupFilter()) {
+            <app-button variant="outline" size="sm" (click)="clearFilters()">
+              Clear Filters
+            </app-button>
           }
         </div>
       }

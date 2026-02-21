@@ -1,0 +1,109 @@
+/* shadcn button primitives */
+:host {
+  display: contents; /* wrapper vanishes, <button> is the real element */
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: color 150ms, background-color 150ms, border-color 150ms, box-shadow 150ms;
+  outline: none;
+  text-decoration: none;
+
+  &:focus-visible {
+    box-shadow: 0 0 0 3px hsl(var(--ring) / 0.4);
+  }
+
+  &:disabled {
+    pointer-events: none;
+    opacity: 0.5;
+  }
+
+  /* Variants */
+  &--default {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border-color: hsl(var(--primary));
+
+    &:hover:not(:disabled) {
+      background: hsl(var(--primary) / 0.9);
+    }
+  }
+
+  &--outline {
+    background: transparent;
+    color: hsl(var(--foreground));
+    border-color: hsl(var(--border));
+
+    &:hover:not(:disabled) {
+      background: hsl(var(--accent));
+      color: hsl(var(--accent-foreground));
+    }
+  }
+
+  &--ghost {
+    background: transparent;
+    color: hsl(var(--foreground));
+    border-color: transparent;
+
+    &:hover:not(:disabled) {
+      background: hsl(var(--accent));
+      color: hsl(var(--accent-foreground));
+    }
+  }
+
+  &--destructive {
+    background: hsl(var(--destructive));
+    color: hsl(var(--destructive-foreground));
+    border-color: hsl(var(--destructive));
+
+    &:hover:not(:disabled) {
+      background: hsl(var(--destructive) / 0.9);
+    }
+  }
+
+  /* Sizes */
+  &--default {
+    height: 2.5rem;
+    padding: 0 1rem;
+  }
+
+  &--sm {
+    height: 2rem;
+    padding: 0 0.75rem;
+    font-size: 0.8125rem;
+    border-radius: calc(var(--radius) - 2px);
+  }
+
+  &--icon {
+    height: 2.5rem;
+    width: 2.5rem;
+    padding: 0;
+  }
+}
+
+/* Loading spinner */
+.btn-spinner {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: btn-spin 0.6s linear infinite;
+}
+
+@keyframes btn-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

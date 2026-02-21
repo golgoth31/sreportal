@@ -1,5 +1,53 @@
+/* shadcn design tokens — use as hsl(var(--token)) */
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+
+  --border: 214.3 31.8% 91.4%;
+
+  --primary: 222.2 47.4% 11.2%;
+  --primary-foreground: 210 40% 98%;
+
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+
+  --success: 142.1 76.2% 36.3%;
+  --success-foreground: 0 0% 100%;
+
+  --external: 217.2 91.2% 59.8%;
+  --external-foreground: 0 0% 100%;
+
+  --ring: 222.2 84% 4.9%;
+  --radius: 0.5rem;
+}
+
+/* Accessible visually-hidden utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
 /* Global styles */
-* {
+*, *::before, *::after {
   box-sizing: border-box;
 }
 
@@ -9,12 +57,12 @@ html, body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   font-size: 16px;
   line-height: 1.5;
-  color: #1a1a1a;
-  background: #f9fafb;
+  color: hsl(var(--foreground));
+  background: hsl(var(--muted));
 }
 
 a {
-  color: #0066cc;
+  color: hsl(var(--external));
 }
 
 button {

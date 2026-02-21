@@ -1,38 +1,23 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
+import { Observable, from, map } from 'rxjs';
 import { createClient } from '@connectrpc/connect';
 import { createConnectTransport } from '@connectrpc/connect-web';
 import { create } from '@bufbuild/protobuf';
-import { DNSService, ListFQDNsRequestSchema, StreamFQDNsRequestSchema } from '../../gen/sreportal/v1/dns_pb';
-import type { FQDN, StreamFQDNsResponse } from '../../gen/sreportal/v1/dns_pb';
+import { DNSService, ListFQDNsRequestSchema } from '../../gen/sreportal/v1/dns_pb';
+import type { FQDN } from '../../gen/sreportal/v1/dns_pb';
+import { CONNECT_BASE_URL } from '../shared/tokens/connect-base-url.token';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class DnsService {
-  private transport = createConnectTransport({
-    baseUrl: window.location.origin,
-  });
+  private readonly client = createClient(
+    DNSService,
+    createConnectTransport({ baseUrl: inject(CONNECT_BASE_URL) }),
+  );
 
-  private client = createClient(DNSService, this.transport);
-
-  async listFQDNs(namespace?: string, source?: string, search?: string, portal?: string): Promise<FQDN[]> {
-    const request = create(ListFQDNsRequestSchema, {
-      namespace: namespace || '',
-      source: source || '',
-      search: search || '',
-      portal: portal || '',
-    });
-
-    const response = await this.client.listFQDNs(request);
-    return response.fqdns;
-  }
-
-  async *streamFQDNs(namespace?: string): AsyncGenerator<StreamFQDNsResponse> {
-    const request = create(StreamFQDNsRequestSchema, {
-      namespace: namespace || '',
-    });
-    for await (const update of this.client.streamFQDNs(request)) {
-      yield update;
-    }
+  listFQDNs(portal = ''): Observable<FQDN[]> {
+    const request = create(ListFQDNsRequestSchema, { portal });
+    return from(this.client.listFQDNs(request)).pipe(map(r => r.fqdns));
   }
 }

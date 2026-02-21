@@ -17,8 +17,6 @@ SRE Portal is a Kubernetes operator with a web dashboard for managing service st
 
 **Not yet implemented:**
 - Status pages (Component, Incident, Maintenance CRDs)
-- Operator chaining / cluster federation (Cluster CRD)
-- Helm chart (`charts/` directory does not exist)
 - Additional web pages (status page UI)
 
 ## Architecture Principles
@@ -34,7 +32,7 @@ SRE Portal is a Kubernetes operator with a web dashboard for managing service st
 - **Operator**: Go 1.25, Kubebuilder, controller-runtime v0.23
 - **API**: Connect protocol (connectrpc.com/connect v1.19), Buf for codegen
 - **Web server**: Echo v5 with h2c (HTTP/2 without TLS)
-- **Web UI**: Angular 19, standalone components, Signals
+- **Web UI**: Angular 19, shadcn components, Signals
 - **External DNS**: sigs.k8s.io/external-dns v0.20
 - **Testing**: Ginkgo v2 + Gomega with envtest
 - **Deployment**: Single container (controller + gRPC + web UI)
