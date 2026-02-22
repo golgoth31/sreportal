@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.6.7](https://github.com/golgoth31/sreportal/compare/v0.6.6...v0.6.7) (2026-02-22)
+
+
+### Bug Fixes
+
+* **deps:** update angular monorepo to v21 ([#50](https://github.com/golgoth31/sreportal/issues/50)) ([8d9ccf1](https://github.com/golgoth31/sreportal/commit/8d9ccf1fd65c5dd50f1a3fdd1cba1227208e8e32))
+* **deps:** update kubernetes packages to v0.35.1 ([#26](https://github.com/golgoth31/sreportal/issues/26)) ([6d915ab](https://github.com/golgoth31/sreportal/commit/6d915ab2f22965613d1c7f94e0fce1227ba2c342))
+* **deps:** update module github.com/labstack/echo/v5 to v5.0.4 ([#27](https://github.com/golgoth31/sreportal/issues/27)) ([5f2c05e](https://github.com/golgoth31/sreportal/commit/5f2c05ef4a49073ef45cf7d2a48bca9eef3213d2))
+* **deps:** update module github.com/onsi/ginkgo/v2 to v2.28.1 ([#29](https://github.com/golgoth31/sreportal/issues/29)) ([3d7f4e5](https://github.com/golgoth31/sreportal/commit/3d7f4e5234942189a339ac7d7bc222973c41500a))
+* **deps:** update module github.com/onsi/gomega to v1.39.1 ([#30](https://github.com/golgoth31/sreportal/issues/30)) ([7ad72a9](https://github.com/golgoth31/sreportal/commit/7ad72a9883f43adc7456e7e1a5cdc481b6d533d3))
+* **deps:** update module golang.org/x/net to v0.50.0 ([#38](https://github.com/golgoth31/sreportal/issues/38)) ([c0a30d0](https://github.com/golgoth31/sreportal/commit/c0a30d03e7c9eccaea161554ed3a305c3f6b2a6a))
+* **deps:** update module google.golang.org/protobuf to v1.36.11 ([#28](https://github.com/golgoth31/sreportal/issues/28)) ([002f0e6](https://github.com/golgoth31/sreportal/commit/002f0e6ad939d9bc6e5785771e85815c65c7b30c))
+* **deps:** update module istio.io/client-go to v1.29.0 ([#39](https://github.com/golgoth31/sreportal/issues/39)) ([fd1a457](https://github.com/golgoth31/sreportal/commit/fd1a4578fcb8d69719deb02567e189af23ccf97d))
+* web ui fqdn in alphabetical order ([98c98f9](https://github.com/golgoth31/sreportal/commit/98c98f95299a459042dc2d00a4ec1f43f45e7345))
+
 ## [0.6.6](https://github.com/golgoth31/sreportal/compare/v0.6.5...v0.6.6) (2026-02-22)
 
 
