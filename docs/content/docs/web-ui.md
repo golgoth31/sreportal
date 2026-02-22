@@ -33,14 +33,14 @@ The links page shows all FQDNs aggregated for the selected portal. FQDNs are dis
 ### Grouping
 
 FQDNs are organized into groups based on:
-- **Source**: `manual` (from DNS CR spec) or `external-dns` (auto-discovered)
+- **Source**: `manual` (from DNS CR spec), `external-dns` (auto-discovered), or `remote` (fetched from a remote portal)
 - **Group name**: determined by annotations, labels, namespace mapping, or the default group (see [Annotations](../annotations))
 
 ### Search and Filters
 
 The links page provides:
 - **Search**: filter FQDNs by name
-- **Source filter**: show only manual or external-dns entries
+- **Source filter**: show only `manual`, `external-dns`, or `remote` entries
 - **Namespace filter**: filter by originating namespace
 
 ### Portal Navigation

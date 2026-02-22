@@ -116,7 +116,29 @@ spec:
 
 By default, discovered endpoints are routed to the `main` portal. Use the `sreportal.io/portal` annotation to route to a different portal (see [Annotations](../annotations)).
 
-### 4. Access the Web UI
+### 4. (Optional) Create a Remote Portal
+
+A remote portal fetches DNS data from another SRE Portal instance instead of the local cluster. Set `spec.remote.url` to the base URL of the remote instance:
+
+```yaml
+apiVersion: sreportal.my.domain/v1alpha1
+kind: Portal
+metadata:
+  name: remote-cluster
+  namespace: sreportal-system
+spec:
+  title: "Remote Cluster"
+  subPath: "remote-cluster"
+  remote:
+    url: "https://sreportal.other-cluster.example.com"
+    portal: "main"   # optional: defaults to the main portal of the remote instance
+```
+
+The operator syncs with the remote portal every 5 minutes. Fetched FQDNs appear with source `remote` and sync status is tracked in `status.remoteSync`.
+
+> **Note:** `spec.remote` cannot be set on the `main` portal (`spec.main: true`).
+
+### 5. Access the Web UI
 
 The web dashboard is served by the operator on port 8082. Forward the port to your local machine:
 

@@ -148,7 +148,7 @@ type DNSStatus struct {
     LastReconcileTime *metav1.Time
 }
 type FQDNGroupStatus struct {
-    Name, Description, Source string  // Source: "manual" or "external-dns"
+    Name, Description, Source string  // Source: "manual", "external-dns", or "remote"
     FQDNs                    []FQDNStatus
 }
 type FQDNStatus struct {
@@ -180,17 +180,22 @@ type DNSRecordStatus struct {
 ```go
 // Spec
 type PortalSpec struct {
-    Title   string `json:"title"`              // Display title
-    Main    bool   `json:"main,omitempty"`     // Default portal flag
-    SubPath string `json:"subPath,omitempty"`  // URL subpath (defaults to name)
-    URL     string `json:"url,omitempty"`      // Remote portal URL (cannot be set if Main=true)
+    Title   string            `json:"title"`              // Display title
+    Main    bool              `json:"main,omitempty"`     // Default portal flag
+    SubPath string            `json:"subPath,omitempty"`  // URL subpath (defaults to name)
+    Remote  *RemotePortalSpec `json:"remote,omitempty"`   // Remote portal config (cannot be set if Main=true)
+}
+
+type RemotePortalSpec struct {
+    URL    string `json:"url"`              // Base URL of remote SRE Portal (required, ^https?://.*)
+    Portal string `json:"portal,omitempty"` // Portal name on remote (defaults to main)
 }
 
 // Status
 type PortalStatus struct {
     Ready      bool
     Conditions []metav1.Condition
-    RemoteSync *RemoteSyncStatus  // Only populated when URL is set
+    RemoteSync *RemoteSyncStatus  // Only populated when spec.remote is set
 }
 
 // RemoteSyncStatus contains status for remote portal synchronization
@@ -203,8 +208,8 @@ type RemoteSyncStatus struct {
 ```
 
 **Remote Portal Feature:**
-- When `spec.url` is set, the Portal fetches DNS data from a remote SRE Portal instance
-- The main portal (`spec.main=true`) cannot have a URL (validated by webhook)
+- When `spec.remote` is set, the Portal fetches DNS data from a remote SRE Portal instance
+- The main portal (`spec.main=true`) cannot have `spec.remote` set (validated by webhook)
 - Remote portals are excluded from local source collection (SourceController)
 - PortalReconciler periodically syncs with remote portals (every 5 minutes)
 - Remote portal status includes sync time, error state, and FQDN count
