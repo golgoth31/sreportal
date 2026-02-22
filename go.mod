@@ -10,7 +10,7 @@ require (
 	github.com/onsi/gomega v1.39.1
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/net v0.49.0
-	google.golang.org/protobuf v1.36.10
+	google.golang.org/protobuf v1.36.11
 	istio.io/client-go v1.28.0
 	k8s.io/apimachinery v0.35.1
 	k8s.io/client-go v0.35.1
