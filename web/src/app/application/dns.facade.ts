@@ -58,7 +58,11 @@ export class DnsFacade {
 
     return Array.from(grouped.entries())
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([name, { source, fqdns }]) => ({ name, source, fqdns }));
+      .map(([name, { source, fqdns }]) => ({
+        name,
+        source,
+        fqdns: [...fqdns].sort((a, b) => a.name.localeCompare(b.name)),
+      }));
   });
 
   readonly totalCount = computed(() => this._fqdns().length);

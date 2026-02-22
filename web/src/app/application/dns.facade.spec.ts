@@ -171,6 +171,19 @@ describe('DnsFacade', () => {
       expect(groups[0]?.name).toBe('Ungrouped');
     }));
 
+    it('returns fqdns within each group sorted alphabetically by name', fakeAsync(() => {
+      dnsService.listFQDNs.and.returnValue(of([
+        makeFqdn({ name: 'z.prod.com', groups: ['infra'] }),
+        makeFqdn({ name: 'a.prod.com', groups: ['infra'] }),
+        makeFqdn({ name: 'm.prod.com', groups: ['infra'] }),
+      ]));
+      facade.loadFqdns('main');
+      tick();
+
+      const infra = facade.groupedByGroup().find(g => g.name === 'infra');
+      expect(infra?.fqdns.map(f => f.name)).toEqual(['a.prod.com', 'm.prod.com', 'z.prod.com']);
+    }));
+
     it('returns groups sorted alphabetically regardless of arrival order', fakeAsync(() => {
       dnsService.listFQDNs.and.returnValue(of([
         makeFqdn({ name: 'z.com', groups: ['Zebra'] }),
