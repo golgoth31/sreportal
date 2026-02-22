@@ -3,8 +3,6 @@ version: 2
 before:
   hooks:
     - go mod download
-    - npm ci --prefix web
-    - npm run build --prefix web
 
 builds:
   - id: sreportal
