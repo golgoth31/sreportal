@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.5](https://github.com/golgoth31/sreportal/compare/v0.6.4...v0.6.5) (2026-02-22)
+
+
+### Bug Fixes
+
+* doc ([0c3e880](https://github.com/golgoth31/sreportal/commit/0c3e8806addee0eb743f22cd0be29a6498e7c138))
+
 ## [0.6.4](https://github.com/golgoth31/sreportal/compare/v0.6.3...v0.6.4) (2026-02-21)
 
 
