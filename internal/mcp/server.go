@@ -17,7 +17,7 @@ limitations under the License.
 package mcp
 
 import (
-	"fmt"
+	"context"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -29,16 +29,9 @@ import (
 // Server wraps the MCP server with SRE Portal functionality
 type Server struct {
 	mcpServer    *server.MCPServer
+	httpServer   *server.StreamableHTTPServer
 	client       client.Client
 	groupMapping *config.GroupMappingConfig
-}
-
-// Config holds the MCP server configuration
-type Config struct {
-	// Transport is the transport type: "stdio" or "sse"
-	Transport string
-	// Address is the bind address for SSE transport (e.g., ":8081")
-	Address string
 }
 
 // New creates a new MCP server instance
@@ -115,11 +108,19 @@ func (s *Server) ServeStdio() error {
 	return server.ServeStdio(s.mcpServer)
 }
 
-// ServeSSE starts the MCP server using SSE transport
-func (s *Server) ServeSSE(address string) error {
-	baseURL := fmt.Sprintf("http://localhost%s", address)
-	sseServer := server.NewSSEServer(s.mcpServer,
-		server.WithBaseURL(baseURL),
+// ServeStreamableHTTP starts the MCP server using Streamable HTTP transport (MCP spec 2025-03-26).
+// It exposes a single /mcp endpoint that accepts POST, GET, and DELETE methods.
+func (s *Server) ServeStreamableHTTP(address string) error {
+	s.httpServer = server.NewStreamableHTTPServer(s.mcpServer,
+		server.WithEndpointPath("/mcp"),
 	)
-	return sseServer.Start(address)
+	return s.httpServer.Start(address)
+}
+
+// Shutdown gracefully stops the MCP HTTP server.
+func (s *Server) Shutdown(ctx context.Context) error {
+	if s.httpServer != nil {
+		return s.httpServer.Shutdown(ctx)
+	}
+	return nil
 }

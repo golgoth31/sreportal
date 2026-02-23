@@ -8,7 +8,7 @@
     name: web
     protocol: TCP
 
-# Add the MCP server port (SSE transport)
+# Add the MCP server port (Streamable HTTP transport)
 - op: add
   path: /spec/template/spec/containers/0/ports/-
   value:
@@ -21,7 +21,7 @@
   path: /spec/template/spec/containers/0/args/-
   value: --enable-mcp
 
-# Set MCP transport to SSE (required for network access)
+# Set MCP transport to Streamable HTTP (required for network access)
 - op: add
   path: /spec/template/spec/containers/0/args/-
-  value: --mcp-transport=sse
+  value: --mcp-transport=streamable-http

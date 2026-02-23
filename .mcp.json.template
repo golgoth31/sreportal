@@ -2,7 +2,7 @@
   "mcpServers": {
     "sreportal": {
       "type": "sse",
-      "url": "http://localhost:8091/sse"
+      "url": "http://localhost:8091/mcp"
     },
     "shadcn": {
       "command": "npx",

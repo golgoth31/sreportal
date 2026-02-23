@@ -116,9 +116,9 @@ func main() {
 	flag.BoolVar(&enableMCP, "enable-mcp", false,
 		"If set, the MCP (Model Context Protocol) server will be enabled for AI assistant integration.")
 	flag.StringVar(&mcpTransport, "mcp-transport", "stdio",
-		"The transport to use for the MCP server: 'stdio' or 'sse'.")
+		"The transport to use for the MCP server: 'stdio' or 'streamable-http'.")
 	flag.StringVar(&mcpAddr, "mcp-bind-address", ":8091",
-		"The address the MCP SSE server binds to (only used when mcp-transport is 'sse').")
+		"The address the MCP server binds to (only used when mcp-transport is 'streamable-http').")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -368,8 +368,9 @@ func main() {
 	}()
 
 	// Start MCP server if enabled
+	var mcpServer *mcp.Server
 	if enableMCP {
-		mcpServer := mcp.New(mgr.GetClient(), &operatorConfig.GroupMapping)
+		mcpServer = mcp.New(mgr.GetClient(), &operatorConfig.GroupMapping)
 		switch mcpTransport {
 		case "stdio":
 			go func() {
@@ -379,10 +380,10 @@ func main() {
 					cancel()
 				}
 			}()
-		case "sse":
+		case "streamable-http":
 			go func() {
-				setupLog.Info("starting MCP server", "transport", "sse", "address", mcpAddr)
-				if err := mcpServer.ServeSSE(mcpAddr); err != nil {
+				setupLog.Info("starting MCP server", "transport", "streamable-http", "address", mcpAddr)
+				if err := mcpServer.ServeStreamableHTTP(mcpAddr); err != nil {
 					setupLog.Error(err, "MCP server failed, initiating shutdown")
 					cancel()
 				}
@@ -402,5 +403,12 @@ func main() {
 	// Gracefully shutdown web server
 	if err := webServer.Shutdown(context.Background()); err != nil {
 		setupLog.Error(err, "error shutting down web server")
+	}
+
+	// Gracefully shutdown MCP server
+	if mcpServer != nil {
+		if err := mcpServer.Shutdown(context.Background()); err != nil {
+			setupLog.Error(err, "error shutting down MCP server")
+		}
 	}
 }
