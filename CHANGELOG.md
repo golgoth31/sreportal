@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.1](https://github.com/golgoth31/sreportal/compare/v0.7.0...v0.7.1) (2026-02-23)
+
+
+### Bug Fixes
+
+* **mcp:** improve observability of client session lifecycle ([5cf33b7](https://github.com/golgoth31/sreportal/commit/5cf33b716e1da18be58d80122480ce66648532a7))
+* **mcp:** use "http" transport type for Claude Code compatibility ([d97b2ba](https://github.com/golgoth31/sreportal/commit/d97b2ba2fe5436175ac72c2053c124b90aa605b0))
+
 ## [0.7.0](https://github.com/golgoth31/sreportal/compare/v0.6.7...v0.7.0) (2026-02-23)
 
 
