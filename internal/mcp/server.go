@@ -22,6 +22,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/golgoth31/sreportal/internal/config"
 )
@@ -41,11 +42,30 @@ func New(k8sClient client.Client, groupMapping *config.GroupMappingConfig) *Serv
 		groupMapping: groupMapping,
 	}
 
-	// Create the MCP server
+	// Create the MCP server with session lifecycle hooks
+	hooks := &server.Hooks{}
+	hooks.AddOnRegisterSession(func(ctx context.Context, session server.ClientSession) {
+		logger := log.FromContext(ctx).WithName("mcp")
+		logger.Info("client session registered", "sessionID", session.SessionID())
+	})
+	hooks.AddOnUnregisterSession(func(ctx context.Context, session server.ClientSession) {
+		logger := log.FromContext(ctx).WithName("mcp")
+		logger.Info("client session unregistered", "sessionID", session.SessionID())
+	})
+	hooks.AddAfterInitialize(func(ctx context.Context, _ any, message *mcp.InitializeRequest, _ *mcp.InitializeResult) {
+		logger := log.FromContext(ctx).WithName("mcp")
+		logger.Info("client initialized",
+			"clientName", message.Params.ClientInfo.Name,
+			"clientVersion", message.Params.ClientInfo.Version,
+			"protocolVersion", message.Params.ProtocolVersion,
+		)
+	})
+
 	s.mcpServer = server.NewMCPServer(
 		"sreportal",
 		"1.0.0",
 		server.WithToolCapabilities(true),
+		server.WithHooks(hooks),
 	)
 
 	// Register tools
