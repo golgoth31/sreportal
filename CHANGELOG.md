@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1](https://github.com/golgoth31/sreportal/compare/v0.9.0...v0.9.1) (2026-02-23)
+
+
+### Bug Fixes
+
+* **webhook:** align admission endpoints with sreportal.io paths ([9cda97b](https://github.com/golgoth31/sreportal/commit/9cda97ba4b835739289d6a3db026f8efbfe5ac31))
+
 ## [0.9.0](https://github.com/golgoth31/sreportal/compare/v0.8.0...v0.9.0) (2026-02-23)
 
 
