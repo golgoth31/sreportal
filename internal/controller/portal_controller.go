@@ -101,6 +101,15 @@ func (r *PortalReconciler) reconcileLocalPortal(ctx context.Context, portal *sre
 	return ctrl.Result{}, nil
 }
 
+// remoteClientFor returns the appropriate remote client for the given remote spec.
+// If InsecureSkipVerify is set, a new client with TLS verification disabled is created.
+func (r *PortalReconciler) remoteClientFor(remote *sreportalv1alpha1.RemotePortalSpec) *remoteclient.Client {
+	if remote.InsecureSkipVerify {
+		return remoteclient.NewClient(remoteclient.WithInsecureSkipVerify(true))
+	}
+	return r.RemoteClient
+}
+
 // reconcileRemotePortal handles reconciliation for remote portals (Remote specified).
 func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sreportalv1alpha1.Portal) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
@@ -108,13 +117,15 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 	remote := portal.Spec.Remote
 	log.Info("reconciling remote portal", "url", remote.URL, "remotePortal", remote.Portal)
 
+	remoteClient := r.remoteClientFor(remote)
+
 	// Initialize RemoteSync status if nil
 	if portal.Status.RemoteSync == nil {
 		portal.Status.RemoteSync = &sreportalv1alpha1.RemoteSyncStatus{}
 	}
 
 	// Perform health check on remote portal
-	err := r.RemoteClient.HealthCheck(ctx, remote.URL)
+	err := remoteClient.HealthCheck(ctx, remote.URL)
 	if err != nil {
 		log.Error(err, "remote portal health check failed", "url", remote.URL)
 
@@ -140,7 +151,7 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 	}
 
 	// Fetch remote portal info
-	result, err := r.RemoteClient.FetchFQDNs(ctx, remote.URL, remote.Portal)
+	result, err := remoteClient.FetchFQDNs(ctx, remote.URL, remote.Portal)
 	if err != nil {
 		log.Error(err, "failed to fetch FQDNs from remote portal", "url", remote.URL, "remotePortal", remote.Portal)
 

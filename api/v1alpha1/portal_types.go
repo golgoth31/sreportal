@@ -54,6 +54,12 @@ type RemotePortalSpec struct {
 	// If not set, the main portal of the remote instance will be used.
 	// +optional
 	Portal string `json:"portal,omitempty"`
+
+	// insecureSkipVerify disables TLS certificate verification when connecting
+	// to the remote portal. Use with caution: this makes the connection
+	// susceptible to man-in-the-middle attacks.
+	// +optional
+	InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty"`
 }
 
 // PortalStatus defines the observed state of Portal.

@@ -19,6 +19,7 @@ package remoteclient
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"time"
@@ -76,6 +77,19 @@ func WithRetryDelay(delay time.Duration) Option {
 func WithHTTPClient(httpClient *http.Client) Option {
 	return func(c *Client) {
 		c.httpClient = httpClient
+	}
+}
+
+// WithInsecureSkipVerify disables TLS certificate verification.
+func WithInsecureSkipVerify(insecure bool) Option {
+	return func(c *Client) {
+		if insecure {
+			c.httpClient.Transport = &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true, //nolint:gosec // user-requested insecure mode for self-signed certs
+				},
+			}
+		}
 	}
 }
 
