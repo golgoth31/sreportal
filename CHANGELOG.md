@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.0](https://github.com/golgoth31/sreportal/compare/v0.7.1...v0.8.0) (2026-02-23)
+
+
+### Features
+
+* **portal:** support custom TLS config for remote portal connections ([0fe78d5](https://github.com/golgoth31/sreportal/commit/0fe78d529e76cc36d0f1dac9dfda4832b3040259))
+* **remote:** add insecureSkipVerify option to RemotePortalSpec ([311a311](https://github.com/golgoth31/sreportal/commit/311a311188be5deeb15e962196487909eb3dedb4))
+
 ## [0.7.1](https://github.com/golgoth31/sreportal/compare/v0.7.0...v0.7.1) (2026-02-23)
 
 
