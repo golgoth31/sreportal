@@ -166,7 +166,7 @@ type IstioVirtualServiceConfig struct {
 type GroupMappingConfig struct {
 	// DefaultGroup is the group name for FQDNs that don't match any mapping rules.
 	DefaultGroup string `json:"defaultGroup" yaml:"defaultGroup"`
-	// LabelKey is the endpoint label key to use for grouping (e.g., "sreportal.my.domain/group").
+	// LabelKey is the endpoint label key to use for grouping (e.g., "sreportal.io/group").
 	LabelKey string `json:"labelKey,omitempty" yaml:"labelKey,omitempty"`
 	// ByNamespace maps Kubernetes namespaces to group names.
 	ByNamespace map[string]string `json:"byNamespace,omitempty" yaml:"byNamespace,omitempty"`

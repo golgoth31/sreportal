@@ -39,7 +39,7 @@ func SetupPortalWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// +kubebuilder:webhook:path=/mutate-sreportal-my-domain-v1alpha1-portal,mutating=true,failurePolicy=fail,sideEffects=None,groups=sreportal.my.domain,resources=portals,verbs=create;update,versions=v1alpha1,name=mportal-v1alpha1.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/mutate-sreportal-my-domain-v1alpha1-portal,mutating=true,failurePolicy=fail,sideEffects=None,groups=sreportal.io,resources=portals,verbs=create;update,versions=v1alpha1,name=mportal-v1alpha1.kb.io,admissionReviewVersions=v1
 
 // PortalCustomDefaulter struct is responsible for setting default values on the custom resource of the
 // Kind Portal when those are created or updated.
@@ -60,7 +60,7 @@ func (d *PortalCustomDefaulter) Default(_ context.Context, obj *sreportalv1alpha
 	return nil
 }
 
-// +kubebuilder:webhook:path=/validate-sreportal-my-domain-v1alpha1-portal,mutating=false,failurePolicy=fail,sideEffects=None,groups=sreportal.my.domain,resources=portals,verbs=create;update,versions=v1alpha1,name=vportal-v1alpha1.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/validate-sreportal-my-domain-v1alpha1-portal,mutating=false,failurePolicy=fail,sideEffects=None,groups=sreportal.io,resources=portals,verbs=create;update,versions=v1alpha1,name=vportal-v1alpha1.kb.io,admissionReviewVersions=v1
 
 // PortalCustomValidator struct is responsible for validating the Portal resource
 // when it is created, updated, or deleted.

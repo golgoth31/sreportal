@@ -18,7 +18,7 @@ webhooks:
   name: vdns-v1alpha1.kb.io
   rules:
   - apiGroups:
-    - sreportal.my.domain
+    - sreportal.io
     apiVersions:
     - v1alpha1
     operations:
@@ -38,7 +38,7 @@ webhooks:
   name: vportal-v1alpha1.kb.io
   rules:
   - apiGroups:
-    - sreportal.my.domain
+    - sreportal.io
     apiVersions:
     - v1alpha1
     operations:

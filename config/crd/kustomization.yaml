@@ -2,9 +2,9 @@
 # since it depends on service name and namespace that are out of this kustomize package.
 # It should be run by config/default
 resources:
-  - bases/sreportal.my.domain_dnsrecords.yaml
-  - bases/sreportal.my.domain_dns.yaml
-  - bases/sreportal.my.domain_portals.yaml
+  - bases/sreportal.io_dnsrecords.yaml
+  - bases/sreportal.io_dns.yaml
+  - bases/sreportal.io_portals.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches:

@@ -1,4 +1,4 @@
-# apiVersion: sreportal.my.domain/v1alpha1
+# apiVersion: sreportal.io/v1alpha1
 # kind: Portal
 # metadata:
 #   labels:
@@ -10,7 +10,7 @@
 #   title: "Main Portal"
 #   main: true
 # ---
-apiVersion: sreportal.my.domain/v1alpha1
+apiVersion: sreportal.io/v1alpha1
 kind: Portal
 metadata:
   labels:

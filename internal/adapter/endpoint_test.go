@@ -140,16 +140,16 @@ var _ = Describe("EndpointsToGroups", func() {
 		It("should use label value as group name", func() {
 			eps := []*endpoint.Endpoint{
 				newTestEndpointWithLabels("api.example.com", map[string]string{
-					"sreportal.my.domain/group": "API Services",
+					"sreportal.io/group": "API Services",
 				}),
 				newTestEndpointWithLabels("web.example.com", map[string]string{
-					"sreportal.my.domain/group": "Web Services",
+					"sreportal.io/group": "Web Services",
 				}),
 				newTestEndpoint("other.example.com"), // No group label
 			}
 			mapping := &config.GroupMappingConfig{
 				DefaultGroup: "Default",
-				LabelKey:     "sreportal.my.domain/group",
+				LabelKey:     "sreportal.io/group",
 			}
 
 			result := EndpointsToGroups(eps, mapping)
@@ -169,13 +169,13 @@ var _ = Describe("EndpointsToGroups", func() {
 		It("should prioritize label key over namespace mapping", func() {
 			eps := []*endpoint.Endpoint{
 				newTestEndpointWithLabels("api.example.com", map[string]string{
-					"sreportal.my.domain/group": "Custom Group",
-					endpoint.ResourceLabelKey:   "service/production/api",
+					"sreportal.io/group":      "Custom Group",
+					endpoint.ResourceLabelKey: "service/production/api",
 				}),
 			}
 			mapping := &config.GroupMappingConfig{
 				DefaultGroup: "Default",
-				LabelKey:     "sreportal.my.domain/group",
+				LabelKey:     "sreportal.io/group",
 				ByNamespace: map[string]string{
 					"production": "Production Services",
 				},

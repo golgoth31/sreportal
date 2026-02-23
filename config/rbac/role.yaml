@@ -48,7 +48,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - sreportal.my.domain
+  - sreportal.io
   resources:
   - dns
   - dnsrecords
@@ -62,7 +62,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - sreportal.my.domain
+  - sreportal.io
   resources:
   - dns/finalizers
   - dnsrecords/finalizers
@@ -70,7 +70,7 @@ rules:
   verbs:
   - update
 - apiGroups:
-  - sreportal.my.domain
+  - sreportal.io
   resources:
   - dns/status
   - dnsrecords/status

@@ -40,7 +40,7 @@ sources:
 
 groupMapping:
   defaultGroup: "Discovered Services"
-  labelKey: "sreportal.my.domain/group"
+  labelKey: "sreportal.io/group"
   byNamespace:
     production: "Production"
     test-app: "Test Applications"

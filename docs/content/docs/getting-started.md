@@ -56,7 +56,7 @@ Once the operator is running, a default Portal named `main` is created automatic
 The operator creates a `main` portal on startup. To add another portal:
 
 ```yaml
-apiVersion: sreportal.my.domain/v1alpha1
+apiVersion: sreportal.io/v1alpha1
 kind: Portal
 metadata:
   name: production
@@ -71,7 +71,7 @@ spec:
 A DNS resource links manual DNS entries to a portal:
 
 ```yaml
-apiVersion: sreportal.my.domain/v1alpha1
+apiVersion: sreportal.io/v1alpha1
 kind: DNS
 metadata:
   name: dns-sample
@@ -121,7 +121,7 @@ By default, discovered endpoints are routed to the `main` portal. Use the `srepo
 A remote portal fetches DNS data from another SRE Portal instance instead of the local cluster. Set `spec.remote.url` to the base URL of the remote instance:
 
 ```yaml
-apiVersion: sreportal.my.domain/v1alpha1
+apiVersion: sreportal.io/v1alpha1
 kind: Portal
 metadata:
   name: remote-cluster

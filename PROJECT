@@ -3,33 +3,31 @@
 # and allow the plugins properly work.
 # More info: https://book.kubebuilder.io/reference/project-config.html
 cliVersion: 4.11.1
-domain: my.domain
+domain: sreportal.io
 layout:
-- go.kubebuilder.io/v4
+  - go.kubebuilder.io/v4
 projectName: sreportal
 repo: github.com/golgoth31/sreportal
 resources:
-- api:
-    crdVersion: v1
-    namespaced: true
-  controller: true
-  domain: my.domain
-  group: sreportal
-  kind: DNS
-  path: github.com/golgoth31/sreportal/api/v1alpha1
-  plural: dnsrecords
-  version: v1alpha1
-  webhooks:
-    defaulting: true
-    validation: true
-    webhookVersion: v1
-- api:
-    crdVersion: v1
-    namespaced: true
-  controller: true
-  domain: my.domain
-  group: sreportal
-  kind: Portal
-  path: github.com/golgoth31/sreportal/api/v1alpha1
-  version: v1alpha1
+  - api:
+      crdVersion: v1
+      namespaced: true
+    controller: true
+    domain: sreportal.io
+    kind: DNS
+    path: github.com/golgoth31/sreportal/api/v1alpha1
+    plural: dnsrecords
+    version: v1alpha1
+    webhooks:
+      defaulting: true
+      validation: true
+      webhookVersion: v1
+  - api:
+      crdVersion: v1
+      namespaced: true
+    controller: true
+    domain: sreportal.io
+    kind: Portal
+    path: github.com/golgoth31/sreportal/api/v1alpha1
+    version: v1alpha1
 version: "3"

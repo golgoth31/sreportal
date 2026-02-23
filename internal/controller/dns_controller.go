@@ -65,12 +65,12 @@ func NewDNSReconciler(c client.Client, scheme *runtime.Scheme, cfg *config.Opera
 	}
 }
 
-// +kubebuilder:rbac:groups=sreportal.my.domain,resources=dns,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=sreportal.my.domain,resources=dns/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=sreportal.my.domain,resources=dns/finalizers,verbs=update
-// +kubebuilder:rbac:groups=sreportal.my.domain,resources=dnsrecords,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=sreportal.my.domain,resources=dnsrecords/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=sreportal.my.domain,resources=dnsrecords/finalizers,verbs=update
+// +kubebuilder:rbac:groups=sreportal.io,resources=dns,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=sreportal.io,resources=dns/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=sreportal.io,resources=dns/finalizers,verbs=update
+// +kubebuilder:rbac:groups=sreportal.io,resources=dnsrecords,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=sreportal.io,resources=dnsrecords/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=sreportal.io,resources=dnsrecords/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.

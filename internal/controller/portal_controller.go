@@ -56,9 +56,9 @@ func NewPortalReconciler(c client.Client, scheme *runtime.Scheme) *PortalReconci
 	}
 }
 
-// +kubebuilder:rbac:groups=sreportal.my.domain,resources=portals,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=sreportal.my.domain,resources=portals/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=sreportal.my.domain,resources=portals/finalizers,verbs=update
+// +kubebuilder:rbac:groups=sreportal.io,resources=portals,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=sreportal.io,resources=portals/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=sreportal.io,resources=portals/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 
 // Reconcile updates the Portal status conditions.

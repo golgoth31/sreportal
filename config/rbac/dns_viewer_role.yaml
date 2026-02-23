@@ -1,7 +1,7 @@
 # This rule is not used by the project sreportal itself.
 # It is provided to allow the cluster admin to help manage permissions for users.
 #
-# Grants read-only access to sreportal.my.domain resources.
+# Grants read-only access to sreportal.io resources.
 # This role is intended for users who need visibility into these resources
 # without permissions to modify them. It is ideal for monitoring purposes and limited-access viewing.
 
@@ -13,17 +13,17 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: dns-viewer-role
 rules:
-- apiGroups:
-  - sreportal.my.domain
-  resources:
-  - dnsrecords
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - sreportal.my.domain
-  resources:
-  - dnsrecords/status
-  verbs:
-  - get
+  - apiGroups:
+      - sreportal.io
+    resources:
+      - dnsrecords
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - sreportal.io
+    resources:
+      - dnsrecords/status
+    verbs:
+      - get

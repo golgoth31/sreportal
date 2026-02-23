@@ -61,7 +61,7 @@ data:
     groupMapping:
       defaultGroup: "Services"
       # Use endpoint label for grouping (if set on the resource)
-      labelKey: "sreportal.my.domain/group"
+      labelKey: "sreportal.io/group"
       # Map namespaces to group names
       byNamespace:
         production: "Production"

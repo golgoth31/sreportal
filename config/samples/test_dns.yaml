@@ -1,5 +1,5 @@
 # DNS resource that will be updated by the source controller with discovered FQDNs
-apiVersion: sreportal.my.domain/v1alpha1
+apiVersion: sreportal.io/v1alpha1
 kind: DNS
 metadata:
   name: main-portal

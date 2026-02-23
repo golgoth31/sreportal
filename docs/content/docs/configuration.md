@@ -185,7 +185,7 @@ data:
         namespace: ""
     groupMapping:
       defaultGroup: "Services"
-      labelKey: "sreportal.my.domain/group"
+      labelKey: "sreportal.io/group"
       byNamespace:
         production: "Production"
         staging: "Staging"

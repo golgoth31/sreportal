@@ -1,7 +1,7 @@
 # This rule is not used by the project sreportal itself.
 # It is provided to allow the cluster admin to help manage permissions for users.
 #
-# Grants permissions to create, update, and delete resources within the sreportal.my.domain.
+# Grants permissions to create, update, and delete resources within the sreportal.io.
 # This role is intended for users who need to manage these resources
 # but should not control RBAC or manage permissions for others.
 
@@ -13,21 +13,21 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: portal-editor-role
 rules:
-- apiGroups:
-  - sreportal.my.domain
-  resources:
-  - portals
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - sreportal.my.domain
-  resources:
-  - portals/status
-  verbs:
-  - get
+  - apiGroups:
+      - sreportal.io
+    resources:
+      - portals
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - sreportal.io
+    resources:
+      - portals/status
+    verbs:
+      - get
