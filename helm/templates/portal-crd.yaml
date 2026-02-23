@@ -73,6 +73,42 @@ spec:
                       portal is the name of the portal to target on the remote instance.
                       If not set, the main portal of the remote instance will be used.
                     type: string
+                  tls:
+                    description: |-
+                      tls configures TLS settings for connecting to the remote portal.
+                      If not set, the default system TLS configuration is used.
+                    properties:
+                      caSecretRef:
+                        description: |-
+                          caSecretRef references a Secret containing a custom CA certificate bundle.
+                          The Secret must contain the key "ca.crt".
+                        properties:
+                          name:
+                            description: name is the name of the Secret.
+                            minLength: 1
+                            type: string
+                        required:
+                        - name
+                        type: object
+                      certSecretRef:
+                        description: |-
+                          certSecretRef references a Secret containing a client certificate and key for mTLS.
+                          The Secret must contain the keys "tls.crt" and "tls.key".
+                        properties:
+                          name:
+                            description: name is the name of the Secret.
+                            minLength: 1
+                            type: string
+                        required:
+                        - name
+                        type: object
+                      insecureSkipVerify:
+                        description: |-
+                          insecureSkipVerify disables TLS certificate verification when connecting
+                          to the remote portal. Use with caution: this makes the connection
+                          susceptible to man-in-the-middle attacks.
+                        type: boolean
+                    type: object
                   url:
                     description: url is the base URL of the remote SRE Portal instance.
                     pattern: ^https?://.*

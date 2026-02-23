@@ -18,9 +18,12 @@ package controller
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -56,6 +59,7 @@ func NewPortalReconciler(c client.Client, scheme *runtime.Scheme) *PortalReconci
 // +kubebuilder:rbac:groups=sreportal.my.domain,resources=portals,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=sreportal.my.domain,resources=portals/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=sreportal.my.domain,resources=portals/finalizers,verbs=update
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 
 // Reconcile updates the Portal status conditions.
 func (r *PortalReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -101,13 +105,86 @@ func (r *PortalReconciler) reconcileLocalPortal(ctx context.Context, portal *sre
 	return ctrl.Result{}, nil
 }
 
-// remoteClientFor returns the appropriate remote client for the given remote spec.
-// If InsecureSkipVerify is set, a new client with TLS verification disabled is created.
-func (r *PortalReconciler) remoteClientFor(remote *sreportalv1alpha1.RemotePortalSpec) *remoteclient.Client {
-	if remote.InsecureSkipVerify {
-		return remoteclient.NewClient(remoteclient.WithInsecureSkipVerify(true))
+// remoteClientFor returns the appropriate remote client for the given portal.
+// If TLS settings are configured, a new client with the built TLS config is created.
+func (r *PortalReconciler) remoteClientFor(ctx context.Context, portal *sreportalv1alpha1.Portal) (*remoteclient.Client, error) {
+	remote := portal.Spec.Remote
+	if remote.TLS == nil {
+		return r.RemoteClient, nil
 	}
-	return r.RemoteClient
+
+	tlsConfig, err := r.buildTLSConfig(ctx, portal.Namespace, remote.TLS)
+	if err != nil {
+		return nil, fmt.Errorf("build TLS config: %w", err)
+	}
+
+	return remoteclient.NewClient(remoteclient.WithTLSConfig(tlsConfig)), nil
+}
+
+// buildTLSConfig constructs a *tls.Config from a RemoteTLSConfig and the referenced secrets.
+func (r *PortalReconciler) buildTLSConfig(ctx context.Context, namespace string, tlsCfg *sreportalv1alpha1.RemoteTLSConfig) (*tls.Config, error) {
+	config := &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	}
+
+	if tlsCfg.InsecureSkipVerify {
+		config.InsecureSkipVerify = true //nolint:gosec // user-requested insecure mode for self-signed certs
+	}
+
+	if tlsCfg.CASecretRef != nil {
+		secret, err := r.getSecret(ctx, namespace, tlsCfg.CASecretRef.Name)
+		if err != nil {
+			return nil, fmt.Errorf("get CA secret %q: %w", tlsCfg.CASecretRef.Name, err)
+		}
+
+		caCert, ok := secret.Data["ca.crt"]
+		if !ok {
+			return nil, fmt.Errorf("CA secret %q does not contain key \"ca.crt\"", tlsCfg.CASecretRef.Name)
+		}
+
+		pool := x509.NewCertPool()
+		if !pool.AppendCertsFromPEM(caCert) {
+			return nil, fmt.Errorf("CA secret %q contains invalid certificate data", tlsCfg.CASecretRef.Name)
+		}
+
+		config.RootCAs = pool
+	}
+
+	if tlsCfg.CertSecretRef != nil {
+		secret, err := r.getSecret(ctx, namespace, tlsCfg.CertSecretRef.Name)
+		if err != nil {
+			return nil, fmt.Errorf("get client cert secret %q: %w", tlsCfg.CertSecretRef.Name, err)
+		}
+
+		certPEM, ok := secret.Data["tls.crt"]
+		if !ok {
+			return nil, fmt.Errorf("client cert secret %q does not contain key \"tls.crt\"", tlsCfg.CertSecretRef.Name)
+		}
+
+		keyPEM, ok := secret.Data["tls.key"]
+		if !ok {
+			return nil, fmt.Errorf("client cert secret %q does not contain key \"tls.key\"", tlsCfg.CertSecretRef.Name)
+		}
+
+		cert, err := tls.X509KeyPair(certPEM, keyPEM)
+		if err != nil {
+			return nil, fmt.Errorf("parse client certificate from secret %q: %w", tlsCfg.CertSecretRef.Name, err)
+		}
+
+		config.Certificates = []tls.Certificate{cert}
+	}
+
+	return config, nil
+}
+
+// getSecret fetches a Secret from the given namespace.
+func (r *PortalReconciler) getSecret(ctx context.Context, namespace, name string) (*corev1.Secret, error) {
+	secret := &corev1.Secret{}
+	if err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, secret); err != nil {
+		return nil, fmt.Errorf("get secret %s/%s: %w", namespace, name, err)
+	}
+
+	return secret, nil
 }
 
 // reconcileRemotePortal handles reconciliation for remote portals (Remote specified).
@@ -117,7 +194,31 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 	remote := portal.Spec.Remote
 	log.Info("reconciling remote portal", "url", remote.URL, "remotePortal", remote.Portal)
 
-	remoteClient := r.remoteClientFor(remote)
+	remoteClient, err := r.remoteClientFor(ctx, portal)
+	if err != nil {
+		log.Error(err, "failed to build remote client", "url", remote.URL)
+
+		portal.Status.Ready = false
+		if portal.Status.RemoteSync == nil {
+			portal.Status.RemoteSync = &sreportalv1alpha1.RemoteSyncStatus{}
+		}
+		portal.Status.RemoteSync.LastSyncError = err.Error()
+
+		setPortalCondition(&portal.Status.Conditions, metav1.Condition{
+			Type:               "Ready",
+			Status:             metav1.ConditionFalse,
+			Reason:             "TLSConfigFailed",
+			Message:            "Failed to build TLS configuration: " + err.Error(),
+			LastTransitionTime: metav1.Now(),
+		})
+
+		if updateErr := r.Status().Update(ctx, portal); updateErr != nil {
+			log.Error(updateErr, "failed to update Portal status")
+			return ctrl.Result{}, updateErr
+		}
+
+		return ctrl.Result{RequeueAfter: DefaultRemoteSyncInterval}, nil
+	}
 
 	// Initialize RemoteSync status if nil
 	if portal.Status.RemoteSync == nil {
@@ -125,7 +226,7 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 	}
 
 	// Perform health check on remote portal
-	err := remoteClient.HealthCheck(ctx, remote.URL)
+	err = remoteClient.HealthCheck(ctx, remote.URL)
 	if err != nil {
 		log.Error(err, "remote portal health check failed", "url", remote.URL)
 

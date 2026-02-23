@@ -55,11 +55,37 @@ type RemotePortalSpec struct {
 	// +optional
 	Portal string `json:"portal,omitempty"`
 
+	// tls configures TLS settings for connecting to the remote portal.
+	// If not set, the default system TLS configuration is used.
+	// +optional
+	TLS *RemoteTLSConfig `json:"tls,omitempty"`
+}
+
+// RemoteTLSConfig defines the TLS configuration for connecting to a remote portal.
+type RemoteTLSConfig struct {
 	// insecureSkipVerify disables TLS certificate verification when connecting
 	// to the remote portal. Use with caution: this makes the connection
 	// susceptible to man-in-the-middle attacks.
 	// +optional
 	InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty"`
+
+	// caSecretRef references a Secret containing a custom CA certificate bundle.
+	// The Secret must contain the key "ca.crt".
+	// +optional
+	CASecretRef *SecretRef `json:"caSecretRef,omitempty"`
+
+	// certSecretRef references a Secret containing a client certificate and key for mTLS.
+	// The Secret must contain the keys "tls.crt" and "tls.key".
+	// +optional
+	CertSecretRef *SecretRef `json:"certSecretRef,omitempty"`
+}
+
+// SecretRef is a reference to a Kubernetes Secret in the same namespace.
+type SecretRef struct {
+	// name is the name of the Secret.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinLength=1
+	Name string `json:"name"`
 }
 
 // PortalStatus defines the observed state of Portal.

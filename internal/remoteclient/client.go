@@ -80,15 +80,11 @@ func WithHTTPClient(httpClient *http.Client) Option {
 	}
 }
 
-// WithInsecureSkipVerify disables TLS certificate verification.
-func WithInsecureSkipVerify(insecure bool) Option {
+// WithTLSConfig sets a custom TLS configuration for the HTTP client.
+func WithTLSConfig(tlsConfig *tls.Config) Option {
 	return func(c *Client) {
-		if insecure {
-			c.httpClient.Transport = &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true, //nolint:gosec // user-requested insecure mode for self-signed certs
-				},
-			}
+		c.httpClient.Transport = &http.Transport{
+			TLSClientConfig: tlsConfig,
 		}
 	}
 }

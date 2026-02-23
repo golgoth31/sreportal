@@ -220,12 +220,43 @@ _Appears in:_
 | --- | --- | --- | --- |
 | `url` _string_ | url is the base URL of the remote SRE Portal instance. |   | Pattern: `^https?://.*` |
 | `portal` _string_ | portal is the name of the portal to target on the remote instance. If not set, the main portal of the remote instance will be used. |   |   |
+| `tls` _[sreportal.my.domain/v1alpha1.RemoteTLSConfig](#sreportalmydomainv1alpha1remotetlsconfig)_ | tls configures TLS settings for connecting to the remote portal. If not set, the default system TLS configuration is used. |   |   |
+
+
+
+#### sreportal.my.domain/v1alpha1.RemoteTLSConfig
+
+RemoteTLSConfig defines the TLS configuration for connecting to a remote portal.
+
+_Appears in:_
+- [sreportal.my.domain/v1alpha1.RemotePortalSpec](#sreportalmydomainv1alpha1remoteportalspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `insecureSkipVerify` _boolean_ | insecureSkipVerify disables TLS certificate verification when connecting to the remote portal. Use with caution: this makes the connection susceptible to man-in-the-middle attacks. |   |   |
+| `caSecretRef` _[sreportal.my.domain/v1alpha1.SecretRef](#sreportalmydomainv1alpha1secretref)_ | caSecretRef references a Secret containing a custom CA certificate bundle. The Secret must contain the key "ca.crt". |   |   |
+| `certSecretRef` _[sreportal.my.domain/v1alpha1.SecretRef](#sreportalmydomainv1alpha1secretref)_ | certSecretRef references a Secret containing a client certificate and key for mTLS. The Secret must contain the keys "tls.crt" and "tls.key". |   |   |
+
+
+
+#### sreportal.my.domain/v1alpha1.SecretRef
+
+SecretRef is a reference to a Kubernetes Secret in the same namespace.
+
+_Appears in:_
+- [sreportal.my.domain/v1alpha1.RemoteTLSConfig](#sreportalmydomainv1alpha1remotetlsconfig)
+- [sreportal.my.domain/v1alpha1.RemoteTLSConfig](#sreportalmydomainv1alpha1remotetlsconfig)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `name` _string_ | name is the name of the Secret. |   |   |
 
 
 
 #### sreportal.my.domain/v1alpha1.PortalStatus
 
 PortalStatus defines the observed state of Portal.
+name is the name of the Secret.
 
 _Appears in:_
 - [sreportal.my.domain/v1alpha1.Portal](#sreportalmydomainv1alpha1portal)
