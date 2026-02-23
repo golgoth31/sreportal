@@ -187,8 +187,19 @@ type PortalSpec struct {
 }
 
 type RemotePortalSpec struct {
-    URL    string `json:"url"`              // Base URL of remote SRE Portal (required, ^https?://.*)
-    Portal string `json:"portal,omitempty"` // Portal name on remote (defaults to main)
+    URL    string            `json:"url"`              // Base URL of remote SRE Portal (required, ^https?://.*)
+    Portal string            `json:"portal,omitempty"` // Portal name on remote (defaults to main)
+    TLS    *RemoteTLSConfig  `json:"tls,omitempty"`    // TLS settings (defaults to system config)
+}
+
+type RemoteTLSConfig struct {
+    InsecureSkipVerify bool       `json:"insecureSkipVerify,omitempty"` // Disable TLS cert verification
+    CASecretRef        *SecretRef `json:"caSecretRef,omitempty"`        // Secret with "ca.crt" key
+    CertSecretRef      *SecretRef `json:"certSecretRef,omitempty"`      // Secret with "tls.crt" and "tls.key" keys
+}
+
+type SecretRef struct {
+    Name string `json:"name"` // Secret name (same namespace as Portal)
 }
 
 // Status
@@ -213,6 +224,7 @@ type RemoteSyncStatus struct {
 - Remote portals are excluded from local source collection (SourceController)
 - PortalReconciler periodically syncs with remote portals (every 5 minutes)
 - Remote portal status includes sync time, error state, and FQDN count
+- TLS can be configured via `spec.remote.tls`: insecure mode, custom CA (Secret with `ca.crt`), mTLS client certs (Secret with `tls.crt`/`tls.key`)
 
 ## Controller Pattern: Chain of Responsibility
 

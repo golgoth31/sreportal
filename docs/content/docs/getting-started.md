@@ -136,6 +136,31 @@ spec:
 
 The operator syncs with the remote portal every 5 minutes. Fetched FQDNs appear with source `remote` and sync status is tracked in `status.remoteSync`.
 
+#### TLS Configuration
+
+You can configure TLS settings for remote portal connections via `spec.remote.tls`:
+
+```yaml
+# Self-signed certificate (skip verification)
+spec:
+  remote:
+    url: "https://sreportal.dev.example.com"
+    tls:
+      insecureSkipVerify: true
+---
+# Custom CA + mTLS client certificate
+spec:
+  remote:
+    url: "https://sreportal.corp.example.com"
+    tls:
+      caSecretRef:
+        name: remote-portal-ca          # Secret with "ca.crt" key
+      certSecretRef:
+        name: remote-portal-client-cert # Secret with "tls.crt" and "tls.key" keys
+```
+
+The referenced Secrets must exist in the same namespace as the Portal resource.
+
 > **Note:** `spec.remote` cannot be set on the `main` portal (`spec.main: true`).
 
 ### 5. Access the Web UI
