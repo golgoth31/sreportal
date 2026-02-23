@@ -37,3 +37,4 @@ docs/.hugo_build.lock
 /node_modules
 
 /dist
+.mcp.json
