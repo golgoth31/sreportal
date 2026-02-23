@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.7.0](https://github.com/golgoth31/sreportal/compare/v0.6.7...v0.7.0) (2026-02-23)
+
+
+### Features
+
+* **mcp:** migrate from SSE to Streamable HTTP transport ([7f6040b](https://github.com/golgoth31/sreportal/commit/7f6040b8ddf9c108560392d72e5959e412b5f40c))
+
+
+### Bug Fixes
+
+* **mcp:** default dev and helm to streamable-http transport ([ea38607](https://github.com/golgoth31/sreportal/commit/ea386076509b8c615445d65c5d7b019561522f9d))
+
 ## [0.6.7](https://github.com/golgoth31/sreportal/compare/v0.6.6...v0.6.7) (2026-02-22)
 
 
