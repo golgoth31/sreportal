@@ -13,7 +13,7 @@ webhooks:
     service:
       name: '{{ include "helm.fullname" . }}-webhook-service'
       namespace: '{{ .Release.Namespace }}'
-      path: /validate-sreportal-my-domain-v1alpha1-dns
+      path: /validate-sreportal-io-v1alpha1-dns
   failurePolicy: Fail
   name: vdns-v1alpha1.kb.io
   rules:
@@ -33,7 +33,7 @@ webhooks:
     service:
       name: '{{ include "helm.fullname" . }}-webhook-service'
       namespace: '{{ .Release.Namespace }}'
-      path: /validate-sreportal-my-domain-v1alpha1-portal
+      path: /validate-sreportal-io-v1alpha1-portal
   failurePolicy: Fail
   name: vportal-v1alpha1.kb.io
   rules:

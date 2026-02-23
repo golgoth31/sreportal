@@ -10,7 +10,7 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /mutate-sreportal-my-domain-v1alpha1-dns
+      path: /mutate-sreportal-io-v1alpha1-dns
   failurePolicy: Fail
   name: mdns-v1alpha1.kb.io
   rules:
@@ -30,7 +30,7 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /mutate-sreportal-my-domain-v1alpha1-portal
+      path: /mutate-sreportal-io-v1alpha1-portal
   failurePolicy: Fail
   name: mportal-v1alpha1.kb.io
   rules:
@@ -56,7 +56,7 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-sreportal-my-domain-v1alpha1-dns
+      path: /validate-sreportal-io-v1alpha1-dns
   failurePolicy: Fail
   name: vdns-v1alpha1.kb.io
   rules:
@@ -76,7 +76,7 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-sreportal-my-domain-v1alpha1-portal
+      path: /validate-sreportal-io-v1alpha1-portal
   failurePolicy: Fail
   name: vportal-v1alpha1.kb.io
   rules:
