@@ -127,7 +127,16 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	setupLog.Info("sreportal", "version", version.Version, "commit", version.Commit, "date", version.Date)
+	// Environment variables (Kubernetes Downward API)
+	podName := os.Getenv("POD_NAME")
+	podNamespace := os.Getenv("POD_NAMESPACE")
+
+	if podNamespace != "" {
+		portalNamespace = podNamespace
+	}
+
+	setupLog.Info("sreportal", "version", version.Version, "commit", version.Commit, "date", version.Date,
+		"podName", podName, "podNamespace", podNamespace, "portalNamespace", portalNamespace)
 
 	// Load operator configuration from file
 	operatorConfig, err := config.LoadFromFile(configPath)
