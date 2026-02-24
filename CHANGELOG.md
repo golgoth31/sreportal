@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.2](https://github.com/golgoth31/sreportal/compare/v0.9.1...v0.9.2) (2026-02-24)
+
+
+### Bug Fixes
+
+* **deployment:** derive portal namespace from downward API at runtime ([0cd1248](https://github.com/golgoth31/sreportal/commit/0cd1248636af293c8e15a43e463c8bd7264fb48f))
+
 ## [0.9.1](https://github.com/golgoth31/sreportal/compare/v0.9.0...v0.9.1) (2026-02-23)
 
 
