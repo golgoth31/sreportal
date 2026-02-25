@@ -83,7 +83,6 @@ func main() {
 	var portalNamespace string
 	var enableMCP bool
 	var mcpTransport string
-	var mcpAddr string
 	var tlsOpts []func(*tls.Config)
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
@@ -117,8 +116,6 @@ func main() {
 		"If set, the MCP (Model Context Protocol) server will be enabled for AI assistant integration.")
 	flag.StringVar(&mcpTransport, "mcp-transport", "stdio",
 		"The transport to use for the MCP server: 'stdio' or 'streamable-http'.")
-	flag.StringVar(&mcpAddr, "mcp-bind-address", ":8091",
-		"The address the MCP server binds to (only used when mcp-transport is 'streamable-http').")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -368,18 +365,9 @@ func main() {
 	}
 	webServer := webserver.New(webCfg, mgr.GetClient(), operatorConfig)
 
-	go func() {
-		setupLog.Info("starting web server", "address", webAddr)
-		if err := webServer.Start(); err != nil {
-			setupLog.Error(err, "web server failed, initiating shutdown")
-			cancel()
-		}
-	}()
-
 	// Start MCP server if enabled
-	var mcpServer *mcp.Server
 	if enableMCP {
-		mcpServer = mcp.New(mgr.GetClient(), &operatorConfig.GroupMapping)
+		mcpServer := mcp.New(mgr.GetClient(), &operatorConfig.GroupMapping)
 		switch mcpTransport {
 		case "stdio":
 			go func() {
@@ -390,18 +378,21 @@ func main() {
 				}
 			}()
 		case "streamable-http":
-			go func() {
-				setupLog.Info("starting MCP server", "transport", "streamable-http", "address", mcpAddr)
-				if err := mcpServer.ServeStreamableHTTP(mcpAddr); err != nil {
-					setupLog.Error(err, "MCP server failed, initiating shutdown")
-					cancel()
-				}
-			}()
+			setupLog.Info("mounting MCP server on web server", "path", "/mcp")
+			webServer.MountHandler("/mcp", mcpServer.Handler())
 		default:
 			setupLog.Error(nil, "unknown MCP transport", "transport", mcpTransport)
 			os.Exit(1)
 		}
 	}
+
+	go func() {
+		setupLog.Info("starting web server", "address", webAddr)
+		if err := webServer.Start(); err != nil {
+			setupLog.Error(err, "web server failed, initiating shutdown")
+			cancel()
+		}
+	}()
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctx); err != nil {
@@ -412,12 +403,5 @@ func main() {
 	// Gracefully shutdown web server
 	if err := webServer.Shutdown(context.Background()); err != nil {
 		setupLog.Error(err, "error shutting down web server")
-	}
-
-	// Gracefully shutdown MCP server
-	if mcpServer != nil {
-		if err := mcpServer.Shutdown(context.Background()); err != nil {
-			setupLog.Error(err, "error shutting down MCP server")
-		}
 	}
 }

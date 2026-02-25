@@ -18,6 +18,7 @@ package mcp
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -30,7 +31,6 @@ import (
 // Server wraps the MCP server with SRE Portal functionality
 type Server struct {
 	mcpServer    *server.MCPServer
-	httpServer   *server.StreamableHTTPServer
 	client       client.Client
 	groupMapping *config.GroupMappingConfig
 }
@@ -128,19 +128,8 @@ func (s *Server) ServeStdio() error {
 	return server.ServeStdio(s.mcpServer)
 }
 
-// ServeStreamableHTTP starts the MCP server using Streamable HTTP transport (MCP spec 2025-03-26).
-// It exposes a single /mcp endpoint that accepts POST, GET, and DELETE methods.
-func (s *Server) ServeStreamableHTTP(address string) error {
-	s.httpServer = server.NewStreamableHTTPServer(s.mcpServer,
-		server.WithEndpointPath("/mcp"),
-	)
-	return s.httpServer.Start(address)
-}
-
-// Shutdown gracefully stops the MCP HTTP server.
-func (s *Server) Shutdown(ctx context.Context) error {
-	if s.httpServer != nil {
-		return s.httpServer.Shutdown(ctx)
-	}
-	return nil
+// Handler returns an http.Handler for the MCP Streamable HTTP transport.
+// The caller is responsible for mounting it at the desired path (e.g. "/mcp").
+func (s *Server) Handler() http.Handler {
+	return server.NewStreamableHTTPServer(s.mcpServer)
 }

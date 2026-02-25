@@ -180,6 +180,12 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	return nil
 }
 
+// MountHandler registers an external http.Handler on the given path.
+// This is useful for mounting additional services (e.g. MCP) on the same port.
+func (s *Server) MountHandler(path string, handler http.Handler) {
+	s.echo.Any(path, echo.WrapHandler(handler))
+}
+
 // Handler returns the HTTP handler for the server
 func (s *Server) Handler() http.Handler {
 	h2s := &http2.Server{}
