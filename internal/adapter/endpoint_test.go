@@ -347,6 +347,59 @@ var _ = Describe("EndpointsToGroups with ignored endpoints", func() {
 	})
 })
 
+var _ = Describe("EndpointStatusToGroups", func() {
+	Context("with duplicate FQDNs from multiple DNSRecords", func() {
+		It("should deduplicate FQDNs within the same group", func() {
+			endpoints := []sreportalv1alpha1.EndpointStatus{
+				{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+				{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.2"}},
+				{DNSName: "web.example.com", RecordType: "A", Targets: []string{"10.0.0.3"}},
+			}
+			mapping := &config.GroupMappingConfig{DefaultGroup: "Services"}
+
+			result := EndpointStatusToGroups(endpoints, mapping)
+
+			Expect(result).To(HaveLen(1))
+			Expect(result[0].Name).To(Equal("Services"))
+			// api.example.com should appear only once, with merged targets
+			Expect(result[0].FQDNs).To(HaveLen(2))
+			for _, fqdn := range result[0].FQDNs {
+				if fqdn.FQDN == "api.example.com" {
+					Expect(fqdn.Targets).To(ConsistOf("10.0.0.1", "10.0.0.2"))
+				}
+			}
+		})
+
+		It("should deduplicate FQDNs with same targets", func() {
+			endpoints := []sreportalv1alpha1.EndpointStatus{
+				{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+				{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+			}
+			mapping := &config.GroupMappingConfig{DefaultGroup: "Services"}
+
+			result := EndpointStatusToGroups(endpoints, mapping)
+
+			Expect(result).To(HaveLen(1))
+			Expect(result[0].FQDNs).To(HaveLen(1))
+			Expect(result[0].FQDNs[0].FQDN).To(Equal("api.example.com"))
+			Expect(result[0].FQDNs[0].Targets).To(Equal([]string{"10.0.0.1"}))
+		})
+
+		It("should keep different record types as separate entries", func() {
+			endpoints := []sreportalv1alpha1.EndpointStatus{
+				{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+				{DNSName: "api.example.com", RecordType: "CNAME", Targets: []string{"lb.example.com"}},
+			}
+			mapping := &config.GroupMappingConfig{DefaultGroup: "Services"}
+
+			result := EndpointStatusToGroups(endpoints, mapping)
+
+			Expect(result).To(HaveLen(1))
+			Expect(result[0].FQDNs).To(HaveLen(2))
+		})
+	})
+})
+
 var _ = Describe("MergeGroups", func() {
 	Context("with only manual groups", func() {
 		It("should preserve all manual groups", func() {

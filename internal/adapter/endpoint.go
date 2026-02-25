@@ -233,13 +233,24 @@ func ToEndpointStatus(endpoints []*endpoint.Endpoint) []sreportalv1alpha1.Endpoi
 	return result
 }
 
+// fqdnKey uniquely identifies a FQDN within a group for deduplication.
+type fqdnKey struct {
+	groupName  string
+	dnsName    string
+	recordType string
+}
+
 // EndpointStatusToGroups converts EndpointStatus slice to FQDNGroupStatus slice.
 // This is used when aggregating endpoints from DNSRecord resources into DNS status.
+// Duplicate FQDNs (same DNSName + RecordType) within the same group are merged,
+// combining their targets.
 func EndpointStatusToGroups(endpoints []sreportalv1alpha1.EndpointStatus, mapping *config.GroupMappingConfig) []sreportalv1alpha1.FQDNGroupStatus {
 	strategy := strategyFromConfig(mapping)
 
 	// Group endpoints by mapping rules
 	groups := make(map[string]*sreportalv1alpha1.FQDNGroupStatus)
+	// Track seen FQDNs per group to deduplicate and merge targets
+	seen := make(map[fqdnKey]int) // key → index in group.FQDNs
 
 	for _, ep := range endpoints {
 		if IsEndpointStatusIgnored(&ep) {
@@ -248,13 +259,6 @@ func EndpointStatusToGroups(endpoints []sreportalv1alpha1.EndpointStatus, mappin
 
 		ns := extractNamespace(ep.Labels[endpoint.ResourceLabelKey])
 		groupNames := strategy.Resolve(ep.Labels, ns)
-
-		fqdn := sreportalv1alpha1.FQDNStatus{
-			FQDN:       ep.DNSName,
-			RecordType: ep.RecordType,
-			Targets:    ep.Targets,
-			LastSeen:   ep.LastSeen,
-		}
 
 		for _, groupName := range groupNames {
 			if _, exists := groups[groupName]; !exists {
@@ -265,7 +269,23 @@ func EndpointStatusToGroups(endpoints []sreportalv1alpha1.EndpointStatus, mappin
 				}
 			}
 
-			groups[groupName].FQDNs = append(groups[groupName].FQDNs, fqdn)
+			key := fqdnKey{groupName: groupName, dnsName: ep.DNSName, recordType: ep.RecordType}
+			if idx, dup := seen[key]; dup {
+				// Merge targets from duplicate endpoint
+				existing := &groups[groupName].FQDNs[idx]
+				existing.Targets = mergeTargets(existing.Targets, ep.Targets)
+				if ep.LastSeen.After(existing.LastSeen.Time) {
+					existing.LastSeen = ep.LastSeen
+				}
+			} else {
+				seen[key] = len(groups[groupName].FQDNs)
+				groups[groupName].FQDNs = append(groups[groupName].FQDNs, sreportalv1alpha1.FQDNStatus{
+					FQDN:       ep.DNSName,
+					RecordType: ep.RecordType,
+					Targets:    ep.Targets,
+					LastSeen:   ep.LastSeen,
+				})
+			}
 		}
 	}
 
@@ -285,4 +305,20 @@ func EndpointStatusToGroups(endpoints []sreportalv1alpha1.EndpointStatus, mappin
 	})
 
 	return result
+}
+
+// mergeTargets merges two target slices, deduplicating entries.
+func mergeTargets(existing, additional []string) []string {
+	set := make(map[string]struct{}, len(existing))
+	for _, t := range existing {
+		set[t] = struct{}{}
+	}
+	for _, t := range additional {
+		if _, exists := set[t]; !exists {
+			existing = append(existing, t)
+			set[t] = struct{}{}
+		}
+	}
+	sort.Strings(existing)
+	return existing
 }

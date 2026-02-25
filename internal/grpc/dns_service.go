@@ -18,6 +18,7 @@ package grpc
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"time"
 
@@ -84,8 +85,10 @@ func (s *DNSService) ListFQDNs(
 				}
 
 				if existing, ok := seen[fqdnStatus.FQDN]; ok {
-					// FQDN already seen in another group, append this group
-					existing.Groups = append(existing.Groups, group.Name)
+					// FQDN already seen, append group name if not already present
+					if !slices.Contains(existing.Groups, group.Name) {
+						existing.Groups = append(existing.Groups, group.Name)
+					}
 				} else {
 					f := &dnsv1.FQDN{
 						Name:                 fqdnStatus.FQDN,

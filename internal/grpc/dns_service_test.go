@@ -132,6 +132,62 @@ func TestListFQDNs_NoDuplicateGroups_WhenDNSAndDNSRecordHaveSameData(t *testing.
 	}
 }
 
+func TestListFQDNs_NoDuplicateGroupNames_WhenFQDNAppearsMultipleTimesInSameGroup(t *testing.T) {
+	// Arrange: DNS with the same FQDN appearing twice in the same group
+	// (this can happen if EndpointStatusToGroups hasn't deduplicated yet)
+	scheme := newScheme(t)
+	now := metav1.NewTime(time.Now())
+
+	dns := &sreportalv1alpha1.DNS{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-dns",
+			Namespace: "default",
+		},
+		Spec: sreportalv1alpha1.DNSSpec{
+			PortalRef: "main",
+		},
+		Status: sreportalv1alpha1.DNSStatus{
+			Groups: []sreportalv1alpha1.FQDNGroupStatus{
+				{
+					Name:   "Services",
+					Source: "external-dns",
+					FQDNs: []sreportalv1alpha1.FQDNStatus{
+						{FQDN: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}, LastSeen: now},
+						{FQDN: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.2"}, LastSeen: now},
+						{FQDN: "web.example.com", RecordType: "A", Targets: []string{"10.0.0.3"}, LastSeen: now},
+					},
+				},
+			},
+		},
+	}
+
+	k8sClient := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(dns).
+		WithStatusSubresource(dns).
+		Build()
+
+	svc := svcgrpc.NewDNSService(k8sClient)
+
+	// Act
+	resp, err := svc.ListFQDNs(
+		context.Background(),
+		connect.NewRequest(&dnsv1.ListFQDNsRequest{}),
+	)
+
+	// Assert: api.example.com should appear once, and its Groups should not have duplicates
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.Fqdns, 2, "expected 2 unique FQDNs")
+
+	for _, fqdn := range resp.Msg.Fqdns {
+		if fqdn.Name == "api.example.com" {
+			assert.Len(t, fqdn.Groups, 1,
+				"api.example.com should have exactly 1 group entry, got %v", fqdn.Groups)
+			assert.Equal(t, "Services", fqdn.Groups[0])
+		}
+	}
+}
+
 func TestListFQDNs_ReturnsAllFQDNs_FromDNSStatus(t *testing.T) {
 	// Arrange: DNS with groups from multiple sources, no DNSRecords
 	scheme := newScheme(t)
