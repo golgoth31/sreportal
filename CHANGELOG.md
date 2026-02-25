@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.4](https://github.com/golgoth31/sreportal/compare/v1.0.3...v1.0.4) (2026-02-25)
+
+
+### Bug Fixes
+
+* **dns:** prevent duplicate FQDN entries and group names in listings ([2f88ef5](https://github.com/golgoth31/sreportal/commit/2f88ef52890ff58e15d578508276daff57f5f7ac))
+
 ## [1.0.3](https://github.com/golgoth31/sreportal/compare/v1.0.2...v1.0.3) (2026-02-25)
 
 
