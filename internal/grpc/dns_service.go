@@ -100,6 +100,7 @@ func (s *DNSService) ListFQDNs(
 						LastSeen:             timestamppb.New(fqdnStatus.LastSeen.Time),
 						DnsResourceName:      dns.Name,
 						DnsResourceNamespace: dns.Namespace,
+						OriginRef:            toProtoOriginRef(fqdnStatus.OriginRef),
 					}
 					seen[fqdnStatus.FQDN] = f
 				}
@@ -234,4 +235,17 @@ func fqdnEqual(a, b *dnsv1.FQDN) bool {
 		}
 	}
 	return true
+}
+
+// toProtoOriginRef converts a K8s API OriginResourceRef to its proto representation.
+// Returns nil when the input is nil (manual entries, or external-dns records without a resource label).
+func toProtoOriginRef(ref *sreportalv1alpha1.OriginResourceRef) *dnsv1.OriginResourceRef {
+	if ref == nil {
+		return nil
+	}
+	return &dnsv1.OriginResourceRef{
+		Kind:      ref.Kind,
+		Namespace: ref.Namespace,
+		Name:      ref.Name,
+	}
 }

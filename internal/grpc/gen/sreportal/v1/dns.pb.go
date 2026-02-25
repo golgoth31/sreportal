@@ -295,6 +295,71 @@ func (x *StreamFQDNsResponse) GetFqdn() *FQDN {
 	return nil
 }
 
+// OriginResourceRef identifies the Kubernetes resource that produced an FQDN.
+// Only populated for FQDNs discovered via external-dns sources.
+type OriginResourceRef struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// kind is the Kubernetes resource kind (e.g. Service, Ingress, DNSEndpoint)
+	Kind string `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
+	// namespace is the Kubernetes namespace of the origin resource
+	Namespace string `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// name is the name of the origin Kubernetes resource
+	Name          string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OriginResourceRef) Reset() {
+	*x = OriginResourceRef{}
+	mi := &file_sreportal_v1_dns_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OriginResourceRef) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OriginResourceRef) ProtoMessage() {}
+
+func (x *OriginResourceRef) ProtoReflect() protoreflect.Message {
+	mi := &file_sreportal_v1_dns_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OriginResourceRef.ProtoReflect.Descriptor instead.
+func (*OriginResourceRef) Descriptor() ([]byte, []int) {
+	return file_sreportal_v1_dns_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *OriginResourceRef) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *OriginResourceRef) GetNamespace() string {
+	if x != nil {
+		return x.Namespace
+	}
+	return ""
+}
+
+func (x *OriginResourceRef) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
 // FQDN represents a fully qualified domain name with metadata
 type FQDN struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -316,13 +381,16 @@ type FQDN struct {
 	DnsResourceName string `protobuf:"bytes,8,opt,name=dns_resource_name,json=dnsResourceName,proto3" json:"dns_resource_name,omitempty"`
 	// dns_resource_namespace is the namespace of the DNS resource
 	DnsResourceNamespace string `protobuf:"bytes,9,opt,name=dns_resource_namespace,json=dnsResourceNamespace,proto3" json:"dns_resource_namespace,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// origin_ref identifies the Kubernetes resource (Service, Ingress, DNSEndpoint)
+	// that produced this FQDN via external-dns. Not set for manual entries.
+	OriginRef     *OriginResourceRef `protobuf:"bytes,10,opt,name=origin_ref,json=originRef,proto3,oneof" json:"origin_ref,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *FQDN) Reset() {
 	*x = FQDN{}
-	mi := &file_sreportal_v1_dns_proto_msgTypes[4]
+	mi := &file_sreportal_v1_dns_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -334,7 +402,7 @@ func (x *FQDN) String() string {
 func (*FQDN) ProtoMessage() {}
 
 func (x *FQDN) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_dns_proto_msgTypes[4]
+	mi := &file_sreportal_v1_dns_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -347,7 +415,7 @@ func (x *FQDN) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FQDN.ProtoReflect.Descriptor instead.
 func (*FQDN) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_dns_proto_rawDescGZIP(), []int{4}
+	return file_sreportal_v1_dns_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *FQDN) GetName() string {
@@ -413,6 +481,13 @@ func (x *FQDN) GetDnsResourceNamespace() string {
 	return ""
 }
 
+func (x *FQDN) GetOriginRef() *OriginResourceRef {
+	if x != nil {
+		return x.OriginRef
+	}
+	return nil
+}
+
 var File_sreportal_v1_dns_proto protoreflect.FileDescriptor
 
 const file_sreportal_v1_dns_proto_rawDesc = "" +
@@ -429,7 +504,11 @@ const file_sreportal_v1_dns_proto_rawDesc = "" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\"k\n" +
 	"\x13StreamFQDNsResponse\x12,\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x18.sreportal.v1.UpdateTypeR\x04type\x12&\n" +
-	"\x04fqdn\x18\x02 \x01(\v2\x12.sreportal.v1.FQDNR\x04fqdn\"\xc2\x02\n" +
+	"\x04fqdn\x18\x02 \x01(\v2\x12.sreportal.v1.FQDNR\x04fqdn\"Y\n" +
+	"\x11OriginResourceRef\x12\x12\n" +
+	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x1c\n" +
+	"\tnamespace\x18\x02 \x01(\tR\tnamespace\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\"\x96\x03\n" +
 	"\x04FQDN\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
 	"\x06source\x18\x02 \x01(\tR\x06source\x12\x16\n" +
@@ -440,7 +519,11 @@ const file_sreportal_v1_dns_proto_rawDesc = "" +
 	"\atargets\x18\x06 \x03(\tR\atargets\x127\n" +
 	"\tlast_seen\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\blastSeen\x12*\n" +
 	"\x11dns_resource_name\x18\b \x01(\tR\x0fdnsResourceName\x124\n" +
-	"\x16dns_resource_namespace\x18\t \x01(\tR\x14dnsResourceNamespace*s\n" +
+	"\x16dns_resource_namespace\x18\t \x01(\tR\x14dnsResourceNamespace\x12C\n" +
+	"\n" +
+	"origin_ref\x18\n" +
+	" \x01(\v2\x1f.sreportal.v1.OriginResourceRefH\x00R\toriginRef\x88\x01\x01B\r\n" +
+	"\v_origin_ref*s\n" +
 	"\n" +
 	"UpdateType\x12\x1b\n" +
 	"\x17UPDATE_TYPE_UNSPECIFIED\x10\x00\x12\x15\n" +
@@ -466,30 +549,32 @@ func file_sreportal_v1_dns_proto_rawDescGZIP() []byte {
 }
 
 var file_sreportal_v1_dns_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_sreportal_v1_dns_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_sreportal_v1_dns_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_sreportal_v1_dns_proto_goTypes = []any{
 	(UpdateType)(0),               // 0: sreportal.v1.UpdateType
 	(*ListFQDNsRequest)(nil),      // 1: sreportal.v1.ListFQDNsRequest
 	(*ListFQDNsResponse)(nil),     // 2: sreportal.v1.ListFQDNsResponse
 	(*StreamFQDNsRequest)(nil),    // 3: sreportal.v1.StreamFQDNsRequest
 	(*StreamFQDNsResponse)(nil),   // 4: sreportal.v1.StreamFQDNsResponse
-	(*FQDN)(nil),                  // 5: sreportal.v1.FQDN
-	(*timestamppb.Timestamp)(nil), // 6: google.protobuf.Timestamp
+	(*OriginResourceRef)(nil),     // 5: sreportal.v1.OriginResourceRef
+	(*FQDN)(nil),                  // 6: sreportal.v1.FQDN
+	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
 }
 var file_sreportal_v1_dns_proto_depIdxs = []int32{
-	5, // 0: sreportal.v1.ListFQDNsResponse.fqdns:type_name -> sreportal.v1.FQDN
+	6, // 0: sreportal.v1.ListFQDNsResponse.fqdns:type_name -> sreportal.v1.FQDN
 	0, // 1: sreportal.v1.StreamFQDNsResponse.type:type_name -> sreportal.v1.UpdateType
-	5, // 2: sreportal.v1.StreamFQDNsResponse.fqdn:type_name -> sreportal.v1.FQDN
-	6, // 3: sreportal.v1.FQDN.last_seen:type_name -> google.protobuf.Timestamp
-	1, // 4: sreportal.v1.DNSService.ListFQDNs:input_type -> sreportal.v1.ListFQDNsRequest
-	3, // 5: sreportal.v1.DNSService.StreamFQDNs:input_type -> sreportal.v1.StreamFQDNsRequest
-	2, // 6: sreportal.v1.DNSService.ListFQDNs:output_type -> sreportal.v1.ListFQDNsResponse
-	4, // 7: sreportal.v1.DNSService.StreamFQDNs:output_type -> sreportal.v1.StreamFQDNsResponse
-	6, // [6:8] is the sub-list for method output_type
-	4, // [4:6] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	6, // 2: sreportal.v1.StreamFQDNsResponse.fqdn:type_name -> sreportal.v1.FQDN
+	7, // 3: sreportal.v1.FQDN.last_seen:type_name -> google.protobuf.Timestamp
+	5, // 4: sreportal.v1.FQDN.origin_ref:type_name -> sreportal.v1.OriginResourceRef
+	1, // 5: sreportal.v1.DNSService.ListFQDNs:input_type -> sreportal.v1.ListFQDNsRequest
+	3, // 6: sreportal.v1.DNSService.StreamFQDNs:input_type -> sreportal.v1.StreamFQDNsRequest
+	2, // 7: sreportal.v1.DNSService.ListFQDNs:output_type -> sreportal.v1.ListFQDNsResponse
+	4, // 8: sreportal.v1.DNSService.StreamFQDNs:output_type -> sreportal.v1.StreamFQDNsResponse
+	7, // [7:9] is the sub-list for method output_type
+	5, // [5:7] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_sreportal_v1_dns_proto_init() }
@@ -497,13 +582,14 @@ func file_sreportal_v1_dns_proto_init() {
 	if File_sreportal_v1_dns_proto != nil {
 		return
 	}
+	file_sreportal_v1_dns_proto_msgTypes[5].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_sreportal_v1_dns_proto_rawDesc), len(file_sreportal_v1_dns_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

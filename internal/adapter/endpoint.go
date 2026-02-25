@@ -19,7 +19,6 @@ package adapter
 import (
 	"maps"
 	"sort"
-	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/external-dns/endpoint"
@@ -133,6 +132,7 @@ func EndpointsToGroups(endpoints []*endpoint.Endpoint, mapping *config.GroupMapp
 			RecordType: ep.RecordType,
 			Targets:    ep.Targets,
 			LastSeen:   now,
+			OriginRef:  originRefFromLabel(ep.Labels[endpoint.ResourceLabelKey]),
 		}
 
 		for _, groupName := range groupNames {
@@ -169,11 +169,25 @@ func EndpointsToGroups(endpoints []*endpoint.Endpoint, mapping *config.GroupMapp
 // extractNamespace extracts the namespace from a resource label.
 // The resource label format from external-dns is "kind/namespace/name" (e.g., "service/default/my-svc").
 func extractNamespace(resource string) string {
-	parts := strings.Split(resource, "/")
-	if len(parts) == 3 {
-		return parts[1]
+	ref, err := domaindns.ParseResourceRef(resource)
+	if err != nil {
+		return ""
 	}
-	return ""
+	return ref.Namespace()
+}
+
+// originRefFromLabel parses an external-dns resource label into an OriginResourceRef.
+// Returns nil when the label is absent or malformed.
+func originRefFromLabel(raw string) *sreportalv1alpha1.OriginResourceRef {
+	ref, err := domaindns.ParseResourceRef(raw)
+	if err != nil || ref.IsZero() {
+		return nil
+	}
+	return &sreportalv1alpha1.OriginResourceRef{
+		Kind:      ref.Kind(),
+		Namespace: ref.Namespace(),
+		Name:      ref.Name(),
+	}
 }
 
 // MergeGroups merges existing groups with new external groups.
@@ -284,6 +298,7 @@ func EndpointStatusToGroups(endpoints []sreportalv1alpha1.EndpointStatus, mappin
 					RecordType: ep.RecordType,
 					Targets:    ep.Targets,
 					LastSeen:   ep.LastSeen,
+					OriginRef:  originRefFromLabel(ep.Labels[endpoint.ResourceLabelKey]),
 				})
 			}
 		}

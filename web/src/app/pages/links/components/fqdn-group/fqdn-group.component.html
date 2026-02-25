@@ -43,9 +43,11 @@
             <mat-chip [highlighted]="true">{{ fqdn.source }}</mat-chip>
           </div>
 
-          @if (fqdn.dnsResourceName) {
-            <div class="fqdn-card__origin mono">
-              {{ fqdn.dnsResourceNamespace }}/{{ fqdn.dnsResourceName }}
+          @if (fqdn.originRef) {
+            <div class="fqdn-card__origin">
+              <mat-icon class="fqdn-card__origin-icon"
+                        matTooltip="Origin Kubernetes resource">device_hub</mat-icon>
+              <span class="mono">{{ fqdn.originRef.kind }}/{{ fqdn.originRef.namespace }}/{{ fqdn.originRef.name }}</span>
             </div>
           }
         </mat-card-content>

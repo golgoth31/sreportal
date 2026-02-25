@@ -95,6 +95,19 @@ type FQDNGroupStatus struct {
 	FQDNs []FQDNStatus `json:"fqdns,omitempty"`
 }
 
+// OriginResourceRef identifies the Kubernetes resource that produced an FQDN.
+// Only populated for FQDNs discovered via external-dns sources.
+type OriginResourceRef struct {
+	// kind is the Kubernetes resource kind (e.g. Service, Ingress, DNSEndpoint)
+	Kind string `json:"kind"`
+
+	// namespace is the Kubernetes namespace of the origin resource
+	Namespace string `json:"namespace"`
+
+	// name is the name of the origin Kubernetes resource
+	Name string `json:"name"`
+}
+
 // FQDNStatus represents the status of an aggregated FQDN
 type FQDNStatus struct {
 	// fqdn is the fully qualified domain name
@@ -114,6 +127,11 @@ type FQDNStatus struct {
 
 	// lastSeen is the timestamp when this FQDN was last observed
 	LastSeen metav1.Time `json:"lastSeen"`
+
+	// originRef identifies the Kubernetes resource (Service, Ingress, DNSEndpoint)
+	// that produced this FQDN via external-dns. Not set for manual entries.
+	// +optional
+	OriginRef *OriginResourceRef `json:"originRef,omitempty"`
 }
 
 // +kubebuilder:object:root=true

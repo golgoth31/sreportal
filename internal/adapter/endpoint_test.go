@@ -537,6 +537,153 @@ var _ = Describe("extractNamespace", func() {
 	})
 })
 
+var _ = Describe("EndpointsToGroups OriginRef", func() {
+	Context("when endpoint has a valid resource label", func() {
+		It("should populate OriginRef with kind, namespace and name", func() {
+			eps := []*endpoint.Endpoint{
+				newTestEndpointWithLabels("api.example.com", map[string]string{
+					endpoint.ResourceLabelKey: "service/production/api-svc",
+				}),
+			}
+			mapping := &config.GroupMappingConfig{DefaultGroup: "Services"}
+
+			result := EndpointsToGroups(eps, mapping)
+
+			Expect(result).To(HaveLen(1))
+			Expect(result[0].FQDNs).To(HaveLen(1))
+			fqdn := result[0].FQDNs[0]
+			Expect(fqdn.OriginRef).NotTo(BeNil())
+			Expect(fqdn.OriginRef.Kind).To(Equal("service"))
+			Expect(fqdn.OriginRef.Namespace).To(Equal("production"))
+			Expect(fqdn.OriginRef.Name).To(Equal("api-svc"))
+		})
+
+		It("should populate OriginRef for ingress resources", func() {
+			eps := []*endpoint.Endpoint{
+				newTestEndpointWithLabels("web.example.com", map[string]string{
+					endpoint.ResourceLabelKey: "ingress/default/web-ingress",
+				}),
+			}
+			mapping := &config.GroupMappingConfig{DefaultGroup: "Services"}
+
+			result := EndpointsToGroups(eps, mapping)
+
+			fqdn := result[0].FQDNs[0]
+			Expect(fqdn.OriginRef).NotTo(BeNil())
+			Expect(fqdn.OriginRef.Kind).To(Equal("ingress"))
+			Expect(fqdn.OriginRef.Namespace).To(Equal("default"))
+			Expect(fqdn.OriginRef.Name).To(Equal("web-ingress"))
+		})
+	})
+
+	Context("when endpoint has no resource label", func() {
+		It("should leave OriginRef nil", func() {
+			eps := []*endpoint.Endpoint{
+				newTestEndpoint("api.example.com"),
+			}
+			mapping := &config.GroupMappingConfig{DefaultGroup: "Services"}
+
+			result := EndpointsToGroups(eps, mapping)
+
+			Expect(result[0].FQDNs[0].OriginRef).To(BeNil())
+		})
+	})
+
+	Context("when endpoint has a malformed resource label", func() {
+		It("should leave OriginRef nil", func() {
+			eps := []*endpoint.Endpoint{
+				newTestEndpointWithLabels("api.example.com", map[string]string{
+					endpoint.ResourceLabelKey: "not-a-valid-label",
+				}),
+			}
+			mapping := &config.GroupMappingConfig{DefaultGroup: "Services"}
+
+			result := EndpointsToGroups(eps, mapping)
+
+			Expect(result[0].FQDNs[0].OriginRef).To(BeNil())
+		})
+	})
+})
+
+var _ = Describe("EndpointStatusToGroups OriginRef", func() {
+	Context("when EndpointStatus has a valid resource label", func() {
+		It("should propagate OriginRef to the resulting FQDNStatus", func() {
+			endpoints := []sreportalv1alpha1.EndpointStatus{
+				{
+					DNSName:    "api.example.com",
+					RecordType: "A",
+					Targets:    []string{"10.0.0.1"},
+					Labels: map[string]string{
+						endpoint.ResourceLabelKey: "service/production/api-svc",
+					},
+				},
+			}
+			mapping := &config.GroupMappingConfig{DefaultGroup: "Services"}
+
+			result := EndpointStatusToGroups(endpoints, mapping)
+
+			Expect(result).To(HaveLen(1))
+			fqdn := result[0].FQDNs[0]
+			Expect(fqdn.OriginRef).NotTo(BeNil())
+			Expect(fqdn.OriginRef.Kind).To(Equal("service"))
+			Expect(fqdn.OriginRef.Namespace).To(Equal("production"))
+			Expect(fqdn.OriginRef.Name).To(Equal("api-svc"))
+		})
+	})
+
+	Context("when duplicate FQDNs are merged", func() {
+		It("should keep OriginRef from the first occurrence", func() {
+			endpoints := []sreportalv1alpha1.EndpointStatus{
+				{
+					DNSName:    "api.example.com",
+					RecordType: "A",
+					Targets:    []string{"10.0.0.1"},
+					Labels: map[string]string{
+						endpoint.ResourceLabelKey: "service/production/api-svc",
+					},
+				},
+				{
+					DNSName:    "api.example.com",
+					RecordType: "A",
+					Targets:    []string{"10.0.0.2"},
+					Labels: map[string]string{
+						endpoint.ResourceLabelKey: "service/production/api-svc",
+					},
+				},
+			}
+			mapping := &config.GroupMappingConfig{DefaultGroup: "Services"}
+
+			result := EndpointStatusToGroups(endpoints, mapping)
+
+			Expect(result).To(HaveLen(1))
+			Expect(result[0].FQDNs).To(HaveLen(1))
+			fqdn := result[0].FQDNs[0]
+			Expect(fqdn.OriginRef).NotTo(BeNil())
+			Expect(fqdn.OriginRef.Name).To(Equal("api-svc"))
+			// Both targets must be merged
+			Expect(fqdn.Targets).To(ConsistOf("10.0.0.1", "10.0.0.2"))
+		})
+	})
+
+	Context("when EndpointStatus has no resource label", func() {
+		It("should leave OriginRef nil", func() {
+			endpoints := []sreportalv1alpha1.EndpointStatus{
+				{
+					DNSName:    "api.example.com",
+					RecordType: "A",
+					Targets:    []string{"10.0.0.1"},
+					Labels:     map[string]string{},
+				},
+			}
+			mapping := &config.GroupMappingConfig{DefaultGroup: "Services"}
+
+			result := EndpointStatusToGroups(endpoints, mapping)
+
+			Expect(result[0].FQDNs[0].OriginRef).To(BeNil())
+		})
+	})
+})
+
 // Benchmarks — these are standard Go benchmarks (not Ginkgo), placed in the
 // same package test file so they can reuse the helper constructors below.
 

@@ -57,6 +57,19 @@ enum UpdateType {
   UPDATE_TYPE_DELETED = 3;
 }
 
+// OriginResourceRef identifies the Kubernetes resource that produced an FQDN.
+// Only populated for FQDNs discovered via external-dns sources.
+message OriginResourceRef {
+  // kind is the Kubernetes resource kind (e.g. Service, Ingress, DNSEndpoint)
+  string kind = 1;
+
+  // namespace is the Kubernetes namespace of the origin resource
+  string namespace = 2;
+
+  // name is the name of the origin Kubernetes resource
+  string name = 3;
+}
+
 // FQDN represents a fully qualified domain name with metadata
 message FQDN {
   // name is the fully qualified domain name
@@ -85,4 +98,8 @@ message FQDN {
 
   // dns_resource_namespace is the namespace of the DNS resource
   string dns_resource_namespace = 9;
+
+  // origin_ref identifies the Kubernetes resource (Service, Ingress, DNSEndpoint)
+  // that produced this FQDN via external-dns. Not set for manual entries.
+  optional OriginResourceRef origin_ref = 10;
 }

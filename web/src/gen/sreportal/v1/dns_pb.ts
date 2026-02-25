@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file sreportal/v1/dns.proto.
  */
 export const file_sreportal_v1_dns: GenFile = /*@__PURE__*/
-  fileDesc("ChZzcmVwb3J0YWwvdjEvZG5zLnByb3RvEgxzcmVwb3J0YWwudjEiVQoQTGlzdEZRRE5zUmVxdWVzdBIRCgluYW1lc3BhY2UYASABKAkSDgoGc291cmNlGAIgASgJEg4KBnNlYXJjaBgDIAEoCRIOCgZwb3J0YWwYBCABKAkiNgoRTGlzdEZRRE5zUmVzcG9uc2USIQoFZnFkbnMYASADKAsyEi5zcmVwb3J0YWwudjEuRlFETiInChJTdHJlYW1GUUROc1JlcXVlc3QSEQoJbmFtZXNwYWNlGAEgASgJIl8KE1N0cmVhbUZRRE5zUmVzcG9uc2USJgoEdHlwZRgBIAEoDjIYLnNyZXBvcnRhbC52MS5VcGRhdGVUeXBlEiAKBGZxZG4YAiABKAsyEi5zcmVwb3J0YWwudjEuRlFETiLZAQoERlFEThIMCgRuYW1lGAEgASgJEg4KBnNvdXJjZRgCIAEoCRIOCgZncm91cHMYAyADKAkSEwoLZGVzY3JpcHRpb24YBCABKAkSEwoLcmVjb3JkX3R5cGUYBSABKAkSDwoHdGFyZ2V0cxgGIAMoCRItCglsYXN0X3NlZW4YByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhkKEWRuc19yZXNvdXJjZV9uYW1lGAggASgJEh4KFmRuc19yZXNvdXJjZV9uYW1lc3BhY2UYCSABKAkqcwoKVXBkYXRlVHlwZRIbChdVUERBVEVfVFlQRV9VTlNQRUNJRklFRBAAEhUKEVVQREFURV9UWVBFX0FEREVEEAESGAoUVVBEQVRFX1RZUEVfTU9ESUZJRUQQAhIXChNVUERBVEVfVFlQRV9ERUxFVEVEEAMysAEKCkROU1NlcnZpY2USTAoJTGlzdEZRRE5zEh4uc3JlcG9ydGFsLnYxLkxpc3RGUUROc1JlcXVlc3QaHy5zcmVwb3J0YWwudjEuTGlzdEZRRE5zUmVzcG9uc2USVAoLU3RyZWFtRlFETnMSIC5zcmVwb3J0YWwudjEuU3RyZWFtRlFETnNSZXF1ZXN0GiEuc3JlcG9ydGFsLnYxLlN0cmVhbUZRRE5zUmVzcG9uc2UwAUK4AQoQY29tLnNyZXBvcnRhbC52MUIIRG5zUHJvdG9QAVpJZ2l0aHViLmNvbS9nb2xnb3RoMzEvc3JlcG9ydGFsL2ludGVybmFsL2dycGMvZ2VuL3NyZXBvcnRhbC92MTtzcmVwb3J0YWx2MaICA1NYWKoCDFNyZXBvcnRhbC5WMcoCDFNyZXBvcnRhbFxWMeICGFNyZXBvcnRhbFxWMVxHUEJNZXRhZGF0YeoCDVNyZXBvcnRhbDo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
+  fileDesc("ChZzcmVwb3J0YWwvdjEvZG5zLnByb3RvEgxzcmVwb3J0YWwudjEiVQoQTGlzdEZRRE5zUmVxdWVzdBIRCgluYW1lc3BhY2UYASABKAkSDgoGc291cmNlGAIgASgJEg4KBnNlYXJjaBgDIAEoCRIOCgZwb3J0YWwYBCABKAkiNgoRTGlzdEZRRE5zUmVzcG9uc2USIQoFZnFkbnMYASADKAsyEi5zcmVwb3J0YWwudjEuRlFETiInChJTdHJlYW1GUUROc1JlcXVlc3QSEQoJbmFtZXNwYWNlGAEgASgJIl8KE1N0cmVhbUZRRE5zUmVzcG9uc2USJgoEdHlwZRgBIAEoDjIYLnNyZXBvcnRhbC52MS5VcGRhdGVUeXBlEiAKBGZxZG4YAiABKAsyEi5zcmVwb3J0YWwudjEuRlFETiJCChFPcmlnaW5SZXNvdXJjZVJlZhIMCgRraW5kGAEgASgJEhEKCW5hbWVzcGFjZRgCIAEoCRIMCgRuYW1lGAMgASgJIqICCgRGUUROEgwKBG5hbWUYASABKAkSDgoGc291cmNlGAIgASgJEg4KBmdyb3VwcxgDIAMoCRITCgtkZXNjcmlwdGlvbhgEIAEoCRITCgtyZWNvcmRfdHlwZRgFIAEoCRIPCgd0YXJnZXRzGAYgAygJEi0KCWxhc3Rfc2VlbhgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGQoRZG5zX3Jlc291cmNlX25hbWUYCCABKAkSHgoWZG5zX3Jlc291cmNlX25hbWVzcGFjZRgJIAEoCRI4CgpvcmlnaW5fcmVmGAogASgLMh8uc3JlcG9ydGFsLnYxLk9yaWdpblJlc291cmNlUmVmSACIAQFCDQoLX29yaWdpbl9yZWYqcwoKVXBkYXRlVHlwZRIbChdVUERBVEVfVFlQRV9VTlNQRUNJRklFRBAAEhUKEVVQREFURV9UWVBFX0FEREVEEAESGAoUVVBEQVRFX1RZUEVfTU9ESUZJRUQQAhIXChNVUERBVEVfVFlQRV9ERUxFVEVEEAMysAEKCkROU1NlcnZpY2USTAoJTGlzdEZRRE5zEh4uc3JlcG9ydGFsLnYxLkxpc3RGUUROc1JlcXVlc3QaHy5zcmVwb3J0YWwudjEuTGlzdEZRRE5zUmVzcG9uc2USVAoLU3RyZWFtRlFETnMSIC5zcmVwb3J0YWwudjEuU3RyZWFtRlFETnNSZXF1ZXN0GiEuc3JlcG9ydGFsLnYxLlN0cmVhbUZRRE5zUmVzcG9uc2UwAUK4AQoQY29tLnNyZXBvcnRhbC52MUIIRG5zUHJvdG9QAVpJZ2l0aHViLmNvbS9nb2xnb3RoMzEvc3JlcG9ydGFsL2ludGVybmFsL2dycGMvZ2VuL3NyZXBvcnRhbC92MTtzcmVwb3J0YWx2MaICA1NYWKoCDFNyZXBvcnRhbC5WMcoCDFNyZXBvcnRhbFxWMeICGFNyZXBvcnRhbFxWMVxHUEJNZXRhZGF0YeoCDVNyZXBvcnRhbDo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
 
 /**
  * ListFQDNsRequest is the request for listing FQDNs
@@ -127,6 +127,42 @@ export const StreamFQDNsResponseSchema: GenMessage<StreamFQDNsResponse> = /*@__P
   messageDesc(file_sreportal_v1_dns, 3);
 
 /**
+ * OriginResourceRef identifies the Kubernetes resource that produced an FQDN.
+ * Only populated for FQDNs discovered via external-dns sources.
+ *
+ * @generated from message sreportal.v1.OriginResourceRef
+ */
+export type OriginResourceRef = Message<"sreportal.v1.OriginResourceRef"> & {
+  /**
+   * kind is the Kubernetes resource kind (e.g. Service, Ingress, DNSEndpoint)
+   *
+   * @generated from field: string kind = 1;
+   */
+  kind: string;
+
+  /**
+   * namespace is the Kubernetes namespace of the origin resource
+   *
+   * @generated from field: string namespace = 2;
+   */
+  namespace: string;
+
+  /**
+   * name is the name of the origin Kubernetes resource
+   *
+   * @generated from field: string name = 3;
+   */
+  name: string;
+};
+
+/**
+ * Describes the message sreportal.v1.OriginResourceRef.
+ * Use `create(OriginResourceRefSchema)` to create a new message.
+ */
+export const OriginResourceRefSchema: GenMessage<OriginResourceRef> = /*@__PURE__*/
+  messageDesc(file_sreportal_v1_dns, 4);
+
+/**
  * FQDN represents a fully qualified domain name with metadata
  *
  * @generated from message sreportal.v1.FQDN
@@ -194,6 +230,14 @@ export type FQDN = Message<"sreportal.v1.FQDN"> & {
    * @generated from field: string dns_resource_namespace = 9;
    */
   dnsResourceNamespace: string;
+
+  /**
+   * origin_ref identifies the Kubernetes resource (Service, Ingress, DNSEndpoint)
+   * that produced this FQDN via external-dns. Not set for manual entries.
+   *
+   * @generated from field: optional sreportal.v1.OriginResourceRef origin_ref = 10;
+   */
+  originRef?: OriginResourceRef;
 };
 
 /**
@@ -201,7 +245,7 @@ export type FQDN = Message<"sreportal.v1.FQDN"> & {
  * Use `create(FQDNSchema)` to create a new message.
  */
 export const FQDNSchema: GenMessage<FQDN> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_dns, 4);
+  messageDesc(file_sreportal_v1_dns, 5);
 
 /**
  * UpdateType represents the type of update

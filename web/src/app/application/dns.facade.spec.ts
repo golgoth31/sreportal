@@ -15,6 +15,7 @@ function makeFqdn(overrides: Partial<FQDN> = {}): FQDN {
     lastSeen: undefined,
     dnsResourceName: '',
     dnsResourceNamespace: '',
+    originRef: undefined,
     ...overrides,
   } as unknown as FQDN;
 }

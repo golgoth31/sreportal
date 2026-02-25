@@ -250,6 +250,102 @@ func TestListFQDNs_ReturnsAllFQDNs_FromDNSStatus(t *testing.T) {
 	assert.Equal(t, "manual", fqdnsByName["internal.example.com"].Source)
 }
 
+func TestListFQDNs_OriginRef_IsPopulated_WhenFQDNHasOriginRef(t *testing.T) {
+	// Arrange: a DNS FQDN with an OriginRef pointing to a Service resource
+	scheme := newScheme(t)
+	now := metav1.NewTime(time.Now())
+
+	dns := &sreportalv1alpha1.DNS{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-dns", Namespace: "default"},
+		Spec:       sreportalv1alpha1.DNSSpec{PortalRef: "main"},
+		Status: sreportalv1alpha1.DNSStatus{
+			Groups: []sreportalv1alpha1.FQDNGroupStatus{
+				{
+					Name:   "Services",
+					Source: "external-dns",
+					FQDNs: []sreportalv1alpha1.FQDNStatus{
+						{
+							FQDN:       "api.example.com",
+							RecordType: "A",
+							Targets:    []string{"10.0.0.1"},
+							LastSeen:   now,
+							OriginRef: &sreportalv1alpha1.OriginResourceRef{
+								Kind:      "service",
+								Namespace: "production",
+								Name:      "api-svc",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	k8sClient := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(dns).
+		WithStatusSubresource(dns).
+		Build()
+
+	svc := svcgrpc.NewDNSService(k8sClient)
+
+	// Act
+	resp, err := svc.ListFQDNs(
+		context.Background(),
+		connect.NewRequest(&dnsv1.ListFQDNsRequest{}),
+	)
+
+	// Assert
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.Fqdns, 1)
+	f := resp.Msg.Fqdns[0]
+	require.NotNil(t, f.OriginRef, "OriginRef must be set for external-dns FQDNs")
+	assert.Equal(t, "service", f.OriginRef.Kind)
+	assert.Equal(t, "production", f.OriginRef.Namespace)
+	assert.Equal(t, "api-svc", f.OriginRef.Name)
+}
+
+func TestListFQDNs_OriginRef_IsNil_ForManualEntries(t *testing.T) {
+	// Arrange: a manual FQDN — OriginRef should not be set
+	scheme := newScheme(t)
+	now := metav1.NewTime(time.Now())
+
+	dns := &sreportalv1alpha1.DNS{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-dns", Namespace: "default"},
+		Spec:       sreportalv1alpha1.DNSSpec{PortalRef: "main"},
+		Status: sreportalv1alpha1.DNSStatus{
+			Groups: []sreportalv1alpha1.FQDNGroupStatus{
+				{
+					Name:   "Internal",
+					Source: "manual",
+					FQDNs: []sreportalv1alpha1.FQDNStatus{
+						{FQDN: "internal.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}, LastSeen: now},
+					},
+				},
+			},
+		},
+	}
+
+	k8sClient := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(dns).
+		WithStatusSubresource(dns).
+		Build()
+
+	svc := svcgrpc.NewDNSService(k8sClient)
+
+	// Act
+	resp, err := svc.ListFQDNs(
+		context.Background(),
+		connect.NewRequest(&dnsv1.ListFQDNsRequest{}),
+	)
+
+	// Assert
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.Fqdns, 1)
+	assert.Nil(t, resp.Msg.Fqdns[0].OriginRef, "manual entries must not have OriginRef")
+}
+
 func TestListFQDNs_FiltersWork(t *testing.T) {
 	scheme := newScheme(t)
 	now := metav1.NewTime(time.Now())

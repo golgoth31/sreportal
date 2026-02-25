@@ -172,6 +172,28 @@ spec:
                               was last observed
                             format: date-time
                             type: string
+                          originRef:
+                            description: |-
+                              originRef identifies the Kubernetes resource (Service, Ingress, DNSEndpoint)
+                              that produced this FQDN via external-dns. Not set for manual entries.
+                            properties:
+                              kind:
+                                description: kind is the Kubernetes resource kind
+                                  (e.g. Service, Ingress, DNSEndpoint)
+                                type: string
+                              name:
+                                description: name is the name of the origin Kubernetes
+                                  resource
+                                type: string
+                              namespace:
+                                description: namespace is the Kubernetes namespace
+                                  of the origin resource
+                                type: string
+                            required:
+                            - kind
+                            - name
+                            - namespace
+                            type: object
                           recordType:
                             description: recordType is the DNS record type (A, AAAA,
                               CNAME, etc.)

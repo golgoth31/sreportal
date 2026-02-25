@@ -64,10 +64,20 @@
   }
 
   &__origin {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
     margin-top: 0.5rem;
     padding-top: 0.5rem;
     border-top: 1px solid var(--mat-sys-outline-variant, #e0e0e0);
     font-size: 0.75rem;
     color: var(--mat-sys-on-surface-variant, #666);
+  }
+
+  &__origin-icon {
+    font-size: 14px;
+    height: 14px;
+    width: 14px;
+    flex-shrink: 0;
   }
 }
