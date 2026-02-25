@@ -9,103 +9,48 @@
 
   h1 {
     font-size: 2rem;
-    font-weight: 600;
+    font-weight: 500;
     margin: 0;
-    color: hsl(var(--foreground));
   }
 
   .subtitle {
-    color: hsl(var(--muted-foreground));
+    color: var(--mat-sys-on-surface-variant, #666);
     margin: 0.5rem 0 0;
   }
 }
 
-/* ── Controls bar ──────────────────────────────────────────── */
+/* Controls bar */
 .controls {
   display: flex;
-  gap: 0.75rem;
+  gap: 1rem;
   align-items: center;
   margin-bottom: 1.5rem;
   flex-wrap: wrap;
 
-  .search-box {
+  &__search {
     flex: 1;
     min-width: 200px;
   }
 
-  /* shadcn-style input */
-  .search-input {
-    width: 100%;
-    height: 2.5rem;
-    padding: 0 0.875rem;
-    border: 1px solid hsl(var(--border));
-    border-radius: var(--radius);
-    font-size: 0.875rem;
-    font-family: inherit;
-    color: hsl(var(--foreground));
-    background: hsl(var(--background));
-    outline: none;
-    transition: border-color 150ms, box-shadow 150ms;
-
-    &::placeholder {
-      color: hsl(var(--muted-foreground));
-    }
-
-    &:focus {
-      border-color: hsl(var(--ring));
-      box-shadow: 0 0 0 3px hsl(var(--ring) / 0.2);
-    }
+  &__group {
+    min-width: 160px;
   }
 
-  .filters {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-  }
-
-  /* shadcn-style select */
-  .group-select {
-    height: 2.5rem;
-    padding: 0 0.875rem;
-    border: 1px solid hsl(var(--border));
-    border-radius: var(--radius);
-    font-size: 0.875rem;
-    font-family: inherit;
-    color: hsl(var(--foreground));
-    background: hsl(var(--background));
-    cursor: pointer;
-    outline: none;
-    transition: border-color 150ms, box-shadow 150ms;
-
-    &:focus {
-      border-color: hsl(var(--ring));
-      box-shadow: 0 0 0 3px hsl(var(--ring) / 0.2);
-    }
-  }
-
-  .stats {
-    color: hsl(var(--muted-foreground));
+  &__stats {
+    color: var(--mat-sys-on-surface-variant, #666);
     font-size: 0.8125rem;
     white-space: nowrap;
+    margin-left: auto;
   }
 }
 
-/* ── Loading state ─────────────────────────────────────────── */
+/* Loading state */
 .loading {
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 4rem;
-  color: hsl(var(--muted-foreground));
-
-  .spinner {
-    width: 2rem;
-    height: 2rem;
-    border: 2px solid hsl(var(--border));
-    border-top-color: hsl(var(--primary));
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
+  color: var(--mat-sys-on-surface-variant, #666);
 
   p {
     margin-top: 1rem;
@@ -113,31 +58,40 @@
   }
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* ── Error state ───────────────────────────────────────────── */
+/* Error state */
 .error {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   padding: 1rem 1.25rem;
-  background: hsl(var(--destructive) / 0.08);
-  border: 1px solid hsl(var(--destructive) / 0.3);
-  border-radius: var(--radius);
-  color: hsl(var(--destructive));
+  background: var(--mat-sys-error-container, #fdecea);
+  border-radius: 8px;
+  color: var(--mat-sys-on-error-container, #d32f2f);
   font-size: 0.875rem;
+
+  mat-icon {
+    color: var(--mat-sys-error, #d32f2f);
+  }
 
   p { margin: 0; }
 }
 
-/* ── Empty state ───────────────────────────────────────────── */
+/* Empty state */
 .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 1rem;
   padding: 4rem 2rem;
-  color: hsl(var(--muted-foreground));
+  color: var(--mat-sys-on-surface-variant, #666);
   font-size: 0.875rem;
+
+  &__icon {
+    font-size: 48px;
+    height: 48px;
+    width: 48px;
+    opacity: 0.4;
+  }
 
   p { margin: 0; }
 }

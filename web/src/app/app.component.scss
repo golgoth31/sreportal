@@ -1,60 +1,49 @@
-.app-container {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
-
-.navbar {
+.toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 1rem 2rem;
-  background: #1a1a1a;
-  color: white;
 
-  .nav-brand {
-    a {
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: white;
-      text-decoration: none;
-    }
+  &__brand {
+    font-size: 1.25rem;
+    font-weight: 500;
+    color: white;
+    text-decoration: none;
   }
 
-  .nav-links {
-    display: flex;
-    gap: 1.5rem;
+  &__spacer {
+    flex: 1;
+  }
 
-    a {
-      color: #ccc;
-      text-decoration: none;
-      padding: 0.5rem 1rem;
-      border-radius: 4px;
-      transition: color 0.2s, background 0.2s;
+  &__nav {
+    border-bottom: none;
 
-      &:hover {
-        color: white;
-        background: rgba(255, 255, 255, 0.1);
-      }
+    --mdc-tab-indicator-active-indicator-color: white;
+    --mat-tab-header-active-label-text-color: white;
+    --mat-tab-header-label-text-color: rgba(255, 255, 255, 0.7);
+    --mat-tab-header-active-hover-label-text-color: white;
+    --mat-tab-header-hover-label-text-color: rgba(255, 255, 255, 0.85);
+    --mat-tab-header-active-focus-label-text-color: white;
+    --mat-tab-header-active-ripple-color: rgba(255, 255, 255, 0.2);
 
-      &.active {
-        color: white;
-        background: rgba(255, 255, 255, 0.15);
-      }
+    mat-icon {
+      margin-right: 4px;
+      font-size: 18px;
+      height: 18px;
+      width: 18px;
     }
   }
 }
 
 .main-content {
   flex: 1;
-  background: #f9fafb;
+  background: var(--mat-sys-surface-container-lowest, #fafafa);
+  min-height: calc(100vh - 64px - 48px);
 }
 
 .footer {
   padding: 1rem 2rem;
-  background: #f0f0f0;
+  background: var(--mat-sys-surface-container, #f0f0f0);
   text-align: center;
-  color: #666;
+  color: var(--mat-sys-on-surface-variant, #666);
   font-size: 0.875rem;
 
   p {

@@ -1,25 +1,42 @@
-<div class="app-container">
-  <nav class="navbar">
-    <div class="nav-brand">
-      <a routerLink="/">{{ title }}</a>
-    </div>
-    <div class="nav-links">
-      @for (portal of portals(); track portal.name) {
-        <a [routerLink]="'/' + (portal.subPath || portal.name) + '/links'" routerLinkActive="active">
-          {{ portal.title }}
-        </a>
-      }
-      @if (portals().length === 0) {
-        <a routerLink="/main/links" routerLinkActive="active">Links</a>
-      }
-    </div>
+<mat-toolbar color="primary" class="toolbar">
+  <a routerLink="/" class="toolbar__brand">{{ title }}</a>
+  <span class="toolbar__spacer"></span>
+  <nav mat-tab-nav-bar [tabPanel]="tabPanel" mat-stretch-tabs="false" class="toolbar__nav">
+    @for (portal of portals(); track portal.name) {
+      <a mat-tab-link
+         [routerLink]="'/' + (portal.subPath || portal.name) + '/links'"
+         routerLinkActive
+         #rla="routerLinkActive"
+         [active]="rla.isActive">
+        {{ portal.title }}
+      </a>
+    }
+    @if (portals().length === 0) {
+      <a mat-tab-link
+         routerLink="/main/links"
+         routerLinkActive
+         #rlaDefault="routerLinkActive"
+         [active]="rlaDefault.isActive">
+        Links
+      </a>
+    }
+    <a mat-tab-link
+       routerLink="/mcp"
+       routerLinkActive
+       #rlaMcp="routerLinkActive"
+       [active]="rlaMcp.isActive">
+      <mat-icon>smart_toy</mat-icon>
+      MCP
+    </a>
   </nav>
+</mat-toolbar>
 
+<mat-tab-nav-panel #tabPanel>
   <main class="main-content">
     <router-outlet />
   </main>
+</mat-tab-nav-panel>
 
-  <footer class="footer">
-    <p>SRE Portal - Kubernetes DNS Discovery</p>
-  </footer>
-</div>
+<footer class="footer">
+  <p>SRE Portal - Kubernetes DNS Discovery</p>
+</footer>

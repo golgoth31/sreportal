@@ -5,46 +5,47 @@
   </header>
 
   <div class="controls">
-    <div class="search-box">
-      <input
-        type="text"
-        [value]="facade.searchTerm()"
-        (input)="onSearch($event)"
-        placeholder="Search FQDNs..."
-        class="search-input"
-        aria-label="Search FQDNs"
-      />
-    </div>
+    <mat-form-field appearance="outline" class="controls__search">
+      <mat-label>Search FQDNs</mat-label>
+      <input matInput
+             [value]="facade.searchTerm()"
+             (input)="onSearch($event)"
+             placeholder="Search FQDNs..." />
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
 
-    <div class="filters">
-      <select (change)="onGroupFilter($event)" class="group-select" aria-label="Filter by group">
-        <option value="">All Groups</option>
+    <mat-form-field appearance="outline" class="controls__group">
+      <mat-label>Group</mat-label>
+      <mat-select [value]="facade.groupFilter()" (selectionChange)="onGroupFilter($event.value)">
+        <mat-option value="">All Groups</mat-option>
         @for (group of facade.groups(); track group) {
-          <option [value]="group">{{ group }}</option>
+          <mat-option [value]="group">{{ group }}</mat-option>
         }
-      </select>
+      </mat-select>
+    </mat-form-field>
 
-      @if (facade.searchTerm() || facade.groupFilter()) {
-        <app-button variant="outline" size="sm" (click)="clearFilters()">
-          Clear Filters
-        </app-button>
-      }
-    </div>
+    @if (facade.searchTerm() || facade.groupFilter()) {
+      <button mat-stroked-button (click)="clearFilters()">
+        <mat-icon>clear</mat-icon>
+        Clear Filters
+      </button>
+    }
 
-    <div class="stats">
-      <span>{{ facade.filteredCount() }} of {{ facade.totalCount() }} FQDNs</span>
-    </div>
+    <span class="controls__stats">
+      {{ facade.filteredCount() }} of {{ facade.totalCount() }} FQDNs
+    </span>
   </div>
 
   @if (facade.loading()) {
     <div class="loading" aria-live="polite">
-      <div class="spinner"></div>
+      <mat-spinner diameter="40"></mat-spinner>
       <p>Loading FQDNs...</p>
     </div>
   }
 
   @if (facade.error()) {
     <div class="error" role="alert">
+      <mat-icon>error</mat-icon>
       <p>{{ facade.error() }}</p>
     </div>
   }
@@ -57,11 +58,12 @@
 
       @if (facade.filteredCount() === 0) {
         <div class="empty-state">
+          <mat-icon class="empty-state__icon">search_off</mat-icon>
           <p>No FQDNs found</p>
           @if (facade.searchTerm() || facade.groupFilter()) {
-            <app-button variant="outline" size="sm" (click)="clearFilters()">
+            <button mat-stroked-button (click)="clearFilters()">
               Clear Filters
-            </app-button>
+            </button>
           }
         </div>
       }

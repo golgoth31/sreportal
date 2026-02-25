@@ -1,13 +1,23 @@
-import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
-import { BadgeComponent } from '../../../../shared/ui/badge/badge.component';
-import { ButtonComponent } from '../../../../shared/ui/button/button.component';
-import type { BadgeVariant } from '../../../../shared/ui/badge/badge.component';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatCardModule } from '@angular/material/card';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import type { FqdnGroup } from '../../../../application/dns.facade';
 
 @Component({
   selector: 'app-fqdn-group',
   standalone: true,
-  imports: [BadgeComponent, ButtonComponent],
+  imports: [
+    MatExpansionModule,
+    MatChipsModule,
+    MatButtonModule,
+    MatIconModule,
+    MatCardModule,
+    MatTooltipModule,
+  ],
   templateUrl: './fqdn-group.component.html',
   styleUrl: './fqdn-group.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -15,24 +25,13 @@ import type { FqdnGroup } from '../../../../application/dns.facade';
 export class FqdnGroupComponent {
   group = input.required<FqdnGroup>();
 
-  private readonly _isOpen = signal(true);
-  readonly isOpen = this._isOpen.asReadonly();
-
-  readonly sourceBadgeVariant = computed((): BadgeVariant =>
-    this.group().source === 'manual' ? 'success' : 'external'
+  readonly sourceLabel = computed(() =>
+    this.group().source === 'manual' ? 'Manual' : 'External DNS'
   );
 
   readonly sourceIcon = computed(() =>
-    this.group().source === 'external-dns' ? 'E' : 'M'
+    this.group().source === 'manual' ? 'edit' : 'dns'
   );
-
-  readonly sourceLabelVariant = computed((): BadgeVariant =>
-    this.group().source === 'manual' ? 'success' : 'external'
-  );
-
-  toggle(): void {
-    this._isOpen.update(open => !open);
-  }
 
   copyToClipboard(text: string): void {
     navigator.clipboard.writeText(text);

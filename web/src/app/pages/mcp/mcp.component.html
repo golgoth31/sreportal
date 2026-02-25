@@ -1,0 +1,107 @@
+<div class="mcp-page">
+  <div class="mcp-page__container">
+    <h1 class="mcp-page__title">Connect with Claude via MCP</h1>
+    <p class="mcp-page__intro">
+      This application exposes a <strong>Model Context Protocol (MCP)</strong> server
+      that lets Claude query your DNS discovery data directly.
+    </p>
+
+    <!-- Available tools -->
+    <section class="mcp-page__section">
+      <h2 class="mcp-page__section-title">Available tools</h2>
+
+      <table mat-table [dataSource]="tools" class="tools-table">
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef>Tool</th>
+          <td mat-cell *matCellDef="let tool">
+            <code class="code-inline">{{ tool.name }}</code>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="description">
+          <th mat-header-cell *matHeaderCellDef>Description</th>
+          <td mat-cell *matCellDef="let tool">
+            {{ tool.description }}
+            @if (tool.filters.length > 0) {
+              <span class="tool-filters">
+                @for (filter of tool.filters; track filter) {
+                  <mat-chip>{{ filter }}</mat-chip>
+                }
+              </span>
+            }
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+    </section>
+
+    <!-- Claude Desktop -->
+    <section class="mcp-page__section">
+      <h2 class="mcp-page__section-title">Claude Desktop</h2>
+      <p class="mcp-page__text">
+        Add this to your <code class="code-inline">claude_desktop_config.json</code> :
+      </p>
+      <mat-card appearance="outlined" class="code-card">
+        <mat-card-content>
+          <button mat-icon-button
+                  class="code-card__copy"
+                  (click)="copyToClipboard(claudeDesktopConfig(), 'desktop')"
+                  [attr.aria-label]="copiedStates()['desktop'] ? 'Copied' : 'Copy to clipboard'">
+            <mat-icon>{{ copiedStates()['desktop'] ? 'check' : 'content_copy' }}</mat-icon>
+          </button>
+          <pre><code>{{ claudeDesktopConfig() }}</code></pre>
+        </mat-card-content>
+      </mat-card>
+    </section>
+
+    <!-- Claude Code -->
+    <section class="mcp-page__section">
+      <h2 class="mcp-page__section-title">Claude Code</h2>
+      <p class="mcp-page__text">Run from your terminal:</p>
+      <mat-card appearance="outlined" class="code-card">
+        <mat-card-content>
+          <button mat-icon-button
+                  class="code-card__copy"
+                  (click)="copyToClipboard(claudeCodeCommand(), 'code')"
+                  [attr.aria-label]="copiedStates()['code'] ? 'Copied' : 'Copy to clipboard'">
+            <mat-icon>{{ copiedStates()['code'] ? 'check' : 'content_copy' }}</mat-icon>
+          </button>
+          <pre><code>{{ claudeCodeCommand() }}</code></pre>
+        </mat-card-content>
+      </mat-card>
+    </section>
+
+    <!-- Cursor -->
+    <section class="mcp-page__section">
+      <h2 class="mcp-page__section-title">Cursor</h2>
+      <p class="mcp-page__text">
+        In <strong>Settings &gt; MCP Servers</strong>, add a new server:
+      </p>
+      <ul class="mcp-page__list">
+        <li><strong>Type:</strong> streamable-http</li>
+        <li><strong>URL:</strong> <code class="code-inline">{{ mcpEndpoint }}</code></li>
+      </ul>
+    </section>
+
+    <!-- Try it -->
+    <section class="mcp-page__section">
+      <h2 class="mcp-page__section-title">Try it</h2>
+      <p class="mcp-page__text">Once connected, ask Claude something like:</p>
+      <ul class="mcp-page__list mcp-page__list--examples">
+        <li><em>"List all available portals"</em></li>
+        <li><em>"Search for FQDNs containing api"</em></li>
+        <li><em>"Get details for api.example.com"</em></li>
+      </ul>
+    </section>
+
+    <mat-divider></mat-divider>
+
+    <!-- Footer -->
+    <footer class="mcp-page__footer">
+      <span class="mcp-page__footer-label">MCP endpoint:</span>
+      <code class="code-inline">{{ mcpEndpoint }}</code>
+    </footer>
+  </div>
+</div>
