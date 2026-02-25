@@ -920,8 +920,52 @@ var _ = Describe("MCP Server", func() {
 	})
 
 	Describe("DNSRecord integration", func() {
-		Context("search_fqdns with DNSRecords", func() {
-			It("should include FQDNs from DNSRecord endpoints", func() {
+		Context("search_fqdns reads only from DNS status", func() {
+			It("should only return FQDNs present in DNS.Status.Groups", func() {
+				dns := &sreportalv1alpha1.DNS{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-dns",
+						Namespace: "default",
+					},
+					Spec: sreportalv1alpha1.DNSSpec{
+						PortalRef: "main",
+					},
+					Status: sreportalv1alpha1.DNSStatus{
+						Groups: []sreportalv1alpha1.FQDNGroupStatus{
+							{
+								Name:   "web",
+								Source: "external-dns",
+								FQDNs: []sreportalv1alpha1.FQDNStatus{
+									{
+										FQDN:       "svc.example.com",
+										RecordType: "A",
+										Targets:    []string{"10.0.0.5"},
+									},
+								},
+							},
+						},
+					},
+				}
+
+				k8sClient := fake.NewClientBuilder().
+					WithScheme(scheme).
+					WithObjects(dns).
+					WithStatusSubresource(dns).
+					Build()
+
+				server := New(k8sClient, groupMapping)
+				request := newCallToolRequest("search_fqdns", map[string]any{})
+
+				result, err := server.handleSearchFQDNs(ctx, request)
+
+				Expect(err).NotTo(HaveOccurred())
+				text := extractTextContent(result)
+				Expect(text).To(ContainSubstring("Found 1 FQDN(s)"))
+				Expect(text).To(ContainSubstring("svc.example.com"))
+			})
+
+			It("should ignore DNSRecords not yet aggregated into DNS status", func() {
+				// Only a DNSRecord exists, no DNS resource with aggregated status yet
 				dnsRecord := &sreportalv1alpha1.DNSRecord{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-dnsrecord",
@@ -934,7 +978,7 @@ var _ = Describe("MCP Server", func() {
 					Status: sreportalv1alpha1.DNSRecordStatus{
 						Endpoints: []sreportalv1alpha1.EndpointStatus{
 							{
-								DNSName:    "svc.example.com",
+								DNSName:    "not-yet-aggregated.example.com",
 								RecordType: "A",
 								Targets:    []string{"10.0.0.5"},
 							},
@@ -955,107 +999,7 @@ var _ = Describe("MCP Server", func() {
 
 				Expect(err).NotTo(HaveOccurred())
 				text := extractTextContent(result)
-				Expect(text).To(ContainSubstring("svc.example.com"))
-			})
-
-			It("should not duplicate FQDNs found in both DNS and DNSRecord", func() {
-				dns := &sreportalv1alpha1.DNS{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-dns",
-						Namespace: "default",
-					},
-					Spec: sreportalv1alpha1.DNSSpec{
-						PortalRef: "main",
-					},
-					Status: sreportalv1alpha1.DNSStatus{
-						Groups: []sreportalv1alpha1.FQDNGroupStatus{
-							{
-								Name:   "web",
-								Source: "external-dns",
-								FQDNs: []sreportalv1alpha1.FQDNStatus{
-									{
-										FQDN:       "shared.example.com",
-										RecordType: "A",
-										Targets:    []string{"192.168.1.1"},
-									},
-								},
-							},
-						},
-					},
-				}
-
-				dnsRecord := &sreportalv1alpha1.DNSRecord{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-dnsrecord",
-						Namespace: "default",
-					},
-					Spec: sreportalv1alpha1.DNSRecordSpec{
-						SourceType: "service",
-						PortalRef:  "main",
-					},
-					Status: sreportalv1alpha1.DNSRecordStatus{
-						Endpoints: []sreportalv1alpha1.EndpointStatus{
-							{
-								DNSName:    "shared.example.com",
-								RecordType: "A",
-								Targets:    []string{"192.168.1.1"},
-							},
-						},
-					},
-				}
-
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithObjects(dns, dnsRecord).
-					WithStatusSubresource(dns, dnsRecord).
-					Build()
-
-				server := New(k8sClient, groupMapping)
-				request := newCallToolRequest("search_fqdns", map[string]any{})
-
-				result, err := server.handleSearchFQDNs(ctx, request)
-
-				Expect(err).NotTo(HaveOccurred())
-				text := extractTextContent(result)
-				// Should only count it once
-				Expect(text).To(ContainSubstring("Found 1 FQDN(s)"))
-			})
-
-			It("should return error when listing DNSRecords fails", func() {
-				dns := &sreportalv1alpha1.DNS{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-dns",
-						Namespace: "default",
-					},
-					Spec: sreportalv1alpha1.DNSSpec{
-						PortalRef: "main",
-					},
-				}
-
-				expectedErr := errors.New("dnsrecord list error")
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithObjects(dns).
-					WithStatusSubresource(dns).
-					WithInterceptorFuncs(interceptor.Funcs{
-						List: func(ctx context.Context, c client.WithWatch, list client.ObjectList, opts ...client.ListOption) error {
-							if _, ok := list.(*sreportalv1alpha1.DNSRecordList); ok {
-								return expectedErr
-							}
-							return c.List(ctx, list, opts...)
-						},
-					}).
-					Build()
-
-				server := New(k8sClient, groupMapping)
-				request := newCallToolRequest("search_fqdns", map[string]any{})
-
-				result, err := server.handleSearchFQDNs(ctx, request)
-
-				Expect(err).NotTo(HaveOccurred())
-				Expect(isErrorResult(result)).To(BeTrue())
-				text := extractTextContent(result)
-				Expect(text).To(ContainSubstring("failed to list DNSRecord resources"))
+				Expect(text).To(Equal("No FQDNs found matching the search criteria."))
 			})
 		})
 

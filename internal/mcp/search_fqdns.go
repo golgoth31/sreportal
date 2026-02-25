@@ -26,7 +26,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
-	"github.com/golgoth31/sreportal/internal/adapter"
 )
 
 // FQDNResult represents a single FQDN in the search results
@@ -105,61 +104,6 @@ func (s *Server) handleSearchFQDNs(ctx context.Context, request mcp.CallToolRequ
 					Targets:     fqdnStatus.Targets,
 					Portal:      dns.Spec.PortalRef,
 					Namespace:   dns.Namespace,
-				})
-			}
-		}
-	}
-
-	// Also query DNSRecords directly
-	var dnsRecordList sreportalv1alpha1.DNSRecordList
-	recordListOpts := []client.ListOption{}
-
-	if namespace != "" {
-		recordListOpts = append(recordListOpts, client.InNamespace(namespace))
-	}
-	if portal != "" {
-		recordListOpts = append(recordListOpts, client.MatchingFields{"spec.portalRef": portal})
-	}
-
-	if err := s.client.List(ctx, &dnsRecordList, recordListOpts...); err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("failed to list DNSRecord resources: %v", err)), nil
-	}
-
-	// Collect endpoints from DNSRecords
-	var allEndpoints []sreportalv1alpha1.EndpointStatus
-	for _, rec := range dnsRecordList.Items {
-		allEndpoints = append(allEndpoints, rec.Status.Endpoints...)
-	}
-
-	// Convert to groups and add FQDNs not already present
-	if len(allEndpoints) > 0 {
-		groups := adapter.EndpointStatusToGroups(allEndpoints, s.groupMapping)
-		for _, grp := range groups {
-			if source != "" && grp.Source != source {
-				continue
-			}
-			if group != "" && !strings.EqualFold(grp.Name, group) {
-				continue
-			}
-
-			for _, fqdnStatus := range grp.FQDNs {
-				if seen[fqdnStatus.FQDN] {
-					continue
-				}
-				if query != "" && !strings.Contains(
-					strings.ToLower(fqdnStatus.FQDN),
-					strings.ToLower(query),
-				) {
-					continue
-				}
-
-				seen[fqdnStatus.FQDN] = true
-				results = append(results, FQDNResult{
-					Name:       fqdnStatus.FQDN,
-					Source:     grp.Source,
-					Group:      grp.Name,
-					RecordType: fqdnStatus.RecordType,
-					Targets:    fqdnStatus.Targets,
 				})
 			}
 		}

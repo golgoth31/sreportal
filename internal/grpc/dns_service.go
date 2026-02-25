@@ -26,8 +26,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
-	"github.com/golgoth31/sreportal/internal/adapter"
-	"github.com/golgoth31/sreportal/internal/config"
 	dnsv1 "github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1"
 	"github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1/sreportalv1connect"
 )
@@ -35,13 +33,12 @@ import (
 // DNSService implements the DNSServiceHandler interface
 type DNSService struct {
 	sreportalv1connect.UnimplementedDNSServiceHandler
-	client       client.Client
-	groupMapping *config.GroupMappingConfig
+	client client.Client
 }
 
 // NewDNSService creates a new DNSService
-func NewDNSService(c client.Client, mapping *config.GroupMappingConfig) *DNSService {
-	return &DNSService{client: c, groupMapping: mapping}
+func NewDNSService(c client.Client) *DNSService {
+	return &DNSService{client: c}
 }
 
 // ListFQDNs returns all aggregated FQDNs from DNS resources
@@ -100,60 +97,6 @@ func (s *DNSService) ListFQDNs(
 						LastSeen:             timestamppb.New(fqdnStatus.LastSeen.Time),
 						DnsResourceName:      dns.Name,
 						DnsResourceNamespace: dns.Namespace,
-					}
-					seen[fqdnStatus.FQDN] = f
-				}
-			}
-		}
-	}
-
-	// Also query DNSRecords directly to fill gaps
-	var dnsRecordList sreportalv1alpha1.DNSRecordList
-	recordListOpts := []client.ListOption{}
-
-	if req.Msg.Namespace != "" {
-		recordListOpts = append(recordListOpts, client.InNamespace(req.Msg.Namespace))
-	}
-	if req.Msg.Portal != "" {
-		recordListOpts = append(recordListOpts, client.MatchingFields{"spec.portalRef": req.Msg.Portal})
-	}
-
-	if err := s.client.List(ctx, &dnsRecordList, recordListOpts...); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	// Collect all endpoints from DNSRecords
-	var allEndpoints []sreportalv1alpha1.EndpointStatus
-	for _, rec := range dnsRecordList.Items {
-		allEndpoints = append(allEndpoints, rec.Status.Endpoints...)
-	}
-
-	// Convert to groups and add FQDNs not already present from DNS resources
-	if len(allEndpoints) > 0 {
-		groups := adapter.EndpointStatusToGroups(allEndpoints, s.groupMapping)
-		for _, group := range groups {
-			if req.Msg.Source != "" && group.Source != req.Msg.Source {
-				continue
-			}
-			for _, fqdnStatus := range group.FQDNs {
-				if req.Msg.Search != "" && !strings.Contains(
-					strings.ToLower(fqdnStatus.FQDN),
-					strings.ToLower(req.Msg.Search),
-				) {
-					continue
-				}
-
-				if existing, ok := seen[fqdnStatus.FQDN]; ok {
-					// FQDN already seen, append this group
-					existing.Groups = append(existing.Groups, group.Name)
-				} else {
-					f := &dnsv1.FQDN{
-						Name:       fqdnStatus.FQDN,
-						Source:     group.Source,
-						Groups:     []string{group.Name},
-						RecordType: fqdnStatus.RecordType,
-						Targets:    fqdnStatus.Targets,
-						LastSeen:   timestamppb.New(fqdnStatus.LastSeen.Time),
 					}
 					seen[fqdnStatus.FQDN] = f
 				}

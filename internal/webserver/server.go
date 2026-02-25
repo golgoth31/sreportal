@@ -80,7 +80,7 @@ func New(cfg Config, c client.Client, operatorConfig *config.OperatorConfig) *Se
 // setupRoutes configures all routes
 func (s *Server) setupRoutes() {
 	// Mount Connect handlers for gRPC/Connect protocol
-	dnsService := grpc.NewDNSService(s.client, &s.operatorConfig.GroupMapping)
+	dnsService := grpc.NewDNSService(s.client)
 	dnsPath, dnsHandler := sreportalv1connect.NewDNSServiceHandler(dnsService)
 	s.echo.Any(dnsPath+"*", echo.WrapHandler(dnsHandler))
 
