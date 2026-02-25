@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/golgoth31/sreportal/compare/v1.2.0...v1.3.0) (2026-02-25)
+
+
+### Features
+
+* show original resource for dns from external-dns source ([f9bdf62](https://github.com/golgoth31/sreportal/commit/f9bdf626579cac84c9a7947c6fcac26571c3cc38))
+
 ## [1.2.0](https://github.com/golgoth31/sreportal/compare/v1.1.0...v1.2.0) (2026-02-25)
 
 
