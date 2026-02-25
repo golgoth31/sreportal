@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/golgoth31/sreportal/compare/v1.1.0...v1.2.0) (2026-02-25)
+
+
+### Features
+
+* update web ui ([20e02fe](https://github.com/golgoth31/sreportal/commit/20e02fe88f5f7d2989d4e0fc8efa78671a21a5ea))
+
 ## [1.1.0](https://github.com/golgoth31/sreportal/compare/v1.0.4...v1.1.0) (2026-02-25)
 
 
