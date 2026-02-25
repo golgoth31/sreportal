@@ -4,9 +4,10 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
-import { MatTabsModule } from '@angular/material/tabs';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { PortalServiceClient } from './services/portal.service';
+import { ThemeService } from './services/theme.service';
 import type { Portal } from '../gen/sreportal/v1/portal_pb';
 
 @Component({
@@ -17,8 +18,8 @@ import type { Portal } from '../gen/sreportal/v1/portal_pb';
     RouterLinkActive,
     MatToolbarModule,
     MatButtonModule,
-    MatTabsModule,
     MatIconModule,
+    MatTooltipModule,
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
@@ -26,6 +27,7 @@ import type { Portal } from '../gen/sreportal/v1/portal_pb';
 })
 export class AppComponent {
   readonly title = 'SRE Portal';
+  readonly theme = inject(ThemeService);
 
   readonly portals = toSignal(
     inject(PortalServiceClient)

@@ -1,41 +1,32 @@
-<mat-toolbar color="primary" class="toolbar">
+<mat-toolbar class="toolbar">
   <a routerLink="/" class="toolbar__brand">{{ title }}</a>
   <span class="toolbar__spacer"></span>
-  <nav mat-tab-nav-bar [tabPanel]="tabPanel" mat-stretch-tabs="false" class="toolbar__nav">
+  <nav class="toolbar__nav">
     @for (portal of portals(); track portal.name) {
-      <a mat-tab-link
-         [routerLink]="'/' + (portal.subPath || portal.name) + '/links'"
-         routerLinkActive
-         #rla="routerLinkActive"
-         [active]="rla.isActive">
-        {{ portal.title }}
-      </a>
+    <a mat-button [routerLink]="'/' + (portal.subPath || portal.name) + '/links'"
+      routerLinkActive="toolbar__link--active" class="toolbar__link">
+      {{ portal.title }}
+    </a>
     }
     @if (portals().length === 0) {
-      <a mat-tab-link
-         routerLink="/main/links"
-         routerLinkActive
-         #rlaDefault="routerLinkActive"
-         [active]="rlaDefault.isActive">
-        Links
-      </a>
+    <a mat-button routerLink="/main/links" routerLinkActive="toolbar__link--active" class="toolbar__link">
+      Links
+    </a>
     }
-    <a mat-tab-link
-       routerLink="/mcp"
-       routerLinkActive
-       #rlaMcp="routerLinkActive"
-       [active]="rlaMcp.isActive">
+    <a mat-button routerLink="/mcp" routerLinkActive="toolbar__link--active" class="toolbar__link">
       <mat-icon>smart_toy</mat-icon>
       MCP
     </a>
   </nav>
+  <button mat-icon-button class="toolbar__link" (click)="theme.toggle()" [matTooltip]="'Theme: ' + theme.mode()"
+    aria-label="Toggle theme">
+    <mat-icon>{{ theme.icon() }}</mat-icon>
+  </button>
 </mat-toolbar>
 
-<mat-tab-nav-panel #tabPanel>
-  <main class="main-content">
-    <router-outlet />
-  </main>
-</mat-tab-nav-panel>
+<main class="main-content">
+  <router-outlet />
+</main>
 
 <footer class="footer">
   <p>SRE Portal - Kubernetes DNS Discovery</p>
