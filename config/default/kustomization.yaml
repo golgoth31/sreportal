@@ -56,7 +56,7 @@ patches:
     target:
       kind: Deployment
 
-  # [WEB+MCP] Add web server (port 8090) and MCP server (port 8091) port definitions.
+  # [WEB+MCP] Add web server port (8090) and enable MCP server on /mcp.
   - path: manager_web_mcp_patch.yaml
     target:
       kind: Deployment

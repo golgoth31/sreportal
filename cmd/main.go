@@ -114,7 +114,7 @@ func main() {
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 	flag.BoolVar(&enableMCP, "enable-mcp", false,
 		"If set, the MCP (Model Context Protocol) server will be enabled for AI assistant integration.")
-	flag.StringVar(&mcpTransport, "mcp-transport", "stdio",
+	flag.StringVar(&mcpTransport, "mcp-transport", "streamable-http",
 		"The transport to use for the MCP server: 'stdio' or 'streamable-http'.")
 	opts := zap.Options{
 		Development: true,

@@ -9,14 +9,10 @@ metadata:
   namespace: system
 spec:
   ports:
-    - name: web
+    - name: http
       port: 8090
       protocol: TCP
       targetPort: 8090
-    - name: mcp
-      port: 8091
-      protocol: TCP
-      targetPort: 8091
   selector:
     control-plane: controller-manager
     app.kubernetes.io/name: sreportal

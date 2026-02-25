@@ -50,10 +50,7 @@ spec:
           name: webhook-server
           protocol: TCP
         - containerPort: 8090
-          name: web
-          protocol: TCP
-        - containerPort: 8091
-          name: mcp
+          name: http
           protocol: TCP
         readinessProbe:
           httpGet:

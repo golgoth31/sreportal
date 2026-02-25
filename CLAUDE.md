@@ -35,7 +35,8 @@ SRE Portal is a Kubernetes operator with a web dashboard for managing service st
 - **Web UI**: Angular 19, shadcn components, Signals
 - **External DNS**: sigs.k8s.io/external-dns v0.20
 - **Testing**: Ginkgo v2 + Gomega with envtest
-- **Deployment**: Single container (controller + gRPC + web UI)
+- **MCP**: Model Context Protocol server (mark3labs/mcp-go), served on `/mcp` via the web server
+- **Deployment**: Single container (controller + gRPC + web UI + MCP)
 
 ## Common Commands
 
@@ -101,11 +102,16 @@ internal/
     dns_service.go                   # DNSService Connect implementation
     portal_service.go                # PortalService Connect implementation
     gen/                             # Auto-generated (buf) - DO NOT EDIT
+  mcp/
+    server.go                        # MCP server (mounted on /mcp via web server)
+    search_fqdns.go                  # search_fqdns tool handler
+    list_portals.go                  # list_portals tool handler
+    get_fqdn_details.go              # get_fqdn_details tool handler
   source/                            # external-dns source factory
   webhook/v1alpha1/
     dns_webhook.go                   # DNS validation (portalRef exists)
   webserver/
-    server.go                        # Echo v5 server (static files + Connect handlers)
+    server.go                        # Echo v5 server (static files + Connect handlers + MCP)
 proto/sreportal/v1/
   dns.proto                          # DNSService (ListFQDNs, StreamFQDNs)
   portal.proto                       # PortalService (ListPortals)
@@ -302,7 +308,7 @@ Registers:
 2. **SourceReconciler** - Periodic external-dns source polling (manager.Runnable)
 3. **PortalReconciler** - Simple status updates + EnsureMainPortalRunnable
 4. **DNSWebhook** - Validates `spec.portalRef` exists
-5. **Web server** (goroutine) - Echo v5 with h2c serving Connect handlers + Angular SPA
+5. **Web server** (goroutine) - Echo v5 with h2c serving Connect handlers + Angular SPA + MCP at `/mcp`
 
 K8s scheme registers: core types, external-dns v1alpha1, sreportal v1alpha1.
 
@@ -367,5 +373,6 @@ var _ = Describe("Controller", func() {
 - `sigs.k8s.io/external-dns` - DNSEndpoint CRD and source interfaces
 - `connectrpc.com/connect` - gRPC-compatible Connect protocol
 - `github.com/labstack/echo/v5` - HTTP server with h2c support
+- `github.com/mark3labs/mcp-go` - Model Context Protocol server (served on `/mcp`)
 - `sigs.k8s.io/controller-runtime` - Kubernetes operator framework
 - `golang.org/x/net` - HTTP/2 cleartext support
