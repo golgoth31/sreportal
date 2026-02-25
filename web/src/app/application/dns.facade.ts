@@ -43,9 +43,16 @@ export class DnsFacade {
 
   readonly groupedByGroup = computed((): FqdnGroup[] => {
     const grouped = new Map<string, { source: string; fqdns: FQDN[] }>();
+    const activeGroupFilter = this._groupFilter();
 
     for (const fqdn of this.filteredFqdns()) {
-      const groupNames = fqdn.groups.length > 0 ? fqdn.groups : ['Ungrouped'];
+      const allGroups = fqdn.groups.length > 0 ? fqdn.groups : ['Ungrouped'];
+      // When a filter is active, only place the FQDN under the matching group —
+      // not under its other groups — to avoid showing it in multiple sections.
+      const groupNames = activeGroupFilter
+        ? allGroups.filter(name => name === activeGroupFilter)
+        : allGroups;
+
       for (const name of groupNames) {
         const existing = grouped.get(name);
         if (existing) {

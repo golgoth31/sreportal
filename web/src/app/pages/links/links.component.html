@@ -8,7 +8,7 @@
     <mat-form-field appearance="outline" class="controls__search">
       <mat-label>Search FQDNs</mat-label>
       <input matInput
-             [value]="facade.searchTerm()"
+             [value]="searchTerm()"
              (input)="onSearch($event)"
              placeholder="Search FQDNs..." />
       <mat-icon matSuffix>search</mat-icon>
@@ -16,15 +16,15 @@
 
     <mat-form-field appearance="outline" class="controls__group">
       <mat-label>Group</mat-label>
-      <mat-select [value]="facade.groupFilter()" (selectionChange)="onGroupFilter($event.value)">
+      <mat-select [value]="groupFilter()" (selectionChange)="onGroupFilter($event.value)">
         <mat-option value="">All Groups</mat-option>
-        @for (group of facade.groups(); track group) {
+        @for (group of groups(); track group) {
           <mat-option [value]="group">{{ group }}</mat-option>
         }
       </mat-select>
     </mat-form-field>
 
-    @if (facade.searchTerm() || facade.groupFilter()) {
+    @if (hasActiveFilters()) {
       <button mat-stroked-button (click)="clearFilters()">
         <mat-icon>clear</mat-icon>
         Clear Filters
@@ -32,35 +32,35 @@
     }
 
     <span class="controls__stats">
-      {{ facade.filteredCount() }} of {{ facade.totalCount() }} FQDNs
+      {{ filteredCount() }} of {{ totalCount() }} FQDNs
     </span>
   </div>
 
-  @if (facade.loading()) {
+  @if (loading()) {
     <div class="loading" aria-live="polite">
       <mat-spinner diameter="40"></mat-spinner>
       <p>Loading FQDNs...</p>
     </div>
   }
 
-  @if (facade.error()) {
+  @if (error()) {
     <div class="error" role="alert">
       <mat-icon>error</mat-icon>
-      <p>{{ facade.error() }}</p>
+      <p>{{ error() }}</p>
     </div>
   }
 
-  @if (!facade.loading() && !facade.error()) {
+  @if (!loading() && !error()) {
     <div class="fqdn-list">
-      @for (group of facade.groupedByGroup(); track group.name) {
+      @for (group of groupedByGroup(); track group.name) {
         <app-fqdn-group [group]="group" />
       }
 
-      @if (facade.filteredCount() === 0) {
+      @if (filteredCount() === 0) {
         <div class="empty-state">
           <mat-icon class="empty-state__icon">search_off</mat-icon>
           <p>No FQDNs found</p>
-          @if (facade.searchTerm() || facade.groupFilter()) {
+          @if (hasActiveFilters()) {
             <button mat-stroked-button (click)="clearFilters()">
               Clear Filters
             </button>

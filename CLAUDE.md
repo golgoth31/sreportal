@@ -32,7 +32,7 @@ SRE Portal is a Kubernetes operator with a web dashboard for managing service st
 - **Operator**: Go 1.25, Kubebuilder, controller-runtime v0.23
 - **API**: Connect protocol (connectrpc.com/connect v1.19), Buf for codegen
 - **Web server**: Echo v5 with h2c (HTTP/2 without TLS)
-- **Web UI**: Angular 19, shadcn components, Signals
+- **Web UI**: Angular 21, Angular Material components, Signals
 - **External DNS**: sigs.k8s.io/external-dns v0.20
 - **Testing**: Ginkgo v2 + Gomega with envtest
 - **MCP**: Model Context Protocol server (mark3labs/mcp-go), served on `/mcp` via the web server

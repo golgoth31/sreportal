@@ -196,6 +196,22 @@ describe('DnsFacade', () => {
       const names = facade.groupedByGroup().map(g => g.name);
       expect(names).toEqual(['Alpha', 'Mango', 'Zebra']);
     }));
+
+    it('shows a multi-group fqdn only under the filtered group, not under its other groups', fakeAsync(() => {
+      dnsService.listFQDNs.and.returnValue(of([
+        makeFqdn({ name: 'api.com', groups: ['frontend', 'backend'] }),
+        makeFqdn({ name: 'db.com',  groups: ['backend'] }),
+      ]));
+      facade.loadFqdns('main');
+      tick();
+
+      facade.setGroupFilter('frontend');
+
+      const groups = facade.groupedByGroup();
+      expect(groups.length).toBe(1);
+      expect(groups[0]?.name).toBe('frontend');
+      expect(groups[0]?.fqdns.map(f => f.name)).toEqual(['api.com']);
+    }));
   });
 
   // groups computed

@@ -1,16 +1,31 @@
 @use '@angular/material' as mat;
 
-/* Angular Material theme */
+/* Angular Material theme — light (default) */
 html {
-  @include mat.theme((
-    color: (
-      theme-type: light,
-      primary: mat.$azure-palette,
-      tertiary: mat.$green-palette,
-    ),
-    typography: Roboto,
-    density: 0,
-  ));
+  height: 100%;
+
+  @include mat.theme((color: (theme-type: light,
+        primary: mat.$blue-palette,
+        tertiary: mat.$blue-palette,
+      ),
+      typography: Roboto,
+      density: 0,
+    ));
+
+  color-scheme: light;
+}
+
+/* Angular Material theme — dark */
+html.dark {
+  @include mat.theme((color: (theme-type: dark,
+        primary: mat.$blue-palette,
+        tertiary: mat.$blue-palette,
+      ),
+      typography: Roboto,
+      density: 0,
+    ));
+
+  color-scheme: dark;
 }
 
 /* Accessible visually-hidden utility */
@@ -27,16 +42,22 @@ html {
 }
 
 /* Global styles */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   font-family: Roboto, 'Segoe UI', sans-serif;
   font-size: 16px;
   line-height: 1.5;
+  background: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+  transition: background-color 200ms, color 200ms;
 }
 
 a {

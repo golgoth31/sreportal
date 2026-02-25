@@ -1,11 +1,11 @@
 .toolbar {
-  display: flex;
-  align-items: center;
+  background: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary);
 
   &__brand {
     font-size: 1.25rem;
     font-weight: 500;
-    color: white;
+    color: var(--mat-sys-on-primary);
     text-decoration: none;
   }
 
@@ -14,21 +14,22 @@
   }
 
   &__nav {
-    border-bottom: none;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
 
-    --mdc-tab-indicator-active-indicator-color: white;
-    --mat-tab-header-active-label-text-color: white;
-    --mat-tab-header-label-text-color: rgba(255, 255, 255, 0.7);
-    --mat-tab-header-active-hover-label-text-color: white;
-    --mat-tab-header-hover-label-text-color: rgba(255, 255, 255, 0.85);
-    --mat-tab-header-active-focus-label-text-color: white;
-    --mat-tab-header-active-ripple-color: rgba(255, 255, 255, 0.2);
+  &__link {
+    --mdc-text-button-label-text-color: var(--mat-sys-on-primary);
+    --mdc-text-button-hover-label-text-color: var(--mat-sys-on-primary);
+    --mdc-text-button-focus-label-text-color: var(--mat-sys-on-primary);
+    --mdc-text-button-pressed-label-text-color: var(--mat-sys-on-primary);
+    --mat-text-button-state-layer-color: var(--mat-sys-on-primary);
+    --mdc-icon-button-icon-color: var(--mat-sys-on-primary);
+    --mat-icon-button-state-layer-color: var(--mat-sys-on-primary);
 
-    mat-icon {
-      margin-right: 4px;
-      font-size: 18px;
-      height: 18px;
-      width: 18px;
+    &--active {
+      background: color-mix(in srgb, var(--mat-sys-on-primary) 15%, transparent);
     }
   }
 }
@@ -41,9 +42,9 @@
 
 .footer {
   padding: 1rem 2rem;
-  background: var(--mat-sys-surface-container, #f0f0f0);
+  background: var(--mat-sys-surface-container);
   text-align: center;
-  color: var(--mat-sys-on-surface-variant, #666);
+  color: var(--mat-sys-on-surface-variant);
   font-size: 0.875rem;
 
   p {

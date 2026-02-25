@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
@@ -30,6 +30,7 @@ interface McpTool {
 })
 export class McpComponent {
   private readonly baseUrl = inject(CONNECT_BASE_URL);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly mcpEndpoint = `${this.baseUrl}/mcp`;
 
@@ -53,22 +54,12 @@ export class McpComponent {
 
   readonly displayedColumns = ['name', 'description'];
 
-  readonly claudeDesktopConfig = signal('');
-  readonly claudeCodeCommand = signal('');
+  // Plain strings — derived once from mcpEndpoint, no need for signal
+  readonly claudeDesktopConfig = JSON.stringify({
+    mcpServers: { sreportal: { url: this.mcpEndpoint } },
+  }, null, 2);
 
-  constructor() {
-    const endpoint = this.mcpEndpoint;
-
-    this.claudeDesktopConfig.set(JSON.stringify({
-      mcpServers: {
-        sreportal: {
-          url: endpoint,
-        },
-      },
-    }, null, 2));
-
-    this.claudeCodeCommand.set(`claude mcp add sreportal --transport http ${endpoint}`);
-  }
+  readonly claudeCodeCommand = `claude mcp add sreportal --transport http ${this.mcpEndpoint}`;
 
   private readonly _copiedStates = signal<Record<string, boolean>>({});
   readonly copiedStates = this._copiedStates.asReadonly();
@@ -76,9 +67,10 @@ export class McpComponent {
   copyToClipboard(text: string, key: string): void {
     navigator.clipboard.writeText(text).then(() => {
       this._copiedStates.update(s => ({ ...s, [key]: true }));
-      setTimeout(() => {
+      const id = setTimeout(() => {
         this._copiedStates.update(s => ({ ...s, [key]: false }));
       }, 2000);
+      this.destroyRef.onDestroy(() => clearTimeout(id));
     });
   }
 }

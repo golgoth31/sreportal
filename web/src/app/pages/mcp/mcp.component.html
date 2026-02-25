@@ -47,11 +47,11 @@
         <mat-card-content>
           <button mat-icon-button
                   class="code-card__copy"
-                  (click)="copyToClipboard(claudeDesktopConfig(), 'desktop')"
+                  (click)="copyToClipboard(claudeDesktopConfig, 'desktop')"
                   [attr.aria-label]="copiedStates()['desktop'] ? 'Copied' : 'Copy to clipboard'">
             <mat-icon>{{ copiedStates()['desktop'] ? 'check' : 'content_copy' }}</mat-icon>
           </button>
-          <pre><code>{{ claudeDesktopConfig() }}</code></pre>
+          <pre><code>{{ claudeDesktopConfig }}</code></pre>
         </mat-card-content>
       </mat-card>
     </section>
@@ -64,11 +64,11 @@
         <mat-card-content>
           <button mat-icon-button
                   class="code-card__copy"
-                  (click)="copyToClipboard(claudeCodeCommand(), 'code')"
+                  (click)="copyToClipboard(claudeCodeCommand, 'code')"
                   [attr.aria-label]="copiedStates()['code'] ? 'Copied' : 'Copy to clipboard'">
             <mat-icon>{{ copiedStates()['code'] ? 'check' : 'content_copy' }}</mat-icon>
           </button>
-          <pre><code>{{ claudeCodeCommand() }}</code></pre>
+          <pre><code>{{ claudeCodeCommand }}</code></pre>
         </mat-card-content>
       </mat-card>
     </section>
