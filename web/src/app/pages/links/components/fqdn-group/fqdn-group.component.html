@@ -23,8 +23,9 @@
             </a>
             <button mat-icon-button
                     (click)="copyToClipboard(fqdn.name)"
-                    [matTooltip]="'Copy ' + fqdn.name">
-              <mat-icon>content_copy</mat-icon>
+                    [matTooltip]="copiedFqdn() === fqdn.name ? 'Copied!' : 'Copy ' + fqdn.name"
+                    [attr.aria-label]="copiedFqdn() === fqdn.name ? 'Copied' : 'Copy ' + fqdn.name">
+              <mat-icon>{{ copiedFqdn() === fqdn.name ? 'check' : 'content_copy' }}</mat-icon>
             </button>
           </div>
 

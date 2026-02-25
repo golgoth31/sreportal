@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -30,7 +30,20 @@ import { FqdnGroupComponent } from './components/fqdn-group/fqdn-group.component
 export class LinksComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
-  readonly facade = inject(DnsFacade);
+  private readonly facade = inject(DnsFacade);
+
+  // Expose signals from facade — template never touches the facade directly
+  readonly loading = this.facade.loading;
+  readonly error = this.facade.error;
+  readonly searchTerm = this.facade.searchTerm;
+  readonly groupFilter = this.facade.groupFilter;
+  readonly groups = this.facade.groups;
+  readonly filteredCount = this.facade.filteredCount;
+  readonly totalCount = this.facade.totalCount;
+  readonly groupedByGroup = this.facade.groupedByGroup;
+  readonly hasActiveFilters = computed(
+    () => !!this.facade.searchTerm() || !!this.facade.groupFilter(),
+  );
 
   ngOnInit(): void {
     this.route.params

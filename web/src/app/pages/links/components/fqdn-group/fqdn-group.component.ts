@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input, signal } from '@angular/core';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatButtonModule } from '@angular/material/button';
@@ -25,6 +25,10 @@ import type { FqdnGroup } from '../../../../application/dns.facade';
 export class FqdnGroupComponent {
   group = input.required<FqdnGroup>();
 
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly _copiedFqdn = signal<string | null>(null);
+  readonly copiedFqdn = this._copiedFqdn.asReadonly();
+
   readonly sourceLabel = computed(() =>
     this.group().source === 'manual' ? 'Manual' : 'External DNS'
   );
@@ -34,6 +38,10 @@ export class FqdnGroupComponent {
   );
 
   copyToClipboard(text: string): void {
-    navigator.clipboard.writeText(text);
+    navigator.clipboard.writeText(text).then(() => {
+      this._copiedFqdn.set(text);
+      const id = setTimeout(() => this._copiedFqdn.set(null), 2000);
+      this.destroyRef.onDestroy(() => clearTimeout(id));
+    });
   }
 }

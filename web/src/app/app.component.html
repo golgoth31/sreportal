@@ -3,23 +3,22 @@
   <span class="toolbar__spacer"></span>
   <nav class="toolbar__nav">
     @for (portal of portals(); track portal.name) {
-    <a mat-button [routerLink]="'/' + (portal.subPath || portal.name) + '/links'"
+    <a matButton="filled" [routerLink]="'/' + (portal.subPath || portal.name) + '/links'"
       routerLinkActive="toolbar__link--active" class="toolbar__link">
       {{ portal.title }}
     </a>
     }
     @if (portals().length === 0) {
-    <a mat-button routerLink="/main/links" routerLinkActive="toolbar__link--active" class="toolbar__link">
+    <a matButton="filled" routerLink="/main/links" routerLinkActive="toolbar__link--active" class="toolbar__link">
       Links
     </a>
     }
-    <a mat-button routerLink="/mcp" routerLinkActive="toolbar__link--active" class="toolbar__link">
+    <a matButton="filled" routerLink="/mcp" routerLinkActive="toolbar__link--active" class="toolbar__link">
       <mat-icon>smart_toy</mat-icon>
       MCP
     </a>
   </nav>
-  <button mat-icon-button class="toolbar__link" (click)="theme.toggle()" [matTooltip]="'Theme: ' + theme.mode()"
-    aria-label="Toggle theme">
+  <button matIconButton (click)="theme.toggle()" [matTooltip]="'Theme: ' + theme.mode()" aria-label="Toggle theme">
     <mat-icon>{{ theme.icon() }}</mat-icon>
   </button>
 </mat-toolbar>
