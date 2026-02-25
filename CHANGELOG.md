@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/golgoth31/sreportal/compare/v1.0.0...v1.0.1) (2026-02-25)
+
+
+### Bug Fixes
+
+* **mcp:** serve MCP via web port to simplify deployment ([8d1a58b](https://github.com/golgoth31/sreportal/commit/8d1a58b3278f766e158a9aa1c8dd9b37acd27367))
+
 ## [1.0.0](https://github.com/golgoth31/sreportal/compare/v0.9.2...v1.0.0) (2026-02-25)
 
 
