@@ -272,6 +272,14 @@ func (r *SourceReconciler) reconcile(ctx context.Context) error {
 		}
 	}
 
+	// Ensure a DNS resource exists for each local portal so that the
+	// DNSController can aggregate DNSRecord endpoints into DNS.Status.Groups.
+	for _, portal := range localPortals {
+		if err := r.ensureDNSResource(ctx, portal); err != nil {
+			log.Error(err, "failed to ensure DNS resource", "portal", portal.Name)
+		}
+	}
+
 	// Create/update DNSRecords for each (portal, sourceType) pair
 	for key, endpoints := range endpointsByPortalSource {
 		portal := portalsByName[key.portalName]
@@ -309,6 +317,47 @@ func (r *SourceReconciler) rebuildSources(ctx context.Context) error {
 	r.mu.Unlock()
 
 	log.Info("sources rebuilt", "count", len(typedSources))
+	return nil
+}
+
+// ensureDNSResource creates a DNS resource for the given portal if one does not
+// already exist. This is required so the DNSController can aggregate DNSRecord
+// endpoints into DNS.Status.Groups (which is what ListFQDNs reads).
+func (r *SourceReconciler) ensureDNSResource(
+	ctx context.Context,
+	portal *sreportalv1alpha1.Portal,
+) error {
+	log := logf.FromContext(ctx).WithName("source")
+
+	name := portal.Name
+	key := client.ObjectKey{Namespace: portal.Namespace, Name: name}
+
+	var existing sreportalv1alpha1.DNS
+	if err := r.Get(ctx, key, &existing); err == nil {
+		// Already exists — nothing to do.
+		return nil
+	} else if !apierrors.IsNotFound(err) {
+		return fmt.Errorf("check DNS resource: %w", err)
+	}
+
+	dns := &sreportalv1alpha1.DNS{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: portal.Namespace,
+		},
+		Spec: sreportalv1alpha1.DNSSpec{
+			PortalRef: portal.Name,
+		},
+	}
+
+	if err := r.Create(ctx, dns); err != nil {
+		if apierrors.IsAlreadyExists(err) {
+			return nil
+		}
+		return fmt.Errorf("create DNS resource: %w", err)
+	}
+
+	log.Info("created DNS resource for portal", "name", name, "namespace", portal.Namespace)
 	return nil
 }
 

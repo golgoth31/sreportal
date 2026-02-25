@@ -224,6 +224,68 @@ var _ = Describe("SourceReconciler", func() {
 		})
 	})
 
+	Context("ensureDNSResource", func() {
+		It("should create DNS resource for a portal when none exists", func() {
+			portalName := fmt.Sprintf("ensure-dns-portal-%s", rand.String(5))
+			portal := createTestPortal(portalName)
+
+			portalKey := types.NamespacedName{Name: portalName, Namespace: "default"}
+			Eventually(func() error {
+				return k8sClient.Get(ctx, portalKey, &sreportalv1alpha1.Portal{})
+			}, timeout, interval).Should(Succeed())
+
+			// Ensure DNS resource
+			err := reconciler.ensureDNSResource(ctx, portal)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Verify DNS resource created
+			dnsKey := types.NamespacedName{Name: portalName, Namespace: "default"}
+			Eventually(func(g Gomega) {
+				var dns sreportalv1alpha1.DNS
+				g.Expect(k8sClient.Get(ctx, dnsKey, &dns)).To(Succeed())
+				g.Expect(dns.Spec.PortalRef).To(Equal(portalName))
+			}, timeout, interval).Should(Succeed())
+		})
+
+		It("should not overwrite existing DNS resource", func() {
+			portalName := fmt.Sprintf("existing-dns-portal-%s", rand.String(5))
+			portal := createTestPortal(portalName)
+
+			portalKey := types.NamespacedName{Name: portalName, Namespace: "default"}
+			Eventually(func() error {
+				return k8sClient.Get(ctx, portalKey, &sreportalv1alpha1.Portal{})
+			}, timeout, interval).Should(Succeed())
+
+			// Create a DNS resource with manual groups
+			existingDNS := &sreportalv1alpha1.DNS{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      portalName,
+					Namespace: "default",
+				},
+				Spec: sreportalv1alpha1.DNSSpec{
+					PortalRef: portalName,
+					Groups: []sreportalv1alpha1.DNSGroup{
+						{Name: "manual-group", Entries: []sreportalv1alpha1.DNSEntry{
+							{FQDN: "manual.example.com", Description: "manual entry"},
+						}},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, existingDNS)).To(Succeed())
+
+			// Ensure DNS resource — should be a no-op
+			err := reconciler.ensureDNSResource(ctx, portal)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Verify manual groups are preserved
+			dnsKey := types.NamespacedName{Name: portalName, Namespace: "default"}
+			var dns sreportalv1alpha1.DNS
+			Expect(k8sClient.Get(ctx, dnsKey, &dns)).To(Succeed())
+			Expect(dns.Spec.Groups).To(HaveLen(1))
+			Expect(dns.Spec.Groups[0].Name).To(Equal("manual-group"))
+		})
+	})
+
 	Context("deleteOrphanedDNSRecords", func() {
 		It("should delete DNSRecords for disabled sources", func() {
 			// Create Portal
