@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.0](https://github.com/golgoth31/sreportal/compare/v0.9.2...v1.0.0) (2026-02-25)
+
+
+### ⚠ BREAKING CHANGES
+
+* consolidate MCP endpoint onto web server to simplify lifecycle
+
+### Features
+
+* consolidate MCP endpoint onto web server to simplify lifecycle ([8d52b24](https://github.com/golgoth31/sreportal/commit/8d52b24c7c1f9e05c42c0b3a8f8b30e69b6ed1e0))
+
 ## [0.9.2](https://github.com/golgoth31/sreportal/compare/v0.9.1...v0.9.2) (2026-02-24)
 
 
