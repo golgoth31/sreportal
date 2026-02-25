@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/golgoth31/sreportal/compare/v1.0.1...v1.0.2) (2026-02-25)
+
+
+### Bug Fixes
+
+* **grpc:** lock DNS queries to aggregated DNS status for predictable results ([1db41ed](https://github.com/golgoth31/sreportal/commit/1db41edff310858a2f500398494d3a26f4d997d3))
+
 ## [1.0.1](https://github.com/golgoth31/sreportal/compare/v1.0.0...v1.0.1) (2026-02-25)
 
 
