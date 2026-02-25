@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/golgoth31/sreportal/compare/v1.0.4...v1.1.0) (2026-02-25)
+
+
+### Features
+
+* **web:** migrate UI to Angular Material and add MCP page ([fd8a829](https://github.com/golgoth31/sreportal/commit/fd8a82917f493eeec7898ce36bf97ba6713365ff))
+
 ## [1.0.4](https://github.com/golgoth31/sreportal/compare/v1.0.3...v1.0.4) (2026-02-25)
 
 
