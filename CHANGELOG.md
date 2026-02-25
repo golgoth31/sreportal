@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3](https://github.com/golgoth31/sreportal/compare/v1.0.2...v1.0.3) (2026-02-25)
+
+
+### Bug Fixes
+
+* **source_controller:** ensure DNS resources exist for portal FQDN aggregation ([20ec891](https://github.com/golgoth31/sreportal/commit/20ec8911bcfcc9871cc15c24356b512282dbbf39))
+
 ## [1.0.2](https://github.com/golgoth31/sreportal/compare/v1.0.1...v1.0.2) (2026-02-25)
 
 
