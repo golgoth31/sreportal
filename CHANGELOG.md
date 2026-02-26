@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.1](https://github.com/golgoth31/sreportal/compare/v1.3.0...v1.3.1) (2026-02-26)
+
+
+### Bug Fixes
+
+* **deps:** update module golang.org/x/net to v0.51.0 ([#69](https://github.com/golgoth31/sreportal/issues/69)) ([a69593d](https://github.com/golgoth31/sreportal/commit/a69593dc08211bd7c813dab05073532eac6ca0a5))
+* helm chart ([7407dc6](https://github.com/golgoth31/sreportal/commit/7407dc636ef4deb51b67266701c6e1c018ac31a6))
+
 ## [1.3.0](https://github.com/golgoth31/sreportal/compare/v1.2.0...v1.3.0) (2026-02-25)
 
 
