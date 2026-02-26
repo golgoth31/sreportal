@@ -3,7 +3,7 @@ import { Routes } from '@angular/router';
 export const routes: Routes = [
   { path: '', redirectTo: '/main/links', pathMatch: 'full' },
   {
-    path: 'mcp',
+    path: 'help',
     loadComponent: () =>
       import('./pages/mcp/mcp.component').then(m => m.McpComponent),
   },

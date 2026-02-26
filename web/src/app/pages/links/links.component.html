@@ -1,6 +1,19 @@
 <div class="links-container">
   <header class="links-header">
-    <h1>DNS Links</h1>
+    <div class="links-header__title">
+      <h1>DNS Links</h1>
+      @if (remotePortalUrl(); as remoteUrl) {
+        <a mat-icon-button
+           [href]="remoteUrl"
+           target="_blank"
+           rel="noopener noreferrer"
+           data-testid="remote-portal-link"
+           matTooltip="Open remote portal"
+           aria-label="Open remote portal in a new tab">
+          <mat-icon>open_in_new</mat-icon>
+        </a>
+      }
+    </div>
     <p class="subtitle">Aggregated FQDNs organized by group</p>
   </header>
 

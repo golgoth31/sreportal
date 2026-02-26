@@ -7,6 +7,12 @@
 .links-header {
   margin-bottom: 2rem;
 
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
   h1 {
     font-size: 2rem;
     font-weight: 500;

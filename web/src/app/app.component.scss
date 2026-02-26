@@ -29,7 +29,9 @@
     --mat-icon-button-state-layer-color: var(--mat-sys-on-primary);
 
     &--active {
-      background: color-mix(in srgb, var(--mat-sys-on-primary) 15%, transparent);
+      background: color-mix(in srgb, var(--mat-sys-on-primary) 18%, transparent);
+      /* Bottom-border overlay drawn with inset box-shadow — stays within button bounds */
+      box-shadow: inset 0 -3px 0 0 var(--mat-sys-on-primary);
     }
   }
 }
