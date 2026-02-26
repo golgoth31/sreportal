@@ -1,59 +1,59 @@
-# Web
+# Web UI
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 19.2.19.
+The SRE Portal web UI is a React 19 single-page application built with Vite.
 
-## Development server
+## Tech Stack
 
-To start a local development server, run:
+- **React 19** — UI framework
+- **Vite** — dev server and bundler
+- **Tailwind CSS v4** — utility-first styling
+- **shadcn/ui** (Radix UI primitives) — accessible UI components
+- **TanStack Query v5** — server state management
+- **React Router v7** — client-side routing
+- **Connect protocol** — gRPC-compatible API client (Buf-generated, in `src/gen/`)
 
-```bash
-ng serve
-```
+## Development
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+Start the Vite development server:
 
 ```bash
-ng generate --help
+npm run dev
 ```
+
+The app runs at `http://localhost:5173/`. It proxies API requests to the operator backend (configure in `vite.config.ts`).
 
 ## Building
 
-To build the project run:
-
 ```bash
-ng build
+npm run build
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+Or via the root Makefile:
 
 ```bash
-ng test
+make build-web
 ```
 
-## Running end-to-end tests
+Build output goes to `dist/web/browser/`, which is embedded in the operator binary.
 
-For end-to-end (e2e) testing, run:
+## Testing
 
 ```bash
-ng e2e
+npm test
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+Tests use [Vitest](https://vitest.dev/).
 
-## Additional Resources
+## Linting
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+```bash
+npm run lint
+```
+
+## Code Generation
+
+The `src/gen/` directory contains Buf-generated Connect clients for the DNS and Portal services. **Do not edit these files manually.** Regenerate with:
+
+```bash
+make proto   # from the repository root
+```

@@ -11,7 +11,7 @@ SRE Portal is a Kubernetes operator with a web dashboard for managing service st
 **Implemented:**
 - DNS discovery: 3 CRDs (DNS, DNSRecord, Portal), Chain-of-Responsibility reconciliation, external-dns integration
 - Portal routing via `sreportal.io/portal` annotation on K8s resources
-- Web UI: Angular 19 app with Links page (FQDN display)
+- Web UI: React 19 app (Vite + shadcn/ui) with Links page (FQDN display)
 - Connect protocol gRPC API (DNSService, PortalService)
 - ConfigMap-driven operator configuration
 
@@ -32,7 +32,7 @@ SRE Portal is a Kubernetes operator with a web dashboard for managing service st
 - **Operator**: Go 1.25, Kubebuilder, controller-runtime v0.23
 - **API**: Connect protocol (connectrpc.com/connect v1.19), Buf for codegen
 - **Web server**: Echo v5 with h2c (HTTP/2 without TLS)
-- **Web UI**: Angular 21, Angular Material components, Signals
+- **Web UI**: React 19, Vite, Tailwind CSS v4, shadcn/ui, TanStack Query v5, React Router v7
 - **External DNS**: sigs.k8s.io/external-dns v0.20
 - **Testing**: Ginkgo v2 + Gomega with envtest
 - **MCP**: Model Context Protocol server (mark3labs/mcp-go), served on `/mcp` via the web server
@@ -60,8 +60,8 @@ make lint-fix           # Auto-fix lint issues
 
 # Web UI
 make install-web        # npm install
-make build-web          # Build Angular app
-npm test --prefix web   # Web unit tests
+make build-web          # Build React app (Vite)
+npm test --prefix web   # Web unit tests (Vitest)
 
 # Deployment
 make docker-build IMG=<registry>/<image>:<tag>
@@ -116,15 +116,18 @@ proto/sreportal/v1/
   dns.proto                          # DNSService (ListFQDNs, StreamFQDNs)
   portal.proto                       # PortalService (ListPortals)
 web/src/
-  app/
-    app.component.ts                 # Root component with portal navigation
-    app.routes.ts                    # Routes: '' -> /main/links, :portalName/links
-    pages/links/                     # Links page (FQDN display with filters)
-    services/
-      dns.service.ts                 # Connect client for DNSService
-      portal.service.ts              # Connect client for PortalService
-    state/
-      dns.state.ts                   # Signal-based state (filteredFqdns, groupedByGroup)
+  main.tsx                           # React entry point
+  router.tsx                         # Routes: '' -> /main/links, :portalName/links, /help
+  components/
+    RootLayout.tsx                   # Root layout with portal navigation + theme toggle
+    PortalNav.tsx                    # Portal navigation sidebar/header
+    ThemeToggle.tsx                  # Light/dark/system theme switcher
+  pages/
+    LinksPage.tsx                    # Links page (FQDN display with filters)
+  features/
+    dns/ui/                          # FqdnCard, FqdnGroupCard, FqdnGroupList components
+    mcp/ui/McpPage.tsx               # Help / MCP setup page
+    portal/                          # Portal feature (Connect client + query hooks)
   gen/                               # Auto-generated Connect clients (buf) - DO NOT EDIT
 config/
   crd/bases/                         # Auto-generated CRD YAML - DO NOT EDIT

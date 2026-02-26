@@ -53,8 +53,8 @@ This page covers the development workflow for contributing to SRE Portal.
 | Command | Description |
 |---------|-------------|
 | `make install-web` | Install npm dependencies (`npm install`) |
-| `make build-web` | Build the Angular app for production |
-| `npm test --prefix web` | Run web UI unit tests |
+| `make build-web` | Build the React app for production (Vite) |
+| `npm test --prefix web` | Run web UI unit tests (Vitest) |
 
 ### Deployment
 
