@@ -55,7 +55,7 @@ export function PortalNav({ portals, isLoading }: PortalNavProps) {
                 size="sm"
                 className={cn(
                   isActive &&
-                  "bg-primary/10 text-primary font-semibold  shadow-primary"
+                  "bg-primary/10 text-primary font-semibold shadow-primary"
                 )}
                 asChild
               >

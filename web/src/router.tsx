@@ -1,8 +1,14 @@
+import { lazy, Suspense } from "react";
 import { createBrowserRouter, Navigate } from "react-router";
 
 import { RootLayout } from "@/components/RootLayout";
-import { McpPage } from "@/features/mcp/ui/McpPage";
-import { LinksPage } from "@/pages/LinksPage";
+
+const LinksPage = lazy(() =>
+  import("@/pages/LinksPage").then((m) => ({ default: m.LinksPage }))
+);
+const McpPage = lazy(() =>
+  import("@/features/mcp/ui/McpPage").then((m) => ({ default: m.McpPage }))
+);
 
 export const router = createBrowserRouter([
   {
@@ -15,11 +21,19 @@ export const router = createBrowserRouter([
       },
       {
         path: ":portalName/links",
-        element: <LinksPage />,
+        element: (
+          <Suspense fallback={null}>
+            <LinksPage />
+          </Suspense>
+        ),
       },
       {
         path: "help",
-        element: <McpPage />,
+        element: (
+          <Suspense fallback={null}>
+            <McpPage />
+          </Suspense>
+        ),
       },
     ],
   },
