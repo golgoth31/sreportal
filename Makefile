@@ -115,7 +115,7 @@ proto-lint: ## Lint proto files.
 ##@ Web
 
 .PHONY: build-web
-build-web: ## Build the Angular web UI.
+build-web: ## Build the React web UI (Vite).
 	cd web && npm install && npm run build
 
 .PHONY: install-web
