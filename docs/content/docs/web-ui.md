@@ -3,7 +3,7 @@ title: Web UI
 weight: 5
 ---
 
-SRE Portal includes an Angular 19 single-page application served directly by the operator.
+SRE Portal includes an Angular single-page application served directly by the operator.
 
 ## Accessing the Dashboard
 
@@ -21,6 +21,7 @@ Then open [http://localhost:8082](http://localhost:8082) in your browser.
 |-------|-------------|
 | `/` | Redirects to `/main/links` |
 | `/:portalName/links` | Displays FQDNs for the specified portal |
+| `/help` | MCP setup instructions and available tools |
 
 The root URL redirects to the `main` portal's links page. Each portal defined in the cluster gets its own route.
 
@@ -47,11 +48,23 @@ The links page provides:
 
 When multiple portals exist, the navigation bar allows switching between portals. Each portal shows only the FQDNs routed to it.
 
+### Theme Toggle
+
+The toolbar includes a theme toggle button that cycles between light, dark, and system modes. The selected theme is persisted in `localStorage` and applied via CSS class on the `<html>` element, using Angular Material's M3 theming system.
+
+### Help / MCP Page
+
+The Help page (`/help`) provides:
+- A table of available MCP tools (`search_fqdns`, `list_portals`, `get_fqdn_details`) with their descriptions and filters
+- Setup instructions for Claude Desktop, Claude Code, and Cursor with copy-to-clipboard config snippets
+- Example queries to try with an AI assistant
+
 ## Technology Stack
 
 The web UI is built with:
 
-- **Angular 19** with standalone components
+- **Angular 19+** with standalone components and `OnPush` change detection
+- **Angular Material** (Material Design 3) for UI components
 - **Signals** for reactive state management
 - **Connect protocol** clients for gRPC communication with the backend
 - **Buf-generated** TypeScript clients (in `web/src/gen/`)

@@ -55,7 +55,11 @@ layout: hextra-home
     subtitle="Group FQDNs by annotation, label, namespace, or custom rules. Combine automatic discovery with manual DNS entries."
   >}}
   {{< hextra/feature-card
+    title="MCP Server"
+    subtitle="Built-in Model Context Protocol server for AI assistant integration. Query your DNS records from Claude Desktop, Claude Code, or Cursor."
+  >}}
+  {{< hextra/feature-card
     title="Single Container"
-    subtitle="Controller, gRPC API, and web UI all run in a single container for simple deployment and low resource footprint."
+    subtitle="Controller, gRPC API, web UI, and MCP server all run in a single container for simple deployment and low resource footprint."
   >}}
 {{< /hextra/feature-grid >}}

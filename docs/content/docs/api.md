@@ -128,6 +128,21 @@ _Appears in:_
 
 
 
+#### sreportal.io/v1alpha1.OriginResourceRef
+
+OriginResourceRef identifies the Kubernetes resource that produced an FQDN. Only populated for FQDNs discovered via external-dns sources.
+
+_Appears in:_
+- [sreportal.io/v1alpha1.FQDNStatus](#sreportaliov1alpha1fqdnstatus)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `kind` _string_ | kind is the Kubernetes resource kind (e.g. Service, Ingress, DNSEndpoint) |   |   |
+| `namespace` _string_ | namespace is the Kubernetes namespace of the origin resource |   |   |
+| `name` _string_ | name is the name of the origin Kubernetes resource |   |   |
+
+
+
 #### sreportal.io/v1alpha1.FQDNStatus
 
 FQDNStatus represents the status of an aggregated FQDN
@@ -142,6 +157,7 @@ _Appears in:_
 | `recordType` _string_ | recordType is the DNS record type (A, AAAA, CNAME, etc.) |   |   |
 | `targets` _string array_ | targets is the list of target addresses for this FQDN |   |   |
 | `lastSeen` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | lastSeen is the timestamp when this FQDN was last observed |   |   |
+| `originRef` _[sreportal.io/v1alpha1.OriginResourceRef](#sreportaliov1alpha1originresourceref)_ | originRef identifies the Kubernetes resource (Service, Ingress, DNSEndpoint) that produced this FQDN via external-dns. Not set for manual entries. |   |   |
 
 
 

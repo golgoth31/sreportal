@@ -8,25 +8,26 @@ SRE Portal runs as a single container that combines a Kubernetes controller, a g
 ## High-Level Overview
 
 ```
-┌──────────────────────────────────────────────────────┐
-│                   SRE Portal Pod                     │
-│                                                      │
-│  ┌──────────────┐  ┌─────────────┐  ┌────────────┐  │
-│  │  Controllers  │  │ Connect API │  │   Web UI   │  │
-│  │  (ctrl-runtime)│  │  (gRPC/h2c) │  │  (Echo v5) │  │
-│  └──────┬───────┘  └──────┬──────┘  └─────┬──────┘  │
-│         │                 │               │          │
-│         └─────────┬───────┴───────────────┘          │
-│                   │                                  │
-│            K8s API Server                            │
-└──────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                       SRE Portal Pod                            │
+│                                                                 │
+│  ┌──────────────┐  ┌─────────────┐  ┌──────────┐  ┌─────────┐  │
+│  │  Controllers  │  │ Connect API │  │  Web UI  │  │   MCP   │  │
+│  │ (ctrl-runtime)│  │ (gRPC/h2c)  │  │ (Echo v5)│  │ (/mcp)  │  │
+│  └──────┬───────┘  └──────┬──────┘  └────┬─────┘  └────┬────┘  │
+│         │                 │              │              │        │
+│         └─────────┬───────┴──────┬───────┴──────────────┘        │
+│                   │              │                               │
+│            K8s API Server   AI Assistants                        │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-The three components share the same process:
+The four components share the same process:
 
 - **Controllers** reconcile CRDs using controller-runtime
 - **Connect API** serves gRPC-compatible endpoints over HTTP/2 (h2c)
 - **Web UI** serves the Angular SPA as static files via Echo v5
+- **MCP Server** exposes a [Model Context Protocol](https://modelcontextprotocol.io/) endpoint at `/mcp` for AI assistant integration
 
 ## Custom Resource Definitions
 
@@ -115,6 +116,18 @@ The API uses the [Connect protocol](https://connectrpc.com) (gRPC-compatible ove
 | RPC | Description |
 |-----|-------------|
 | `ListPortals` | Lists all portals |
+
+## MCP Server
+
+The operator includes a built-in [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server mounted at `/mcp` on the web server port. It exposes three tools for AI assistants (Claude Desktop, Claude Code, Cursor):
+
+| Tool | Description |
+|------|-------------|
+| `search_fqdns` | Search FQDNs by query, source, group, portal, or namespace |
+| `list_portals` | List all available portals |
+| `get_fqdn_details` | Get detailed information about a specific FQDN |
+
+The MCP server uses Streamable HTTP transport and reads the same DNS status data as the Connect API.
 
 ## Data Flow
 

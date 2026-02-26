@@ -1,135 +1,149 @@
-# sreportal
-// TODO(user): Add simple overview of use/purpose
+# SRE Portal
 
-## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+A Kubernetes operator that discovers DNS records from your cluster resources and presents them in a unified web dashboard. It integrates with external-dns sources (Services, Ingresses, Istio Gateways, DNSEndpoints) and supports manual DNS entries through Custom Resources.
 
-## Getting Started
+## Features
+
+- **DNS Discovery** -- Automatically discover DNS records from Services, Ingresses, Istio Gateways, and external-dns endpoints across all namespaces
+- **Portal Routing** -- Organize endpoints into multiple portals using simple Kubernetes annotations (`sreportal.io/portal`)
+- **Remote Portals** -- Federate DNS data across clusters by connecting portals to remote SRE Portal instances
+- **Web Dashboard** -- Angular-powered SPA with search, filters, grouping, and light/dark theme served directly by the operator
+- **MCP Server** -- Built-in [Model Context Protocol](https://modelcontextprotocol.io/) server for AI assistant integration (Claude Desktop, Claude Code, Cursor)
+- **Connect API** -- gRPC-compatible [Connect protocol](https://connectrpc.com) API for listing and streaming FQDN updates
+- **Flexible Grouping** -- Group FQDNs by annotation, label, namespace, or custom rules
+- **Single Container** -- Controller, gRPC API, web UI, and MCP server all run in one container
+
+## Architecture
+
+```
+┌──────────────────────────────────────────────────────┐
+│                   SRE Portal Pod                     │
+│                                                      │
+│  ┌──────────────┐  ┌─────────────┐  ┌────────────┐  │
+│  │  Controllers  │  │ Connect API │  │   Web UI   │  │
+│  │  (ctrl-runtime)│  │  (gRPC/h2c) │  │  (Echo v5) │  │
+│  └──────┬───────┘  └──────┬──────┘  └─────┬──────┘  │
+│         │                 │               │          │
+│         └─────────┬───────┴───────┬───────┘          │
+│                   │               │                  │
+│            K8s API Server    MCP Server               │
+│                              (/mcp endpoint)          │
+└──────────────────────────────────────────────────────┘
+```
+
+SRE Portal defines three CRDs:
+
+| CRD | Description |
+|-----|-------------|
+| **Portal** | Named web dashboard view with optional remote federation |
+| **DNS** | Manual DNS entry groups linked to a portal |
+| **DNSRecord** | Auto-discovered endpoints (managed by the operator) |
+
+## Quick Start
 
 ### Prerequisites
-- go version v1.24.6+
-- docker version 17.03+.
-- kubectl version v1.11.3+.
-- Access to a Kubernetes v1.11.3+ cluster.
 
-### To Deploy on the cluster
-**Build and push your image to the location specified by `IMG`:**
+- Kubernetes cluster v1.28+
+- `kubectl` configured to access the cluster
+- Helm 3+ (for Helm install)
 
-```sh
-make docker-build docker-push IMG=<some-registry>/sreportal:tag
+### Install with Helm
+
+```bash
+helm install sreportal oci://ghcr.io/golgoth31/charts/sreportal \
+  --namespace sreportal-system --create-namespace
 ```
 
-**NOTE:** This image ought to be published in the personal registry you specified.
-And it is required to have access to pull the image from the working environment.
-Make sure you have the proper permission to the registry if the above commands don’t work.
+### Access the Dashboard
 
-**Install the CRDs into the cluster:**
-
-```sh
-make install
+```bash
+kubectl port-forward -n sreportal-system svc/sreportal-controller-manager 8082:8082
 ```
 
-**Deploy the Manager to the cluster with the image specified by `IMG`:**
+Open [http://localhost:8082](http://localhost:8082) in your browser.
 
-```sh
-make deploy IMG=<some-registry>/sreportal:tag
+### Annotate Your Services
+
+The operator discovers DNS records from resources with the `external-dns.alpha.kubernetes.io/hostname` annotation:
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-web-app
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: "myapp.example.com"
+    sreportal.io/portal: "main"           # optional: route to a specific portal
+    sreportal.io/groups: "Backend,APIs"    # optional: assign to groups
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
 ```
 
-> **NOTE**: If you encounter RBAC errors, you may need to grant yourself cluster-admin
-privileges or be logged in as admin.
+### Connect an AI Assistant (MCP)
 
-**Create instances of your solution**
-You can apply the samples (examples) from the config/sample:
+SRE Portal exposes an MCP server at `/mcp` for AI-powered DNS lookups.
 
-```sh
-kubectl apply -k config/samples/
+**Claude Code:**
+```bash
+claude mcp add sreportal --transport http http://localhost:8082/mcp
 ```
 
->**NOTE**: Ensure that the samples has default values to test it out.
-
-### To Uninstall
-**Delete the instances (CRs) from the cluster:**
-
-```sh
-kubectl delete -k config/samples/
+**Claude Desktop** (`claude_desktop_config.json`):
+```json
+{
+  "mcpServers": {
+    "sreportal": {
+      "transport": "http",
+      "url": "http://localhost:8082/mcp"
+    }
+  }
+}
 ```
 
-**Delete the APIs(CRDs) from the cluster:**
+Available MCP tools: `search_fqdns`, `list_portals`, `get_fqdn_details`.
 
-```sh
-make uninstall
+## Documentation
+
+Full documentation is available at the [documentation site](https://golgoth31.github.io/sreportal/):
+
+- [Getting Started](https://golgoth31.github.io/sreportal/docs/getting-started/) -- Install and create your first portal
+- [Architecture](https://golgoth31.github.io/sreportal/docs/architecture/) -- CRD relationships and controller patterns
+- [Configuration](https://golgoth31.github.io/sreportal/docs/configuration/) -- Operator ConfigMap reference
+- [Annotations](https://golgoth31.github.io/sreportal/docs/annotations/) -- Route endpoints and assign groups
+- [Web UI](https://golgoth31.github.io/sreportal/docs/web-ui/) -- Dashboard features and routes
+- [API Reference](https://golgoth31.github.io/sreportal/docs/api/) -- CRD field reference
+- [Development](https://golgoth31.github.io/sreportal/docs/development/) -- Build, test, and contribute
+
+## Technology Stack
+
+| Component | Technology |
+|-----------|-----------|
+| Operator | Go 1.25, Kubebuilder, controller-runtime v0.23 |
+| API | Connect protocol (connectrpc.com/connect) |
+| Web UI | Angular 19+, Angular Material, Signals |
+| MCP | Model Context Protocol (mark3labs/mcp-go) |
+| Web server | Echo v5 with h2c |
+| Codegen | Buf (protobuf) |
+| DNS sources | sigs.k8s.io/external-dns |
+| Testing | Ginkgo v2, Gomega, envtest |
+
+## Development
+
+```bash
+make build          # Build manager binary
+make run            # Run locally with current kubeconfig
+make test           # Unit tests with envtest
+make manifests      # Regenerate CRDs/RBAC
+make proto          # Regenerate Go + TypeScript from proto
+make build-web      # Build Angular app
 ```
 
-**UnDeploy the controller from the cluster:**
-
-```sh
-make undeploy
-```
-
-## Project Distribution
-
-Following the options to release and provide this solution to the users.
-
-### By providing a bundle with all YAML files
-
-1. Build the installer for the image built and published in the registry:
-
-```sh
-make build-installer IMG=<some-registry>/sreportal:tag
-```
-
-**NOTE:** The makefile target mentioned above generates an 'install.yaml'
-file in the dist directory. This file contains all the resources built
-with Kustomize, which are necessary to install this project without its
-dependencies.
-
-2. Using the installer
-
-Users can just run 'kubectl apply -f <URL for YAML BUNDLE>' to install
-the project, i.e.:
-
-```sh
-kubectl apply -f https://raw.githubusercontent.com/<org>/sreportal/<tag or branch>/dist/install.yaml
-```
-
-### By providing a Helm Chart
-
-1. Build the chart using the optional helm plugin
-
-```sh
-kubebuilder edit --plugins=helm/v2-alpha
-```
-
-2. See that a chart was generated under 'dist/chart', and users
-can obtain this solution from there.
-
-**NOTE:** If you change the project, you need to update the Helm Chart
-using the same command above to sync the latest changes. Furthermore,
-if you create webhooks, you need to use the above command with
-the '--force' flag and manually ensure that any custom configuration
-previously added to 'dist/chart/values.yaml' or 'dist/chart/manager/manager.yaml'
-is manually re-applied afterwards.
-
-## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
-
-**NOTE:** Run `make help` for more information on all potential `make` targets
-
-More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
+See [Development](https://golgoth31.github.io/sreportal/docs/development/) for the full guide.
 
 ## License
 
 Copyright 2026.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
