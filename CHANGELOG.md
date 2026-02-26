@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/golgoth31/sreportal/compare/v1.3.1...v1.4.0) (2026-02-26)
+
+
+### Features
+
+* **web:** add overlay on button, rename mcp page as help ([b6ecb89](https://github.com/golgoth31/sreportal/commit/b6ecb89c34726fa4f5182399bd98bac7cf2d32fb))
+
 ## [1.3.1](https://github.com/golgoth31/sreportal/compare/v1.3.0...v1.3.1) (2026-02-26)
 
 
