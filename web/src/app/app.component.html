@@ -1,34 +1,49 @@
-<mat-toolbar class="toolbar">
-  <a routerLink="/" class="toolbar__brand">{{ title }}</a>
-  <span class="toolbar__spacer"></span>
-  <nav class="toolbar__nav">
+<mat-toolbar class="app-toolbar">
+  <a routerLink="/" class="app-toolbar__brand">
+    <mat-icon aria-hidden="true">dns</mat-icon>
+    {{ title }}
+  </a>
+
+  <nav class="app-toolbar__nav" aria-label="Portal navigation">
     @for (portal of portals(); track portal.name) {
-    <a matButton="filled" [routerLink]="'/' + (portal.subPath || portal.name) + '/links'"
-      routerLinkActive="toolbar__link--active" #portalRla="routerLinkActive"
-      [attr.aria-current]="portalRla.isActive ? 'page' : null"
-      class="toolbar__link">
-      {{ portal.title }}
-    </a>
+      <a matButton
+         [routerLink]="'/' + (portal.subPath || portal.name) + '/links'"
+         routerLinkActive="app-toolbar__link--active"
+         #rla="routerLinkActive"
+         [attr.aria-current]="rla.isActive ? 'page' : null"
+         class="app-toolbar__link">
+        {{ portal.title }}
+      </a>
     }
     @if (portals().length === 0) {
-    <a matButton="filled" routerLink="/main/links"
-      routerLinkActive="toolbar__link--active" #defaultRla="routerLinkActive"
-      [attr.aria-current]="defaultRla.isActive ? 'page' : null"
-      class="toolbar__link">
-      Links
-    </a>
+      <a matButton
+         routerLink="/main/links"
+         routerLinkActive="app-toolbar__link--active"
+         #defRla="routerLinkActive"
+         [attr.aria-current]="defRla.isActive ? 'page' : null"
+         class="app-toolbar__link">
+        Links
+      </a>
     }
-    <a matButton="filled" routerLink="/help"
-      routerLinkActive="toolbar__link--active" #mcpRla="routerLinkActive"
-      [attr.aria-current]="mcpRla.isActive ? 'page' : null"
-      class="toolbar__link">
-      <mat-icon>help_outline</mat-icon>
-      Help
-    </a>
   </nav>
-  <button matIconButton (click)="theme.toggle()" [matTooltip]="'Theme: ' + theme.mode()" aria-label="Toggle theme">
-    <mat-icon>{{ theme.icon() }}</mat-icon>
-  </button>
+
+  <div class="app-toolbar__actions">
+    <a matIconButton
+       routerLink="/help"
+       routerLinkActive="app-toolbar__action--active"
+       #helpRla="routerLinkActive"
+       [attr.aria-current]="helpRla.isActive ? 'page' : null"
+       matTooltip="Help & MCP"
+       aria-label="Help and MCP integration">
+      <mat-icon>help_outline</mat-icon>
+    </a>
+    <button matIconButton
+            (click)="theme.toggle()"
+            [matTooltip]="'Theme: ' + theme.mode()"
+            aria-label="Toggle colour theme">
+      <mat-icon>{{ theme.icon() }}</mat-icon>
+    </button>
+  </div>
 </mat-toolbar>
 
 <main class="main-content">
@@ -36,5 +51,5 @@
 </main>
 
 <footer class="footer">
-  <p>SRE Portal - Kubernetes DNS Discovery</p>
+  <p>SRE Portal — Kubernetes DNS Discovery</p>
 </footer>

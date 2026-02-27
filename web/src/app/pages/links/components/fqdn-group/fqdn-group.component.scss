@@ -1,6 +1,25 @@
 :host {
   display: block;
   margin-bottom: 1rem;
+
+  // Use the highest surface elevation token for maximum contrast against the page (surface).
+  // In dark mode surface-container-highest is visibly lighter than surface.
+  // The outline-variant border adds an explicit boundary that works in both themes.
+  --mat-expansion-panel-container-background-color: var(--mat-sys-surface-container-highest);
+
+  mat-expansion-panel {
+    border: 1px solid var(--mat-sys-outline-variant);
+    border-radius: 8px;
+
+    // When the panel is open, tint the header with secondary-container so it
+    // stands out from the panel body (surface-container-highest) below it.
+    mat-expansion-panel-header.mat-expanded {
+      background-color: var(--mat-sys-secondary-container);
+      color: var(--mat-sys-on-secondary-container);
+      border-radius: 8px 8px 0 0;
+      border-bottom: 1px solid var(--mat-sys-outline-variant);
+    }
+  }
 }
 
 .source-icon {
