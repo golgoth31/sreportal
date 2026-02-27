@@ -5,7 +5,7 @@ go 1.25.3
 require (
 	connectrpc.com/connect v1.19.1
 	github.com/labstack/echo/v5 v5.0.4
-	github.com/mark3labs/mcp-go v0.44.0
+	github.com/mark3labs/mcp-go v0.44.1
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
 	github.com/stretchr/testify v1.11.1
