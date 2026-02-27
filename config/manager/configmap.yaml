@@ -33,6 +33,16 @@ data:
         enabled: false
         namespace: ""
 
+      # Priority defines which source wins when the same FQDN+RecordType is discovered
+      # by multiple sources. Sources listed first take precedence.
+      # Remove or leave empty to merge targets from all sources (default).
+      priority:
+        - dnsendpoint
+        - ingress
+        - service
+        - istio-gateway
+        - istio-virtualservice
+
     groupMapping:
       defaultGroup: "Services"
 

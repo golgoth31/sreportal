@@ -22,6 +22,17 @@ sources:
   istioGateway:
     enabled: false
 
+  # Priority defines which source wins when the same FQDN+RecordType is discovered
+  # by multiple sources. Sources listed first take precedence. Sources omitted from
+  # the list still contribute FQDNs they uniquely own, but lose to any listed source.
+  # Remove this key (or leave it empty) to merge targets from all sources (default).
+  priority:
+    - dnsendpoint
+    - ingress
+    - service
+    - istio-gateway
+    - istio-virtualservice
+
 groupMapping:
   defaultGroup: "Discovered Services"
   labelKey: "sreportal.io/group"

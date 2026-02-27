@@ -39,15 +39,20 @@ const (
 // AggregateDNSRecordsHandler aggregates endpoints from DNSRecord resources
 // belonging to the same portal as the DNS resource being reconciled.
 type AggregateDNSRecordsHandler struct {
-	client client.Client
-	config *config.GroupMappingConfig
+	client         client.Client
+	config         *config.GroupMappingConfig
+	sourcePriority []string
 }
 
-// NewAggregateDNSRecordsHandler creates a new AggregateDNSRecordsHandler
-func NewAggregateDNSRecordsHandler(c client.Client, cfg *config.GroupMappingConfig) *AggregateDNSRecordsHandler {
+// NewAggregateDNSRecordsHandler creates a new AggregateDNSRecordsHandler.
+// sourcePriority defines the order in which source types are preferred when the
+// same FQDN+RecordType appears in multiple sources. Pass nil to merge all sources
+// (backward-compatible default).
+func NewAggregateDNSRecordsHandler(c client.Client, cfg *config.GroupMappingConfig, sourcePriority []string) *AggregateDNSRecordsHandler {
 	return &AggregateDNSRecordsHandler{
-		client: c,
-		config: cfg,
+		client:         c,
+		config:         cfg,
+		sourcePriority: sourcePriority,
 	}
 }
 
@@ -67,15 +72,18 @@ func (h *AggregateDNSRecordsHandler) Handle(ctx context.Context, rc *reconciler.
 
 	log.V(1).Info("found DNSRecords", "count", len(dnsRecordList.Items), "portalRef", rc.Resource.Spec.PortalRef)
 
-	// Aggregate all endpoints from DNSRecords
-	var allEndpoints []sreportalv1alpha1.EndpointStatus
+	// Group endpoints by source type for priority-based deduplication
+	endpointsBySource := make(map[string][]sreportalv1alpha1.EndpointStatus)
 	for _, rec := range dnsRecordList.Items {
 		log.V(2).Info("processing DNSRecord",
 			"name", rec.Name,
 			"sourceType", rec.Spec.SourceType,
 			"endpointCount", len(rec.Status.Endpoints))
-		allEndpoints = append(allEndpoints, rec.Status.Endpoints...)
+		endpointsBySource[rec.Spec.SourceType] = append(endpointsBySource[rec.Spec.SourceType], rec.Status.Endpoints...)
 	}
+
+	// Apply source priority (or flatten without deduplication when priority is not configured)
+	allEndpoints := adapter.ApplySourcePriority(endpointsBySource, h.sourcePriority)
 
 	log.V(1).Info("aggregated endpoints", "totalCount", len(allEndpoints))
 

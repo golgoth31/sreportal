@@ -49,15 +49,17 @@ type DNSReconciler struct {
 // NewDNSReconciler creates a new DNSReconciler with the handler chain
 func NewDNSReconciler(c client.Client, scheme *runtime.Scheme, cfg *config.OperatorConfig) *DNSReconciler {
 	var groupMappingConfig *config.GroupMappingConfig
+	var sourcePriority []string
 	if cfg != nil {
 		groupMappingConfig = &cfg.GroupMapping
+		sourcePriority = cfg.Sources.Priority
 	}
 
 	return &DNSReconciler{
 		Client: c,
 		Scheme: scheme,
 		chain: reconciler.NewChain(
-			dns.NewAggregateDNSRecordsHandler(c, groupMappingConfig),
+			dns.NewAggregateDNSRecordsHandler(c, groupMappingConfig, sourcePriority),
 			dns.NewCollectManualEntriesHandler(),
 			dns.NewAggregateFQDNsHandler(),
 			dns.NewResolveDNSHandler(dns.NewNetResolver()),

@@ -322,6 +322,75 @@ func EndpointStatusToGroups(endpoints []sreportalv1alpha1.EndpointStatus, mappin
 	return result
 }
 
+// endpointSourceKey uniquely identifies a FQDN + record type pair for cross-source deduplication.
+type endpointSourceKey struct {
+	dnsName    string
+	recordType string
+}
+
+// ApplySourcePriority deduplicates endpoints across multiple source types using the
+// provided priority ordering. When the same FQDN+RecordType appears in multiple
+// sources, the entry from the highest-priority source is kept. Sources not listed
+// in priority receive the lowest rank and lose to any listed source on conflict,
+// but still contribute FQDNs they uniquely own.
+// When priority is empty or nil, all endpoints are returned without deduplication
+// (preserving the existing merge-targets behaviour when passed to EndpointStatusToGroups).
+func ApplySourcePriority(endpointsBySource map[string][]sreportalv1alpha1.EndpointStatus, priority []string) []sreportalv1alpha1.EndpointStatus {
+	if len(endpointsBySource) == 0 {
+		return nil
+	}
+
+	// Without priority, flatten all sources (caller handles deduplication via EndpointStatusToGroups)
+	if len(priority) == 0 {
+		var all []sreportalv1alpha1.EndpointStatus
+		for _, eps := range endpointsBySource {
+			all = append(all, eps...)
+		}
+		return all
+	}
+
+	// Build rank map: lower index in priority = higher priority (rank 0 wins)
+	rankOf := make(map[string]int, len(priority))
+	for i, src := range priority {
+		rankOf[src] = i
+	}
+	lowestRank := len(priority) // sources not in list get this rank (always lose to listed ones)
+
+	type candidate struct {
+		ep   sreportalv1alpha1.EndpointStatus
+		rank int
+	}
+	winners := make(map[endpointSourceKey]candidate)
+
+	for srcType, eps := range endpointsBySource {
+		srcRank, ok := rankOf[srcType]
+		if !ok {
+			srcRank = lowestRank
+		}
+		for _, ep := range eps {
+			key := endpointSourceKey{dnsName: ep.DNSName, recordType: ep.RecordType}
+			if existing, exists := winners[key]; !exists || srcRank < existing.rank {
+				winners[key] = candidate{ep: ep, rank: srcRank}
+			}
+		}
+	}
+
+	result := make([]sreportalv1alpha1.EndpointStatus, 0, len(winners))
+	for _, w := range winners {
+		result = append(result, w.ep)
+	}
+
+	// Sort for deterministic output
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].DNSName == result[j].DNSName {
+			return result[i].RecordType < result[j].RecordType
+		}
+		return result[i].DNSName < result[j].DNSName
+	})
+
+	return result
+}
+
 // mergeTargets merges two target slices, deduplicating entries.
 func mergeTargets(existing, additional []string) []string {
 	set := make(map[string]struct{}, len(existing))
