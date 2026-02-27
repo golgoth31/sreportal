@@ -7,7 +7,7 @@ A Kubernetes operator that discovers DNS records from your cluster resources and
 - **DNS Discovery** -- Automatically discover DNS records from Services, Ingresses, Istio Gateways, and external-dns endpoints across all namespaces
 - **Portal Routing** -- Organize endpoints into multiple portals using simple Kubernetes annotations (`sreportal.io/portal`)
 - **Remote Portals** -- Federate DNS data across clusters by connecting portals to remote SRE Portal instances
-- **Web Dashboard** -- Angular-powered SPA with search, filters, grouping, and light/dark theme served directly by the operator
+- **Web Dashboard** -- React-powered SPA with search, filters, grouping, and light/dark theme served directly by the operator
 - **MCP Server** -- Built-in [Model Context Protocol](https://modelcontextprotocol.io/) server for AI assistant integration (Claude Desktop, Claude Code, Cursor)
 - **Connect API** -- gRPC-compatible [Connect protocol](https://connectrpc.com) API for listing and streaming FQDN updates
 - **Flexible Grouping** -- Group FQDNs by annotation, label, namespace, or custom rules
@@ -122,7 +122,7 @@ Full documentation is available at the [documentation site](https://golgoth31.gi
 |-----------|-----------|
 | Operator | Go 1.25, Kubebuilder, controller-runtime v0.23 |
 | API | Connect protocol (connectrpc.com/connect) |
-| Web UI | Angular 19+, Angular Material, Signals |
+| Web UI | React 19, Vite, Tailwind CSS v4, shadcn/ui, TanStack Query v5 |
 | MCP | Model Context Protocol (mark3labs/mcp-go) |
 | Web server | Echo v5 with h2c |
 | Codegen | Buf (protobuf) |
@@ -137,7 +137,7 @@ make run            # Run locally with current kubeconfig
 make test           # Unit tests with envtest
 make manifests      # Regenerate CRDs/RBAC
 make proto          # Regenerate Go + TypeScript from proto
-make build-web      # Build Angular app
+make build-web      # Build React app (Vite)
 ```
 
 See [Development](https://golgoth31.github.io/sreportal/docs/development/) for the full guide.

@@ -18,8 +18,8 @@ package sreportal
 
 import "embed"
 
-// WebUI contains the embedded Angular build output.
-// The files are embedded from web/dist/web/browser which is the Angular
+// WebUI contains the embedded React/Vite build output.
+// The files are embedded from web/dist/web/browser which is the Vite
 // build output directory containing index.html and all compiled assets.
 //
 //go:embed all:web/dist/web/browser

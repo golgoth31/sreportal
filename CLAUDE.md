@@ -11,7 +11,7 @@ SRE Portal is a Kubernetes operator with a web dashboard for managing service st
 **Implemented:**
 - DNS discovery: 3 CRDs (DNS, DNSRecord, Portal), Chain-of-Responsibility reconciliation, external-dns integration
 - Portal routing via `sreportal.io/portal` annotation on K8s resources
-- Web UI: Angular 19 app with Links page (FQDN display)
+- Web UI: React 19 app (Vite + shadcn/ui) with Links page (FQDN display)
 - Connect protocol gRPC API (DNSService, PortalService)
 - ConfigMap-driven operator configuration
 
@@ -32,7 +32,7 @@ SRE Portal is a Kubernetes operator with a web dashboard for managing service st
 - **Operator**: Go 1.25, Kubebuilder, controller-runtime v0.23
 - **API**: Connect protocol (connectrpc.com/connect v1.19), Buf for codegen
 - **Web server**: Echo v5 with h2c (HTTP/2 without TLS)
-- **Web UI**: Angular 21, Angular Material components, Signals
+- **Web UI**: React 19, Vite, Tailwind CSS v4, shadcn/ui, TanStack Query v5, React Router v7
 - **External DNS**: sigs.k8s.io/external-dns v0.20
 - **Testing**: Ginkgo v2 + Gomega with envtest
 - **MCP**: Model Context Protocol server (mark3labs/mcp-go), served on `/mcp` via the web server
@@ -60,8 +60,8 @@ make lint-fix           # Auto-fix lint issues
 
 # Web UI
 make install-web        # npm install
-make build-web          # Build Angular app
-npm test --prefix web   # Web unit tests
+make build-web          # Build React app (Vite)
+npm test --prefix web   # Web unit tests (Vitest)
 
 # Deployment
 make docker-build IMG=<registry>/<image>:<tag>
@@ -116,15 +116,32 @@ proto/sreportal/v1/
   dns.proto                          # DNSService (ListFQDNs, StreamFQDNs)
   portal.proto                       # PortalService (ListPortals)
 web/src/
-  app/
-    app.component.ts                 # Root component with portal navigation
-    app.routes.ts                    # Routes: '' -> /main/links, :portalName/links
-    pages/links/                     # Links page (FQDN display with filters)
-    services/
-      dns.service.ts                 # Connect client for DNSService
-      portal.service.ts              # Connect client for PortalService
-    state/
-      dns.state.ts                   # Signal-based state (filteredFqdns, groupedByGroup)
+  main.tsx                           # React entry point (QueryClient + RouterProvider)
+  router.tsx                         # Routes + ErrorPage + PageSkeleton
+  index.css                          # Tailwind + OKLCH theme tokens (light + dark)
+  hooks/
+    useTheme.ts                      # Light/dark/system theme hook (localStorage)
+  components/
+    RootLayout.tsx                   # Root layout (TooltipProvider, header, footer, Toaster)
+    PortalNav.tsx                    # Portal navigation (NavLink for local, <a> for remote)
+    ThemeToggle.tsx                  # Theme cycle button (light → dark → system)
+    ui/                              # shadcn/ui components (button, badge, table, …)
+  pages/
+    LinksPage.tsx                    # Container: search/group filters + FqdnGroupList
+  features/
+    dns/
+      domain/dns.types.ts            # Fqdn, FqdnGroup types + isSynced/hasSyncStatus helpers
+      infrastructure/dnsApi.ts       # listFqdns() — module-level transport singleton
+      hooks/useDns.ts                # TanStack Query + client-side filter/group logic
+      ui/FqdnCard.tsx                # Single FQDN (sync dot, copy, targets, originRef)
+      ui/FqdnGroupCard.tsx           # Collapsible group card
+      ui/FqdnGroupList.tsx           # List with loading skeleton + empty state
+    portal/
+      domain/portal.types.ts         # Portal, RemoteSyncStatus types
+      infrastructure/portalApi.ts    # listPortals() — module-level transport singleton
+      hooks/usePortals.ts            # TanStack Query (30s stale)
+    mcp/
+      ui/McpPage.tsx                 # MCP setup page (Shadcn Table, CopyableCode)
   gen/                               # Auto-generated Connect clients (buf) - DO NOT EDIT
 config/
   crd/bases/                         # Auto-generated CRD YAML - DO NOT EDIT
@@ -276,13 +293,20 @@ Includes `EnsureMainPortalRunnable` that creates a default "main" portal on star
 ### PortalService (`proto/sreportal/v1/portal.proto`)
 - `ListPortals` - Lists all portals
 
-## Web UI (Angular 19)
+## Web UI (React 19)
 
 Single page app with:
-- **Routes**: `''` redirects to `/main/links`, `:portalName/links` loads LinksComponent
-- **LinksComponent**: Displays FQDNs grouped by group/source with search and filters
-- **State**: Signal-based (`DnsState` with computed `filteredFqdns`, `groupedByGroup`, etc.)
-- **Connect clients**: `DnsService`, `PortalServiceClient` for gRPC communication
+- **Stack**: React 19 + Vite + Tailwind CSS v4 + shadcn/ui + TanStack Query v5 + React Router v7
+- **Build output**: `web/dist/web/browser/` (embedded into Go binary via `ui_embed.go`)
+- **Architecture**: Feature-based Clean Architecture — domain → infrastructure → hooks → ui layers
+- **Routes**: `''` → `/main/links`, `:portalName/links` → LinksPage, `/help` → McpPage
+- **LinksPage**: FQDNs grouped by group name, search + group filter, sync status dots
+- **State**: TanStack Query for server state (5s polling for FQDNs, 30s stale for portals)
+- **Connect clients**: Module-level transport singletons in `dnsApi.ts` / `portalApi.ts`
+- **Theme**: Light / dark / system toggle, stored in localStorage, applied via `.dark` class
+- **shadcn/ui components installed**: button, skeleton, sonner, tooltip, badge, input, select, collapsible, separator, table
+- **Error handling**: Router-level `errorElement` on all routes; error alert in LinksPage
+- **`web/src/gen/`**: Auto-generated Connect clients (buf) — DO NOT EDIT; `erasableSyntaxOnly` disabled in tsconfig.app.json due to generated TypeScript enums
 
 ## Operator Configuration
 
@@ -308,7 +332,7 @@ Registers:
 2. **SourceReconciler** - Periodic external-dns source polling (manager.Runnable)
 3. **PortalReconciler** - Simple status updates + EnsureMainPortalRunnable
 4. **DNSWebhook** - Validates `spec.portalRef` exists
-5. **Web server** (goroutine) - Echo v5 with h2c serving Connect handlers + Angular SPA + MCP at `/mcp`
+5. **Web server** (goroutine) - Echo v5 with h2c serving Connect handlers + React SPA + MCP at `/mcp`
 
 K8s scheme registers: core types, external-dns v1alpha1, sreportal v1alpha1.
 

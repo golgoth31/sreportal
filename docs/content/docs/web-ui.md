@@ -3,7 +3,9 @@ title: Web UI
 weight: 5
 ---
 
-SRE Portal includes an Angular single-page application served directly by the operator.
+SRE Portal includes a React single-page application served directly by the operator.
+
+![SRE Portal Web UI](/assets/img/web.png)
 
 ## Accessing the Dashboard
 
@@ -50,7 +52,7 @@ When multiple portals exist, the navigation bar allows switching between portals
 
 ### Theme Toggle
 
-The toolbar includes a theme toggle button that cycles between light, dark, and system modes. The selected theme is persisted in `localStorage` and applied via CSS class on the `<html>` element, using Angular Material's M3 theming system.
+The toolbar includes a theme toggle button that cycles between light, dark, and system modes. The selected theme is persisted in `localStorage` and applied via CSS class on the `<html>` element using Tailwind's dark mode class strategy.
 
 ### Help / MCP Page
 
@@ -63,10 +65,13 @@ The Help page (`/help`) provides:
 
 The web UI is built with:
 
-- **Angular 19+** with standalone components and `OnPush` change detection
-- **Angular Material** (Material Design 3) for UI components
-- **Signals** for reactive state management
+- **React 19** with functional components and hooks
+- **Vite** for development server and production bundling
+- **Tailwind CSS v4** for styling
+- **shadcn/ui** (Radix UI primitives) for UI components
+- **TanStack Query v5** for server state and data fetching
+- **React Router v7** for client-side routing
 - **Connect protocol** clients for gRPC communication with the backend
 - **Buf-generated** TypeScript clients (in `web/src/gen/`)
 
-The Angular app is compiled at build time and served as static files by the Echo v5 web server inside the operator container.
+The React app is compiled at build time and served as static files by the Echo v5 web server inside the operator container.

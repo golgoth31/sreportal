@@ -26,7 +26,7 @@ The four components share the same process:
 
 - **Controllers** reconcile CRDs using controller-runtime
 - **Connect API** serves gRPC-compatible endpoints over HTTP/2 (h2c)
-- **Web UI** serves the Angular SPA as static files via Echo v5
+- **Web UI** serves the React SPA as static files via Echo v5
 - **MCP Server** exposes a [Model Context Protocol](https://modelcontextprotocol.io/) endpoint at `/mcp` for AI assistant integration
 
 ## Custom Resource Definitions
@@ -160,7 +160,7 @@ DNS.status.groups
     │  Read by Connect API
     │
     ▼
-Web UI (Angular SPA)
+Web UI (React SPA)
 ```
 
 ## Owner References
