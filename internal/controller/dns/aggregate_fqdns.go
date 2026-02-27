@@ -35,6 +35,8 @@ const (
 	SourceManual = "manual"
 	// SourceExternalDNS indicates an FQDN discovered from external-dns
 	SourceExternalDNS = "external-dns"
+	// SourceRemote indicates an FQDN fetched from a remote portal
+	SourceRemote = "remote"
 )
 
 // AggregateFQDNsHandler aggregates FQDNs from all sources into groups

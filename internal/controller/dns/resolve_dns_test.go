@@ -213,6 +213,45 @@ var _ = Describe("ResolveDNSHandler", func() {
 		})
 	})
 
+	Context("when groups have source remote", func() {
+		BeforeEach(func() {
+			// Do NOT register any hosts in the resolver — if resolution is attempted it will return "notavailable".
+			rc.Data[dnspkg.DataKeyAggregatedGroups] = []sreportalv1alpha1.FQDNGroupStatus{
+				{
+					Name:   "RemoteServices",
+					Source: "remote",
+					FQDNs: []sreportalv1alpha1.FQDNStatus{
+						{FQDN: "remote.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}, SyncStatus: "sync"},
+						{FQDN: "remote-gone.example.com", RecordType: "A", Targets: []string{"10.0.0.2"}, SyncStatus: "notavailable"},
+					},
+				},
+				{
+					Name:   "LocalServices",
+					Source: "external-dns",
+					FQDNs: []sreportalv1alpha1.FQDNStatus{
+						{FQDN: "local.example.com", RecordType: "A", Targets: []string{"10.0.0.3"}},
+					},
+				},
+			}
+			resolver.hosts["local.example.com"] = []string{"10.0.0.3"}
+		})
+
+		It("should preserve remote SyncStatus and only resolve local FQDNs", func() {
+			err := handler.Handle(ctx, rc)
+			Expect(err).NotTo(HaveOccurred())
+
+			groups := rc.Data[dnspkg.DataKeyAggregatedGroups].([]sreportalv1alpha1.FQDNGroupStatus)
+			Expect(groups).To(HaveLen(2))
+
+			// Remote group: SyncStatus must remain untouched
+			Expect(groups[0].FQDNs[0].SyncStatus).To(Equal("sync"))
+			Expect(groups[0].FQDNs[1].SyncStatus).To(Equal("notavailable"))
+
+			// Local group: should be resolved
+			Expect(groups[1].FQDNs[0].SyncStatus).To(Equal("sync"))
+		})
+	})
+
 	Context("when no aggregated groups exist", func() {
 		It("should succeed without error", func() {
 			err := handler.Handle(ctx, rc)

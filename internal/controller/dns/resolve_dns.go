@@ -63,6 +63,10 @@ func (h *ResolveDNSHandler) Handle(ctx context.Context, rc *reconciler.Reconcile
 
 	var refs []fqdnRef
 	for gi := range groups {
+		// Skip remote groups — their SyncStatus comes from the remote portal.
+		if groups[gi].Source == SourceRemote {
+			continue
+		}
 		for fi := range groups[gi].FQDNs {
 			refs = append(refs, fqdnRef{groupIdx: gi, fqdnIdx: fi})
 		}

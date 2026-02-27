@@ -427,6 +427,50 @@ func TestConvertToGroups(t *testing.T) {
 		assert.Empty(t, groups)
 	})
 
+	t.Run("preserves SyncStatus from proto", func(t *testing.T) {
+		now := time.Now()
+		fqdns := []*sreportalv1.FQDN{
+			{
+				Name:       "sync.example.com",
+				RecordType: "A",
+				Targets:    []string{"10.0.0.1"},
+				Groups:     []string{"production"},
+				LastSeen:   timestamppb.New(now),
+				SyncStatus: "sync",
+			},
+			{
+				Name:       "gone.example.com",
+				RecordType: "A",
+				Targets:    []string{"10.0.0.2"},
+				Groups:     []string{"production"},
+				LastSeen:   timestamppb.New(now),
+				SyncStatus: "notavailable",
+			},
+			{
+				Name:       "drift.example.com",
+				RecordType: "A",
+				Targets:    []string{"10.0.0.3"},
+				Groups:     []string{"production"},
+				LastSeen:   timestamppb.New(now),
+				SyncStatus: "notsync",
+			},
+		}
+
+		groups := convertToGroups(fqdns)
+
+		require.Len(t, groups, 1)
+		require.Len(t, groups[0].FQDNs, 3)
+
+		// Build a map by FQDN name for order-independent assertions
+		statusByName := make(map[string]string)
+		for _, f := range groups[0].FQDNs {
+			statusByName[f.FQDN] = f.SyncStatus
+		}
+		assert.Equal(t, "sync", statusByName["sync.example.com"])
+		assert.Equal(t, "notavailable", statusByName["gone.example.com"])
+		assert.Equal(t, "notsync", statusByName["drift.example.com"])
+	})
+
 	t.Run("handles nil LastSeen", func(t *testing.T) {
 		fqdns := []*sreportalv1.FQDN{
 			{

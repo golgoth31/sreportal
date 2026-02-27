@@ -234,6 +234,7 @@ func convertToGroups(fqdns []*sreportalv1.FQDN) []sreportalv1alpha1.FQDNGroupSta
 			RecordType:  fqdn.RecordType,
 			Targets:     fqdn.Targets,
 			LastSeen:    metav1.Time{Time: lastSeen},
+			SyncStatus:  fqdn.SyncStatus,
 		}
 
 		for _, groupName := range groupNames {
