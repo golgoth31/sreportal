@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.6.0](https://github.com/golgoth31/sreportal/compare/v1.5.1...v1.6.0) (2026-02-27)
+
+
+### Features
+
+* react UI rewrite ([#73](https://github.com/golgoth31/sreportal/issues/73)) ([a0d3c37](https://github.com/golgoth31/sreportal/commit/a0d3c374d5bc69dcf5d65f4d8180177d163eb9db))
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/mark3labs/mcp-go to v0.44.1 ([#76](https://github.com/golgoth31/sreportal/issues/76)) ([2dd2f21](https://github.com/golgoth31/sreportal/commit/2dd2f2133186a1372b1d3086f98928681ccb7067))
+
 ## [1.5.1](https://github.com/golgoth31/sreportal/compare/v1.5.0...v1.5.1) (2026-02-27)
 
 
