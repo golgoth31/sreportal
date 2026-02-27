@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.5.0](https://github.com/golgoth31/sreportal/compare/v1.4.1...v1.5.0) (2026-02-27)
+
+
+### Features
+
+* add DNS resolution verification with sync status indicator ([615db8d](https://github.com/golgoth31/sreportal/commit/615db8d67ac59ec7e069d916be60828b5bac8a56))
+
+
+### Bug Fixes
+
+* skip DNS resolution for remote portal FQDNs ([1efc2b1](https://github.com/golgoth31/sreportal/commit/1efc2b1a5bd6b0b25004f3bd8a065b5890a6104a))
+
 ## [1.4.1](https://github.com/golgoth31/sreportal/compare/v1.4.0...v1.4.1) (2026-02-27)
 
 
