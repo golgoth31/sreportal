@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/golgoth31/sreportal/compare/v1.4.0...v1.4.1) (2026-02-27)
+
+
+### Bug Fixes
+
+* update ui theme ([8aa4604](https://github.com/golgoth31/sreportal/commit/8aa4604c1d8b6c6ab0ec275fc62324767edd78cf))
+
 ## [1.4.0](https://github.com/golgoth31/sreportal/compare/v1.3.1...v1.4.0) (2026-02-26)
 
 
