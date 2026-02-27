@@ -9,9 +9,7 @@ import {
 } from "@/gen/sreportal/v1/portal_pb";
 import type { Portal } from "../domain/portal.types";
 
-function createTransport() {
-  return createConnectTransport({ baseUrl: window.location.origin });
-}
+const transport = createConnectTransport({ baseUrl: window.location.origin });
 
 function toDomainPortal(p: ProtoPortal): Portal {
   return {
@@ -35,7 +33,7 @@ function toDomainPortal(p: ProtoPortal): Portal {
 }
 
 export async function listPortals(): Promise<Portal[]> {
-  const client = createClient(PortalService, createTransport());
+  const client = createClient(PortalService, transport);
   const request = create(ListPortalsRequestSchema, { namespace: "" });
   const response = await client.listPortals(request);
   return response.portals.map(toDomainPortal);

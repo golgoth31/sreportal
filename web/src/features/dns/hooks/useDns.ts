@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { listFqdns } from "../infrastructure/dnsApi";
 import type { FqdnGroup } from "../domain/dns.types";
@@ -77,10 +77,10 @@ export function useDns(portal: string) {
     groupFilter,
     setSearchTerm,
     setGroupFilter,
-    clearFilters: () => {
+    clearFilters: useCallback(() => {
       setSearchTerm("");
       setGroupFilter("");
-    },
+    }, []),
     refetch: query.refetch,
   };
 }

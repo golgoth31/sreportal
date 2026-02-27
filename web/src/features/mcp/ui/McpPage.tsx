@@ -5,6 +5,14 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface McpTool {
   name: string;
@@ -111,49 +119,43 @@ export function McpPage() {
       {/* Tools table */}
       <section className="space-y-4">
         <h2 className="text-lg font-semibold">Available Tools</h2>
-        <div className="rounded-lg border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground w-48">
-                  Tool
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                  Description &amp; Filters
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {MCP_TOOLS.map((tool) => (
-                <tr key={tool.name} className="bg-card">
-                  <td className="px-4 py-3 align-top">
-                    <code className="font-mono text-xs font-semibold text-primary">
-                      {tool.name}
-                    </code>
-                  </td>
-                  <td className="px-4 py-3 space-y-2">
-                    <p className="text-muted-foreground text-sm leading-relaxed">
-                      {tool.description}
-                    </p>
-                    {tool.filters.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {tool.filters.map((f) => (
-                          <Badge
-                            key={f}
-                            variant="outline"
-                            className="font-mono text-xs"
-                          >
-                            {f}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-48">Tool</TableHead>
+              <TableHead>Description &amp; Filters</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {MCP_TOOLS.map((tool) => (
+              <TableRow key={tool.name}>
+                <TableCell className="align-top">
+                  <code className="font-mono text-xs font-semibold text-primary">
+                    {tool.name}
+                  </code>
+                </TableCell>
+                <TableCell className="space-y-2">
+                  <p className="text-muted-foreground text-sm leading-relaxed">
+                    {tool.description}
+                  </p>
+                  {tool.filters.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {tool.filters.map((f) => (
+                        <Badge
+                          key={f}
+                          variant="outline"
+                          className="font-mono text-xs"
+                        >
+                          {f}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </section>
 
       <Separator />

@@ -1,4 +1,4 @@
-import { CheckIcon, CopyIcon, ExternalLinkIcon, NetworkIcon } from "lucide-react";
+import { CheckIcon, CopyIcon, NetworkIcon } from "lucide-react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
@@ -65,7 +65,6 @@ export function FqdnCard({ fqdn }: FqdnCardProps) {
             className="text-primary font-mono text-sm font-medium hover:underline break-all flex items-center gap-1"
           >
             {fqdn.name}
-            <ExternalLinkIcon className="size-3 shrink-0 text-muted-foreground" />
           </a>
         </div>
         <Tooltip>
@@ -100,17 +99,17 @@ export function FqdnCard({ fqdn }: FqdnCardProps) {
             {fqdn.recordType}
           </Badge>
         )}
-        <Badge variant="secondary" className="text-xs">
-          {sourceLabel}
-        </Badge>
         {fqdn.targets.map((target) => (
           <span
             key={target}
             className="text-muted-foreground font-mono text-xs"
           >
-            → {target}
+            {target}
           </span>
         ))}
+        <Badge variant="secondary" className="text-xs">
+          {sourceLabel}
+        </Badge>
       </div>
 
       {/* Origin resource reference */}

@@ -1,7 +1,6 @@
 import { ChevronDownIcon, DatabaseIcon, PencilIcon } from "lucide-react";
 import { useState } from "react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Collapsible,
@@ -20,7 +19,6 @@ export function FqdnGroupCard({ group }: FqdnGroupCardProps) {
   const [open, setOpen] = useState(true);
 
   const isManual = group.source === "manual";
-  const sourceLabel = isManual ? "Manual" : "External DNS";
   const SourceIcon = isManual ? PencilIcon : DatabaseIcon;
 
   return (
@@ -35,9 +33,6 @@ export function FqdnGroupCard({ group }: FqdnGroupCardProps) {
             <div className="flex items-center gap-3">
               <SourceIcon className="size-4 text-muted-foreground shrink-0" />
               <span className="font-semibold text-sm">{group.name}</span>
-              <Badge variant="secondary" className="text-xs">
-                {sourceLabel}
-              </Badge>
               <span className="text-muted-foreground text-xs">
                 {group.fqdns.length}{" "}
                 {group.fqdns.length === 1 ? "entry" : "entries"}

@@ -10,9 +10,7 @@ import {
 } from "@/gen/sreportal/v1/dns_pb";
 import type { Fqdn, OriginRef } from "../domain/dns.types";
 
-function createTransport() {
-  return createConnectTransport({ baseUrl: window.location.origin });
-}
+const transport = createConnectTransport({ baseUrl: window.location.origin });
 
 function toDomainOriginRef(ref: OriginResourceRef): OriginRef {
   return { kind: ref.kind, namespace: ref.namespace, name: ref.name };
@@ -34,7 +32,7 @@ function toDomainFqdn(f: FQDN): Fqdn {
 }
 
 export async function listFqdns(portal: string): Promise<Fqdn[]> {
-  const client = createClient(DNSService, createTransport());
+  const client = createClient(DNSService, transport);
   const request = create(ListFQDNsRequestSchema, {
     portal,
     namespace: "",

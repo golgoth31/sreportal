@@ -8,7 +8,7 @@ spec:
   portalRef: main
   # Manual DNS entries (these will be preserved alongside discovered ones)
   groups:
-    - name: "Manual Entries"
+    - name: "Applications"
       description: "Manually configured DNS entries"
       entries:
         - fqdn: "docs.example.com"

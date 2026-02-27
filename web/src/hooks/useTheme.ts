@@ -48,11 +48,5 @@ export function useTheme() {
     });
   }, []);
 
-  const isDark =
-    mode === "dark" ||
-    (mode === "system" &&
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-color-scheme: dark)").matches);
-
-  return { mode, toggle, isDark };
+  return { mode, toggle };
 }
