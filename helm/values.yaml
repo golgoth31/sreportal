@@ -44,7 +44,7 @@ controllerManager:
       readOnlyRootFilesystem: true
     image:
       repository: ghcr.io/golgoth31/sreportal
-      tag: 1.4.0
+      tag: 1.4.1
     resources:
       limits:
         cpu: 500m
