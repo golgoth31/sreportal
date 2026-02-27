@@ -124,6 +124,48 @@ func TestLoadFromFile_NotExist(t *testing.T) {
 	}
 }
 
+func TestLoadFromFile_WithSourcePriority(t *testing.T) {
+	content := `
+sources:
+  service:
+    enabled: true
+  ingress:
+    enabled: true
+  priority:
+    - service
+    - ingress
+    - dnsendpoint
+
+groupMapping:
+  defaultGroup: "Services"
+
+reconciliation:
+  interval: 5m
+  retryOnError: 30s
+`
+
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write temp config: %v", err)
+	}
+
+	cfg, err := LoadFromFile(configPath)
+	if err != nil {
+		t.Fatalf("LoadFromFile failed: %v", err)
+	}
+
+	wantPriority := []string{"service", "ingress", "dnsendpoint"}
+	if len(cfg.Sources.Priority) != len(wantPriority) {
+		t.Fatalf("Sources.Priority = %v, expected %v", cfg.Sources.Priority, wantPriority)
+	}
+	for i, v := range wantPriority {
+		if cfg.Sources.Priority[i] != v {
+			t.Errorf("Sources.Priority[%d] = %q, expected %q", i, cfg.Sources.Priority[i], v)
+		}
+	}
+}
+
 func TestLoadFromFile_ActualTestConfig(t *testing.T) {
 	// Test with the actual test config file
 	cfg, err := LoadFromFile("../../config/samples/test_config.yaml")

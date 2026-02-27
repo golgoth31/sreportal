@@ -68,6 +68,12 @@ type SourcesConfig struct {
 	DNSEndpoint         *DNSEndpointConfig         `json:"dnsEndpoint,omitempty" yaml:"dnsEndpoint,omitempty"`
 	IstioGateway        *IstioGatewayConfig        `json:"istioGateway,omitempty" yaml:"istioGateway,omitempty"`
 	IstioVirtualService *IstioVirtualServiceConfig `json:"istioVirtualService,omitempty" yaml:"istioVirtualService,omitempty"`
+	// Priority defines the preferred order of source types when the same FQDN+RecordType
+	// is discovered by multiple sources. Sources listed earlier take precedence over later ones.
+	// When a source is not listed, it receives the lowest priority. When empty, targets from
+	// all sources are merged (backward-compatible default).
+	// Valid values: "service", "ingress", "dnsendpoint", "istio-gateway", "istio-virtualservice".
+	Priority []string `json:"priority,omitempty" yaml:"priority,omitempty"`
 }
 
 // ServiceConfig maps to source.Config fields for Kubernetes Services.

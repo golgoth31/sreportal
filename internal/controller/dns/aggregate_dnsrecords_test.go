@@ -69,7 +69,7 @@ var _ = Describe("AggregateDNSRecordsHandler", func() {
 	Context("when no DNSRecords exist for the portal", func() {
 		It("should store an empty external groups slice", func() {
 			c := buildClient()
-			handler := dnspkg.NewAggregateDNSRecordsHandler(c, defaultMapping)
+			handler := dnspkg.NewAggregateDNSRecordsHandler(c, defaultMapping, nil)
 			rc := newRC("main")
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
@@ -106,7 +106,7 @@ var _ = Describe("AggregateDNSRecordsHandler", func() {
 			}
 
 			c := buildClient(rec1, rec2)
-			handler := dnspkg.NewAggregateDNSRecordsHandler(c, defaultMapping)
+			handler := dnspkg.NewAggregateDNSRecordsHandler(c, defaultMapping, nil)
 			rc := newRC("main")
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
@@ -145,7 +145,7 @@ var _ = Describe("AggregateDNSRecordsHandler", func() {
 			}
 
 			c := buildClient(mainRec, otherRec)
-			handler := dnspkg.NewAggregateDNSRecordsHandler(c, defaultMapping)
+			handler := dnspkg.NewAggregateDNSRecordsHandler(c, defaultMapping, nil)
 			rc := newRC("main")
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
@@ -154,6 +154,109 @@ var _ = Describe("AggregateDNSRecordsHandler", func() {
 			Expect(groups).To(HaveLen(1))
 			Expect(groups[0].FQDNs).To(HaveLen(1))
 			Expect(groups[0].FQDNs[0].FQDN).To(Equal("main.example.com"))
+		})
+	})
+
+	Context("with source priority configured", func() {
+		It("should use service target when service has higher priority than ingress", func() {
+			now := metav1.Now()
+			serviceRec := &sreportalv1alpha1.DNSRecord{
+				ObjectMeta: metav1.ObjectMeta{Name: "main-service", Namespace: "default"},
+				Spec:       sreportalv1alpha1.DNSRecordSpec{PortalRef: "main", SourceType: "service"},
+				Status: sreportalv1alpha1.DNSRecordStatus{
+					Endpoints: []sreportalv1alpha1.EndpointStatus{
+						{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}, LastSeen: now},
+					},
+				},
+			}
+			ingressRec := &sreportalv1alpha1.DNSRecord{
+				ObjectMeta: metav1.ObjectMeta{Name: "main-ingress", Namespace: "default"},
+				Spec:       sreportalv1alpha1.DNSRecordSpec{PortalRef: "main", SourceType: "ingress"},
+				Status: sreportalv1alpha1.DNSRecordStatus{
+					Endpoints: []sreportalv1alpha1.EndpointStatus{
+						{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.99"}, LastSeen: now},
+					},
+				},
+			}
+
+			c := buildClient(serviceRec, ingressRec)
+			handler := dnspkg.NewAggregateDNSRecordsHandler(c, defaultMapping, []string{"service", "ingress"})
+			rc := newRC("main")
+
+			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
+
+			groups := rc.Data[dnspkg.DataKeyExternalGroups].([]sreportalv1alpha1.FQDNGroupStatus)
+			Expect(groups).To(HaveLen(1))
+			Expect(groups[0].FQDNs).To(HaveLen(1))
+			Expect(groups[0].FQDNs[0].FQDN).To(Equal("api.example.com"))
+			Expect(groups[0].FQDNs[0].Targets).To(Equal([]string{"10.0.0.1"})) // service wins
+		})
+
+		It("should use ingress target when ingress has higher priority", func() {
+			now := metav1.Now()
+			serviceRec := &sreportalv1alpha1.DNSRecord{
+				ObjectMeta: metav1.ObjectMeta{Name: "main-service", Namespace: "default"},
+				Spec:       sreportalv1alpha1.DNSRecordSpec{PortalRef: "main", SourceType: "service"},
+				Status: sreportalv1alpha1.DNSRecordStatus{
+					Endpoints: []sreportalv1alpha1.EndpointStatus{
+						{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}, LastSeen: now},
+					},
+				},
+			}
+			ingressRec := &sreportalv1alpha1.DNSRecord{
+				ObjectMeta: metav1.ObjectMeta{Name: "main-ingress", Namespace: "default"},
+				Spec:       sreportalv1alpha1.DNSRecordSpec{PortalRef: "main", SourceType: "ingress"},
+				Status: sreportalv1alpha1.DNSRecordStatus{
+					Endpoints: []sreportalv1alpha1.EndpointStatus{
+						{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.99"}, LastSeen: now},
+					},
+				},
+			}
+
+			c := buildClient(serviceRec, ingressRec)
+			handler := dnspkg.NewAggregateDNSRecordsHandler(c, defaultMapping, []string{"ingress", "service"})
+			rc := newRC("main")
+
+			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
+
+			groups := rc.Data[dnspkg.DataKeyExternalGroups].([]sreportalv1alpha1.FQDNGroupStatus)
+			Expect(groups).To(HaveLen(1))
+			Expect(groups[0].FQDNs).To(HaveLen(1))
+			Expect(groups[0].FQDNs[0].Targets).To(Equal([]string{"10.0.0.99"})) // ingress wins
+		})
+
+		It("should merge targets when priority is nil (existing behaviour)", func() {
+			now := metav1.Now()
+			serviceRec := &sreportalv1alpha1.DNSRecord{
+				ObjectMeta: metav1.ObjectMeta{Name: "main-service", Namespace: "default"},
+				Spec:       sreportalv1alpha1.DNSRecordSpec{PortalRef: "main", SourceType: "service"},
+				Status: sreportalv1alpha1.DNSRecordStatus{
+					Endpoints: []sreportalv1alpha1.EndpointStatus{
+						{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}, LastSeen: now},
+					},
+				},
+			}
+			ingressRec := &sreportalv1alpha1.DNSRecord{
+				ObjectMeta: metav1.ObjectMeta{Name: "main-ingress", Namespace: "default"},
+				Spec:       sreportalv1alpha1.DNSRecordSpec{PortalRef: "main", SourceType: "ingress"},
+				Status: sreportalv1alpha1.DNSRecordStatus{
+					Endpoints: []sreportalv1alpha1.EndpointStatus{
+						{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.99"}, LastSeen: now},
+					},
+				},
+			}
+
+			c := buildClient(serviceRec, ingressRec)
+			handler := dnspkg.NewAggregateDNSRecordsHandler(c, defaultMapping, nil) // empty priority
+			rc := newRC("main")
+
+			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
+
+			groups := rc.Data[dnspkg.DataKeyExternalGroups].([]sreportalv1alpha1.FQDNGroupStatus)
+			Expect(groups).To(HaveLen(1))
+			Expect(groups[0].FQDNs).To(HaveLen(1))
+			// Both targets merged
+			Expect(groups[0].FQDNs[0].Targets).To(ConsistOf("10.0.0.1", "10.0.0.99"))
 		})
 	})
 
@@ -166,7 +269,7 @@ var _ = Describe("AggregateDNSRecordsHandler", func() {
 			}
 
 			c := buildClient(emptyRec)
-			handler := dnspkg.NewAggregateDNSRecordsHandler(c, defaultMapping)
+			handler := dnspkg.NewAggregateDNSRecordsHandler(c, defaultMapping, nil)
 			rc := newRC("main")
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())

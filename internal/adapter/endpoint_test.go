@@ -684,6 +684,155 @@ var _ = Describe("EndpointStatusToGroups OriginRef", func() {
 	})
 })
 
+var _ = Describe("ApplySourcePriority", func() {
+	Context("with empty priority", func() {
+		It("should return all endpoints flattened from all sources", func() {
+			endpointsBySource := map[string][]sreportalv1alpha1.EndpointStatus{
+				"service": {
+					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+				},
+				"ingress": {
+					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.2"}},
+				},
+			}
+
+			result := ApplySourcePriority(endpointsBySource, nil)
+			// Without priority, both endpoints are returned (existing merge behaviour)
+			Expect(result).To(HaveLen(2))
+		})
+	})
+
+	Context("when same FQDN+RecordType appears in two sources", func() {
+		It("should keep the endpoint from the highest-priority source", func() {
+			endpointsBySource := map[string][]sreportalv1alpha1.EndpointStatus{
+				"service": {
+					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+				},
+				"ingress": {
+					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.2"}},
+				},
+			}
+
+			result := ApplySourcePriority(endpointsBySource, []string{"service", "ingress"})
+
+			Expect(result).To(HaveLen(1))
+			Expect(result[0].DNSName).To(Equal("api.example.com"))
+			Expect(result[0].Targets).To(Equal([]string{"10.0.0.1"})) // service wins
+		})
+
+		It("should use ingress target when ingress has higher priority", func() {
+			endpointsBySource := map[string][]sreportalv1alpha1.EndpointStatus{
+				"service": {
+					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+				},
+				"ingress": {
+					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.2"}},
+				},
+			}
+
+			result := ApplySourcePriority(endpointsBySource, []string{"ingress", "service"})
+
+			Expect(result).To(HaveLen(1))
+			Expect(result[0].DNSName).To(Equal("api.example.com"))
+			Expect(result[0].Targets).To(Equal([]string{"10.0.0.2"})) // ingress wins
+		})
+	})
+
+	Context("when FQDN only exists in one source", func() {
+		It("should always be included regardless of priority", func() {
+			endpointsBySource := map[string][]sreportalv1alpha1.EndpointStatus{
+				"service": {
+					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+				},
+			}
+
+			result := ApplySourcePriority(endpointsBySource, []string{"ingress", "service"})
+
+			Expect(result).To(HaveLen(1))
+			Expect(result[0].DNSName).To(Equal("api.example.com"))
+		})
+	})
+
+	Context("when source is not in the priority list", func() {
+		It("should lose to any listed source on conflict", func() {
+			endpointsBySource := map[string][]sreportalv1alpha1.EndpointStatus{
+				"dnsendpoint": { // not in priority list
+					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.3"}},
+				},
+				"service": { // in priority list
+					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+				},
+			}
+
+			result := ApplySourcePriority(endpointsBySource, []string{"service", "ingress"})
+
+			Expect(result).To(HaveLen(1))
+			Expect(result[0].Targets).To(Equal([]string{"10.0.0.1"})) // service wins over unlisted dnsendpoint
+		})
+
+		It("should still contribute FQDNs it uniquely owns", func() {
+			endpointsBySource := map[string][]sreportalv1alpha1.EndpointStatus{
+				"dnsendpoint": {
+					{DNSName: "dns.example.com", RecordType: "A", Targets: []string{"10.0.0.3"}},
+				},
+				"service": {
+					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+				},
+			}
+
+			result := ApplySourcePriority(endpointsBySource, []string{"service", "ingress"})
+
+			Expect(result).To(HaveLen(2)) // both included, no conflict
+			names := make([]string, len(result))
+			for i, ep := range result {
+				names[i] = ep.DNSName
+			}
+			Expect(names).To(ConsistOf("api.example.com", "dns.example.com"))
+		})
+	})
+
+	Context("with multiple FQDNs in different sources", func() {
+		It("should resolve each FQDN independently", func() {
+			endpointsBySource := map[string][]sreportalv1alpha1.EndpointStatus{
+				"service": {
+					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+					{DNSName: "web.example.com", RecordType: "A", Targets: []string{"10.0.0.2"}},
+				},
+				"ingress": {
+					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.99"}}, // conflicts
+					{DNSName: "app.example.com", RecordType: "A", Targets: []string{"10.0.0.3"}},  // unique
+				},
+			}
+
+			result := ApplySourcePriority(endpointsBySource, []string{"service", "ingress"})
+
+			Expect(result).To(HaveLen(3)) // api (service wins), web (service only), app (ingress only)
+			names := make([]string, len(result))
+			for i, ep := range result {
+				names[i] = ep.DNSName
+			}
+			Expect(names).To(ConsistOf("api.example.com", "web.example.com", "app.example.com"))
+			for _, ep := range result {
+				if ep.DNSName == "api.example.com" {
+					Expect(ep.Targets).To(Equal([]string{"10.0.0.1"})) // service target wins
+				}
+			}
+		})
+	})
+
+	Context("with empty input", func() {
+		It("should return nil for nil input", func() {
+			result := ApplySourcePriority(nil, []string{"service"})
+			Expect(result).To(BeNil())
+		})
+
+		It("should return nil for empty map", func() {
+			result := ApplySourcePriority(map[string][]sreportalv1alpha1.EndpointStatus{}, []string{"service"})
+			Expect(result).To(BeNil())
+		})
+	})
+})
+
 // Benchmarks — these are standard Go benchmarks (not Ginkgo), placed in the
 // same package test file so they can reuse the helper constructors below.
 
