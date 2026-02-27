@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.1](https://github.com/golgoth31/sreportal/compare/v1.5.0...v1.5.1) (2026-02-27)
+
+
+### Bug Fixes
+
+* **helm:** add syncStatus field to DNS CRD and fix values indentation ([13a4259](https://github.com/golgoth31/sreportal/commit/13a425926aa11d6a62056053f2402563bb2af2b2))
+
 ## [1.5.0](https://github.com/golgoth31/sreportal/compare/v1.4.1...v1.5.0) (2026-02-27)
 
 
