@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/golgoth31/sreportal/compare/v1.6.0...v1.7.0) (2026-02-27)
+
+
+### Features
+
+* add priority between sources ([#83](https://github.com/golgoth31/sreportal/issues/83)) ([494f0f3](https://github.com/golgoth31/sreportal/commit/494f0f3c938337a3ba2c601e1da7762062092227))
+
 ## [1.6.0](https://github.com/golgoth31/sreportal/compare/v1.5.1...v1.6.0) (2026-02-27)
 
 
