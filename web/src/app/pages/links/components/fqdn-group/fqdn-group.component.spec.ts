@@ -28,6 +28,7 @@ function makeFqdn(overrides: Partial<FQDN> = {}): FQDN {
     dnsResourceName: 'test-dns',
     dnsResourceNamespace: 'default',
     originRef: undefined,
+    syncStatus: '',
     ...overrides,
   } as unknown as FQDN;
 }
@@ -149,6 +150,45 @@ describe('FqdnGroupComponent', () => {
         .querySelector('a.fqdn-card__name');
       expect(link).toBeTruthy();
       expect(link!.textContent?.trim()).toBe('my.example.com');
+    });
+  });
+
+  // ── sync status badge ──────────────────────────────────────────────────
+
+  describe('sync status dot', () => {
+    it('renders a green dot when syncStatus is sync', () => {
+      render(makeGroup([makeFqdn({ syncStatus: 'sync' })]));
+      const dot: HTMLElement | null = (fixture.nativeElement as HTMLElement)
+        .querySelector('.sync-dot--ok');
+      expect(dot).withContext('green dot should be rendered').toBeTruthy();
+      const srOnly = dot!.querySelector('.sr-only');
+      expect(srOnly).withContext('sr-only label should exist').toBeTruthy();
+      expect(srOnly!.textContent?.trim()).toBe('DNS in sync');
+    });
+
+    it('renders a red dot when syncStatus is notavailable', () => {
+      render(makeGroup([makeFqdn({ syncStatus: 'notavailable' })]));
+      const dot: HTMLElement | null = (fixture.nativeElement as HTMLElement)
+        .querySelector('.sync-dot--ko');
+      expect(dot).withContext('red dot should be rendered').toBeTruthy();
+      const srOnly = dot!.querySelector('.sr-only');
+      expect(srOnly!.textContent?.trim()).toBe('DNS not available');
+    });
+
+    it('renders a red dot when syncStatus is notsync', () => {
+      render(makeGroup([makeFqdn({ syncStatus: 'notsync' })]));
+      const dot: HTMLElement | null = (fixture.nativeElement as HTMLElement)
+        .querySelector('.sync-dot--ko');
+      expect(dot).withContext('red dot should be rendered').toBeTruthy();
+      const srOnly = dot!.querySelector('.sr-only');
+      expect(srOnly!.textContent?.trim()).toBe('DNS not in sync');
+    });
+
+    it('does not render a dot when syncStatus is empty', () => {
+      render(makeGroup([makeFqdn({ syncStatus: '' })]));
+      const dot = (fixture.nativeElement as HTMLElement)
+        .querySelector('.sync-dot');
+      expect(dot).withContext('no dot expected for empty syncStatus').toBeNull();
     });
   });
 });

@@ -60,6 +60,7 @@ func NewDNSReconciler(c client.Client, scheme *runtime.Scheme, cfg *config.Opera
 			dns.NewAggregateDNSRecordsHandler(c, groupMappingConfig),
 			dns.NewCollectManualEntriesHandler(),
 			dns.NewAggregateFQDNsHandler(),
+			dns.NewResolveDNSHandler(dns.NewNetResolver()),
 			dns.NewUpdateStatusHandler(c),
 		),
 	}

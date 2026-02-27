@@ -101,6 +101,7 @@ func (s *DNSService) ListFQDNs(
 						DnsResourceName:      dns.Name,
 						DnsResourceNamespace: dns.Namespace,
 						OriginRef:            toProtoOriginRef(fqdnStatus.OriginRef),
+						SyncStatus:           fqdnStatus.SyncStatus,
 					}
 					seen[fqdnStatus.FQDN] = f
 				}
@@ -215,7 +216,7 @@ func fqdnEqual(a, b *dnsv1.FQDN) bool {
 	if a.Name != b.Name || a.Source != b.Source || a.Description != b.Description {
 		return false
 	}
-	if a.RecordType != b.RecordType {
+	if a.RecordType != b.RecordType || a.SyncStatus != b.SyncStatus {
 		return false
 	}
 	if len(a.Groups) != len(b.Groups) {

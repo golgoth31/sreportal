@@ -56,20 +56,30 @@ describe('AppComponent toolbar navigation', () => {
     }));
 
     it('renders a nav link per portal plus the Help link', () => {
-      const links = (fixture.nativeElement as HTMLElement)
-        .querySelectorAll('a.toolbar__link');
-      expect(links.length).toBe(3); // 2 portals + Help
+      const portalLinks = (fixture.nativeElement as HTMLElement)
+        .querySelectorAll('a.app-toolbar__link');
+      expect(portalLinks.length).toBe(2); // 2 portals
+
+      const helpLink = (fixture.nativeElement as HTMLElement)
+        .querySelector('a[aria-label="Help and MCP integration"]');
+      expect(helpLink).withContext('Help link should be in the DOM').toBeTruthy();
     });
 
     it('no link has aria-current before any navigation', () => {
-      const links = Array.from(
-        (fixture.nativeElement as HTMLElement).querySelectorAll('a.toolbar__link'),
+      const portalLinks = Array.from(
+        (fixture.nativeElement as HTMLElement).querySelectorAll('a.app-toolbar__link'),
       );
-      for (const link of links) {
+      for (const link of portalLinks) {
         expect(link.getAttribute('aria-current'))
           .withContext(`${link.textContent?.trim()} should have no aria-current`)
           .toBeNull();
       }
+
+      const helpLink = (fixture.nativeElement as HTMLElement)
+        .querySelector('a[aria-label="Help and MCP integration"]');
+      expect(helpLink?.getAttribute('aria-current'))
+        .withContext('Help link should have no aria-current')
+        .toBeNull();
     });
   });
 
@@ -125,9 +135,8 @@ describe('AppComponent toolbar navigation', () => {
       tick();
       fixture.detectChanges();
 
-      // Identify Help link by its href (rendered by routerLink)
       const helpLink = (fixture.nativeElement as HTMLElement)
-        .querySelector<HTMLElement>('a.toolbar__link[href="/help"]');
+        .querySelector<HTMLElement>('a[aria-label="Help and MCP integration"]');
 
       expect(helpLink).withContext('Help link should be in the DOM').toBeTruthy();
       expect(helpLink?.getAttribute('aria-current')).toBeNull();

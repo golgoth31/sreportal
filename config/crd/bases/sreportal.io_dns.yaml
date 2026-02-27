@@ -198,6 +198,18 @@ spec:
                             description: recordType is the DNS record type (A, AAAA,
                               CNAME, etc.)
                             type: string
+                          syncStatus:
+                            description: |-
+                              syncStatus indicates whether the FQDN is correctly resolved in DNS.
+                              sync: the FQDN resolves to the expected type and targets.
+                              notavailable: the FQDN does not exist in DNS.
+                              notsync: the FQDN exists but resolves to different targets or type.
+                            enum:
+                            - sync
+                            - notavailable
+                            - notsync
+                            - ""
+                            type: string
                           targets:
                             description: targets is the list of target addresses for
                               this FQDN

@@ -102,4 +102,8 @@ message FQDN {
   // origin_ref identifies the Kubernetes resource (Service, Ingress, DNSEndpoint)
   // that produced this FQDN via external-dns. Not set for manual entries.
   optional OriginResourceRef origin_ref = 10;
+
+  // sync_status indicates whether the FQDN is correctly resolved in DNS.
+  // Values: "sync", "notavailable", "notsync", or empty.
+  string sync_status = 11;
 }

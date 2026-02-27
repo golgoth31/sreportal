@@ -37,6 +37,16 @@ export class FqdnGroupComponent {
     this.group().source === 'manual' ? 'edit' : 'dns'
   );
 
+  private static readonly syncStatusLabels: Record<string, string> = {
+    sync: 'DNS in sync',
+    notavailable: 'DNS not available',
+    notsync: 'DNS not in sync',
+  };
+
+  syncStatusLabel(status: string): string {
+    return FqdnGroupComponent.syncStatusLabels[status] ?? status;
+  }
+
   copyToClipboard(text: string): void {
     navigator.clipboard.writeText(text).then(() => {
       this._copiedFqdn.set(text);

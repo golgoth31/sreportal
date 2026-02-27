@@ -125,6 +125,14 @@ type FQDNStatus struct {
 	// +optional
 	Targets []string `json:"targets,omitempty"`
 
+	// syncStatus indicates whether the FQDN is correctly resolved in DNS.
+	// sync: the FQDN resolves to the expected type and targets.
+	// notavailable: the FQDN does not exist in DNS.
+	// notsync: the FQDN exists but resolves to different targets or type.
+	// +kubebuilder:validation:Enum=sync;notavailable;notsync;""
+	// +optional
+	SyncStatus string `json:"syncStatus,omitempty"`
+
 	// lastSeen is the timestamp when this FQDN was last observed
 	LastSeen metav1.Time `json:"lastSeen"`
 

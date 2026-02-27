@@ -15,6 +15,14 @@
       <mat-card appearance="outlined" class="fqdn-card">
         <mat-card-content>
           <div class="fqdn-card__main">
+            @if (fqdn.syncStatus) {
+              <span class="sync-dot"
+                    [class.sync-dot--ok]="fqdn.syncStatus === 'sync'"
+                    [class.sync-dot--ko]="fqdn.syncStatus !== 'sync'"
+                    [matTooltip]="syncStatusLabel(fqdn.syncStatus)">
+                <span class="sr-only">{{ syncStatusLabel(fqdn.syncStatus) }}</span>
+              </span>
+            }
             <a [href]="'https://' + fqdn.name"
                target="_blank"
                rel="noopener noreferrer"

@@ -100,3 +100,20 @@
     flex-shrink: 0;
   }
 }
+
+/* Sync status dot — small indicator next to the FQDN name */
+.sync-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+
+  &--ok {
+    background-color: #16a34a;
+  }
+
+  &--ko {
+    background-color: #dc2626;
+  }
+}

@@ -383,7 +383,10 @@ type FQDN struct {
 	DnsResourceNamespace string `protobuf:"bytes,9,opt,name=dns_resource_namespace,json=dnsResourceNamespace,proto3" json:"dns_resource_namespace,omitempty"`
 	// origin_ref identifies the Kubernetes resource (Service, Ingress, DNSEndpoint)
 	// that produced this FQDN via external-dns. Not set for manual entries.
-	OriginRef     *OriginResourceRef `protobuf:"bytes,10,opt,name=origin_ref,json=originRef,proto3,oneof" json:"origin_ref,omitempty"`
+	OriginRef *OriginResourceRef `protobuf:"bytes,10,opt,name=origin_ref,json=originRef,proto3,oneof" json:"origin_ref,omitempty"`
+	// sync_status indicates whether the FQDN is correctly resolved in DNS.
+	// Values: "sync", "notavailable", "notsync", or empty.
+	SyncStatus    string `protobuf:"bytes,11,opt,name=sync_status,json=syncStatus,proto3" json:"sync_status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -488,6 +491,13 @@ func (x *FQDN) GetOriginRef() *OriginResourceRef {
 	return nil
 }
 
+func (x *FQDN) GetSyncStatus() string {
+	if x != nil {
+		return x.SyncStatus
+	}
+	return ""
+}
+
 var File_sreportal_v1_dns_proto protoreflect.FileDescriptor
 
 const file_sreportal_v1_dns_proto_rawDesc = "" +
@@ -508,7 +518,7 @@ const file_sreportal_v1_dns_proto_rawDesc = "" +
 	"\x11OriginResourceRef\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x1c\n" +
 	"\tnamespace\x18\x02 \x01(\tR\tnamespace\x12\x12\n" +
-	"\x04name\x18\x03 \x01(\tR\x04name\"\x96\x03\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\"\xb7\x03\n" +
 	"\x04FQDN\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
 	"\x06source\x18\x02 \x01(\tR\x06source\x12\x16\n" +
@@ -522,7 +532,9 @@ const file_sreportal_v1_dns_proto_rawDesc = "" +
 	"\x16dns_resource_namespace\x18\t \x01(\tR\x14dnsResourceNamespace\x12C\n" +
 	"\n" +
 	"origin_ref\x18\n" +
-	" \x01(\v2\x1f.sreportal.v1.OriginResourceRefH\x00R\toriginRef\x88\x01\x01B\r\n" +
+	" \x01(\v2\x1f.sreportal.v1.OriginResourceRefH\x00R\toriginRef\x88\x01\x01\x12\x1f\n" +
+	"\vsync_status\x18\v \x01(\tR\n" +
+	"syncStatusB\r\n" +
 	"\v_origin_ref*s\n" +
 	"\n" +
 	"UpdateType\x12\x1b\n" +
