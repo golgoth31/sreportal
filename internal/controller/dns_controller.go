@@ -46,25 +46,33 @@ type DNSReconciler struct {
 	chain  *reconciler.Chain[*sreportalv1alpha1.DNS]
 }
 
-// NewDNSReconciler creates a new DNSReconciler with the handler chain
+// NewDNSReconciler creates a new DNSReconciler with the handler chain.
+// When cfg.Reconciliation.DisableDNSCheck is true, the ResolveDNSHandler step
+// is omitted and FQDNs will not carry a SyncStatus.
 func NewDNSReconciler(c client.Client, scheme *runtime.Scheme, cfg *config.OperatorConfig) *DNSReconciler {
 	var groupMappingConfig *config.GroupMappingConfig
 	var sourcePriority []string
+	disableDNSCheck := false
 	if cfg != nil {
 		groupMappingConfig = &cfg.GroupMapping
 		sourcePriority = cfg.Sources.Priority
+		disableDNSCheck = cfg.Reconciliation.DisableDNSCheck
 	}
+
+	handlers := []reconciler.Handler[*sreportalv1alpha1.DNS]{
+		dns.NewAggregateDNSRecordsHandler(c, groupMappingConfig, sourcePriority),
+		dns.NewCollectManualEntriesHandler(),
+		dns.NewAggregateFQDNsHandler(),
+	}
+	if !disableDNSCheck {
+		handlers = append(handlers, dns.NewResolveDNSHandler(dns.NewNetResolver()))
+	}
+	handlers = append(handlers, dns.NewUpdateStatusHandler(c))
 
 	return &DNSReconciler{
 		Client: c,
 		Scheme: scheme,
-		chain: reconciler.NewChain(
-			dns.NewAggregateDNSRecordsHandler(c, groupMappingConfig, sourcePriority),
-			dns.NewCollectManualEntriesHandler(),
-			dns.NewAggregateFQDNsHandler(),
-			dns.NewResolveDNSHandler(dns.NewNetResolver()),
-			dns.NewUpdateStatusHandler(c),
-		),
+		chain:  reconciler.NewChain(handlers...),
 	}
 }
 

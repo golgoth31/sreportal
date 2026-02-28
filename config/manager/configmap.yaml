@@ -12,6 +12,7 @@ data:
         annotationFilter: ""
         serviceTypeFilter:
           - LoadBalancer
+          - ExternalName
           - ClusterIP
         publishInternal: true
         publishHostIP: false
@@ -49,3 +50,4 @@ data:
     reconciliation:
       interval: 5m
       retryOnError: 30s
+      disableDNSCheck: false

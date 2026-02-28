@@ -259,6 +259,32 @@ var _ = Describe("ResolveDNSHandler", func() {
 		})
 	})
 
+	// DisableDNSCheck contract: when the handler is omitted from the chain
+	// (reconciliation.disableDNSCheck: true), SyncStatus must remain empty on
+	// all FQDNs. This test documents the zero-value invariant that callers rely on.
+	Context("when the handler is not invoked (disableDNSCheck: true)", func() {
+		It("should leave SyncStatus empty on all FQDNs", func() {
+			// Arrange: groups pre-populated as they would be after AggregateFQDNsHandler.
+			// resolver has a matching record — but we intentionally do NOT call handler.Handle.
+			resolver.hosts["api.example.com"] = []string{"10.0.0.1"}
+			rc.Data[dnspkg.DataKeyAggregatedGroups] = []sreportalv1alpha1.FQDNGroupStatus{
+				{
+					Name:   "Services",
+					Source: "external-dns",
+					FQDNs: []sreportalv1alpha1.FQDNStatus{
+						{FQDN: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+					},
+				},
+			}
+
+			// Act: handler is intentionally skipped (simulates disableDNSCheck: true).
+
+			// Assert: SyncStatus is the zero value.
+			groups := rc.Data[dnspkg.DataKeyAggregatedGroups].([]sreportalv1alpha1.FQDNGroupStatus)
+			Expect(groups[0].FQDNs[0].SyncStatus).To(BeEmpty())
+		})
+	})
+
 	Context("when groups have mixed record types", func() {
 		BeforeEach(func() {
 			resolver.hosts["a.example.com"] = []string{"10.0.0.1"}

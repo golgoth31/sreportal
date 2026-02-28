@@ -160,13 +160,26 @@ See [Annotations](../annotations) for details on annotation-based grouping.
 
 ## Reconciliation
 
-Controls how often the source controller polls for DNS changes.
+Controls how often the source controller polls for DNS changes and optional features applied during each reconciliation cycle.
 
 ```yaml
 reconciliation:
-  interval: 5m       # How often to poll sources (default: 5m)
-  retryOnError: 30s  # Retry delay after an error (default: 30s)
+  interval: 5m             # How often to poll sources (default: 5m)
+  retryOnError: 30s        # Retry delay after an error (default: 30s)
+  disableDNSCheck: false   # Disable live DNS resolution (default: false)
 ```
+
+### `disableDNSCheck`
+
+When `false` (default), every FQDN is resolved against DNS during each reconciliation and a `syncStatus` field is populated on the FQDN status (`sync`, `notsync`, or `notavailable`).
+
+Set to `true` to skip the resolution step entirely. This is useful when:
+
+- The operator runs in a network environment without outbound DNS access
+- DNS resolution latency is unacceptable for large FQDN counts
+- The `syncStatus` field is not needed in the web UI
+
+When disabled, `syncStatus` will be empty on all FQDNs.
 
 ## Full Example
 
@@ -218,4 +231,5 @@ data:
     reconciliation:
       interval: 30s
       retryOnError: 10s
+      disableDNSCheck: false
 ```

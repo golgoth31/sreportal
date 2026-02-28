@@ -184,6 +184,11 @@ type ReconciliationConfig struct {
 	Interval Duration `json:"interval" yaml:"interval"`
 	// RetryOnError is the delay before retrying after an error.
 	RetryOnError Duration `json:"retryOnError" yaml:"retryOnError"`
+	// DisableDNSCheck disables live DNS resolution during reconciliation.
+	// When true, FQDNs will not have a SyncStatus populated and the
+	// ResolveDNSHandler step is skipped entirely. Useful when the operator
+	// runs without outbound DNS access or to reduce reconciliation latency.
+	DisableDNSCheck bool `json:"disableDNSCheck,omitempty" yaml:"disableDNSCheck,omitempty"`
 }
 
 // DefaultConfig returns a default configuration.

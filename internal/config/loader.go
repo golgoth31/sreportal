@@ -50,10 +50,11 @@ func LoadFromFile(path string) (*OperatorConfig, error) {
 // LogConfig returns a summary of the configuration for logging purposes.
 func (c *OperatorConfig) LogSummary() map[string]any {
 	summary := map[string]any{
-		"reconciliation.interval":     c.Reconciliation.Interval.Duration().String(),
-		"reconciliation.retryOnError": c.Reconciliation.RetryOnError.Duration().String(),
-		"groupMapping.defaultGroup":   c.GroupMapping.DefaultGroup,
-		"sources.priority":            c.Sources.Priority,
+		"reconciliation.interval":        c.Reconciliation.Interval.Duration().String(),
+		"reconciliation.retryOnError":    c.Reconciliation.RetryOnError.Duration().String(),
+		"reconciliation.disableDNSCheck": c.Reconciliation.DisableDNSCheck,
+		"groupMapping.defaultGroup":      c.GroupMapping.DefaultGroup,
+		"sources.priority":               c.Sources.Priority,
 	}
 
 	if c.Sources.Service != nil {
