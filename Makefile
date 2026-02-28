@@ -140,7 +140,7 @@ run: manifests generate fmt vet generate-certs ## Run a controller from your hos
 
 .PHONY: run2
 run2: manifests generate fmt vet generate-certs2 ## Run a second controller from your host (dev mode: UI served from filesystem).
-	go run ./cmd/main.go -zap-devel --dev-mode --web-bind-address=:8082 --health-probe-bind-address=:9091 --webhook-port=9444 --webhook-cert-path=$(CERTSDIR) --config=./config/samples/test_config.yaml
+	go run ./cmd/main.go -zap-devel --dev-mode --web-bind-address=:8091 --health-probe-bind-address=:9091 --webhook-port=9444 --webhook-cert-path=$(CERTSDIR) --config=./config/samples/test_config.yaml
 
 # If you wish to build the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64). However, you must enable docker buildKit for it.

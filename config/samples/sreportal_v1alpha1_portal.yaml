@@ -22,5 +22,5 @@ spec:
   title: "Dev Core 1"
   subPath: "dev-core-1"
   remote:
-    url: "http://127.0.0.1:8082"
+    url: "http://127.0.0.1:8091"
     portal: main

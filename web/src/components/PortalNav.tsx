@@ -1,4 +1,3 @@
-import { ExternalLinkIcon } from "lucide-react";
 import { NavLink } from "react-router";
 
 import { Button } from "@/components/ui/button";
@@ -25,27 +24,6 @@ export function PortalNav({ portals, isLoading }: PortalNavProps) {
     <nav className="flex items-center gap-1" aria-label="Portal navigation">
       {portals.map((portal) => {
         const path = `/${portal.subPath || portal.name}/links`;
-
-        if (portal.isRemote && portal.url) {
-          return (
-            <Button
-              key={portal.name}
-              variant="ghost"
-              size="sm"
-              asChild
-            >
-              <a
-                href={portal.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={`${portal.title} (opens remote portal)`}
-              >
-                {portal.title}
-                <ExternalLinkIcon className="size-3 text-muted-foreground" />
-              </a>
-            </Button>
-          );
-        }
 
         return (
           <NavLink key={portal.name} to={path}>
