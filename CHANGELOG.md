@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.7.1](https://github.com/golgoth31/sreportal/compare/v1.7.0...v1.7.1) (2026-02-28)
+
+
+### Bug Fixes
+
+* remote portal view ([c77fbcb](https://github.com/golgoth31/sreportal/commit/c77fbcb7997c15e60aed6a7807c31440568e87c0))
+* resolve six code-review bugs across grpc, source, and reconciler packages ([ea8f67c](https://github.com/golgoth31/sreportal/commit/ea8f67c9fde9d8e7cb57520d78bb902f4a50ae1e))
+
 ## [1.7.0](https://github.com/golgoth31/sreportal/compare/v1.6.0...v1.7.0) (2026-02-27)
 
 
