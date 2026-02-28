@@ -26,7 +26,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/external-dns/endpoint"
 	externaldnssource "sigs.k8s.io/external-dns/source"
 	"sigs.k8s.io/external-dns/source/annotations"
 
@@ -78,28 +77,6 @@ func NewFactory(kubeClient kubernetes.Interface, restConfig *rest.Config) *Facto
 		kubeClient: kubeClient,
 		restConfig: restConfig,
 	}
-}
-
-// BuildSources creates external-dns sources based on the operator configuration.
-// It returns a slice of sources that can be used to retrieve endpoints.
-// Deprecated: Use BuildTypedSources instead for per-source DNSRecord management.
-func (f *Factory) BuildSources(ctx context.Context, cfg *config.OperatorConfig) ([]Source, error) {
-	typedSources, err := f.BuildTypedSources(ctx, cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	sources := make([]Source, len(typedSources))
-	for i, ts := range typedSources {
-		sources[i] = ts.Source
-	}
-
-	// Wrap multiple sources in a multi-source that deduplicates
-	if len(sources) > 1 {
-		return []Source{&multiSource{sources: sources}}, nil
-	}
-
-	return sources, nil
 }
 
 // BuildTypedSources creates external-dns sources with type information.
@@ -363,39 +340,4 @@ func parseLabelSelector(selector string) (labels.Selector, error) {
 		return labels.Everything(), nil
 	}
 	return labels.Parse(selector)
-}
-
-// multiSource combines multiple sources and deduplicates endpoints.
-type multiSource struct {
-	sources []Source
-}
-
-// Endpoints returns endpoints from all sources, deduplicated by DNS name.
-func (m *multiSource) Endpoints(ctx context.Context) ([]*endpoint.Endpoint, error) {
-	seen := make(map[string]bool)
-	var result []*endpoint.Endpoint
-
-	for _, src := range m.sources {
-		eps, err := src.Endpoints(ctx)
-		if err != nil {
-			// Log but continue with other sources
-			continue
-		}
-		for _, ep := range eps {
-			key := ep.DNSName + "/" + ep.RecordType
-			if !seen[key] {
-				seen[key] = true
-				result = append(result, ep)
-			}
-		}
-	}
-
-	return result, nil
-}
-
-// AddEventHandler implements source.Source interface (no-op for combined source).
-func (m *multiSource) AddEventHandler(ctx context.Context, handler func()) {
-	for _, src := range m.sources {
-		src.AddEventHandler(ctx, handler)
-	}
 }

@@ -19,12 +19,14 @@ package grpc
 import (
 	"context"
 	"slices"
+	"sort"
 	"strings"
 	"time"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	dnsv1 "github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1"
@@ -64,8 +66,9 @@ func (s *DNSService) ListFQDNs(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	// Aggregate FQDNs from all DNS resources (flatten groups)
-	// Use a map to accumulate groups for FQDNs that appear in multiple groups
+	// Aggregate FQDNs from all DNS resources (flatten groups).
+	// Deduplication key is DNSName+RecordType: the same hostname can have both
+	// an A and a CNAME record and both must be preserved as separate entries.
 	seen := make(map[string]*dnsv1.FQDN)
 
 	for _, dns := range dnsList.Items {
@@ -84,8 +87,9 @@ func (s *DNSService) ListFQDNs(
 					continue
 				}
 
-				if existing, ok := seen[fqdnStatus.FQDN]; ok {
-					// FQDN already seen, append group name if not already present
+				key := fqdnStatus.FQDN + "/" + fqdnStatus.RecordType
+				if existing, ok := seen[key]; ok {
+					// Same FQDN+RecordType already seen: append group name if not present
 					if !slices.Contains(existing.Groups, group.Name) {
 						existing.Groups = append(existing.Groups, group.Name)
 					}
@@ -103,17 +107,23 @@ func (s *DNSService) ListFQDNs(
 						OriginRef:            toProtoOriginRef(fqdnStatus.OriginRef),
 						SyncStatus:           fqdnStatus.SyncStatus,
 					}
-					seen[fqdnStatus.FQDN] = f
+					seen[key] = f
 				}
 			}
 		}
 	}
 
-	// Collect all FQDNs from the map
+	// Collect FQDNs from map and sort for deterministic response ordering
 	fqdns := make([]*dnsv1.FQDN, 0, len(seen))
 	for _, f := range seen {
 		fqdns = append(fqdns, f)
 	}
+	sort.Slice(fqdns, func(i, j int) bool {
+		if fqdns[i].Name == fqdns[j].Name {
+			return fqdns[i].RecordType < fqdns[j].RecordType
+		}
+		return fqdns[i].Name < fqdns[j].Name
+	})
 
 	return connect.NewResponse(&dnsv1.ListFQDNsResponse{
 		Fqdns: fqdns,
@@ -126,6 +136,8 @@ func (s *DNSService) StreamFQDNs(
 	req *connect.Request[dnsv1.StreamFQDNsRequest],
 	stream *connect.ServerStream[dnsv1.StreamFQDNsResponse],
 ) error {
+	log := logf.FromContext(ctx)
+
 	// Initial send of all current FQDNs
 	listReq := connect.NewRequest(&dnsv1.ListFQDNsRequest{
 		Namespace: req.Msg.Namespace,
@@ -155,9 +167,10 @@ func (s *DNSService) StreamFQDNs(
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
+	// Stream map key is DNSName+"/"+RecordType to match ListFQDNs deduplication.
 	previousFQDNs := make(map[string]*dnsv1.FQDN)
 	for _, fqdn := range listResp.Msg.Fqdns {
-		previousFQDNs[fqdn.Name] = fqdn
+		previousFQDNs[fqdn.Name+"/"+fqdn.RecordType] = fqdn
 	}
 
 	for {
@@ -167,14 +180,16 @@ func (s *DNSService) StreamFQDNs(
 		case <-ticker.C:
 			listResp, err := s.ListFQDNs(ctx, listReq)
 			if err != nil {
-				continue // Log and continue on errors
+				log.Error(err, "failed to list FQDNs in stream, skipping tick")
+				continue
 			}
 
 			currentFQDNs := make(map[string]*dnsv1.FQDN)
 			for _, fqdn := range listResp.Msg.Fqdns {
-				currentFQDNs[fqdn.Name] = fqdn
+				key := fqdn.Name + "/" + fqdn.RecordType
+				currentFQDNs[key] = fqdn
 
-				prev, exists := previousFQDNs[fqdn.Name]
+				prev, exists := previousFQDNs[key]
 				if !exists {
 					// New FQDN
 					if err := stream.Send(&dnsv1.StreamFQDNsResponse{
@@ -195,8 +210,8 @@ func (s *DNSService) StreamFQDNs(
 			}
 
 			// Check for deleted FQDNs
-			for name, fqdn := range previousFQDNs {
-				if _, exists := currentFQDNs[name]; !exists {
+			for key, fqdn := range previousFQDNs {
+				if _, exists := currentFQDNs[key]; !exists {
 					if err := stream.Send(&dnsv1.StreamFQDNsResponse{
 						Type: dnsv1.UpdateType_UPDATE_TYPE_DELETED,
 						Fqdn: fqdn,

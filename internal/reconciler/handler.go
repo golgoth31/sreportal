@@ -38,7 +38,7 @@ type ReconcileContext[T any] struct {
 type Handler[T any] interface {
 	// Handle processes the reconciliation step.
 	// If an error is returned, the chain stops and the error is propagated.
-	// If Result.Requeue or Result.RequeueAfter is set, the chain stops.
+	// If Result.RequeueAfter is set, the chain stops and the result is propagated.
 	Handle(ctx context.Context, rc *ReconcileContext[T]) error
 }
 
@@ -58,7 +58,7 @@ func (c *Chain[T]) Execute(ctx context.Context, rc *ReconcileContext[T]) error {
 		if err := h.Handle(ctx, rc); err != nil {
 			return err
 		}
-		// Short-circuit if a handler requested requeue
+		// Short-circuit if a handler requested a delayed requeue
 		if rc.Result.RequeueAfter > 0 {
 			return nil
 		}

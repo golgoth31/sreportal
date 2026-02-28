@@ -831,6 +831,37 @@ var _ = Describe("ApplySourcePriority", func() {
 			Expect(result).To(BeNil())
 		})
 	})
+
+	Context("when the same source has intra-source duplicate keys", func() {
+		It("should merge targets from intra-source duplicates when priority is configured", func() {
+			endpointsBySource := map[string][]sreportalv1alpha1.EndpointStatus{
+				"service": {
+					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.2"}},
+				},
+			}
+
+			result := ApplySourcePriority(endpointsBySource, []string{"service", "ingress"})
+
+			Expect(result).To(HaveLen(1))
+			Expect(result[0].DNSName).To(Equal("api.example.com"))
+			Expect(result[0].Targets).To(ConsistOf("10.0.0.1", "10.0.0.2"))
+		})
+
+		It("should merge targets from intra-source duplicates even when the source is not in the priority list", func() {
+			endpointsBySource := map[string][]sreportalv1alpha1.EndpointStatus{
+				"dnsendpoint": { // unlisted
+					{DNSName: "dns.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+					{DNSName: "dns.example.com", RecordType: "A", Targets: []string{"10.0.0.2"}},
+				},
+			}
+
+			result := ApplySourcePriority(endpointsBySource, []string{"service", "ingress"})
+
+			Expect(result).To(HaveLen(1))
+			Expect(result[0].Targets).To(ConsistOf("10.0.0.1", "10.0.0.2"))
+		})
+	})
 })
 
 // Benchmarks — these are standard Go benchmarks (not Ginkgo), placed in the

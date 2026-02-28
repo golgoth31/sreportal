@@ -22,6 +22,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/http"
+	"sort"
 	"time"
 
 	"connectrpc.com/connect"
@@ -252,11 +253,14 @@ func convertToGroups(fqdns []*sreportalv1.FQDN) []sreportalv1alpha1.FQDNGroupSta
 		}
 	}
 
-	// Convert map to slice
+	// Convert map to sorted slice (map iteration is non-deterministic)
 	groups := make([]sreportalv1alpha1.FQDNGroupStatus, 0, len(groupMap))
 	for _, group := range groupMap {
 		groups = append(groups, *group)
 	}
+	sort.Slice(groups, func(i, j int) bool {
+		return groups[i].Name < groups[j].Name
+	})
 
 	return groups
 }

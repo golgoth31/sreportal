@@ -322,17 +322,14 @@ func EndpointStatusToGroups(endpoints []sreportalv1alpha1.EndpointStatus, mappin
 	return result
 }
 
-// endpointSourceKey uniquely identifies a FQDN + record type pair for cross-source deduplication.
-type endpointSourceKey struct {
-	dnsName    string
-	recordType string
-}
-
 // ApplySourcePriority deduplicates endpoints across multiple source types using the
 // provided priority ordering. When the same FQDN+RecordType appears in multiple
 // sources, the entry from the highest-priority source is kept. Sources not listed
 // in priority receive the lowest rank and lose to any listed source on conflict,
-// but still contribute FQDNs they uniquely own.
+// but still contribute FQDNs they uniquely own. Intra-source duplicates (same source,
+// same FQDN+RecordType) always have their targets merged — preserving the no-priority
+// behaviour. Tie-breaking between different unlisted sources is alphabetical by source
+// type name, making the result fully deterministic.
 // When priority is empty or nil, all endpoints are returned without deduplication
 // (preserving the existing merge-targets behaviour when passed to EndpointStatusToGroups).
 func ApplySourcePriority(endpointsBySource map[string][]sreportalv1alpha1.EndpointStatus, priority []string) []sreportalv1alpha1.EndpointStatus {
@@ -349,29 +346,60 @@ func ApplySourcePriority(endpointsBySource map[string][]sreportalv1alpha1.Endpoi
 		return all
 	}
 
-	// Build rank map: lower index in priority = higher priority (rank 0 wins)
+	return selectByPriority(endpointsBySource, priority)
+}
+
+// selectByPriority selects the winning endpoint for each FQDN+RecordType key across
+// all source types, using priority rank as the primary criterion. Intra-source
+// duplicates (same source type, same key) have their targets merged. Ties between
+// different unlisted sources are broken alphabetically by source type name.
+func selectByPriority(endpointsBySource map[string][]sreportalv1alpha1.EndpointStatus, priority []string) []sreportalv1alpha1.EndpointStatus {
+	type epKey struct {
+		dnsName    string
+		recordType string
+	}
+	type candidate struct {
+		ep      sreportalv1alpha1.EndpointStatus
+		rank    int
+		srcType string
+	}
+
+	// Build rank map: lower index = higher priority (rank 0 beats rank 1)
 	rankOf := make(map[string]int, len(priority))
 	for i, src := range priority {
 		rankOf[src] = i
 	}
-	lowestRank := len(priority) // sources not in list get this rank (always lose to listed ones)
+	lowestRank := len(priority) // unlisted sources always lose to any listed source
 
-	type candidate struct {
-		ep   sreportalv1alpha1.EndpointStatus
-		rank int
+	winners := make(map[epKey]candidate)
+
+	// Sort source types so tie-breaking between unlisted sources is alphabetical (deterministic)
+	srcTypes := make([]string, 0, len(endpointsBySource))
+	for srcType := range endpointsBySource {
+		srcTypes = append(srcTypes, srcType)
 	}
-	winners := make(map[endpointSourceKey]candidate)
+	sort.Strings(srcTypes)
 
-	for srcType, eps := range endpointsBySource {
+	for _, srcType := range srcTypes {
+		eps := endpointsBySource[srcType]
 		srcRank, ok := rankOf[srcType]
 		if !ok {
 			srcRank = lowestRank
 		}
 		for _, ep := range eps {
-			key := endpointSourceKey{dnsName: ep.DNSName, recordType: ep.RecordType}
-			if existing, exists := winners[key]; !exists || srcRank < existing.rank {
-				winners[key] = candidate{ep: ep, rank: srcRank}
+			key := epKey{dnsName: ep.DNSName, recordType: ep.RecordType}
+			existing, exists := winners[key]
+			switch {
+			case !exists || srcRank < existing.rank:
+				// Higher-priority source wins outright
+				winners[key] = candidate{ep: ep, rank: srcRank, srcType: srcType}
+			case srcRank == existing.rank && srcType == existing.srcType:
+				// Same source, same key: merge targets (mirrors no-priority behaviour)
+				merged := existing
+				merged.ep.Targets = mergeTargets(merged.ep.Targets, ep.Targets)
+				winners[key] = merged
 			}
+			// else: lower rank or different source at tied rank → first-seen (alphabetically) wins
 		}
 	}
 

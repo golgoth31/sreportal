@@ -53,6 +53,7 @@ func (c *OperatorConfig) LogSummary() map[string]any {
 		"reconciliation.interval":     c.Reconciliation.Interval.Duration().String(),
 		"reconciliation.retryOnError": c.Reconciliation.RetryOnError.Duration().String(),
 		"groupMapping.defaultGroup":   c.GroupMapping.DefaultGroup,
+		"sources.priority":            c.Sources.Priority,
 	}
 
 	if c.Sources.Service != nil {

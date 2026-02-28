@@ -346,6 +346,57 @@ func TestListFQDNs_OriginRef_IsNil_ForManualEntries(t *testing.T) {
 	assert.Nil(t, resp.Msg.Fqdns[0].OriginRef, "manual entries must not have OriginRef")
 }
 
+func TestListFQDNs_ReturnsBothRecordTypes_WhenSameFQDNHasAAndCNAME(t *testing.T) {
+	// Arrange: same hostname with A and CNAME records in the same group.
+	// Before the fix the second record type was silently dropped because the
+	// seen-map was keyed by DNS name alone.
+	scheme := newScheme(t)
+	now := metav1.NewTime(time.Now())
+
+	dns := &sreportalv1alpha1.DNS{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-dns", Namespace: "default"},
+		Spec:       sreportalv1alpha1.DNSSpec{PortalRef: "main"},
+		Status: sreportalv1alpha1.DNSStatus{
+			Groups: []sreportalv1alpha1.FQDNGroupStatus{
+				{
+					Name:   "Services",
+					Source: "external-dns",
+					FQDNs: []sreportalv1alpha1.FQDNStatus{
+						{FQDN: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}, LastSeen: now},
+						{FQDN: "api.example.com", RecordType: "CNAME", Targets: []string{"lb.example.com"}, LastSeen: now},
+					},
+				},
+			},
+		},
+	}
+
+	k8sClient := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(dns).
+		WithStatusSubresource(dns).
+		Build()
+
+	svc := svcgrpc.NewDNSService(k8sClient)
+
+	// Act
+	resp, err := svc.ListFQDNs(
+		context.Background(),
+		connect.NewRequest(&dnsv1.ListFQDNsRequest{}),
+	)
+
+	// Assert: both A and CNAME must be returned as separate entries
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.Fqdns, 2, "A and CNAME for the same hostname must both be returned")
+
+	recordTypes := make(map[string]string)
+	for _, f := range resp.Msg.Fqdns {
+		assert.Equal(t, "api.example.com", f.Name)
+		recordTypes[f.RecordType] = f.Targets[0]
+	}
+	assert.Equal(t, "10.0.0.1", recordTypes["A"], "A record must be preserved")
+	assert.Equal(t, "lb.example.com", recordTypes["CNAME"], "CNAME record must be preserved")
+}
+
 func TestListFQDNs_FiltersWork(t *testing.T) {
 	scheme := newScheme(t)
 	now := metav1.NewTime(time.Now())
