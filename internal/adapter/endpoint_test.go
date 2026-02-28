@@ -832,6 +832,52 @@ var _ = Describe("ApplySourcePriority", func() {
 		})
 	})
 
+	Context("when same FQDN has different RecordType in different sources", func() {
+		It("should suppress the lower-priority source even when RecordTypes differ", func() {
+			// Real-world case: Service publishes an A record (ClusterIP via publishInternal)
+			// while Istio Gateway publishes a CNAME (cloud LB hostname). With service having
+			// higher priority, the CNAME from istio-gateway must be dropped entirely.
+			endpointsBySource := map[string][]sreportalv1alpha1.EndpointStatus{
+				"service": {
+					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+				},
+				"istio-gateway": {
+					{DNSName: "api.example.com", RecordType: "CNAME", Targets: []string{"lb.example.com"}},
+				},
+			}
+
+			result := ApplySourcePriority(endpointsBySource, []string{"service", "istio-gateway"})
+
+			Expect(result).To(HaveLen(1))
+			Expect(result[0].DNSName).To(Equal("api.example.com"))
+			Expect(result[0].RecordType).To(Equal("A"))
+			Expect(result[0].Targets).To(Equal([]string{"10.0.0.1"}))
+		})
+
+		It("should keep all record types from the winning source", func() {
+			// Service publishes both A and AAAA for the same hostname; istio-gateway
+			// publishes only a CNAME. Service wins → both A and AAAA are kept.
+			endpointsBySource := map[string][]sreportalv1alpha1.EndpointStatus{
+				"service": {
+					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+					{DNSName: "api.example.com", RecordType: "AAAA", Targets: []string{"::1"}},
+				},
+				"istio-gateway": {
+					{DNSName: "api.example.com", RecordType: "CNAME", Targets: []string{"lb.example.com"}},
+				},
+			}
+
+			result := ApplySourcePriority(endpointsBySource, []string{"service", "istio-gateway"})
+
+			Expect(result).To(HaveLen(2))
+			recordTypes := make([]string, len(result))
+			for i, ep := range result {
+				recordTypes[i] = ep.RecordType
+			}
+			Expect(recordTypes).To(ConsistOf("A", "AAAA"))
+		})
+	})
+
 	Context("when the same source has intra-source duplicate keys", func() {
 		It("should merge targets from intra-source duplicates when priority is configured", func() {
 			endpointsBySource := map[string][]sreportalv1alpha1.EndpointStatus{

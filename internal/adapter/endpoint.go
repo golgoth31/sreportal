@@ -323,13 +323,18 @@ func EndpointStatusToGroups(endpoints []sreportalv1alpha1.EndpointStatus, mappin
 }
 
 // ApplySourcePriority deduplicates endpoints across multiple source types using the
-// provided priority ordering. When the same FQDN+RecordType appears in multiple
-// sources, the entry from the highest-priority source is kept. Sources not listed
-// in priority receive the lowest rank and lose to any listed source on conflict,
-// but still contribute FQDNs they uniquely own. Intra-source duplicates (same source,
-// same FQDN+RecordType) always have their targets merged — preserving the no-priority
-// behaviour. Tie-breaking between different unlisted sources is alphabetical by source
-// type name, making the result fully deterministic.
+// provided priority ordering. Priority is applied at the FQDN-name level: when the
+// same hostname appears in multiple sources, the highest-priority source wins and ALL
+// its record types (A, AAAA, CNAME, …) are kept, while ALL records from lower-priority
+// sources for that hostname are dropped. This correctly handles the common case where
+// two sources discover the same FQDN via different record types (e.g. a Service A record
+// vs an Istio Gateway CNAME).
+//
+// Sources not listed in priority receive the lowest rank and lose to any listed source
+// on conflict, but still contribute FQDNs they uniquely own. Intra-source duplicates
+// (same source, same FQDN+RecordType) have their targets merged. Tie-breaking between
+// sources of equal rank is alphabetical by source type name, making results deterministic.
+//
 // When priority is empty or nil, all endpoints are returned without deduplication
 // (preserving the existing merge-targets behaviour when passed to EndpointStatusToGroups).
 func ApplySourcePriority(endpointsBySource map[string][]sreportalv1alpha1.EndpointStatus, priority []string) []sreportalv1alpha1.EndpointStatus {
@@ -349,66 +354,81 @@ func ApplySourcePriority(endpointsBySource map[string][]sreportalv1alpha1.Endpoi
 	return selectByPriority(endpointsBySource, priority)
 }
 
-// selectByPriority selects the winning endpoint for each FQDN+RecordType key across
-// all source types, using priority rank as the primary criterion. Intra-source
-// duplicates (same source type, same key) have their targets merged. Ties between
-// different unlisted sources are broken alphabetically by source type name.
+// selectByPriority implements two-phase FQDN-name-level deduplication.
+//
+// Phase 1 – elect the winning source type per FQDN name using priority rank.
+// Phase 2 – collect all endpoints from the winning source (preserving every
+// record type it published) and merge intra-source duplicates (same FQDN+RecordType).
+//
+// This ensures that a lower-priority source cannot leak any record type for an FQDN
+// that a higher-priority source also discovers, even when the two sources publish
+// different record types (e.g. Service A vs Istio Gateway CNAME).
 func selectByPriority(endpointsBySource map[string][]sreportalv1alpha1.EndpointStatus, priority []string) []sreportalv1alpha1.EndpointStatus {
-	type epKey struct {
-		dnsName    string
-		recordType string
-	}
-	type candidate struct {
-		ep      sreportalv1alpha1.EndpointStatus
-		rank    int
-		srcType string
-	}
-
-	// Build rank map: lower index = higher priority (rank 0 beats rank 1)
+	// Build rank map: lower index = higher priority (rank 0 beats rank 1).
 	rankOf := make(map[string]int, len(priority))
 	for i, src := range priority {
 		rankOf[src] = i
 	}
 	lowestRank := len(priority) // unlisted sources always lose to any listed source
 
-	winners := make(map[epKey]candidate)
-
-	// Sort source types so tie-breaking between unlisted sources is alphabetical (deterministic)
+	// Sort source types so tie-breaking between equal-rank sources is alphabetical (deterministic).
 	srcTypes := make([]string, 0, len(endpointsBySource))
 	for srcType := range endpointsBySource {
 		srcTypes = append(srcTypes, srcType)
 	}
 	sort.Strings(srcTypes)
 
+	// Phase 1: elect the winning source type per FQDN name.
+	type sourceWinner struct {
+		srcType string
+		rank    int
+	}
+	winnerBySrc := make(map[string]sourceWinner) // DNSName → winning source
+
 	for _, srcType := range srcTypes {
-		eps := endpointsBySource[srcType]
 		srcRank, ok := rankOf[srcType]
 		if !ok {
 			srcRank = lowestRank
 		}
-		for _, ep := range eps {
-			key := epKey{dnsName: ep.DNSName, recordType: ep.RecordType}
-			existing, exists := winners[key]
-			switch {
-			case !exists || srcRank < existing.rank:
-				// Higher-priority source wins outright
-				winners[key] = candidate{ep: ep, rank: srcRank, srcType: srcType}
-			case srcRank == existing.rank && srcType == existing.srcType:
-				// Same source, same key: merge targets (mirrors no-priority behaviour)
-				merged := existing
-				merged.ep.Targets = mergeTargets(merged.ep.Targets, ep.Targets)
-				winners[key] = merged
+		for _, ep := range endpointsBySource[srcType] {
+			existing, exists := winnerBySrc[ep.DNSName]
+			if !exists || srcRank < existing.rank {
+				winnerBySrc[ep.DNSName] = sourceWinner{srcType: srcType, rank: srcRank}
 			}
-			// else: lower rank or different source at tied rank → first-seen (alphabetically) wins
+			// equal rank: first-seen (alphabetically) wins — srcTypes is already sorted
 		}
 	}
 
-	result := make([]sreportalv1alpha1.EndpointStatus, 0, len(winners))
-	for _, w := range winners {
-		result = append(result, w.ep)
+	// Phase 2: collect all endpoints from the winning source for each FQDN name.
+	// Intra-source duplicates (same FQDN+RecordType within the winning source) are merged.
+	type epKey struct {
+		dnsName    string
+		recordType string
+	}
+	winningEps := make(map[epKey]sreportalv1alpha1.EndpointStatus)
+
+	for _, srcType := range srcTypes {
+		for _, ep := range endpointsBySource[srcType] {
+			winner, ok := winnerBySrc[ep.DNSName]
+			if !ok || winner.srcType != srcType {
+				continue // this source does not own this FQDN name
+			}
+			key := epKey{dnsName: ep.DNSName, recordType: ep.RecordType}
+			if existing, dup := winningEps[key]; dup {
+				existing.Targets = mergeTargets(existing.Targets, ep.Targets)
+				winningEps[key] = existing
+			} else {
+				winningEps[key] = ep
+			}
+		}
 	}
 
-	// Sort for deterministic output
+	result := make([]sreportalv1alpha1.EndpointStatus, 0, len(winningEps))
+	for _, ep := range winningEps {
+		result = append(result, ep)
+	}
+
+	// Sort for deterministic output.
 	sort.Slice(result, func(i, j int) bool {
 		if result[i].DNSName == result[j].DNSName {
 			return result[i].RecordType < result[j].RecordType
