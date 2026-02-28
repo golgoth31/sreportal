@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.8.0](https://github.com/golgoth31/sreportal/compare/v1.7.1...v1.8.0) (2026-02-28)
+
+
+### Features
+
+* add config to disable dns check ([db57dff](https://github.com/golgoth31/sreportal/commit/db57dffa5bcaad228f2242cbdc65ea2456ae863b))
+
+
+### Bug Fixes
+
+* fqdn dedup ([09dde68](https://github.com/golgoth31/sreportal/commit/09dde68771cbb60f3a4dad78f51369a34a55b870))
+
 ## [1.7.1](https://github.com/golgoth31/sreportal/compare/v1.7.0...v1.7.1) (2026-02-28)
 
 
