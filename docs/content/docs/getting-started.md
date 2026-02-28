@@ -23,6 +23,25 @@ This applies the generated CRD manifests from `config/crd/bases/`.
 
 ## Deploy the Operator
 
+### Using Helm
+
+Add the chart and install it into its own namespace:
+
+```bash
+helm install sreportal oci://ghcr.io/golgoth31/charts/sreportal \
+  --namespace sreportal-system \
+  --create-namespace
+```
+
+To customise settings, create a `values.yaml` file and pass it with `-f`:
+
+```bash
+helm install sreportal oci://ghcr.io/golgoth31/charts/sreportal \
+  --namespace sreportal-system \
+  --create-namespace \
+  -f values.yaml
+```
+
 ### Using Kustomize
 
 ```bash
@@ -165,13 +184,13 @@ The referenced Secrets must exist in the same namespace as the Portal resource.
 
 ### 5. Access the Web UI
 
-The web dashboard is served by the operator on port 8082. Forward the port to your local machine:
+The web dashboard is served by the operator on port 8090. Forward the port to your local machine:
 
 ```bash
-kubectl port-forward -n sreportal-system svc/sreportal-controller-manager 8082:8082
+kubectl port-forward -n sreportal-system svc/sreportal-web-mcp-service 8090:8090
 ```
 
-Open [http://localhost:8082](http://localhost:8082) in your browser. The default route redirects to `/main/links`, showing all FQDNs for the main portal.
+Open [http://localhost:8090](http://localhost:8090) in your browser. The default route redirects to `/main/links`, showing all FQDNs for the main portal.
 
 ## Running Locally
 

@@ -93,7 +93,7 @@ Discovers DNS names from Istio Gateway resources. Requires Istio CRDs.
 ```yaml
 sources:
   istioGateway:
-    enabled: false             # Disabled by default
+    enabled: true              # Enabled by default
     namespace: ""              # Empty = all namespaces
     annotationFilter: ""
     fqdnTemplate: ""
@@ -115,6 +115,24 @@ sources:
     combineFqdnAndAnnotation: false
     ignoreHostnameAnnotation: false
 ```
+
+### Priority
+
+Controls which source wins when the same FQDN + record type is discovered by multiple sources. Sources listed first take precedence over sources listed later.
+
+When `priority` is empty or omitted, targets from all sources are merged together (default behaviour).
+
+```yaml
+sources:
+  priority:
+    - dnsendpoint
+    - ingress
+    - service
+    - istio-gateway
+    - istio-virtualservice
+```
+
+Valid values correspond to the source types: `dnsendpoint`, `ingress`, `service`, `istio-gateway`, `istio-virtualservice`.
 
 ## Group Mapping
 
@@ -178,11 +196,17 @@ data:
         enabled: false
         namespace: ""
       istioGateway:
-        enabled: false
+        enabled: true
         namespace: ""
       istioVirtualService:
         enabled: false
         namespace: ""
+      priority:
+        - dnsendpoint
+        - ingress
+        - service
+        - istio-gateway
+        - istio-virtualservice
     groupMapping:
       defaultGroup: "Services"
       labelKey: "sreportal.io/group"

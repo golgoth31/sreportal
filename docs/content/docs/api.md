@@ -156,6 +156,7 @@ _Appears in:_
 | `description` _string_ | description is an optional description for the FQDN |   |   |
 | `recordType` _string_ | recordType is the DNS record type (A, AAAA, CNAME, etc.) |   |   |
 | `targets` _string array_ | targets is the list of target addresses for this FQDN |   |   |
+| `syncStatus` _string_ | syncStatus indicates whether the FQDN is correctly resolved in DNS. sync: the FQDN resolves to the expected type and targets. notavailable: the FQDN does not exist in DNS. notsync: the FQDN exists but resolves to different targets or type. |   | Enum: [sync notavailable notsync ] |
 | `lastSeen` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | lastSeen is the timestamp when this FQDN was last observed |   |   |
 | `originRef` _[sreportal.io/v1alpha1.OriginResourceRef](#sreportaliov1alpha1originresourceref)_ | originRef identifies the Kubernetes resource (Service, Ingress, DNSEndpoint) that produced this FQDN via external-dns. Not set for manual entries. |   |   |
 
