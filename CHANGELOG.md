@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.1](https://github.com/golgoth31/sreportal/compare/v1.9.0...v1.9.1) (2026-03-01)
+
+
+### Bug Fixes
+
+* web ui select ([03da29e](https://github.com/golgoth31/sreportal/commit/03da29e45ee58045b9ccb09dd9e3a57efed7319e))
+
 ## [1.9.0](https://github.com/golgoth31/sreportal/compare/v1.8.0...v1.9.0) (2026-03-01)
 
 
