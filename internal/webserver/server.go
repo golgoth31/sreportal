@@ -53,6 +53,7 @@ type Server struct {
 	client         client.Client
 	operatorConfig *config.OperatorConfig
 	httpServer     *http.Server
+	dnsService     *grpc.DNSService
 }
 
 // New creates a new web server.
@@ -81,11 +82,17 @@ func New(cfg Config, c client.Client, operatorConfig *config.OperatorConfig, all
 	return s
 }
 
+// DNSService returns the underlying DNSService so callers can register it with
+// a controller-runtime manager (mgr.Add) to run the shared FQDN cache loop.
+func (s *Server) DNSService() *grpc.DNSService {
+	return s.dnsService
+}
+
 // setupRoutes configures all routes
 func (s *Server) setupRoutes() {
 	// Mount Connect handlers for gRPC/Connect protocol
-	dnsService := grpc.NewDNSService(s.client)
-	dnsPath, dnsHandler := sreportalv1connect.NewDNSServiceHandler(dnsService)
+	s.dnsService = grpc.NewDNSService(s.client)
+	dnsPath, dnsHandler := sreportalv1connect.NewDNSServiceHandler(s.dnsService)
 	s.echo.Any(dnsPath+"*", echo.WrapHandler(dnsHandler))
 
 	portalService := grpc.NewPortalService(s.client)

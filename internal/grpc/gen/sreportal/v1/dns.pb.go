@@ -85,7 +85,12 @@ type ListFQDNsRequest struct {
 	// search filters FQDNs by name substring
 	Search string `protobuf:"bytes,3,opt,name=search,proto3" json:"search,omitempty"`
 	// portal filters FQDNs by portal name (empty for all portals)
-	Portal        string `protobuf:"bytes,4,opt,name=portal,proto3" json:"portal,omitempty"`
+	Portal string `protobuf:"bytes,4,opt,name=portal,proto3" json:"portal,omitempty"`
+	// page_size limits the number of FQDNs returned. 0 means return all (default, backward-compatible).
+	PageSize int32 `protobuf:"varint,5,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	// page_token is an opaque cursor returned by a previous ListFQDNs call.
+	// Empty string means start from the beginning.
+	PageToken     string `protobuf:"bytes,6,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -148,11 +153,30 @@ func (x *ListFQDNsRequest) GetPortal() string {
 	return ""
 }
 
+func (x *ListFQDNsRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListFQDNsRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
 // ListFQDNsResponse contains the list of FQDNs
 type ListFQDNsResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// fqdns is the list of aggregated FQDNs
-	Fqdns         []*FQDN `protobuf:"bytes,1,rep,name=fqdns,proto3" json:"fqdns,omitempty"`
+	Fqdns []*FQDN `protobuf:"bytes,1,rep,name=fqdns,proto3" json:"fqdns,omitempty"`
+	// next_page_token is the cursor to use in the next ListFQDNs call to retrieve the next page.
+	// Empty when there are no more results.
+	NextPageToken string `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
+	// total_size is the total number of FQDNs matching the request filters, before pagination.
+	TotalSize     int32 `protobuf:"varint,3,opt,name=total_size,json=totalSize,proto3" json:"total_size,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -194,11 +218,31 @@ func (x *ListFQDNsResponse) GetFqdns() []*FQDN {
 	return nil
 }
 
+func (x *ListFQDNsResponse) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
+}
+
+func (x *ListFQDNsResponse) GetTotalSize() int32 {
+	if x != nil {
+		return x.TotalSize
+	}
+	return 0
+}
+
 // StreamFQDNsRequest is the request for streaming FQDN updates
 type StreamFQDNsRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// namespace filters updates by namespace (empty for all namespaces)
-	Namespace     string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// portal filters updates by portal name (empty for all portals)
+	Portal string `protobuf:"bytes,2,opt,name=portal,proto3" json:"portal,omitempty"`
+	// source filters updates by source (empty for all sources)
+	Source string `protobuf:"bytes,3,opt,name=source,proto3" json:"source,omitempty"`
+	// search filters updates by FQDN name substring (empty for all)
+	Search        string `protobuf:"bytes,4,opt,name=search,proto3" json:"search,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -236,6 +280,27 @@ func (*StreamFQDNsRequest) Descriptor() ([]byte, []int) {
 func (x *StreamFQDNsRequest) GetNamespace() string {
 	if x != nil {
 		return x.Namespace
+	}
+	return ""
+}
+
+func (x *StreamFQDNsRequest) GetPortal() string {
+	if x != nil {
+		return x.Portal
+	}
+	return ""
+}
+
+func (x *StreamFQDNsRequest) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *StreamFQDNsRequest) GetSearch() string {
+	if x != nil {
+		return x.Search
 	}
 	return ""
 }
@@ -502,16 +567,25 @@ var File_sreportal_v1_dns_proto protoreflect.FileDescriptor
 
 const file_sreportal_v1_dns_proto_rawDesc = "" +
 	"\n" +
-	"\x16sreportal/v1/dns.proto\x12\fsreportal.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"x\n" +
+	"\x16sreportal/v1/dns.proto\x12\fsreportal.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xb4\x01\n" +
 	"\x10ListFQDNsRequest\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x16\n" +
 	"\x06source\x18\x02 \x01(\tR\x06source\x12\x16\n" +
 	"\x06search\x18\x03 \x01(\tR\x06search\x12\x16\n" +
-	"\x06portal\x18\x04 \x01(\tR\x06portal\"=\n" +
+	"\x06portal\x18\x04 \x01(\tR\x06portal\x12\x1b\n" +
+	"\tpage_size\x18\x05 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x06 \x01(\tR\tpageToken\"\x84\x01\n" +
 	"\x11ListFQDNsResponse\x12(\n" +
-	"\x05fqdns\x18\x01 \x03(\v2\x12.sreportal.v1.FQDNR\x05fqdns\"2\n" +
+	"\x05fqdns\x18\x01 \x03(\v2\x12.sreportal.v1.FQDNR\x05fqdns\x12&\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\x12\x1d\n" +
+	"\n" +
+	"total_size\x18\x03 \x01(\x05R\ttotalSize\"z\n" +
 	"\x12StreamFQDNsRequest\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\"k\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x16\n" +
+	"\x06portal\x18\x02 \x01(\tR\x06portal\x12\x16\n" +
+	"\x06source\x18\x03 \x01(\tR\x06source\x12\x16\n" +
+	"\x06search\x18\x04 \x01(\tR\x06search\"k\n" +
 	"\x13StreamFQDNsResponse\x12,\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x18.sreportal.v1.UpdateTypeR\x04type\x12&\n" +
 	"\x04fqdn\x18\x02 \x01(\v2\x12.sreportal.v1.FQDNR\x04fqdn\"Y\n" +

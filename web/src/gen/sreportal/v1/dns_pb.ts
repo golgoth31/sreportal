@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file sreportal/v1/dns.proto.
  */
 export const file_sreportal_v1_dns: GenFile = /*@__PURE__*/
-  fileDesc("ChZzcmVwb3J0YWwvdjEvZG5zLnByb3RvEgxzcmVwb3J0YWwudjEiVQoQTGlzdEZRRE5zUmVxdWVzdBIRCgluYW1lc3BhY2UYASABKAkSDgoGc291cmNlGAIgASgJEg4KBnNlYXJjaBgDIAEoCRIOCgZwb3J0YWwYBCABKAkiNgoRTGlzdEZRRE5zUmVzcG9uc2USIQoFZnFkbnMYASADKAsyEi5zcmVwb3J0YWwudjEuRlFETiInChJTdHJlYW1GUUROc1JlcXVlc3QSEQoJbmFtZXNwYWNlGAEgASgJIl8KE1N0cmVhbUZRRE5zUmVzcG9uc2USJgoEdHlwZRgBIAEoDjIYLnNyZXBvcnRhbC52MS5VcGRhdGVUeXBlEiAKBGZxZG4YAiABKAsyEi5zcmVwb3J0YWwudjEuRlFETiJCChFPcmlnaW5SZXNvdXJjZVJlZhIMCgRraW5kGAEgASgJEhEKCW5hbWVzcGFjZRgCIAEoCRIMCgRuYW1lGAMgASgJIrcCCgRGUUROEgwKBG5hbWUYASABKAkSDgoGc291cmNlGAIgASgJEg4KBmdyb3VwcxgDIAMoCRITCgtkZXNjcmlwdGlvbhgEIAEoCRITCgtyZWNvcmRfdHlwZRgFIAEoCRIPCgd0YXJnZXRzGAYgAygJEi0KCWxhc3Rfc2VlbhgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGQoRZG5zX3Jlc291cmNlX25hbWUYCCABKAkSHgoWZG5zX3Jlc291cmNlX25hbWVzcGFjZRgJIAEoCRI4CgpvcmlnaW5fcmVmGAogASgLMh8uc3JlcG9ydGFsLnYxLk9yaWdpblJlc291cmNlUmVmSACIAQESEwoLc3luY19zdGF0dXMYCyABKAlCDQoLX29yaWdpbl9yZWYqcwoKVXBkYXRlVHlwZRIbChdVUERBVEVfVFlQRV9VTlNQRUNJRklFRBAAEhUKEVVQREFURV9UWVBFX0FEREVEEAESGAoUVVBEQVRFX1RZUEVfTU9ESUZJRUQQAhIXChNVUERBVEVfVFlQRV9ERUxFVEVEEAMysAEKCkROU1NlcnZpY2USTAoJTGlzdEZRRE5zEh4uc3JlcG9ydGFsLnYxLkxpc3RGUUROc1JlcXVlc3QaHy5zcmVwb3J0YWwudjEuTGlzdEZRRE5zUmVzcG9uc2USVAoLU3RyZWFtRlFETnMSIC5zcmVwb3J0YWwudjEuU3RyZWFtRlFETnNSZXF1ZXN0GiEuc3JlcG9ydGFsLnYxLlN0cmVhbUZRRE5zUmVzcG9uc2UwAUK4AQoQY29tLnNyZXBvcnRhbC52MUIIRG5zUHJvdG9QAVpJZ2l0aHViLmNvbS9nb2xnb3RoMzEvc3JlcG9ydGFsL2ludGVybmFsL2dycGMvZ2VuL3NyZXBvcnRhbC92MTtzcmVwb3J0YWx2MaICA1NYWKoCDFNyZXBvcnRhbC5WMcoCDFNyZXBvcnRhbFxWMeICGFNyZXBvcnRhbFxWMVxHUEJNZXRhZGF0YeoCDVNyZXBvcnRhbDo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
+  fileDesc("ChZzcmVwb3J0YWwvdjEvZG5zLnByb3RvEgxzcmVwb3J0YWwudjEifAoQTGlzdEZRRE5zUmVxdWVzdBIRCgluYW1lc3BhY2UYASABKAkSDgoGc291cmNlGAIgASgJEg4KBnNlYXJjaBgDIAEoCRIOCgZwb3J0YWwYBCABKAkSEQoJcGFnZV9zaXplGAUgASgFEhIKCnBhZ2VfdG9rZW4YBiABKAkiYwoRTGlzdEZRRE5zUmVzcG9uc2USIQoFZnFkbnMYASADKAsyEi5zcmVwb3J0YWwudjEuRlFEThIXCg9uZXh0X3BhZ2VfdG9rZW4YAiABKAkSEgoKdG90YWxfc2l6ZRgDIAEoBSJXChJTdHJlYW1GUUROc1JlcXVlc3QSEQoJbmFtZXNwYWNlGAEgASgJEg4KBnBvcnRhbBgCIAEoCRIOCgZzb3VyY2UYAyABKAkSDgoGc2VhcmNoGAQgASgJIl8KE1N0cmVhbUZRRE5zUmVzcG9uc2USJgoEdHlwZRgBIAEoDjIYLnNyZXBvcnRhbC52MS5VcGRhdGVUeXBlEiAKBGZxZG4YAiABKAsyEi5zcmVwb3J0YWwudjEuRlFETiJCChFPcmlnaW5SZXNvdXJjZVJlZhIMCgRraW5kGAEgASgJEhEKCW5hbWVzcGFjZRgCIAEoCRIMCgRuYW1lGAMgASgJIrcCCgRGUUROEgwKBG5hbWUYASABKAkSDgoGc291cmNlGAIgASgJEg4KBmdyb3VwcxgDIAMoCRITCgtkZXNjcmlwdGlvbhgEIAEoCRITCgtyZWNvcmRfdHlwZRgFIAEoCRIPCgd0YXJnZXRzGAYgAygJEi0KCWxhc3Rfc2VlbhgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGQoRZG5zX3Jlc291cmNlX25hbWUYCCABKAkSHgoWZG5zX3Jlc291cmNlX25hbWVzcGFjZRgJIAEoCRI4CgpvcmlnaW5fcmVmGAogASgLMh8uc3JlcG9ydGFsLnYxLk9yaWdpblJlc291cmNlUmVmSACIAQESEwoLc3luY19zdGF0dXMYCyABKAlCDQoLX29yaWdpbl9yZWYqcwoKVXBkYXRlVHlwZRIbChdVUERBVEVfVFlQRV9VTlNQRUNJRklFRBAAEhUKEVVQREFURV9UWVBFX0FEREVEEAESGAoUVVBEQVRFX1RZUEVfTU9ESUZJRUQQAhIXChNVUERBVEVfVFlQRV9ERUxFVEVEEAMysAEKCkROU1NlcnZpY2USTAoJTGlzdEZRRE5zEh4uc3JlcG9ydGFsLnYxLkxpc3RGUUROc1JlcXVlc3QaHy5zcmVwb3J0YWwudjEuTGlzdEZRRE5zUmVzcG9uc2USVAoLU3RyZWFtRlFETnMSIC5zcmVwb3J0YWwudjEuU3RyZWFtRlFETnNSZXF1ZXN0GiEuc3JlcG9ydGFsLnYxLlN0cmVhbUZRRE5zUmVzcG9uc2UwAUK4AQoQY29tLnNyZXBvcnRhbC52MUIIRG5zUHJvdG9QAVpJZ2l0aHViLmNvbS9nb2xnb3RoMzEvc3JlcG9ydGFsL2ludGVybmFsL2dycGMvZ2VuL3NyZXBvcnRhbC92MTtzcmVwb3J0YWx2MaICA1NYWKoCDFNyZXBvcnRhbC5WMcoCDFNyZXBvcnRhbFxWMeICGFNyZXBvcnRhbFxWMVxHUEJNZXRhZGF0YeoCDVNyZXBvcnRhbDo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
 
 /**
  * ListFQDNsRequest is the request for listing FQDNs
@@ -47,6 +47,21 @@ export type ListFQDNsRequest = Message<"sreportal.v1.ListFQDNsRequest"> & {
    * @generated from field: string portal = 4;
    */
   portal: string;
+
+  /**
+   * page_size limits the number of FQDNs returned. 0 means return all (default, backward-compatible).
+   *
+   * @generated from field: int32 page_size = 5;
+   */
+  pageSize: number;
+
+  /**
+   * page_token is an opaque cursor returned by a previous ListFQDNs call.
+   * Empty string means start from the beginning.
+   *
+   * @generated from field: string page_token = 6;
+   */
+  pageToken: string;
 };
 
 /**
@@ -68,6 +83,21 @@ export type ListFQDNsResponse = Message<"sreportal.v1.ListFQDNsResponse"> & {
    * @generated from field: repeated sreportal.v1.FQDN fqdns = 1;
    */
   fqdns: FQDN[];
+
+  /**
+   * next_page_token is the cursor to use in the next ListFQDNs call to retrieve the next page.
+   * Empty when there are no more results.
+   *
+   * @generated from field: string next_page_token = 2;
+   */
+  nextPageToken: string;
+
+  /**
+   * total_size is the total number of FQDNs matching the request filters, before pagination.
+   *
+   * @generated from field: int32 total_size = 3;
+   */
+  totalSize: number;
 };
 
 /**
@@ -89,6 +119,27 @@ export type StreamFQDNsRequest = Message<"sreportal.v1.StreamFQDNsRequest"> & {
    * @generated from field: string namespace = 1;
    */
   namespace: string;
+
+  /**
+   * portal filters updates by portal name (empty for all portals)
+   *
+   * @generated from field: string portal = 2;
+   */
+  portal: string;
+
+  /**
+   * source filters updates by source (empty for all sources)
+   *
+   * @generated from field: string source = 3;
+   */
+  source: string;
+
+  /**
+   * search filters updates by FQDN name substring (empty for all)
+   *
+   * @generated from field: string search = 4;
+   */
+  search: string;
 };
 
 /**

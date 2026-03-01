@@ -26,18 +26,41 @@ message ListFQDNsRequest {
 
   // portal filters FQDNs by portal name (empty for all portals)
   string portal = 4;
+
+  // page_size limits the number of FQDNs returned. 0 means return all (default, backward-compatible).
+  int32 page_size = 5;
+
+  // page_token is an opaque cursor returned by a previous ListFQDNs call.
+  // Empty string means start from the beginning.
+  string page_token = 6;
 }
 
 // ListFQDNsResponse contains the list of FQDNs
 message ListFQDNsResponse {
   // fqdns is the list of aggregated FQDNs
   repeated FQDN fqdns = 1;
+
+  // next_page_token is the cursor to use in the next ListFQDNs call to retrieve the next page.
+  // Empty when there are no more results.
+  string next_page_token = 2;
+
+  // total_size is the total number of FQDNs matching the request filters, before pagination.
+  int32 total_size = 3;
 }
 
 // StreamFQDNsRequest is the request for streaming FQDN updates
 message StreamFQDNsRequest {
   // namespace filters updates by namespace (empty for all namespaces)
   string namespace = 1;
+
+  // portal filters updates by portal name (empty for all portals)
+  string portal = 2;
+
+  // source filters updates by source (empty for all sources)
+  string source = 3;
+
+  // search filters updates by FQDN name substring (empty for all)
+  string search = 4;
 }
 
 // StreamFQDNsResponse represents an update to an FQDN

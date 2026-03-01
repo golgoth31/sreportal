@@ -380,6 +380,13 @@ func main() {
 	}
 	webServer := webserver.New(webCfg, mgr.GetClient(), operatorConfig, corsOrigins)
 
+	// Register the DNSService cache loop with the manager so it runs under the
+	// manager's context and is stopped cleanly on shutdown.
+	if err := mgr.Add(webServer.DNSService()); err != nil {
+		setupLog.Error(err, "unable to register DNS service cache loop with manager")
+		os.Exit(1)
+	}
+
 	// Start MCP server if enabled
 	if enableMCP {
 		mcpServer := mcp.New(mgr.GetClient(), &operatorConfig.GroupMapping)

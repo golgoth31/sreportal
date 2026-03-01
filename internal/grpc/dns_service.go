@@ -18,9 +18,12 @@ package grpc
 
 import (
 	"context"
+	"encoding/base64"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -33,18 +36,190 @@ import (
 	"github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1/sreportalv1connect"
 )
 
-// DNSService implements the DNSServiceHandler interface
+// streamPollInterval is how often the shared FQDN cache is refreshed and
+// stream subscribers are notified.
+const streamPollInterval = 5 * time.Second
+
+// DNSService implements the DNSServiceHandler interface.
+//
+// StreamFQDNs efficiency: a single background goroutine (Start) refreshes an
+// in-memory snapshot of all FQDNs every streamPollInterval. Concurrent stream
+// subscribers read from this shared cache and apply their own filters locally,
+// so the K8s API call count is O(1 per tick) regardless of stream count.
 type DNSService struct {
 	sreportalv1connect.UnimplementedDNSServiceHandler
 	client client.Client
+
+	// cacheMu guards cacheAll.
+	cacheMu  sync.RWMutex
+	cacheAll []*dnsv1.FQDN // full unfiltered sorted snapshot; nil until first fetch
+
+	// cacheReady is closed once after the first successful cache fetch.
+	// StreamFQDNs goroutines block on it before sending the initial state.
+	cacheReady chan struct{}
+
+	// cacheUpdateMu guards cacheUpdate.
+	// On each cache refresh, the current channel is closed (broadcasting to all
+	// waiting goroutines) and replaced with a new open channel.
+	cacheUpdateMu sync.Mutex
+	cacheUpdate   chan struct{}
 }
 
-// NewDNSService creates a new DNSService
+// NewDNSService creates a new DNSService.
 func NewDNSService(c client.Client) *DNSService {
-	return &DNSService{client: c}
+	return &DNSService{
+		client:      c,
+		cacheReady:  make(chan struct{}),
+		cacheUpdate: make(chan struct{}),
+	}
 }
 
-// ListFQDNs returns all aggregated FQDNs from DNS resources
+// Start implements manager.Runnable. It runs a cache-refresh loop that fetches
+// all FQDNs from K8s every streamPollInterval and notifies waiting StreamFQDNs
+// goroutines. It exits when ctx is cancelled.
+func (s *DNSService) Start(ctx context.Context) error {
+	readyOnce := sync.Once{}
+	ticker := time.NewTicker(streamPollInterval)
+	defer ticker.Stop()
+
+	// Fetch immediately so the first stream doesn't wait a full interval.
+	s.refreshCache(ctx, &readyOnce)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+			s.refreshCache(ctx, &readyOnce)
+		}
+	}
+}
+
+// refreshCache fetches all DNS resources, builds the FQDN snapshot, and
+// broadcasts to waiting StreamFQDNs goroutines.
+func (s *DNSService) refreshCache(ctx context.Context, readyOnce *sync.Once) {
+	log := logf.FromContext(ctx).WithName("dns-cache")
+	fqdns, err := s.fetchAllFQDNs(ctx)
+	if err != nil {
+		log.Error(err, "failed to refresh FQDN cache, retaining previous snapshot")
+		return
+	}
+
+	// Swap the snapshot under write-lock.
+	s.cacheMu.Lock()
+	s.cacheAll = fqdns
+	s.cacheMu.Unlock()
+
+	// Signal all waiting stream goroutines by closing the current update channel
+	// and replacing it with a fresh one.
+	s.cacheUpdateMu.Lock()
+	old := s.cacheUpdate
+	s.cacheUpdate = make(chan struct{})
+	s.cacheUpdateMu.Unlock()
+	close(old)
+
+	// Close cacheReady exactly once so StreamFQDNs goroutines unblock.
+	readyOnce.Do(func() { close(s.cacheReady) })
+}
+
+// fetchAllFQDNs lists all DNS resources and returns the full FQDN set sorted
+// deterministically by (name, record_type). No filters are applied here;
+// filtering is done per-stream in StreamFQDNs.
+func (s *DNSService) fetchAllFQDNs(ctx context.Context) ([]*dnsv1.FQDN, error) {
+	var dnsList sreportalv1alpha1.DNSList
+	if err := s.client.List(ctx, &dnsList); err != nil {
+		return nil, err
+	}
+
+	seen := make(map[string]*dnsv1.FQDN)
+	for _, dns := range dnsList.Items {
+		for _, group := range dns.Status.Groups {
+			for _, fqdnStatus := range group.FQDNs {
+				key := fqdnStatus.FQDN + "/" + fqdnStatus.RecordType
+				if existing, ok := seen[key]; ok {
+					if !slices.Contains(existing.Groups, group.Name) {
+						existing.Groups = append(existing.Groups, group.Name)
+					}
+				} else {
+					seen[key] = &dnsv1.FQDN{
+						Name:                 fqdnStatus.FQDN,
+						Source:               group.Source,
+						Groups:               []string{group.Name},
+						Description:          fqdnStatus.Description,
+						RecordType:           fqdnStatus.RecordType,
+						Targets:              fqdnStatus.Targets,
+						LastSeen:             timestamppb.New(fqdnStatus.LastSeen.Time),
+						DnsResourceName:      dns.Name,
+						DnsResourceNamespace: dns.Namespace,
+						OriginRef:            toProtoOriginRef(fqdnStatus.OriginRef),
+						SyncStatus:           fqdnStatus.SyncStatus,
+					}
+				}
+			}
+		}
+	}
+
+	fqdns := make([]*dnsv1.FQDN, 0, len(seen))
+	for _, f := range seen {
+		fqdns = append(fqdns, f)
+	}
+	sort.Slice(fqdns, func(i, j int) bool {
+		if fqdns[i].Name == fqdns[j].Name {
+			return fqdns[i].RecordType < fqdns[j].RecordType
+		}
+		return fqdns[i].Name < fqdns[j].Name
+	})
+	return fqdns, nil
+}
+
+// currentUpdate returns the current update channel under the update mutex.
+// Callers should select on the returned channel to know when a new snapshot
+// is available, then call snapshotCache to read it.
+func (s *DNSService) currentUpdate() chan struct{} {
+	s.cacheUpdateMu.Lock()
+	defer s.cacheUpdateMu.Unlock()
+	return s.cacheUpdate
+}
+
+// snapshotCache returns a copy of the cached FQDN slice under read-lock.
+func (s *DNSService) snapshotCache() []*dnsv1.FQDN {
+	s.cacheMu.RLock()
+	defer s.cacheMu.RUnlock()
+	out := make([]*dnsv1.FQDN, len(s.cacheAll))
+	copy(out, s.cacheAll)
+	return out
+}
+
+// applyStreamFilters filters fqdns in-place (returns a new slice) according
+// to the fields in a StreamFQDNsRequest.
+func applyStreamFilters(fqdns []*dnsv1.FQDN, req *dnsv1.StreamFQDNsRequest) []*dnsv1.FQDN {
+	if req.Namespace == "" && req.Portal == "" && req.Source == "" && req.Search == "" {
+		return fqdns
+	}
+	out := fqdns[:0:0] // fresh slice, zero alloc when all pass
+	searchLower := strings.ToLower(req.Search)
+	for _, f := range fqdns {
+		if req.Namespace != "" && f.DnsResourceNamespace != req.Namespace {
+			continue
+		}
+		if req.Source != "" && f.Source != req.Source {
+			continue
+		}
+		if req.Search != "" && !strings.Contains(strings.ToLower(f.Name), searchLower) {
+			continue
+		}
+		// Portal filter: the stream request carries a portal name; we match it
+		// against DnsResourceName (which is the DNS CR name == portal name).
+		if req.Portal != "" && f.DnsResourceName != req.Portal {
+			continue
+		}
+		out = append(out, f)
+	}
+	return out
+}
+
+// ListFQDNs returns all aggregated FQDNs from DNS resources, with optional
+// filters and cursor-based pagination.
 func (s *DNSService) ListFQDNs(
 	ctx context.Context,
 	req *connect.Request[dnsv1.ListFQDNsRequest],
@@ -125,30 +300,50 @@ func (s *DNSService) ListFQDNs(
 		return fqdns[i].Name < fqdns[j].Name
 	})
 
+	// Pagination: page_size=0 means return all (backward-compatible default).
+	totalSize := int32(len(fqdns))
+	var nextPageToken string
+	if req.Msg.PageSize > 0 {
+		offset := decodePageToken(req.Msg.PageToken)
+		if offset < 0 || offset > len(fqdns) {
+			offset = 0
+		}
+		end := offset + int(req.Msg.PageSize)
+		if end < len(fqdns) {
+			nextPageToken = encodePageToken(end)
+			fqdns = fqdns[offset:end]
+		} else {
+			fqdns = fqdns[offset:]
+		}
+	}
+
 	return connect.NewResponse(&dnsv1.ListFQDNsResponse{
-		Fqdns: fqdns,
+		Fqdns:         fqdns,
+		NextPageToken: nextPageToken,
+		TotalSize:     totalSize,
 	}), nil
 }
 
-// StreamFQDNs streams FQDN updates in real-time
+// StreamFQDNs streams FQDN updates in real-time.
+//
+// It reads from the shared FQDN cache maintained by Start() rather than issuing
+// its own K8s List calls, so the cost is O(1 K8s call per tick) regardless of the
+// number of concurrent streams.
 func (s *DNSService) StreamFQDNs(
 	ctx context.Context,
 	req *connect.Request[dnsv1.StreamFQDNsRequest],
 	stream *connect.ServerStream[dnsv1.StreamFQDNsResponse],
 ) error {
-	log := logf.FromContext(ctx)
-
-	// Initial send of all current FQDNs
-	listReq := connect.NewRequest(&dnsv1.ListFQDNsRequest{
-		Namespace: req.Msg.Namespace,
-	})
-	listResp, err := s.ListFQDNs(ctx, listReq)
-	if err != nil {
-		return err
+	// Block until the first cache fetch has completed.
+	select {
+	case <-ctx.Done():
+		return nil
+	case <-s.cacheReady:
 	}
 
-	// Send initial state
-	for _, fqdn := range listResp.Msg.Fqdns {
+	// Send initial state from the current cache snapshot.
+	snapshot := applyStreamFilters(s.snapshotCache(), req.Msg)
+	for _, fqdn := range snapshot {
 		if err := stream.Send(&dnsv1.StreamFQDNsResponse{
 			Type: dnsv1.UpdateType_UPDATE_TYPE_ADDED,
 			Fqdn: fqdn,
@@ -157,72 +352,61 @@ func (s *DNSService) StreamFQDNs(
 		}
 	}
 
-	// Keep streaming updates by polling every 5 seconds.
-	//
-	// Known limitation: each open stream issues a full ListFQDNs call on every
-	// tick, so cost scales as O(streams × portals × groups). For a small number
-	// of concurrent streams this is acceptable. To eliminate polling entirely,
-	// replace this with a K8s informer/watch on DNS resources and push updates
-	// only when the underlying data changes.
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
-
-	// Stream map key is DNSName+"/"+RecordType to match ListFQDNs deduplication.
-	previousFQDNs := make(map[string]*dnsv1.FQDN)
-	for _, fqdn := range listResp.Msg.Fqdns {
+	// Build the previous-state map for diffing.
+	previousFQDNs := make(map[string]*dnsv1.FQDN, len(snapshot))
+	for _, fqdn := range snapshot {
 		previousFQDNs[fqdn.Name+"/"+fqdn.RecordType] = fqdn
 	}
 
+	// Poll the cache on every update signal instead of issuing a K8s call.
 	for {
+		// Grab the current update channel before blocking so we don't miss a
+		// refresh that happens between the select and the snapshot read.
+		updateCh := s.currentUpdate()
+
 		select {
 		case <-ctx.Done():
 			return nil
-		case <-ticker.C:
-			listResp, err := s.ListFQDNs(ctx, listReq)
-			if err != nil {
-				log.Error(err, "failed to list FQDNs in stream, skipping tick")
-				continue
-			}
-
-			currentFQDNs := make(map[string]*dnsv1.FQDN)
-			for _, fqdn := range listResp.Msg.Fqdns {
-				key := fqdn.Name + "/" + fqdn.RecordType
-				currentFQDNs[key] = fqdn
-
-				prev, exists := previousFQDNs[key]
-				if !exists {
-					// New FQDN
-					if err := stream.Send(&dnsv1.StreamFQDNsResponse{
-						Type: dnsv1.UpdateType_UPDATE_TYPE_ADDED,
-						Fqdn: fqdn,
-					}); err != nil {
-						return err
-					}
-				} else if !fqdnEqual(prev, fqdn) {
-					// Modified FQDN
-					if err := stream.Send(&dnsv1.StreamFQDNsResponse{
-						Type: dnsv1.UpdateType_UPDATE_TYPE_MODIFIED,
-						Fqdn: fqdn,
-					}); err != nil {
-						return err
-					}
-				}
-			}
-
-			// Check for deleted FQDNs
-			for key, fqdn := range previousFQDNs {
-				if _, exists := currentFQDNs[key]; !exists {
-					if err := stream.Send(&dnsv1.StreamFQDNsResponse{
-						Type: dnsv1.UpdateType_UPDATE_TYPE_DELETED,
-						Fqdn: fqdn,
-					}); err != nil {
-						return err
-					}
-				}
-			}
-
-			previousFQDNs = currentFQDNs
+		case <-updateCh:
 		}
+
+		filtered := applyStreamFilters(s.snapshotCache(), req.Msg)
+
+		currentFQDNs := make(map[string]*dnsv1.FQDN, len(filtered))
+		for _, fqdn := range filtered {
+			key := fqdn.Name + "/" + fqdn.RecordType
+			currentFQDNs[key] = fqdn
+
+			prev, exists := previousFQDNs[key]
+			if !exists {
+				if err := stream.Send(&dnsv1.StreamFQDNsResponse{
+					Type: dnsv1.UpdateType_UPDATE_TYPE_ADDED,
+					Fqdn: fqdn,
+				}); err != nil {
+					return err
+				}
+			} else if !fqdnEqual(prev, fqdn) {
+				if err := stream.Send(&dnsv1.StreamFQDNsResponse{
+					Type: dnsv1.UpdateType_UPDATE_TYPE_MODIFIED,
+					Fqdn: fqdn,
+				}); err != nil {
+					return err
+				}
+			}
+		}
+
+		for key, fqdn := range previousFQDNs {
+			if _, exists := currentFQDNs[key]; !exists {
+				if err := stream.Send(&dnsv1.StreamFQDNsResponse{
+					Type: dnsv1.UpdateType_UPDATE_TYPE_DELETED,
+					Fqdn: fqdn,
+				}); err != nil {
+					return err
+				}
+			}
+		}
+
+		previousFQDNs = currentFQDNs
 	}
 }
 
@@ -264,4 +448,26 @@ func toProtoOriginRef(ref *sreportalv1alpha1.OriginResourceRef) *dnsv1.OriginRes
 		Namespace: ref.Namespace,
 		Name:      ref.Name,
 	}
+}
+
+// decodePageToken decodes an opaque page cursor back to an integer offset.
+// Returns 0 on any error (empty string, invalid base64, invalid integer).
+func decodePageToken(token string) int {
+	if token == "" {
+		return 0
+	}
+	b, err := base64.StdEncoding.DecodeString(token)
+	if err != nil {
+		return 0
+	}
+	n, err := strconv.Atoi(string(b))
+	if err != nil || n < 0 {
+		return 0
+	}
+	return n
+}
+
+// encodePageToken encodes an integer offset as an opaque page cursor.
+func encodePageToken(offset int) string {
+	return base64.StdEncoding.EncodeToString([]byte(strconv.Itoa(offset)))
 }
