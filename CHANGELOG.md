@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.9.0](https://github.com/golgoth31/sreportal/compare/v1.8.0...v1.9.0) (2026-03-01)
+
+
+### Features
+
+* **grpc:** add shared FQDN cache, stream filters, and pagination ([d70063f](https://github.com/golgoth31/sreportal/commit/d70063fa48c00083b2905f03d0bb8d975743f571))
+* **mcp:** expose sync_status in search_fqdns and get_fqdn_details tools ([3a70186](https://github.com/golgoth31/sreportal/commit/3a701864814093673c8b046d7b4f9feb703ca04f))
+* **ui:** restructure portal nav with select lists ([0607cbd](https://github.com/golgoth31/sreportal/commit/0607cbdc5652598413831006a25b4a69c497b87a))
+
+
+### Bug Fixes
+
+* **dns:** normalise trailing dot in CNAME sync check ([84dba7b](https://github.com/golgoth31/sreportal/commit/84dba7b66443c7feade3e3a7e23ff4cbf958bee1))
+
 ## [1.8.0](https://github.com/golgoth31/sreportal/compare/v1.7.1...v1.8.0) (2026-02-28)
 
 

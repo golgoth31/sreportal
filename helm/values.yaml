@@ -42,11 +42,11 @@ config:
 controllerManager:
   manager:
     args:
-      - "--metrics-bind-address=:8443"
-      - "--leader-elect"
-      - "--health-probe-bind-address=:9090"
-      - "--webhook-cert-path=/tmp/k8s-webhook-server/serving-certs"
-      - "--enable-mcp"
+      - '--metrics-bind-address=:8443'
+      - '--leader-elect'
+      - '--health-probe-bind-address=:9090'
+      - '--webhook-cert-path=/tmp/k8s-webhook-server/serving-certs'
+      - '--enable-mcp'
     containerSecurityContext:
       allowPrivilegeEscalation: false
       capabilities:
@@ -55,7 +55,7 @@ controllerManager:
       readOnlyRootFilesystem: true
     image:
       repository: ghcr.io/golgoth31/sreportal
-      tag: 1.8.0
+      tag: 1.9.0
     resources:
       limits:
         cpu: 500m
@@ -83,7 +83,7 @@ serviceAccount:
   annotations: {}
   automount: true
   create: true
-  name: ""
+  name: ''
 webMcpService:
   ports:
     - name: http
