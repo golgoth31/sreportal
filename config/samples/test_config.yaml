@@ -43,3 +43,4 @@ groupMapping:
 reconciliation:
   interval: 30s
   retryOnError: 10s
+  disableDNSCheck: false
