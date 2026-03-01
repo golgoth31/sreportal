@@ -55,16 +55,20 @@ type Server struct {
 	httpServer     *http.Server
 }
 
-// New creates a new web server
-func New(cfg Config, c client.Client, operatorConfig *config.OperatorConfig) *Server {
+// New creates a new web server.
+// allowedOrigins lists the origins permitted for CORS requests.
+// Pass an empty slice to disable cross-origin access (production default).
+func New(cfg Config, c client.Client, operatorConfig *config.OperatorConfig, allowedOrigins []string) *Server {
 	e := echo.New()
 
 	// Middleware
 	e.Use(middleware.RequestLogger())
 	e.Use(middleware.Recover())
-	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{"*"},
-	}))
+	if len(allowedOrigins) > 0 {
+		e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+			AllowOrigins: allowedOrigins,
+		}))
+	}
 
 	s := &Server{
 		config:         cfg,

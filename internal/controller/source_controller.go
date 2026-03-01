@@ -45,10 +45,6 @@ import (
 )
 
 const (
-	// PortalAnnotationKey is the annotation key used on external-dns endpoints
-	// to route them to a specific portal.
-	PortalAnnotationKey = "sreportal.io/portal"
-
 	// maxSourceConsecutiveFailures is the threshold after which a persistently
 	// failing source is surfaced as a NotReady condition on its DNSRecord.
 	maxSourceConsecutiveFailures = 5
@@ -73,9 +69,15 @@ type SourceReconciler struct {
 	mu           sync.RWMutex
 	typedSources []srcfactory.TypedSource
 
-	// sourceFailures tracks consecutive endpoint-collection failures per source
-	// type. It is only accessed from the Start() goroutine (reconcile is called
-	// sequentially from the ticker loop), so no synchronization is required.
+	// sourceFailures tracks consecutive endpoint-collection failures per source type.
+	//
+	// Threading invariant: reconcile() is called sequentially from the single
+	// goroutine that runs the ticker loop inside Start(). No concurrent access
+	// to sourceFailures can occur, so no mutex is needed here.
+	//
+	// External visibility: when failures exceed maxSourceConsecutiveFailures the
+	// state is surfaced as a NotReady condition on the DNSRecord via markSourceDegraded,
+	// giving operators a Kubernetes-native signal without requiring an in-memory dashboard.
 	sourceFailures map[srcfactory.SourceType]int
 }
 
@@ -112,21 +114,26 @@ func NewSourceReconciler(
 // +kubebuilder:rbac:groups=networking.istio.io,resources=gateways,verbs=get;list;watch
 // +kubebuilder:rbac:groups=networking.istio.io,resources=virtualservices,verbs=get;list;watch
 
-// Start implements manager.Runnable interface to run periodic reconciliation.
+// Start implements manager.Runnable to run periodic source reconciliation.
+//
+// Error propagation: reconcile() errors are deliberately logged rather than
+// returned to the manager. A transient failure (e.g. temporary API unavailability)
+// should not stop the operator — the next tick will retry automatically. Persistent
+// failures are surfaced as NotReady conditions on the relevant DNSRecord via
+// markSourceDegraded, giving operators a Kubernetes-native signal.
 func (r *SourceReconciler) Start(ctx context.Context) error {
 	log := ctrl.Log.WithName("source")
 
-	// Build sources at startup
+	// Best-effort source initialisation at startup — sources may become available
+	// later (e.g. CRDs not yet installed), so failures are non-fatal.
 	if err := r.rebuildSources(ctx); err != nil {
-		log.Error(err, "failed to build sources at startup")
-		// Continue anyway - sources may become available later
+		log.Error(err, "failed to build sources at startup, will retry on next tick")
 	}
 
-	// Run periodic reconciliation
 	ticker := time.NewTicker(r.Config.Reconciliation.Interval.Duration())
 	defer ticker.Stop()
 
-	// Run once immediately
+	// Run once immediately so the first reconciliation does not wait a full interval.
 	if err := r.reconcile(ctx); err != nil {
 		log.Error(err, "initial reconciliation failed")
 	}
@@ -144,10 +151,16 @@ func (r *SourceReconciler) Start(ctx context.Context) error {
 	}
 }
 
+// portalIndex is a pre-computed lookup structure built from the portal list.
+type portalIndex struct {
+	main   *sreportalv1alpha1.Portal
+	byName map[string]*sreportalv1alpha1.Portal
+	local  []*sreportalv1alpha1.Portal
+}
+
 func (r *SourceReconciler) reconcile(ctx context.Context) error {
 	log := logf.FromContext(ctx).WithName("source")
 
-	// Ensure sources are built
 	r.mu.RLock()
 	sourcesBuilt := len(r.typedSources) > 0
 	r.mu.RUnlock()
@@ -158,57 +171,111 @@ func (r *SourceReconciler) reconcile(ctx context.Context) error {
 		}
 	}
 
-	// List all Portals
+	idx, err := r.buildPortalIndex(ctx)
+	if err != nil {
+		return err
+	}
+	if idx == nil {
+		return nil // no local portals to reconcile
+	}
+
+	r.mu.RLock()
+	typedSources := r.typedSources
+	r.mu.RUnlock()
+
+	endpointsByPortalSource := r.collectByPortalSource(ctx, typedSources, idx)
+
+	// Ensure a DNS resource exists for each local portal so that the
+	// DNSController can aggregate DNSRecord endpoints into DNS.Status.Groups.
+	for _, portal := range idx.local {
+		if err := r.ensureDNSResource(ctx, portal); err != nil {
+			log.Error(err, "failed to ensure DNS resource", "portal", portal.Name)
+		}
+	}
+
+	// Create/update DNSRecords for each (portal, sourceType) pair.
+	for key, endpoints := range endpointsByPortalSource {
+		portal := idx.byName[key.portalName]
+		if portal == nil || portal.Spec.Remote != nil {
+			continue
+		}
+		if err := r.reconcileDNSRecord(ctx, portal, key.sourceType, endpoints); err != nil {
+			log.Error(err, "failed to reconcile DNSRecord",
+				"portal", key.portalName, "sourceType", key.sourceType)
+		}
+	}
+
+	// Clean up orphaned DNSRecords for local portals.
+	for _, portal := range idx.local {
+		if err := r.deleteOrphanedDNSRecords(ctx, portal, endpointsByPortalSource); err != nil {
+			log.Error(err, "failed to delete orphaned DNSRecords", "portal", portal.Name)
+		}
+	}
+
+	return nil
+}
+
+// buildPortalIndex lists all Portals and builds a lookup index for the reconciliation loop.
+// Returns nil (without error) when there are no local portals to reconcile.
+func (r *SourceReconciler) buildPortalIndex(ctx context.Context) (*portalIndex, error) {
+	log := logf.FromContext(ctx).WithName("source")
+
 	var portalList sreportalv1alpha1.PortalList
 	if err := r.List(ctx, &portalList); err != nil {
 		log.Error(err, "failed to list Portal resources")
-		return err
+		return nil, err
 	}
 
 	if len(portalList.Items) == 0 {
 		log.Info("no portals found, skipping reconciliation")
-		return nil
+		return nil, nil
 	}
 
-	// Find the main portal and filter out remote portals
-	var mainPortal *sreportalv1alpha1.Portal
-	portalsByName := make(map[string]*sreportalv1alpha1.Portal)
-	localPortals := make([]*sreportalv1alpha1.Portal, 0)
+	idx := &portalIndex{
+		byName: make(map[string]*sreportalv1alpha1.Portal, len(portalList.Items)),
+		local:  make([]*sreportalv1alpha1.Portal, 0),
+	}
 
 	for i := range portalList.Items {
 		p := &portalList.Items[i]
-		portalsByName[p.Name] = p
+		idx.byName[p.Name] = p
 
-		// Skip remote portals for local source collection
 		if p.Spec.Remote != nil {
 			log.V(1).Info("skipping remote portal for source collection", "name", p.Name, "url", p.Spec.Remote.URL)
 			continue
 		}
 
-		localPortals = append(localPortals, p)
+		idx.local = append(idx.local, p)
 		if p.Spec.Main {
-			mainPortal = p
+			idx.main = p
 		}
 	}
 
-	if mainPortal == nil {
-		// Fallback: use first local portal if no main portal found
-		if len(localPortals) > 0 {
-			mainPortal = localPortals[0]
-			log.Info("no main portal found, using first local portal as fallback", "name", mainPortal.Name)
+	if idx.main == nil {
+		if len(idx.local) > 0 {
+			idx.main = idx.local[0]
+			log.Info("no main portal found, using first local portal as fallback", "name", idx.main.Name)
 		} else {
 			log.Info("no local portals found, skipping source reconciliation")
-			return nil
+			return nil, nil
 		}
 	}
 
-	// Collect all endpoints from all sources
-	r.mu.RLock()
-	typedSources := r.typedSources
-	r.mu.RUnlock()
+	return idx, nil
+}
 
-	// Group endpoints by (portalName, sourceType)
-	endpointsByPortalSource := make(map[portalSourceKey][]*endpoint.Endpoint)
+// collectByPortalSource gathers endpoints from every configured source and routes each
+// endpoint to the appropriate (portalName, sourceType) bucket. Source failures are tracked
+// via r.sourceFailures (single-goroutine access — see field comment) and surfaced as K8s
+// conditions once maxSourceConsecutiveFailures is reached.
+func (r *SourceReconciler) collectByPortalSource(
+	ctx context.Context,
+	typedSources []srcfactory.TypedSource,
+	idx *portalIndex,
+) map[portalSourceKey][]*endpoint.Endpoint {
+	log := logf.FromContext(ctx).WithName("source")
+
+	result := make(map[portalSourceKey][]*endpoint.Endpoint)
 
 	for _, ts := range typedSources {
 		endpoints, err := ts.Source.Endpoints(ctx)
@@ -218,7 +285,7 @@ func (r *SourceReconciler) reconcile(ctx context.Context) error {
 			log.Error(err, "failed to get endpoints from source",
 				"sourceType", ts.Type, "consecutiveFailures", count)
 			if count >= maxSourceConsecutiveFailures {
-				r.markSourceDegraded(ctx, mainPortal, ts.Type, err, count)
+				r.markSourceDegraded(ctx, idx.main, ts.Type, err, count)
 			}
 			continue
 		}
@@ -229,78 +296,59 @@ func (r *SourceReconciler) reconcile(ctx context.Context) error {
 			r.sourceFailures[ts.Type] = 0
 		}
 
-		log.V(1).Info("collected endpoints from source",
-			"sourceType", ts.Type,
-			"count", len(endpoints))
+		log.V(1).Info("collected endpoints from source", "sourceType", ts.Type, "count", len(endpoints))
 
-		// Enrich endpoints with sreportal annotations from K8s resources
 		r.enrichEndpoints(ctx, ts.Type, endpoints)
 
-		// Route each endpoint to the appropriate portal
 		for _, ep := range endpoints {
-			portalName := adapter.ResolvePortal(ep)
-			targetPortal := mainPortal
-
-			if portalName == "" {
-				// No annotation -> route to main portal
-				portalName = mainPortal.Name
-			} else if p, exists := portalsByName[portalName]; !exists {
-				// Annotated portal doesn't exist -> route to main portal
-				log.V(1).Info("portal not found, routing to main portal",
-					"annotatedPortal", portalName,
-					"endpoint", ep.DNSName)
-				portalName = mainPortal.Name
-			} else if p.Spec.Remote != nil {
-				// Annotated portal is a remote portal -> route to main portal
-				log.V(1).Info("portal is remote, routing to main portal",
-					"annotatedPortal", portalName,
-					"endpoint", ep.DNSName)
-				portalName = mainPortal.Name
-			} else {
-				targetPortal = p
-			}
-
-			// Ensure we have a valid local portal
-			if targetPortal == nil || targetPortal.Spec.Remote != nil {
-				log.V(1).Info("no valid local portal for endpoint, skipping",
-					"endpoint", ep.DNSName)
+			portalName, target := r.resolveEndpointPortal(ctx, ep, idx)
+			if target == nil {
 				continue
 			}
-
 			key := portalSourceKey{portalName: portalName, sourceType: ts.Type}
-			endpointsByPortalSource[key] = append(endpointsByPortalSource[key], ep)
+			result[key] = append(result[key], ep)
 		}
 	}
 
-	// Ensure a DNS resource exists for each local portal so that the
-	// DNSController can aggregate DNSRecord endpoints into DNS.Status.Groups.
-	for _, portal := range localPortals {
-		if err := r.ensureDNSResource(ctx, portal); err != nil {
-			log.Error(err, "failed to ensure DNS resource", "portal", portal.Name)
-		}
+	return result
+}
+
+// resolveEndpointPortal maps an endpoint to its target local portal.
+// If the annotated portal is unknown or remote, the endpoint falls back to the main portal.
+// Returns ("", nil) when the endpoint should be discarded.
+func (r *SourceReconciler) resolveEndpointPortal(
+	ctx context.Context,
+	ep *endpoint.Endpoint,
+	idx *portalIndex,
+) (string, *sreportalv1alpha1.Portal) {
+	log := logf.FromContext(ctx).WithName("source")
+
+	portalName := adapter.ResolvePortal(ep)
+	var target *sreportalv1alpha1.Portal
+
+	if portalName == "" {
+		portalName = idx.main.Name
+		target = idx.main
+	} else if p := idx.byName[portalName]; p == nil {
+		log.V(1).Info("portal not found, routing to main portal",
+			"annotatedPortal", portalName, "endpoint", ep.DNSName)
+		portalName = idx.main.Name
+		target = idx.main
+	} else if p.Spec.Remote != nil {
+		log.V(1).Info("portal is remote, routing to main portal",
+			"annotatedPortal", portalName, "endpoint", ep.DNSName)
+		portalName = idx.main.Name
+		target = idx.main
+	} else {
+		target = p
 	}
 
-	// Create/update DNSRecords for each (portal, sourceType) pair
-	for key, endpoints := range endpointsByPortalSource {
-		portal := portalsByName[key.portalName]
-		// Skip remote portals
-		if portal == nil || portal.Spec.Remote != nil {
-			continue
-		}
-		if err := r.reconcileDNSRecord(ctx, portal, key.sourceType, endpoints); err != nil {
-			log.Error(err, "failed to reconcile DNSRecord",
-				"portal", key.portalName, "sourceType", key.sourceType)
-		}
+	if target == nil || target.Spec.Remote != nil {
+		log.V(1).Info("no valid local portal for endpoint, skipping", "endpoint", ep.DNSName)
+		return "", nil
 	}
 
-	// Clean up orphaned DNSRecords (only for local portals)
-	for _, portal := range localPortals {
-		if err := r.deleteOrphanedDNSRecords(ctx, portal, endpointsByPortalSource); err != nil {
-			log.Error(err, "failed to delete orphaned DNSRecords", "portal", portal.Name)
-		}
-	}
-
-	return nil
+	return portalName, target
 }
 
 func (r *SourceReconciler) rebuildSources(ctx context.Context) error {
@@ -484,7 +532,7 @@ func (r *SourceReconciler) deleteOrphanedDNSRecords(
 	var dnsRecordList sreportalv1alpha1.DNSRecordList
 	if err := r.List(ctx, &dnsRecordList,
 		client.InNamespace(portal.Namespace),
-		client.MatchingFields{"spec.portalRef": portal.Name},
+		client.MatchingFields{FieldIndexPortalRef: portal.Name},
 	); err != nil {
 		return err
 	}

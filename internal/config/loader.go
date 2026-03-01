@@ -44,6 +44,10 @@ func LoadFromFile(path string) (*OperatorConfig, error) {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
 	}
 
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid config: %w", err)
+	}
+
 	return cfg, nil
 }
 

@@ -18,6 +18,7 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -203,4 +204,15 @@ func DefaultConfig() *OperatorConfig {
 			RetryOnError: Duration(30 * time.Second),
 		},
 	}
+}
+
+// Validate checks that the configuration is internally consistent.
+func (c *OperatorConfig) Validate() error {
+	if c.Reconciliation.Interval.Duration() <= 0 {
+		return fmt.Errorf("reconciliation.interval: %w", ErrInvalidInterval)
+	}
+	if c.GroupMapping.DefaultGroup == "" {
+		return fmt.Errorf("groupMapping.defaultGroup: %w", ErrEmptyDefaultGroup)
+	}
+	return nil
 }

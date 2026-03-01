@@ -32,13 +32,6 @@ import (
 	"github.com/golgoth31/sreportal/internal/config"
 )
 
-func init() {
-	// Initialize external-dns annotation keys.
-	// In external-dns v0.20.0, the annotation keys (HostnameKey, etc.) are empty
-	// strings until SetAnnotationPrefix is called.
-	annotations.SetAnnotationPrefix("external-dns.alpha.kubernetes.io/")
-}
-
 // Source is an alias for the external-dns source.Source interface.
 type Source = externaldnssource.Source
 
@@ -72,7 +65,12 @@ type Factory struct {
 }
 
 // NewFactory creates a new source Factory.
+// It initialises external-dns annotation keys before any source is built.
+// In external-dns v0.20.0 the annotation keys (HostnameKey, etc.) are empty
+// strings until SetAnnotationPrefix is called; doing it here avoids the
+// implicit init() side-effect that was previously in this package.
 func NewFactory(kubeClient kubernetes.Interface, restConfig *rest.Config) *Factory {
+	annotations.SetAnnotationPrefix("external-dns.alpha.kubernetes.io/")
 	return &Factory{
 		kubeClient: kubeClient,
 		restConfig: restConfig,

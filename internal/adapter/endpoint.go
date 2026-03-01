@@ -440,17 +440,22 @@ func selectByPriority(endpointsBySource map[string][]sreportalv1alpha1.EndpointS
 }
 
 // mergeTargets merges two target slices, deduplicating entries.
+// It always returns a new slice and never aliases the caller's backing array.
 func mergeTargets(existing, additional []string) []string {
-	set := make(map[string]struct{}, len(existing))
+	set := make(map[string]struct{}, len(existing)+len(additional))
+	result := make([]string, 0, len(existing)+len(additional))
 	for _, t := range existing {
-		set[t] = struct{}{}
-	}
-	for _, t := range additional {
-		if _, exists := set[t]; !exists {
-			existing = append(existing, t)
+		if _, seen := set[t]; !seen {
 			set[t] = struct{}{}
+			result = append(result, t)
 		}
 	}
-	sort.Strings(existing)
-	return existing
+	for _, t := range additional {
+		if _, seen := set[t]; !seen {
+			set[t] = struct{}{}
+			result = append(result, t)
+		}
+	}
+	sort.Strings(result)
+	return result
 }

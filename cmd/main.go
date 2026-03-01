@@ -22,6 +22,7 @@ import (
 	"flag"
 	"io/fs"
 	"os"
+	"strings"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -116,6 +117,10 @@ func main() {
 		"If set, the MCP (Model Context Protocol) server will be enabled for AI assistant integration.")
 	flag.StringVar(&mcpTransport, "mcp-transport", "streamable-http",
 		"The transport to use for the MCP server: 'stdio' or 'streamable-http'.")
+	var corsAllowedOrigins string
+	flag.StringVar(&corsAllowedOrigins, "cors-allowed-origins", "",
+		"Comma-separated list of origins allowed for CORS requests (e.g. http://localhost:5173). "+
+			"Leave empty to disable CORS. In dev mode, http://localhost:5173 is added automatically.")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -239,7 +244,7 @@ func main() {
 	if err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),
 		&sreportalv1alpha1.DNSRecord{},
-		"spec.portalRef",
+		controller.FieldIndexPortalRef,
 		func(o client.Object) []string {
 			dnsRecord := o.(*sreportalv1alpha1.DNSRecord)
 			if dnsRecord.Spec.PortalRef == "" {
@@ -248,7 +253,7 @@ func main() {
 			return []string{dnsRecord.Spec.PortalRef}
 		},
 	); err != nil {
-		setupLog.Error(err, "unable to create field indexer", "field", "spec.portalRef")
+		setupLog.Error(err, "unable to create field indexer", "field", controller.FieldIndexPortalRef)
 		os.Exit(1)
 	}
 
@@ -256,7 +261,7 @@ func main() {
 	if err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),
 		&sreportalv1alpha1.DNS{},
-		"spec.portalRef",
+		controller.FieldIndexPortalRef,
 		func(o client.Object) []string {
 			dns := o.(*sreportalv1alpha1.DNS)
 			if dns.Spec.PortalRef == "" {
@@ -265,7 +270,7 @@ func main() {
 			return []string{dns.Spec.PortalRef}
 		},
 	); err != nil {
-		setupLog.Error(err, "unable to create field indexer", "field", "spec.portalRef")
+		setupLog.Error(err, "unable to create field indexer", "field", controller.FieldIndexPortalRef)
 		os.Exit(1)
 	}
 
@@ -363,7 +368,17 @@ func main() {
 		setupLog.Info("serving web UI from embedded filesystem")
 		webCfg.WebFS = subFS
 	}
-	webServer := webserver.New(webCfg, mgr.GetClient(), operatorConfig)
+	// Build allowed origins: explicit flag + localhost:5173 in dev mode.
+	var corsOrigins []string
+	for o := range strings.SplitSeq(corsAllowedOrigins, ",") {
+		if o = strings.TrimSpace(o); o != "" {
+			corsOrigins = append(corsOrigins, o)
+		}
+	}
+	if devMode {
+		corsOrigins = append(corsOrigins, "http://localhost:5173")
+	}
+	webServer := webserver.New(webCfg, mgr.GetClient(), operatorConfig, corsOrigins)
 
 	// Start MCP server if enabled
 	if enableMCP {
