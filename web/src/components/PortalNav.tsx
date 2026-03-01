@@ -42,7 +42,7 @@ function PortalSelect({
       >
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent position="popper" >
         {portals.map((portal) => (
           <SelectItem key={portal.name} value={portal.name}>
             {portal.title}
