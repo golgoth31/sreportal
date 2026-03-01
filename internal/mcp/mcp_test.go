@@ -436,6 +436,53 @@ var _ = Describe("MCP Server", func() {
 			})
 		})
 
+		Context("with sync status", func() {
+			It("should include sync_status in results", func() {
+				dnsWithSync := &sreportalv1alpha1.DNS{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-dns-sync",
+						Namespace: "default",
+					},
+					Spec: sreportalv1alpha1.DNSSpec{PortalRef: "main"},
+					Status: sreportalv1alpha1.DNSStatus{
+						Groups: []sreportalv1alpha1.FQDNGroupStatus{
+							{
+								Name:   "web",
+								Source: "external-dns",
+								FQDNs: []sreportalv1alpha1.FQDNStatus{
+									{FQDN: "synced.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}, SyncStatus: "sync"},
+									{FQDN: "drifted.example.com", RecordType: "A", Targets: []string{"10.0.0.2"}, SyncStatus: "notsync"},
+								},
+							},
+						},
+					},
+				}
+
+				k8sClient := fake.NewClientBuilder().
+					WithScheme(scheme).
+					WithObjects(dnsWithSync).
+					WithStatusSubresource(dnsWithSync).
+					Build()
+
+				server := New(k8sClient, groupMapping)
+				request := newCallToolRequest("search_fqdns", map[string]any{})
+
+				result, err := server.handleSearchFQDNs(ctx, request)
+
+				Expect(err).NotTo(HaveOccurred())
+				text := extractTextContent(result)
+
+				jsonStart := strings.Index(text, "[")
+				Expect(jsonStart).To(BeNumerically(">", 0))
+				var results []FQDNResult
+				Expect(json.Unmarshal([]byte(text[jsonStart:]), &results)).To(Succeed())
+
+				Expect(results).To(HaveLen(2))
+				Expect(results[0].SyncStatus).To(Equal("sync"))
+				Expect(results[1].SyncStatus).To(Equal("notsync"))
+			})
+		})
+
 		Context("with duplicate FQDNs", func() {
 			It("should deduplicate FQDNs across resources", func() {
 				dns1Copy := dns1.DeepCopy()
@@ -698,6 +745,36 @@ var _ = Describe("MCP Server", func() {
 				Expect(isErrorResult(result)).To(BeFalse())
 				text := extractTextContent(result)
 				Expect(text).To(ContainSubstring("api.example.com"))
+			})
+		})
+
+		Context("with sync status", func() {
+			It("should include sync_status in details", func() {
+				dnsWithSync := dns.DeepCopy()
+				dnsWithSync.Status.Groups[0].FQDNs[0].SyncStatus = "sync"
+
+				k8sClient := fake.NewClientBuilder().
+					WithScheme(scheme).
+					WithObjects(dnsWithSync).
+					WithStatusSubresource(dnsWithSync).
+					Build()
+
+				server := New(k8sClient, groupMapping)
+				request := newCallToolRequest("get_fqdn_details", map[string]any{
+					"fqdn": "api.example.com",
+				})
+
+				result, err := server.handleGetFQDNDetails(ctx, request)
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(isErrorResult(result)).To(BeFalse())
+
+				text := extractTextContent(result)
+				jsonStart := strings.Index(text, "{")
+				Expect(jsonStart).To(BeNumerically(">", 0))
+				var details FQDNDetails
+				Expect(json.Unmarshal([]byte(text[jsonStart:]), &details)).To(Succeed())
+				Expect(details.SyncStatus).To(Equal("sync"))
 			})
 		})
 

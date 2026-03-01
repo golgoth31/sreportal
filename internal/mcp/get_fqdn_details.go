@@ -36,6 +36,7 @@ type FQDNDetails struct {
 	Description string   `json:"description,omitempty"`
 	RecordType  string   `json:"record_type"`
 	Targets     []string `json:"targets"`
+	SyncStatus  string   `json:"sync_status,omitempty"`
 	Portal      string   `json:"portal,omitempty"`
 	Namespace   string   `json:"namespace,omitempty"`
 	LastSeen    string   `json:"last_seen,omitempty"`
@@ -72,6 +73,7 @@ func (s *Server) handleGetFQDNDetails(ctx context.Context, request mcp.CallToolR
 						Description: fqdnStatus.Description,
 						RecordType:  fqdnStatus.RecordType,
 						Targets:     fqdnStatus.Targets,
+						SyncStatus:  fqdnStatus.SyncStatus,
 						Portal:      dns.Spec.PortalRef,
 						Namespace:   dns.Namespace,
 						DNSResource: fmt.Sprintf("%s/%s", dns.Namespace, dns.Name),
