@@ -80,7 +80,11 @@ func checkCNAMERecord(ctx context.Context, r Resolver, fqdn string, expectedTarg
 		return &CheckResult{Status: SyncStatusNotAvailable}
 	}
 
-	if len(expectedTargets) > 0 && strings.EqualFold(cname, expectedTargets[0]) {
+	// net.LookupCNAME always returns a fully-qualified name with a trailing dot
+	// (e.g. "real.example.com."), while external-dns stores targets without one
+	// (e.g. "real.example.com"). Strip trailing dots from both sides before comparing.
+	if len(expectedTargets) > 0 &&
+		strings.EqualFold(strings.TrimSuffix(cname, "."), strings.TrimSuffix(expectedTargets[0], ".")) {
 		return &CheckResult{Status: SyncStatusSync, ResolvedTargets: []string{cname}}
 	}
 

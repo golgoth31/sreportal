@@ -138,6 +138,18 @@ func TestCheckFQDN(t *testing.T) {
 			wantStatus: dns.SyncStatusSync,
 		},
 		{
+			// net.LookupCNAME always returns a trailing dot; external-dns stores targets without one.
+			// The comparison must normalise both sides before comparing.
+			name:       "CNAME record sync — resolver dot vs external-dns no-dot (trailing dot mismatch)",
+			fqdn:       "alias.example.com",
+			recordType: "CNAME",
+			targets:    []string{"real.example.com"}, // external-dns format: no trailing dot
+			setup: func(r *fakeResolver) {
+				r.cnames["alias.example.com"] = "real.example.com." // net.LookupCNAME format: trailing dot
+			},
+			wantStatus: dns.SyncStatusSync,
+		},
+		{
 			name:       "CNAME record notsync — different target",
 			fqdn:       "alias.example.com",
 			recordType: "CNAME",
