@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.2](https://github.com/golgoth31/sreportal/compare/v1.9.1...v1.9.2) (2026-03-02)
+
+
+### Bug Fixes
+
+* favicon ([ec61eff](https://github.com/golgoth31/sreportal/commit/ec61eff026cb817b2a8fc539e9fc8f7e5683b8bc))
+
 ## [1.9.1](https://github.com/golgoth31/sreportal/compare/v1.9.0...v1.9.1) (2026-03-01)
 
 
