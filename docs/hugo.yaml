@@ -13,6 +13,10 @@ params:
       path: /favicon.svg
       width: 40
       height: 40
+  theme:
+    # light | dark | system
+    default: system
+    displayToggle: true
 
 menu:
   main:
