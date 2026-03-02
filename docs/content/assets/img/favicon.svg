@@ -1,0 +1,21 @@
+<svg width="350" height="350" viewBox="80 80 350 350" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="80" y="80" width="350" height="350" rx="60" fill="#1A1F2C"/>
+
+  <path d="M120 180h40v200h-40z" fill="#2D364A"/>
+  <path d="M180 220h30v160h-30z" fill="#2D364A"/>
+  <path d="M352 180h40v200h-40z" fill="#2D364A"/>
+  <path d="M302 220h30v160h-30z" fill="#2D364A"/>
+
+  <circle cx="256" cy="256" r="140" stroke="#4A90E2" stroke-width="12"/>
+  <circle cx="256" cy="256" r="110" stroke="#3A70B2" stroke-width="8" stroke-dasharray="20 15"/>
+
+  <path d="M256 116v140M256 396v-140M116 256h140M396 256h-140" stroke="#4A90E2" stroke-width="6"/>
+  <path d="M164 164l92 92M348 348l-92-92M164 348l92-92M348 164l-92 92" stroke="#3A70B2" stroke-width="4"/>
+
+  <circle cx="120" cy="180" r="15" fill="#E67E22"/>
+  <circle cx="392" cy="180" r="15" fill="#E67E22"/>
+  <circle cx="256" cy="116" r="15" fill="#27AE60"/>
+  <circle cx="256" cy="396" r="15" fill="#27AE60"/>
+
+  <text x="256" y="270" text-anchor="middle" font-family="Arial, sans-serif" font-size="60" font-weight="bold" fill="white" opacity="0.8">SRE</text>
+</svg>

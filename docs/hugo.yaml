@@ -10,7 +10,7 @@ params:
     displayTitle: true
     displayLogo: true
     logo:
-      path: /favicon.svg
+      path: /assets/img/favicon.svg
       width: 40
       height: 40
   theme:
