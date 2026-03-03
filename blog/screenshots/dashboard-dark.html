@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1400,initial-scale=1">
+<title>SRE Portal - Dashboard (Dark)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .font-mono { font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace; }
+</style>
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        background: '#1a1f2e',
+        foreground: '#f0f0f5',
+        card: '#252b3d',
+        'card-foreground': '#f0f0f5',
+        primary: '#818cf8',
+        'primary-foreground': '#f5f3ff',
+        secondary: '#333a4d',
+        'secondary-foreground': '#e2e8f0',
+        muted: '#2d3348',
+        'muted-foreground': '#94a3b8',
+        accent: '#2d3348',
+        'accent-foreground': '#f0f0f5',
+        destructive: '#f87171',
+        border: 'rgba(255,255,255,0.1)',
+        input: 'rgba(255,255,255,0.15)',
+        ring: '#64748b',
+      }
+    }
+  }
+}
+</script>
+</head>
+<body class="bg-background text-foreground min-h-screen flex flex-col">
+
+<!-- Header -->
+<header class="sticky top-0 z-40 border-b border-border bg-[#1a1f2e]/95 backdrop-blur-sm">
+  <div class="flex h-14 items-center gap-4 px-4 max-w-screen-xl mx-auto w-full">
+    <div class="flex items-center gap-2 font-semibold text-sm shrink-0">
+      <svg width="20" height="20" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="100" height="100" rx="12" fill="#1A1F2C"/>
+        <rect x="10" y="40" width="8" height="35" rx="2" fill="#6366f1"/>
+        <rect x="22" y="28" width="8" height="47" rx="2" fill="#818cf8"/>
+        <circle cx="50" cy="50" r="20" stroke="#6366f1" stroke-width="3" fill="none"/>
+        <circle cx="50" cy="50" r="12" stroke="#818cf8" stroke-width="2" fill="none"/>
+        <circle cx="50" cy="30" r="3" fill="#f97316"/>
+        <circle cx="50" cy="70" r="3" fill="#f97316"/>
+        <circle cx="30" cy="50" r="3" fill="#22c55e"/>
+        <circle cx="70" cy="50" r="3" fill="#22c55e"/>
+        <rect x="70" y="35" width="8" height="40" rx="2" fill="#818cf8"/>
+        <rect x="82" y="45" width="8" height="30" rx="2" fill="#6366f1"/>
+        <text x="50" y="56" font-family="Inter,sans-serif" font-size="14" font-weight="700" fill="white" text-anchor="middle">SRE</text>
+      </svg>
+      <span>SRE Portal</span>
+    </div>
+    <div class="flex-1 min-w-0 flex items-center gap-2">
+      <button class="inline-flex items-center justify-center rounded-md text-sm font-bold h-8 px-3 bg-primary text-white">
+        Production
+      </button>
+      <div class="relative">
+        <select class="h-8 rounded-md border border-border bg-card text-foreground px-3 pr-8 text-sm appearance-none cursor-pointer">
+          <option>Local portals</option>
+        </select>
+        <svg class="absolute right-2 top-2.5 w-3 h-3 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+      </div>
+      <div class="relative">
+        <select class="h-8 rounded-md border border-border bg-card text-foreground px-3 pr-8 text-sm appearance-none cursor-pointer">
+          <option>Remote portals</option>
+        </select>
+        <svg class="absolute right-2 top-2.5 w-3 h-3 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+      </div>
+    </div>
+    <div class="flex items-center gap-1 shrink-0">
+      <button class="inline-flex items-center justify-center rounded-md w-8 h-8 hover:bg-accent text-muted-foreground">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+      </button>
+      <button class="inline-flex items-center justify-center rounded-md w-8 h-8 hover:bg-accent text-muted-foreground">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- Main content -->
+<main class="flex-1">
+  <div class="max-w-screen-xl mx-auto px-4 py-6 space-y-6">
+    <div class="flex items-center justify-between gap-4">
+      <h1 class="text-xl font-semibold tracking-tight">DNS Links</h1>
+      <span class="text-muted-foreground text-sm">12 FQDNs</span>
+    </div>
+
+    <!-- Search -->
+    <div class="flex flex-wrap gap-3 items-end">
+      <div class="flex-1 min-w-48">
+        <input type="text" placeholder="Search FQDNs..." class="w-full h-9 rounded-md border border-border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none">
+      </div>
+      <div class="relative">
+        <select class="h-9 w-48 rounded-md border border-border bg-card text-foreground px-3 pr-8 text-sm appearance-none">
+          <option>All groups</option>
+        </select>
+        <svg class="absolute right-2 top-3 w-3 h-3 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+      </div>
+    </div>
+
+    <!-- Group: API Gateway -->
+    <div class="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
+      <button class="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/50">
+        <div class="flex items-center gap-3">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>
+          <span class="font-semibold text-sm">API Gateway</span>
+          <span class="text-muted-foreground text-xs">4 entries</span>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="rotate-180"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <div class="border-t border-border p-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div class="rounded-lg border border-border bg-[#1e2435] p-4 flex flex-col gap-3 shadow-sm">
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="w-2 h-2 rounded-full bg-green-500 shrink-0"></span>
+              <a href="#" class="text-primary font-mono text-sm font-medium hover:underline break-all">api.acme-corp.io</a>
+            </div>
+            <button class="inline-flex items-center justify-center rounded-md w-7 h-7 hover:bg-accent shrink-0 text-muted-foreground">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            </button>
+          </div>
+          <p class="text-muted-foreground text-xs">Main REST API gateway</p>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <span class="inline-flex items-center rounded-md border border-border px-2 py-0.5 font-mono text-xs text-foreground">A</span>
+            <span class="text-muted-foreground font-mono text-xs">34.120.15.42</span>
+            <span class="inline-flex items-center rounded-md bg-secondary text-secondary-foreground px-2 py-0.5 text-xs">External DNS</span>
+          </div>
+          <div class="border-t border-border pt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/><path d="M12 12V8"/></svg>
+            <span class="font-mono">Service/production/api-gateway</span>
+          </div>
+        </div>
+        <div class="rounded-lg border border-border bg-[#1e2435] p-4 flex flex-col gap-3 shadow-sm">
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="w-2 h-2 rounded-full bg-green-500 shrink-0"></span>
+              <a href="#" class="text-primary font-mono text-sm font-medium hover:underline break-all">graphql.acme-corp.io</a>
+            </div>
+            <button class="inline-flex items-center justify-center rounded-md w-7 h-7 hover:bg-accent shrink-0 text-muted-foreground">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            </button>
+          </div>
+          <p class="text-muted-foreground text-xs">GraphQL federation endpoint</p>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <span class="inline-flex items-center rounded-md border border-border px-2 py-0.5 font-mono text-xs text-foreground">CNAME</span>
+            <span class="text-muted-foreground font-mono text-xs">gw.acme-corp.io</span>
+            <span class="inline-flex items-center rounded-md bg-secondary text-secondary-foreground px-2 py-0.5 text-xs">External DNS</span>
+          </div>
+          <div class="border-t border-border pt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/><path d="M12 12V8"/></svg>
+            <span class="font-mono">Ingress/production/graphql-gw</span>
+          </div>
+        </div>
+        <div class="rounded-lg border border-border bg-[#1e2435] p-4 flex flex-col gap-3 shadow-sm">
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="w-2 h-2 rounded-full bg-green-500 shrink-0"></span>
+              <a href="#" class="text-primary font-mono text-sm font-medium hover:underline break-all">grpc.acme-corp.io</a>
+            </div>
+            <button class="inline-flex items-center justify-center rounded-md w-7 h-7 hover:bg-accent shrink-0 text-muted-foreground">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            </button>
+          </div>
+          <p class="text-muted-foreground text-xs">Internal gRPC gateway</p>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <span class="inline-flex items-center rounded-md border border-border px-2 py-0.5 font-mono text-xs text-foreground">A</span>
+            <span class="text-muted-foreground font-mono text-xs">10.128.0.45</span>
+            <span class="inline-flex items-center rounded-md bg-secondary text-secondary-foreground px-2 py-0.5 text-xs">External DNS</span>
+          </div>
+          <div class="border-t border-border pt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/><path d="M12 12V8"/></svg>
+            <span class="font-mono">Service/production/grpc-gateway</span>
+          </div>
+        </div>
+        <div class="rounded-lg border border-border bg-[#1e2435] p-4 flex flex-col gap-3 shadow-sm">
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="w-2 h-2 rounded-full bg-red-500 shrink-0"></span>
+              <a href="#" class="text-primary font-mono text-sm font-medium hover:underline break-all">ws.acme-corp.io</a>
+            </div>
+            <button class="inline-flex items-center justify-center rounded-md w-7 h-7 hover:bg-accent shrink-0 text-muted-foreground">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            </button>
+          </div>
+          <p class="text-muted-foreground text-xs">WebSocket real-time events</p>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <span class="inline-flex items-center rounded-md border border-border px-2 py-0.5 font-mono text-xs text-foreground">A</span>
+            <span class="text-muted-foreground font-mono text-xs">34.120.15.43</span>
+            <span class="inline-flex items-center rounded-md bg-secondary text-secondary-foreground px-2 py-0.5 text-xs">External DNS</span>
+          </div>
+          <div class="border-t border-border pt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/><path d="M12 12V8"/></svg>
+            <span class="font-mono">Service/production/ws-gateway</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Group: Monitoring (manual) -->
+    <div class="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
+      <button class="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/50">
+        <div class="flex items-center gap-3">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>
+          <span class="font-semibold text-sm">Monitoring</span>
+          <span class="text-muted-foreground text-xs">3 entries</span>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="rotate-180"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <div class="border-t border-border p-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div class="rounded-lg border border-border bg-[#1e2435] p-4 flex flex-col gap-3 shadow-sm">
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <a href="#" class="text-primary font-mono text-sm font-medium hover:underline break-all">grafana.acme-corp.io</a>
+            </div>
+            <button class="inline-flex items-center justify-center rounded-md w-7 h-7 hover:bg-accent shrink-0 text-muted-foreground">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            </button>
+          </div>
+          <p class="text-muted-foreground text-xs">Observability dashboards</p>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <span class="inline-flex items-center rounded-md bg-secondary text-secondary-foreground px-2 py-0.5 text-xs">Manual</span>
+          </div>
+        </div>
+        <div class="rounded-lg border border-border bg-[#1e2435] p-4 flex flex-col gap-3 shadow-sm">
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <a href="#" class="text-primary font-mono text-sm font-medium hover:underline break-all">alertmanager.acme-corp.io</a>
+            </div>
+            <button class="inline-flex items-center justify-center rounded-md w-7 h-7 hover:bg-accent shrink-0 text-muted-foreground">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            </button>
+          </div>
+          <p class="text-muted-foreground text-xs">Alerting & on-call routing</p>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <span class="inline-flex items-center rounded-md bg-secondary text-secondary-foreground px-2 py-0.5 text-xs">Manual</span>
+          </div>
+        </div>
+        <div class="rounded-lg border border-border bg-[#1e2435] p-4 flex flex-col gap-3 shadow-sm">
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <a href="#" class="text-primary font-mono text-sm font-medium hover:underline break-all">argocd.acme-corp.io</a>
+            </div>
+            <button class="inline-flex items-center justify-center rounded-md w-7 h-7 hover:bg-accent shrink-0 text-muted-foreground">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            </button>
+          </div>
+          <p class="text-muted-foreground text-xs">GitOps deployment manager</p>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <span class="inline-flex items-center rounded-md bg-secondary text-secondary-foreground px-2 py-0.5 text-xs">Manual</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<footer class="border-t border-border py-4 px-4">
+  <p class="text-center text-xs text-muted-foreground">SRE Portal -- Kubernetes DNS Management</p>
+</footer>
+
+</body>
+</html>
