@@ -18,11 +18,11 @@ That's why I built **SRE Portal**.
 
 ## What is SRE Portal?
 
-SRE Portal is a **Kubernetes operator** that runs as a single container in your cluster. It does three things:
+SRE Portal is a **Kubernetes operator** that runs as a single container in your cluster, with no external dependencies beyond the Kubernetes API. It works in three stages:
 
-1. **Discovers** DNS records from your Kubernetes resources (Services, Ingresses, Istio Gateways, DNSEndpoints)
+1. **Discovers** DNS records from Kubernetes resources — Services, Ingresses, Istio Gateways, and DNSEndpoints
 2. **Aggregates** them with manual entries you define via Custom Resources
-3. **Serves** a modern web dashboard where your team can search, filter, and browse all endpoints
+3. **Serves** a web dashboard where your team can search, filter, and browse all endpoints in real time
 
 Think of it as a combination of [external-dns](https://github.com/kubernetes-sigs/external-dns) awareness and a developer portal for DNS — but without the complexity of a full service catalog like Backstage.
 
@@ -35,7 +35,7 @@ Think of it as a combination of [external-dns](https://github.com/kubernetes-sig
 - **DNS sync status** — Visual indicator showing whether DNS records are actually resolving
 - **Built-in MCP server** — Integrate with AI assistants (Claude, Cursor) for natural-language DNS queries
 - **Single container** — Controller, gRPC API, web UI, and MCP server all packaged together
-- **Light & dark theme** — Because SREs work at all hours
+- **Light & dark theme** — Full support for system preference and manual toggle
 
 ![SRE Portal in dark mode](screenshots/dashboard-dark.png)
 
@@ -118,15 +118,20 @@ SRE Portal is built on three Custom Resource Definitions (CRDs) that work togeth
 
 ```mermaid
 graph TB
-    subgraph Pod["SRE Portal Pod"]
-        Controllers["Controllers\n(ctrl-runtime)"]
-        API["Connect API\n(gRPC/h2c)"]
-        WebUI["Web UI + MCP\n(Echo v5)"]
+    Browser["Browser"] --> WebUI
+    AIAssistant["AI Assistant\n(Claude / Cursor)"] --> MCP
+
+    subgraph Pod["SRE Portal Pod (single container)"]
+        Controllers["Controllers\n(controller-runtime)"]
+        API["Connect gRPC API\n(h2c)"]
+        WebUI["Web UI\n(React SPA / Echo v5)"]
+        MCP["MCP Server\n(/mcp endpoint)"]
     end
 
-    Controllers --> K8s["K8s API Server"]
-    API --> K8s
-    WebUI --> MCP["MCP Server (/mcp)"]
+    WebUI --> API
+    API --> K8s["Kubernetes API Server"]
+    Controllers --> K8s
+    MCP --> K8s
 ```
 
 | CRD | Role |
@@ -214,7 +219,7 @@ The MCP server provides three tools:
 
 **Claude Code:**
 ```bash
-claude mcp add sreportal --transport http http://sreportal.internal:8082/mcp
+claude mcp add sreportal --transport http http://<sreportal-host>:<port>/mcp
 ```
 
 **Claude Desktop** (`claude_desktop_config.json`):
@@ -222,7 +227,7 @@ claude mcp add sreportal --transport http http://sreportal.internal:8082/mcp
 {
   "mcpServers": {
     "sreportal": {
-      "url": "http://sreportal.internal:8082/mcp"
+      "url": "http://<sreportal-host>:<port>/mcp"
     }
   }
 }
@@ -253,8 +258,9 @@ The vision is a complete **Kubernetes-native status page and service catalog** t
 
 - **GitHub**: [github.com/golgoth31/sreportal](https://github.com/golgoth31/sreportal)
 - **Documentation**: [golgoth31.github.io/sreportal](https://golgoth31.github.io/sreportal/)
+- **License**: Apache 2.0
 
-If you need a **lightweight, Kubernetes-native tool** that answers "what endpoints do we have and are they working?", SRE Portal fits that, give it a try. Feedback, issues, and contributions are welcome.
+If you need a **lightweight, Kubernetes-native tool** that answers "what endpoints do we have and are they working?", SRE Portal is built for that. Give it a try — feedback, issues, and contributions are welcome.
 
 ---
 
