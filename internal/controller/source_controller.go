@@ -100,7 +100,7 @@ func NewSourceReconciler(
 		KubeClient:     kubeClient,
 		RestConfig:     restConfig,
 		Config:         cfg,
-		sourceFactory:  srcfactory.NewFactory(kubeClient, restConfig),
+		sourceFactory:  srcfactory.NewFactory(kubeClient, restConfig, dynClient),
 		dynamicClient:  dynClient,
 		sourceFailures: make(map[srcfactory.SourceType]int),
 	}
@@ -113,6 +113,7 @@ func NewSourceReconciler(
 // +kubebuilder:rbac:groups=externaldns.k8s.io,resources=dnsendpoints,verbs=get;list;watch
 // +kubebuilder:rbac:groups=networking.istio.io,resources=gateways,verbs=get;list;watch
 // +kubebuilder:rbac:groups=networking.istio.io,resources=virtualservices,verbs=get;list;watch
+// +kubebuilder:rbac:groups=domain.scaleway.m.upbound.io,resources=records,verbs=get;list;watch
 
 // Start implements manager.Runnable to run periodic source reconciliation.
 //
@@ -636,6 +637,8 @@ func gvrForSourceType(sourceType srcfactory.SourceType) (schema.GroupVersionReso
 		return schema.GroupVersionResource{Group: "networking.istio.io", Version: "v1", Resource: "gateways"}, true
 	case srcfactory.SourceTypeIstioVirtualService:
 		return schema.GroupVersionResource{Group: "networking.istio.io", Version: "v1", Resource: "virtualservices"}, true
+	case srcfactory.SourceTypeCrossplaneScalewayRecord:
+		return srcfactory.CrossplaneScalewayRecordGVR, true
 	default:
 		return schema.GroupVersionResource{}, false
 	}
