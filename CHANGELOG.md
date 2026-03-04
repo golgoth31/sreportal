@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.4](https://github.com/golgoth31/sreportal/compare/v1.9.3...v1.9.4) (2026-03-04)
+
+
+### Bug Fixes
+
+* **operator:** use status patch to avoid optimistic lock conflicts ([cc93fe8](https://github.com/golgoth31/sreportal/commit/cc93fe816485ff62ef4e97aac57e633de8648c7a))
+
 ## [1.9.3](https://github.com/golgoth31/sreportal/compare/v1.9.2...v1.9.3) (2026-03-04)
 
 
