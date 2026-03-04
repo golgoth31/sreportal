@@ -154,20 +154,6 @@ type IstioGatewayConfig struct {
 	IgnoreHostnameAnnotation bool `json:"ignoreHostnameAnnotation,omitempty" yaml:"ignoreHostnameAnnotation,omitempty"`
 }
 
-// CrossplaneScalewayRecordConfig configures the Crossplane Scaleway Record source.
-// It watches domain.scaleway.m.upbound.io/v1alpha1 Record CRDs and converts them
-// into endpoints for DNS discovery.
-type CrossplaneScalewayRecordConfig struct {
-	// Enabled controls whether Crossplane Scaleway Record source is active.
-	Enabled bool `json:"enabled" yaml:"enabled"`
-	// Namespace restricts watching to a specific namespace. Empty means all namespaces.
-	// Note: Crossplane Records are cluster-scoped by default; this field is kept
-	// for consistency but will be ignored for cluster-scoped resources.
-	Namespace string `json:"namespace,omitempty" yaml:"namespace,omitempty"`
-	// LabelFilter filters Records by label selector.
-	LabelFilter string `json:"labelFilter,omitempty" yaml:"labelFilter,omitempty"`
-}
-
 // IstioVirtualServiceConfig configures the Istio VirtualService source.
 type IstioVirtualServiceConfig struct {
 	// Enabled controls whether Istio VirtualService source is active.
@@ -182,6 +168,17 @@ type IstioVirtualServiceConfig struct {
 	CombineFQDNAndAnnotation bool `json:"combineFqdnAndAnnotation,omitempty" yaml:"combineFqdnAndAnnotation,omitempty"`
 	// IgnoreHostnameAnnotation ignores hostname annotations.
 	IgnoreHostnameAnnotation bool `json:"ignoreHostnameAnnotation,omitempty" yaml:"ignoreHostnameAnnotation,omitempty"`
+}
+
+// CrossplaneScalewayRecordConfig configures the Crossplane Scaleway Record source.
+// It watches domain.scaleway.m.upbound.io/v1alpha1 Record CRDs and converts them
+// into endpoints for DNS discovery. Crossplane Records are cluster-scoped, so there
+// is no namespace filtering option.
+type CrossplaneScalewayRecordConfig struct {
+	// Enabled controls whether Crossplane Scaleway Record source is active.
+	Enabled bool `json:"enabled" yaml:"enabled"`
+	// LabelFilter filters Records by label selector.
+	LabelFilter string `json:"labelFilter,omitempty" yaml:"labelFilter,omitempty"`
 }
 
 // GroupMappingConfig configures how FQDNs are organized into groups for the UI.

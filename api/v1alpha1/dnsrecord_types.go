@@ -50,7 +50,7 @@ type DNSRecordStatus struct {
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
-// EndpointStatus represents a single DNS endpoint discovered from external-dns
+// EndpointStatus represents a single DNS endpoint discovered from a source
 type EndpointStatus struct {
 	// dnsName is the fully qualified domain name
 	// +kubebuilder:validation:Required

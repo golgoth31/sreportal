@@ -221,15 +221,10 @@ func TestCrossplaneScalewayRecordSource_Endpoints(t *testing.T) {
 		// data is missing
 	}, nil)
 
-	gvr := schema.GroupVersionResource{
-		Group:    "domain.scaleway.m.upbound.io",
-		Version:  "v1alpha1",
-		Resource: "records",
-	}
 	client := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(
 		scheme,
 		map[schema.GroupVersionResource]string{
-			gvr: "RecordList",
+			CrossplaneScalewayRecordGVR: "RecordList",
 		},
 		rec1, rec2, recBad,
 	)

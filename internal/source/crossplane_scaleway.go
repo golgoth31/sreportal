@@ -28,11 +28,14 @@ import (
 	"k8s.io/client-go/dynamic"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/external-dns/endpoint"
+
+	"github.com/golgoth31/sreportal/internal/adapter"
 )
 
-// crossplaneScalewayRecordGVR is the GroupVersionResource for the Crossplane
+// CrossplaneScalewayRecordGVR is the GroupVersionResource for the Crossplane
 // Scaleway Record CRD (domain.scaleway.m.upbound.io/v1alpha1).
-var crossplaneScalewayRecordGVR = schema.GroupVersionResource{
+// Exported so that source_controller.gvrForSourceType can reuse it.
+var CrossplaneScalewayRecordGVR = schema.GroupVersionResource{
 	Group:    "domain.scaleway.m.upbound.io",
 	Version:  "v1alpha1",
 	Resource: "records",
@@ -69,7 +72,7 @@ func (s *CrossplaneScalewayRecordSource) Endpoints(ctx context.Context) ([]*endp
 		listOpts.LabelSelector = s.labelSelector.String()
 	}
 
-	records, err := s.dynamicClient.Resource(crossplaneScalewayRecordGVR).List(ctx, listOpts)
+	records, err := s.dynamicClient.Resource(CrossplaneScalewayRecordGVR).List(ctx, listOpts)
 	if err != nil {
 		return nil, fmt.Errorf("list crossplane scaleway records: %w", err)
 	}
@@ -108,27 +111,17 @@ func (s *CrossplaneScalewayRecordSource) AddEventHandler(_ context.Context, _ fu
 // the FQDN is constructed from name + "." + dnsZone.
 func (s *CrossplaneScalewayRecordSource) recordToEndpoints(obj *unstructured.Unstructured) ([]*endpoint.Endpoint, error) {
 	atProvider, found, err := unstructured.NestedMap(obj.Object, "status", "atProvider")
-	if err != nil || !found {
+	if err != nil {
+		return nil, fmt.Errorf("read status.atProvider: %w", err)
+	}
+	if !found {
 		return nil, fmt.Errorf("missing status.atProvider")
 	}
 
-	fqdn := nestedString(atProvider, "fqdn")
-	if fqdn == "" {
-		// Fallback: construct from name + dnsZone.
-		name := nestedString(atProvider, "name")
-		dnsZone := nestedString(atProvider, "dnsZone")
-		if dnsZone == "" {
-			return nil, fmt.Errorf("no fqdn and no dnsZone in status.atProvider")
-		}
-		if name == "" {
-			fqdn = dnsZone
-		} else {
-			fqdn = name + "." + dnsZone
-		}
+	fqdn, err := resolveFQDN(atProvider)
+	if err != nil {
+		return nil, err
 	}
-
-	// Ensure trailing dot is removed for consistency with external-dns.
-	fqdn = strings.TrimSuffix(fqdn, ".")
 
 	recordType := nestedString(atProvider, "type")
 	if recordType == "" {
@@ -140,40 +133,64 @@ func (s *CrossplaneScalewayRecordSource) recordToEndpoints(obj *unstructured.Uns
 		return nil, fmt.Errorf("missing data in status.atProvider")
 	}
 
-	var ttl endpoint.TTL
-	if ttlVal, ok := atProvider["ttl"]; ok {
-		switch v := ttlVal.(type) {
-		case float64:
-			ttl = endpoint.TTL(v)
-		case int64:
-			ttl = endpoint.TTL(v)
-		}
-	}
-
 	ep := &endpoint.Endpoint{
 		DNSName:    fqdn,
 		RecordType: recordType,
 		Targets:    endpoint.NewTargets(data),
-		RecordTTL:  ttl,
+		RecordTTL:  parseTTL(atProvider),
 		Labels: map[string]string{
-			endpoint.ResourceLabelKey: fmt.Sprintf("Record/%s/%s",
-				obj.GetNamespace(), obj.GetName()),
+			// Crossplane Records are cluster-scoped, so we use a two-segment
+			// resource label (kind/name). enrichEndpoints in source_controller
+			// expects three segments (kind/namespace/name) and silently skips
+			// two-segment labels, which is correct here because annotation
+			// enrichment is handled directly by this source.
+			endpoint.ResourceLabelKey: fmt.Sprintf("Record/%s", obj.GetName()),
 		},
 	}
 
 	// Copy sreportal annotations from the Record's annotations to endpoint labels.
-	annotations := obj.GetAnnotations()
-	for _, key := range []string{
-		"sreportal.io/portal",
-		"sreportal.io/groups",
-		"sreportal.io/ignore",
-	} {
-		if val, ok := annotations[key]; ok && val != "" {
-			ep.Labels[key] = val
+	adapter.EnrichEndpointLabels(ep, obj.GetAnnotations())
+
+	return []*endpoint.Endpoint{ep}, nil
+}
+
+// resolveFQDN extracts the fully qualified domain name from a Crossplane Scaleway
+// Record's atProvider map. It prefers the computed "fqdn" field, falling back to
+// constructing it from "name" + "." + "dnsZone".
+func resolveFQDN(atProvider map[string]any) (string, error) {
+	fqdn := nestedString(atProvider, "fqdn")
+	if fqdn == "" {
+		name := nestedString(atProvider, "name")
+		dnsZone := nestedString(atProvider, "dnsZone")
+		if dnsZone == "" {
+			return "", fmt.Errorf("no fqdn and no dnsZone in status.atProvider")
+		}
+		if name == "" {
+			fqdn = dnsZone
+		} else {
+			fqdn = name + "." + dnsZone
 		}
 	}
 
-	return []*endpoint.Endpoint{ep}, nil
+	// Ensure trailing dot is removed for consistency with external-dns.
+	return strings.TrimSuffix(fqdn, "."), nil
+}
+
+// parseTTL extracts the TTL value from an atProvider map. Returns 0 if absent
+// or not a numeric type.
+func parseTTL(atProvider map[string]any) endpoint.TTL {
+	ttlVal, ok := atProvider["ttl"]
+	if !ok {
+		return 0
+	}
+	switch v := ttlVal.(type) {
+	case float64:
+		return endpoint.TTL(v)
+	case int64:
+		return endpoint.TTL(v)
+	default:
+		return 0
+	}
 }
 
 // nestedString extracts a string value from a map, returning "" if the key

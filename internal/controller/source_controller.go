@@ -638,7 +638,7 @@ func gvrForSourceType(sourceType srcfactory.SourceType) (schema.GroupVersionReso
 	case srcfactory.SourceTypeIstioVirtualService:
 		return schema.GroupVersionResource{Group: "networking.istio.io", Version: "v1", Resource: "virtualservices"}, true
 	case srcfactory.SourceTypeCrossplaneScalewayRecord:
-		return schema.GroupVersionResource{Group: "domain.scaleway.m.upbound.io", Version: "v1alpha1", Resource: "records"}, true
+		return srcfactory.CrossplaneScalewayRecordGVR, true
 	default:
 		return schema.GroupVersionResource{}, false
 	}

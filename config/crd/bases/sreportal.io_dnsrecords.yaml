@@ -145,7 +145,7 @@ spec:
                   this source
                 items:
                   description: EndpointStatus represents a single DNS endpoint discovered
-                    from external-dns
+                    from a source
                   properties:
                     dnsName:
                       description: dnsName is the fully qualified domain name
