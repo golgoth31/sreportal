@@ -66,7 +66,7 @@ var _ = Describe("Factory.BuildTypedSources", func() {
 		ctx = context.Background()
 		// Factory without kubeClient - will fail for actual source creation
 		// but we test the configuration logic (enabled/disabled checks).
-		factory = NewFactory(nil, nil)
+		factory = NewFactory(nil, nil, nil)
 	})
 
 	Context("with all sources disabled", func() {

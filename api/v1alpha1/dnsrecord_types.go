@@ -22,9 +22,9 @@ import (
 
 // DNSRecordSpec defines the desired state of DNSRecord
 type DNSRecordSpec struct {
-	// sourceType indicates the external-dns source type that provides this record
+	// sourceType indicates the source type that provides this record
 	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Enum=service;ingress;dnsendpoint;istio-gateway;istio-virtualservice
+	// +kubebuilder:validation:Enum=service;ingress;dnsendpoint;istio-gateway;istio-virtualservice;crossplane-scaleway-record
 	SourceType string `json:"sourceType"`
 
 	// portalRef is the name of the Portal this record belongs to

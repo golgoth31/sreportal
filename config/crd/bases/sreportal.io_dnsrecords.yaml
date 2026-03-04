@@ -62,14 +62,15 @@ spec:
                 minLength: 1
                 type: string
               sourceType:
-                description: sourceType indicates the external-dns source type that
-                  provides this record
+                description: sourceType indicates the source type that provides this
+                  record
                 enum:
                 - service
                 - ingress
                 - dnsendpoint
                 - istio-gateway
                 - istio-virtualservice
+                - crossplane-scaleway-record
                 type: string
             required:
             - portalRef

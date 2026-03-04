@@ -64,16 +64,17 @@ type OperatorConfig struct {
 
 // SourcesConfig enables and configures each source type.
 type SourcesConfig struct {
-	Service             *ServiceConfig             `json:"service,omitempty" yaml:"service,omitempty"`
-	Ingress             *IngressConfig             `json:"ingress,omitempty" yaml:"ingress,omitempty"`
-	DNSEndpoint         *DNSEndpointConfig         `json:"dnsEndpoint,omitempty" yaml:"dnsEndpoint,omitempty"`
-	IstioGateway        *IstioGatewayConfig        `json:"istioGateway,omitempty" yaml:"istioGateway,omitempty"`
-	IstioVirtualService *IstioVirtualServiceConfig `json:"istioVirtualService,omitempty" yaml:"istioVirtualService,omitempty"`
+	Service                  *ServiceConfig                  `json:"service,omitempty" yaml:"service,omitempty"`
+	Ingress                  *IngressConfig                  `json:"ingress,omitempty" yaml:"ingress,omitempty"`
+	DNSEndpoint              *DNSEndpointConfig              `json:"dnsEndpoint,omitempty" yaml:"dnsEndpoint,omitempty"`
+	IstioGateway             *IstioGatewayConfig             `json:"istioGateway,omitempty" yaml:"istioGateway,omitempty"`
+	IstioVirtualService      *IstioVirtualServiceConfig      `json:"istioVirtualService,omitempty" yaml:"istioVirtualService,omitempty"`
+	CrossplaneScalewayRecord *CrossplaneScalewayRecordConfig `json:"crossplaneScalewayRecord,omitempty" yaml:"crossplaneScalewayRecord,omitempty"`
 	// Priority defines the preferred order of source types when the same FQDN+RecordType
 	// is discovered by multiple sources. Sources listed earlier take precedence over later ones.
 	// When a source is not listed, it receives the lowest priority. When empty, targets from
 	// all sources are merged (backward-compatible default).
-	// Valid values: "service", "ingress", "dnsendpoint", "istio-gateway", "istio-virtualservice".
+	// Valid values: "service", "ingress", "dnsendpoint", "istio-gateway", "istio-virtualservice", "crossplane-scaleway-record".
 	Priority []string `json:"priority,omitempty" yaml:"priority,omitempty"`
 }
 
@@ -151,6 +152,20 @@ type IstioGatewayConfig struct {
 	CombineFQDNAndAnnotation bool `json:"combineFqdnAndAnnotation,omitempty" yaml:"combineFqdnAndAnnotation,omitempty"`
 	// IgnoreHostnameAnnotation ignores hostname annotations.
 	IgnoreHostnameAnnotation bool `json:"ignoreHostnameAnnotation,omitempty" yaml:"ignoreHostnameAnnotation,omitempty"`
+}
+
+// CrossplaneScalewayRecordConfig configures the Crossplane Scaleway Record source.
+// It watches domain.scaleway.m.upbound.io/v1alpha1 Record CRDs and converts them
+// into endpoints for DNS discovery.
+type CrossplaneScalewayRecordConfig struct {
+	// Enabled controls whether Crossplane Scaleway Record source is active.
+	Enabled bool `json:"enabled" yaml:"enabled"`
+	// Namespace restricts watching to a specific namespace. Empty means all namespaces.
+	// Note: Crossplane Records are cluster-scoped by default; this field is kept
+	// for consistency but will be ignored for cluster-scoped resources.
+	Namespace string `json:"namespace,omitempty" yaml:"namespace,omitempty"`
+	// LabelFilter filters Records by label selector.
+	LabelFilter string `json:"labelFilter,omitempty" yaml:"labelFilter,omitempty"`
 }
 
 // IstioVirtualServiceConfig configures the Istio VirtualService source.

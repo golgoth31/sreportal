@@ -23,6 +23,7 @@ import (
 	istioclient "istio.io/client-go/pkg/clientset/versioned"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -49,6 +50,8 @@ const (
 	SourceTypeIstioGateway SourceType = "istio-gateway"
 	// SourceTypeIstioVirtualService indicates an Istio VirtualService source.
 	SourceTypeIstioVirtualService SourceType = "istio-virtualservice"
+	// SourceTypeCrossplaneScalewayRecord indicates a Crossplane Scaleway Record source.
+	SourceTypeCrossplaneScalewayRecord SourceType = "crossplane-scaleway-record"
 )
 
 // TypedSource pairs a Source with its type.
@@ -59,9 +62,10 @@ type TypedSource struct {
 
 // Factory creates external-dns sources from operator configuration.
 type Factory struct {
-	kubeClient  kubernetes.Interface
-	restConfig  *rest.Config
-	istioClient istioclient.Interface
+	kubeClient    kubernetes.Interface
+	restConfig    *rest.Config
+	dynamicClient dynamic.Interface
+	istioClient   istioclient.Interface
 }
 
 // NewFactory creates a new source Factory.
@@ -69,11 +73,12 @@ type Factory struct {
 // In external-dns v0.20.0 the annotation keys (HostnameKey, etc.) are empty
 // strings until SetAnnotationPrefix is called; doing it here avoids the
 // implicit init() side-effect that was previously in this package.
-func NewFactory(kubeClient kubernetes.Interface, restConfig *rest.Config) *Factory {
+func NewFactory(kubeClient kubernetes.Interface, restConfig *rest.Config, dynamicClient dynamic.Interface) *Factory {
 	annotations.SetAnnotationPrefix("external-dns.alpha.kubernetes.io/")
 	return &Factory{
-		kubeClient: kubeClient,
-		restConfig: restConfig,
+		kubeClient:    kubeClient,
+		restConfig:    restConfig,
+		dynamicClient: dynamicClient,
 	}
 }
 
@@ -178,6 +183,24 @@ func (f *Factory) BuildTypedSources(ctx context.Context, cfg *config.OperatorCon
 		log.Info("istio-virtualservice source not enabled")
 	}
 
+	// Build Crossplane Scaleway Record source if enabled
+	if cfg.Sources.CrossplaneScalewayRecord != nil && cfg.Sources.CrossplaneScalewayRecord.Enabled {
+		log.Info("building crossplane-scaleway-record source",
+			"labelFilter", cfg.Sources.CrossplaneScalewayRecord.LabelFilter)
+		src, err := f.buildCrossplaneScalewayRecordSource(cfg.Sources.CrossplaneScalewayRecord)
+		if err != nil {
+			log.Error(err, "failed to build crossplane-scaleway-record source")
+			return nil, err
+		}
+		typedSources = append(typedSources, TypedSource{
+			Type:   SourceTypeCrossplaneScalewayRecord,
+			Source: src,
+		})
+		log.Info("crossplane-scaleway-record source built successfully")
+	} else {
+		log.Info("crossplane-scaleway-record source not enabled")
+	}
+
 	log.Info("sources built", "count", len(typedSources))
 
 	return typedSources, nil
@@ -201,6 +224,9 @@ func EnabledSourceTypes(cfg *config.OperatorConfig) []SourceType {
 	}
 	if cfg.Sources.IstioVirtualService != nil && cfg.Sources.IstioVirtualService.Enabled {
 		types = append(types, SourceTypeIstioVirtualService)
+	}
+	if cfg.Sources.CrossplaneScalewayRecord != nil && cfg.Sources.CrossplaneScalewayRecord.Enabled {
+		types = append(types, SourceTypeCrossplaneScalewayRecord)
 	}
 
 	return types
@@ -321,6 +347,19 @@ func (f *Factory) buildIstioVirtualServiceSource(ctx context.Context, cfg *confi
 		cfg.CombineFQDNAndAnnotation,
 		cfg.IgnoreHostnameAnnotation,
 	)
+}
+
+func (f *Factory) buildCrossplaneScalewayRecordSource(cfg *config.CrossplaneScalewayRecordConfig) (Source, error) {
+	if f.dynamicClient == nil {
+		return nil, fmt.Errorf("dynamic client is required for crossplane-scaleway-record source")
+	}
+
+	labelSelector, err := parseLabelSelector(cfg.LabelFilter)
+	if err != nil {
+		return nil, fmt.Errorf("parse label selector: %w", err)
+	}
+
+	return NewCrossplaneScalewayRecordSource(f.dynamicClient, labelSelector), nil
 }
 
 func (f *Factory) createCRDClient() (rest.Interface, *runtime.Scheme, error) {
