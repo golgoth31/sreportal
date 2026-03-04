@@ -9,16 +9,20 @@ SRE Portal runs as a single container that combines a Kubernetes controller, a g
 
 ```mermaid
 graph TB
-    subgraph Pod["SRE Portal Pod"]
-        Controllers["Controllers\n(ctrl-runtime)"]
-        API["Connect API\n(gRPC/h2c)"]
-        WebUI["Web UI\n(Echo v5)"]
-        MCP["MCP\n(/mcp)"]
+    Browser["Browser"] --> WebUI
+    AIAssistant["AI Assistant\n(Claude / Cursor)"] --> MCP
+
+    subgraph Pod["SRE Portal Pod (single container)"]
+        Controllers["Controllers\n(controller-runtime)"]
+        API["Connect gRPC API\n(h2c)"]
+        WebUI["Web UI\n(React SPA / Echo v5)"]
+        MCP["MCP Server\n(/mcp endpoint)"]
     end
 
-    Controllers --> K8s["K8s API Server"]
-    API --> K8s
-    MCP --> AI["AI Assistants"]
+    WebUI --> API
+    API --> K8s["Kubernetes API Server"]
+    Controllers --> K8s
+    MCP --> K8s
 ```
 
 The four components share the same process:
