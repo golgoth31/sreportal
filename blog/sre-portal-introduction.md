@@ -58,10 +58,10 @@ That's it. The operator will create a default "main" portal automatically.
 ### 2. Access the Dashboard
 
 ```bash
-kubectl port-forward -n sreportal-system svc/sreportal-controller-manager 8082:8082
+kubectl port-forward -n sreportal-system svc/sreportal-controller-manager 8090
 ```
 
-Open [http://localhost:8082](http://localhost:8082) — you should see the empty dashboard, ready to be populated.
+Open [http://localhost:8090](http://localhost:8090) — you should see the empty dashboard, ready to be populated.
 
 ### 3. Annotate a Service
 
@@ -116,19 +116,17 @@ Manual and auto-discovered entries coexist in the same dashboard. The UI clearly
 
 SRE Portal is built on three Custom Resource Definitions (CRDs) that work together:
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     SRE Portal Pod                          │
-│                                                             │
-│  ┌───────────────┐  ┌──────────────┐  ┌──────────────────┐ │
-│  │  Controllers   │  │ Connect API  │  │  Web UI + MCP    │ │
-│  │(ctrl-runtime)  │  │ (gRPC/h2c)   │  │  (Echo v5)       │ │
-│  └───────┬───────┘  └──────┬───────┘  └────────┬─────────┘ │
-│          │                 │                    │           │
-│          └────────┬────────┴──────────┬─────────┘           │
-│                   │                   │                     │
-│            K8s API Server       MCP Server (/mcp)           │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph Pod["SRE Portal Pod"]
+        Controllers["Controllers\n(ctrl-runtime)"]
+        API["Connect API\n(gRPC/h2c)"]
+        WebUI["Web UI + MCP\n(Echo v5)"]
+    end
+
+    Controllers --> K8s["K8s API Server"]
+    API --> K8s
+    WebUI --> MCP["MCP Server (/mcp)"]
 ```
 
 | CRD | Role |
@@ -136,17 +134,6 @@ SRE Portal is built on three Custom Resource Definitions (CRDs) that work togeth
 | **Portal** | Named view for the web dashboard. Can be local or remote (federation). |
 | **DNS** | Manual DNS entry groups linked to a portal. |
 | **DNSRecord** | Auto-discovered endpoints, managed entirely by the operator. |
-
-### The Reconciliation Chain
-
-The DNS controller uses a **Chain of Responsibility** pattern with four steps:
-
-1. **Aggregate DNSRecords** — Fetch all auto-discovered records for the portal
-2. **Collect Manual Entries** — Extract entries from DNS custom resources
-3. **Aggregate FQDNs** — Merge both sources (manual entries win on conflict)
-4. **Update Status** — Write the final aggregated list to the DNS status
-
-This design makes the reconciliation **idempotent** — you can restart the controller at any time without side effects. Each step is an independent handler that can be tested in isolation.
 
 ### Annotation-Driven Routing
 
@@ -251,53 +238,6 @@ Once connected, you can ask your AI assistant questions like:
 
 The assistant queries SRE Portal's MCP server and gives you an answer in natural language — no dashboard switching required. The `/help` page in the web UI provides copy-paste setup instructions for each supported client.
 
-## How Does It Compare?
-
-SRE Portal occupies a specific niche. Here's how it relates to other tools:
-
-| Tool | Focus | SRE Portal Difference |
-|------|-------|-----------------------|
-| **Gatus** | Health checks & status page | SRE Portal focuses on DNS discovery, not health probing (yet) |
-| **Uptime Kuma** | Uptime monitoring | SRE Portal is Kubernetes-native with CRDs, not a standalone monitor |
-| **Backstage** | Full developer portal | SRE Portal is lightweight and focused — no plugin ecosystem to manage |
-| **external-dns** | DNS record management | SRE Portal reads from external-dns sources but adds a UI + aggregation layer |
-| **Cachet** | Status pages | SRE Portal discovers endpoints automatically instead of manual status updates |
-
-If you need a **lightweight, Kubernetes-native tool** that answers "what endpoints do we have and are they working?", SRE Portal fits that gap. If you need a full developer portal with service catalog, CI/CD integration, and a plugin marketplace, look at Backstage.
-
-## Configuration
-
-SRE Portal is configured via a ConfigMap in the operator namespace. Here's an example:
-
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: sreportal-config
-  namespace: sreportal-system
-data:
-  config.yaml: |
-    sources:
-      service: true
-      ingress: true
-      dnsEndpoint: true
-      istioGateway: false
-    groupMapping:
-      defaultGroup: "Ungrouped"
-      labelKey: "app.kubernetes.io/part-of"
-      byNamespace:
-        production: "Production Services"
-        staging: "Staging Services"
-        monitoring: "Monitoring"
-    reconciliation:
-      interval: 5m
-```
-
-This lets you:
-- Toggle which Kubernetes resource types are scanned
-- Define default grouping rules (by label, by namespace, or a static default)
-- Control how often the source controller reconciles
-
 ## What's Next
 
 SRE Portal is under active development. The roadmap includes:
@@ -311,21 +251,10 @@ The vision is a complete **Kubernetes-native status page and service catalog** t
 
 ## Get Started
 
-SRE Portal is open source under the Apache 2.0 license.
-
-```bash
-# Install
-helm install sreportal oci://ghcr.io/golgoth31/charts/sreportal \
-  --namespace sreportal-system --create-namespace
-
-# Access
-kubectl port-forward -n sreportal-system svc/sreportal-controller-manager 8082:8082
-```
-
 - **GitHub**: [github.com/golgoth31/sreportal](https://github.com/golgoth31/sreportal)
 - **Documentation**: [golgoth31.github.io/sreportal](https://golgoth31.github.io/sreportal/)
 
-If you run a Kubernetes platform and are tired of maintaining a spreadsheet of DNS endpoints, give SRE Portal a try. Feedback, issues, and contributions are welcome.
+If you need a **lightweight, Kubernetes-native tool** that answers "what endpoints do we have and are they working?", SRE Portal fits that, give it a try. Feedback, issues, and contributions are welcome.
 
 ---
 
