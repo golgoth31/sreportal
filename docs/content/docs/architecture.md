@@ -7,19 +7,18 @@ SRE Portal runs as a single container that combines a Kubernetes controller, a g
 
 ## High-Level Overview
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                       SRE Portal Pod                            │
-│                                                                 │
-│  ┌──────────────┐  ┌─────────────┐  ┌──────────┐  ┌─────────┐  │
-│  │  Controllers  │  │ Connect API │  │  Web UI  │  │   MCP   │  │
-│  │ (ctrl-runtime)│  │ (gRPC/h2c)  │  │ (Echo v5)│  │ (/mcp)  │  │
-│  └──────┬───────┘  └──────┬──────┘  └────┬─────┘  └────┬────┘  │
-│         │                 │              │              │        │
-│         └─────────┬───────┴──────┬───────┴──────────────┘        │
-│                   │              │                               │
-│            K8s API Server   AI Assistants                        │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph Pod["SRE Portal Pod"]
+        Controllers["Controllers\n(ctrl-runtime)"]
+        API["Connect API\n(gRPC/h2c)"]
+        WebUI["Web UI\n(Echo v5)"]
+        MCP["MCP\n(/mcp)"]
+    end
+
+    Controllers --> K8s["K8s API Server"]
+    API --> K8s
+    MCP --> AI["AI Assistants"]
 ```
 
 The four components share the same process:
@@ -33,14 +32,12 @@ The four components share the same process:
 
 SRE Portal defines three CRDs that work together:
 
-```
-Portal ──────────────────────────────────────────┐
-  │                                              │
-  │  portalRef                                   │  portalRef
-  │                                              │
-  ▼                                              ▼
- DNS                                         DNSRecord
- (manual entries)                            (auto-discovered)
+```mermaid
+graph TD
+    Portal -->|portalRef| DNS["DNS
+    (manual entries)"]
+    Portal -->|portalRef| DNSRecord["DNSRecord
+    (auto-discovered)"]
 ```
 
 ### Portal
@@ -133,34 +130,20 @@ The MCP server uses Streamable HTTP transport and reads the same DNS status data
 
 The complete flow from Kubernetes resource to web dashboard:
 
-```
-K8s Resources (Service, Ingress, ...)
-    │
-    │  external-dns.alpha.kubernetes.io/hostname annotation
-    │
-    ▼
-Source Controller (periodic)
-    │
-    │  Enrich with sreportal.io/portal, sreportal.io/groups, and sreportal.io/ignore
-    │  Route to portal (ignored endpoints are dropped during group conversion)
-    │
-    ▼
-DNSRecord CRs (one per portal+sourceType)
-    │
-    │  Watched by DNS controller
-    │
-    ▼
-DNS Controller (chain)
-    │
-    │  Aggregate DNSRecords + manual entries
-    │
-    ▼
-DNS.status.groups
-    │
-    │  Read by Connect API
-    │
-    ▼
-Web UI (React SPA)
+```mermaid
+flowchart TD
+    K8s["K8s Resources\n(Service, Ingress, ...)"]
+    Source["Source Controller\n(periodic)"]
+    DNSRecord["DNSRecord CRs\n(one per portal+sourceType)"]
+    DNSCtrl["DNS Controller\n(chain)"]
+    Status["DNS.status.groups"]
+    WebUI["Web UI\n(React SPA)"]
+
+    K8s -->|"external-dns.alpha.kubernetes.io/hostname annotation"| Source
+    Source -->|"Enrich with sreportal.io/portal, sreportal.io/groups, sreportal.io/ignore\nRoute to portal (ignored endpoints dropped)"| DNSRecord
+    DNSRecord -->|"Watched by DNS controller"| DNSCtrl
+    DNSCtrl -->|"Aggregate DNSRecords + manual entries"| Status
+    Status -->|"Read by Connect API"| WebUI
 ```
 
 ## Owner References
