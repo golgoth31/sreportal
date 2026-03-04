@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.3](https://github.com/golgoth31/sreportal/compare/v1.9.2...v1.9.3) (2026-03-04)
+
+
+### Bug Fixes
+
+* **operator:** disable debug logging in production mode ([862afd3](https://github.com/golgoth31/sreportal/commit/862afd33047abbafdf6229a8aae5123f74a85396))
+
 ## [1.9.2](https://github.com/golgoth31/sreportal/compare/v1.9.1...v1.9.2) (2026-03-02)
 
 
