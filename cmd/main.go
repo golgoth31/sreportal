@@ -121,8 +121,9 @@ func main() {
 	flag.StringVar(&corsAllowedOrigins, "cors-allowed-origins", "",
 		"Comma-separated list of origins allowed for CORS requests (e.g. http://localhost:5173). "+
 			"Leave empty to disable CORS. In dev mode, http://localhost:5173 is added automatically.")
-	opts := zap.Options{
-		Development: true,
+	opts := zap.Options{}
+	if devMode {
+		opts.Development = true
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
