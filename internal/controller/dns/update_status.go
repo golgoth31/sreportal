@@ -18,6 +18,7 @@ package dns
 
 import (
 	"context"
+	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -53,6 +54,9 @@ func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 		groups = data
 	}
 
+	// Capture base before modifications for merge patch
+	base := rc.Resource.DeepCopy()
+
 	// Update status
 	rc.Resource.Status.Groups = groups
 	rc.Resource.Status.LastReconcileTime = &now
@@ -68,9 +72,8 @@ func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 	setCondition(&rc.Resource.Status.Conditions, readyCondition)
 
 	log.V(1).Info("updating status", "groupCount", len(groups))
-	if err := h.client.Status().Update(ctx, rc.Resource); err != nil {
-		log.Error(err, "failed to update status")
-		return err
+	if err := h.client.Status().Patch(ctx, rc.Resource, client.MergeFrom(base)); err != nil {
+		return fmt.Errorf("patch DNS status: %w", err)
 	}
 
 	return nil

@@ -27,6 +27,7 @@ import (
 	"github.com/labstack/echo/v5/middleware"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/golgoth31/sreportal/internal/config"
@@ -62,8 +63,37 @@ type Server struct {
 func New(cfg Config, c client.Client, operatorConfig *config.OperatorConfig, allowedOrigins []string) *Server {
 	e := echo.New()
 
-	// Middleware
-	e.Use(middleware.RequestLogger())
+	// Middleware — route access logs through the controller-runtime zap logger
+	// so they honour the global JSON / console encoder configuration.
+	httpLog := ctrl.Log.WithName("http")
+	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+		LogMethod:   true,
+		LogURI:      true,
+		LogStatus:   true,
+		LogLatency:  true,
+		LogRemoteIP: true,
+		HandleError: true,
+		LogValuesFunc: func(c *echo.Context, v middleware.RequestLoggerValues) error {
+			if v.Error != nil {
+				httpLog.Error(v.Error, "request",
+					"method", v.Method,
+					"uri", v.URI,
+					"status", v.Status,
+					"latency", v.Latency.String(),
+					"remoteIP", v.RemoteIP,
+				)
+			} else {
+				httpLog.Info("request",
+					"method", v.Method,
+					"uri", v.URI,
+					"status", v.Status,
+					"latency", v.Latency.String(),
+					"remoteIP", v.RemoteIP,
+				)
+			}
+			return nil
+		},
+	}))
 	e.Use(middleware.Recover())
 	if len(allowedOrigins) > 0 {
 		e.Use(middleware.CORSWithConfig(middleware.CORSConfig{

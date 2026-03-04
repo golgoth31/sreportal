@@ -82,7 +82,7 @@ func (r *PortalReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 // reconcileLocalPortal handles reconciliation for local portals (no URL specified).
 func (r *PortalReconciler) reconcileLocalPortal(ctx context.Context, portal *sreportalv1alpha1.Portal) (ctrl.Result, error) {
-	log := logf.FromContext(ctx)
+	base := portal.DeepCopy()
 
 	// Update status for local portal
 	portal.Status.Ready = true
@@ -97,9 +97,8 @@ func (r *PortalReconciler) reconcileLocalPortal(ctx context.Context, portal *sre
 	}
 	setPortalCondition(&portal.Status.Conditions, readyCondition)
 
-	if err := r.Status().Update(ctx, portal); err != nil {
-		log.Error(err, "failed to update Portal status")
-		return ctrl.Result{}, err
+	if err := r.Status().Patch(ctx, portal, client.MergeFrom(base)); err != nil {
+		return ctrl.Result{}, fmt.Errorf("patch Portal status: %w", err)
 	}
 
 	return ctrl.Result{}, nil
@@ -198,6 +197,7 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 	if err != nil {
 		log.Error(err, "failed to build remote client", "url", remote.URL)
 
+		base := portal.DeepCopy()
 		portal.Status.Ready = false
 		if portal.Status.RemoteSync == nil {
 			portal.Status.RemoteSync = &sreportalv1alpha1.RemoteSyncStatus{}
@@ -212,9 +212,8 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 			LastTransitionTime: metav1.Now(),
 		})
 
-		if updateErr := r.Status().Update(ctx, portal); updateErr != nil {
-			log.Error(updateErr, "failed to update Portal status")
-			return ctrl.Result{}, updateErr
+		if patchErr := r.Status().Patch(ctx, portal, client.MergeFrom(base)); patchErr != nil {
+			return ctrl.Result{}, fmt.Errorf("patch Portal status: %w", patchErr)
 		}
 
 		return ctrl.Result{RequeueAfter: DefaultRemoteSyncInterval}, nil
@@ -230,6 +229,7 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 	if err != nil {
 		log.Error(err, "remote portal health check failed", "url", remote.URL)
 
+		base := portal.DeepCopy()
 		portal.Status.Ready = false
 		portal.Status.RemoteSync.LastSyncError = err.Error()
 
@@ -242,9 +242,8 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 		}
 		setPortalCondition(&portal.Status.Conditions, readyCondition)
 
-		if updateErr := r.Status().Update(ctx, portal); updateErr != nil {
-			log.Error(updateErr, "failed to update Portal status")
-			return ctrl.Result{}, updateErr
+		if patchErr := r.Status().Patch(ctx, portal, client.MergeFrom(base)); patchErr != nil {
+			return ctrl.Result{}, fmt.Errorf("patch Portal status: %w", patchErr)
 		}
 
 		// Requeue to retry connection
@@ -256,6 +255,7 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 	if err != nil {
 		log.Error(err, "failed to fetch FQDNs from remote portal", "url", remote.URL, "remotePortal", remote.Portal)
 
+		base := portal.DeepCopy()
 		portal.Status.Ready = false
 		portal.Status.RemoteSync.LastSyncError = err.Error()
 
@@ -268,15 +268,15 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 		}
 		setPortalCondition(&portal.Status.Conditions, readyCondition)
 
-		if updateErr := r.Status().Update(ctx, portal); updateErr != nil {
-			log.Error(updateErr, "failed to update Portal status")
-			return ctrl.Result{}, updateErr
+		if patchErr := r.Status().Patch(ctx, portal, client.MergeFrom(base)); patchErr != nil {
+			return ctrl.Result{}, fmt.Errorf("patch Portal status: %w", patchErr)
 		}
 
 		return ctrl.Result{RequeueAfter: DefaultRemoteSyncInterval}, nil
 	}
 
 	// Update status with successful sync
+	base := portal.DeepCopy()
 	now := metav1.Now()
 	portal.Status.Ready = true
 	portal.Status.RemoteSync.LastSyncTime = &now
@@ -315,9 +315,8 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 	}
 	setPortalCondition(&portal.Status.Conditions, readyCondition)
 
-	if err := r.Status().Update(ctx, portal); err != nil {
-		log.Error(err, "failed to update Portal status")
-		return ctrl.Result{}, err
+	if err := r.Status().Patch(ctx, portal, client.MergeFrom(base)); err != nil {
+		return ctrl.Result{}, fmt.Errorf("patch Portal status: %w", err)
 	}
 
 	log.Info("remote portal sync successful",
@@ -411,6 +410,7 @@ func (r *PortalReconciler) reconcileRemoteDNS(ctx context.Context, portal *srepo
 	}
 
 	// Update status with fetched groups
+	dnsBase := dns.DeepCopy()
 	now := metav1.Now()
 	dns.Status.Groups = result.Groups
 	dns.Status.LastReconcileTime = &now
@@ -425,8 +425,8 @@ func (r *PortalReconciler) reconcileRemoteDNS(ctx context.Context, portal *srepo
 	}
 	setDNSCondition(&dns.Status.Conditions, readyCondition)
 
-	if err := r.Status().Update(ctx, dns); err != nil {
-		return fmt.Errorf("failed to update DNS status: %w", err)
+	if err := r.Status().Patch(ctx, dns, client.MergeFrom(dnsBase)); err != nil {
+		return fmt.Errorf("patch DNS status: %w", err)
 	}
 
 	log.Info("updated DNS status with remote FQDNs",

@@ -661,6 +661,7 @@ func (r *SourceReconciler) markSourceDegraded(
 		return
 	}
 
+	base := rec.DeepCopy()
 	now := metav1.Now()
 	setDNSRecordCondition(&rec.Status.Conditions, metav1.Condition{
 		Type:               "Ready",
@@ -670,8 +671,8 @@ func (r *SourceReconciler) markSourceDegraded(
 		LastTransitionTime: now,
 	})
 
-	if err := r.Status().Update(ctx, &rec); err != nil {
-		log.Error(err, "failed to update degraded condition on DNSRecord", "dnsRecord", name)
+	if err := r.Status().Patch(ctx, &rec, client.MergeFrom(base)); err != nil {
+		log.Error(err, "failed to patch degraded condition on DNSRecord", "dnsRecord", name)
 	}
 }
 
