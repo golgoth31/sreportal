@@ -48,7 +48,6 @@ import (
 	"github.com/golgoth31/sreportal/internal/controller"
 	portalctrl "github.com/golgoth31/sreportal/internal/controller/portal"
 	"github.com/golgoth31/sreportal/internal/mcp"
-	"github.com/golgoth31/sreportal/internal/remoteclient"
 	"github.com/golgoth31/sreportal/internal/version"
 	webhookv1alpha1 "github.com/golgoth31/sreportal/internal/webhook/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/webserver"
@@ -339,7 +338,6 @@ func main() {
 		mgr.GetClient(),
 		mgr.GetScheme(),
 		alertmanagerclient.NewClient(),
-		alertmanagerclient.NewRemoteFetcher(remoteclient.NewClient()),
 	).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Alertmanager")
 		os.Exit(1)

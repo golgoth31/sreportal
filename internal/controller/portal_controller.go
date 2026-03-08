@@ -18,12 +18,9 @@ package controller
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -35,6 +32,7 @@ import (
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/remoteclient"
+	"github.com/golgoth31/sreportal/internal/tlsutil"
 )
 
 // DefaultRemoteSyncInterval is the default interval for syncing remote portals.
@@ -112,78 +110,12 @@ func (r *PortalReconciler) remoteClientFor(ctx context.Context, portal *sreporta
 		return r.RemoteClient, nil
 	}
 
-	tlsConfig, err := r.buildTLSConfig(ctx, portal.Namespace, remote.TLS)
+	tlsConfig, err := tlsutil.BuildTLSConfig(ctx, r.Client, portal.Namespace, remote.TLS)
 	if err != nil {
 		return nil, fmt.Errorf("build TLS config: %w", err)
 	}
 
 	return remoteclient.NewClient(remoteclient.WithTLSConfig(tlsConfig)), nil
-}
-
-// buildTLSConfig constructs a *tls.Config from a RemoteTLSConfig and the referenced secrets.
-func (r *PortalReconciler) buildTLSConfig(ctx context.Context, namespace string, tlsCfg *sreportalv1alpha1.RemoteTLSConfig) (*tls.Config, error) {
-	config := &tls.Config{
-		MinVersion: tls.VersionTLS12,
-	}
-
-	if tlsCfg.InsecureSkipVerify {
-		config.InsecureSkipVerify = true //nolint:gosec // user-requested insecure mode for self-signed certs
-	}
-
-	if tlsCfg.CASecretRef != nil {
-		secret, err := r.getSecret(ctx, namespace, tlsCfg.CASecretRef.Name)
-		if err != nil {
-			return nil, fmt.Errorf("get CA secret %q: %w", tlsCfg.CASecretRef.Name, err)
-		}
-
-		caCert, ok := secret.Data["ca.crt"]
-		if !ok {
-			return nil, fmt.Errorf("CA secret %q does not contain key \"ca.crt\"", tlsCfg.CASecretRef.Name)
-		}
-
-		pool := x509.NewCertPool()
-		if !pool.AppendCertsFromPEM(caCert) {
-			return nil, fmt.Errorf("CA secret %q contains invalid certificate data", tlsCfg.CASecretRef.Name)
-		}
-
-		config.RootCAs = pool
-	}
-
-	if tlsCfg.CertSecretRef != nil {
-		secret, err := r.getSecret(ctx, namespace, tlsCfg.CertSecretRef.Name)
-		if err != nil {
-			return nil, fmt.Errorf("get client cert secret %q: %w", tlsCfg.CertSecretRef.Name, err)
-		}
-
-		certPEM, ok := secret.Data["tls.crt"]
-		if !ok {
-			return nil, fmt.Errorf("client cert secret %q does not contain key \"tls.crt\"", tlsCfg.CertSecretRef.Name)
-		}
-
-		keyPEM, ok := secret.Data["tls.key"]
-		if !ok {
-			return nil, fmt.Errorf("client cert secret %q does not contain key \"tls.key\"", tlsCfg.CertSecretRef.Name)
-		}
-
-		cert, err := tls.X509KeyPair(certPEM, keyPEM)
-		if err != nil {
-			return nil, fmt.Errorf("parse client certificate from secret %q: %w", tlsCfg.CertSecretRef.Name, err)
-		}
-
-		config.Certificates = []tls.Certificate{cert}
-	}
-
-	return config, nil
-}
-
-// getSecret fetches a Secret from the given namespace.
-func (r *PortalReconciler) getSecret(ctx context.Context, namespace, name string) (*corev1.Secret, error) {
-	secret := &corev1.Secret{}
-	if err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, secret); err != nil {
-		return nil, fmt.Errorf("get secret %s/%s: %w", namespace, name, err)
-	}
-
-	return secret, nil
 }
 
 // reconcileRemotePortal handles reconciliation for remote portals (Remote specified).
@@ -394,10 +326,6 @@ func (r *PortalReconciler) reconcileRemoteAlertmanager(ctx context.Context, port
 	amName := remoteAlertmanagerName(portal.Name)
 	am := &sreportalv1alpha1.Alertmanager{}
 
-	// URL.Local stores the combined "baseURL|portalName" used by the RemoteFetcher.
-	remotePortalName := portal.Spec.Remote.Portal
-	localURL := portal.Spec.Remote.URL + "|" + remotePortalName
-
 	err := r.Get(ctx, types.NamespacedName{Name: amName, Namespace: portal.Namespace}, am)
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("get Alertmanager: %w", err)
@@ -413,7 +341,7 @@ func (r *PortalReconciler) reconcileRemoteAlertmanager(ctx context.Context, port
 			Spec: sreportalv1alpha1.AlertmanagerSpec{
 				PortalRef: portal.Name,
 				URL: sreportalv1alpha1.AlertmanagerURL{
-					Local:  localURL,
+					Local:  portal.Spec.Remote.URL,
 					Remote: portal.Spec.Remote.URL,
 				},
 				IsRemote: true,
@@ -434,7 +362,7 @@ func (r *PortalReconciler) reconcileRemoteAlertmanager(ctx context.Context, port
 	} else {
 		// Update spec fields that may have changed
 		am.Spec.PortalRef = portal.Name
-		am.Spec.URL.Local = localURL
+		am.Spec.URL.Local = portal.Spec.Remote.URL
 		am.Spec.URL.Remote = portal.Spec.Remote.URL
 		am.Spec.IsRemote = true
 		if err := r.Update(ctx, am); err != nil {

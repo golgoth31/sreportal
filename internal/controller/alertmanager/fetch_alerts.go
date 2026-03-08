@@ -21,11 +21,15 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	domainalertmanager "github.com/golgoth31/sreportal/internal/domain/alertmanager"
 	"github.com/golgoth31/sreportal/internal/reconciler"
+	"github.com/golgoth31/sreportal/internal/remoteclient"
+	"github.com/golgoth31/sreportal/internal/tlsutil"
 )
 
 const (
@@ -35,16 +39,18 @@ const (
 
 // FetchAlertsHandler retrieves active alerts from either the local Alertmanager API
 // or a remote SRE Portal, depending on the IsRemote flag on the resource spec.
+// For remote portals, it looks up the Portal CR to obtain TLS configuration and
+// builds a TLS-aware remoteclient — the same approach as the Portal controller.
 type FetchAlertsHandler struct {
-	localFetcher  domainalertmanager.Fetcher
-	remoteFetcher domainalertmanager.Fetcher
+	localFetcher domainalertmanager.Fetcher
+	k8sReader    client.Reader
 }
 
 // NewFetchAlertsHandler creates a new FetchAlertsHandler.
-func NewFetchAlertsHandler(localFetcher domainalertmanager.Fetcher, remoteFetcher domainalertmanager.Fetcher) *FetchAlertsHandler {
+func NewFetchAlertsHandler(localFetcher domainalertmanager.Fetcher, k8sReader client.Reader) *FetchAlertsHandler {
 	return &FetchAlertsHandler{
-		localFetcher:  localFetcher,
-		remoteFetcher: remoteFetcher,
+		localFetcher: localFetcher,
+		k8sReader:    k8sReader,
 	}
 }
 
@@ -75,17 +81,77 @@ func (h *FetchAlertsHandler) handleLocal(ctx context.Context, rc *reconciler.Rec
 }
 
 func (h *FetchAlertsHandler) handleRemote(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager], log logr.Logger) error {
-	// For remote portals, URL.Local contains the combined "baseURL|portalName" string
-	remoteURL := rc.Resource.Spec.URL.Local
-	log.V(1).Info("fetching active alerts from remote portal", "url", remoteURL)
-
-	alerts, err := h.remoteFetcher.GetActiveAlerts(ctx, remoteURL)
-	if err != nil {
-		return fmt.Errorf("fetch remote alerts from %s: %w", remoteURL, err)
+	// Look up the Portal CR to get the remote URL and TLS configuration.
+	portal := &sreportalv1alpha1.Portal{}
+	portalKey := types.NamespacedName{
+		Name:      rc.Resource.Spec.PortalRef,
+		Namespace: rc.Resource.Namespace,
 	}
 
+	if err := h.k8sReader.Get(ctx, portalKey, portal); err != nil {
+		return fmt.Errorf("get portal %s: %w", portalKey, err)
+	}
+
+	if portal.Spec.Remote == nil {
+		return fmt.Errorf("portal %s has no remote configuration but alertmanager is marked as remote", portalKey.Name)
+	}
+
+	// Build a TLS-aware remote client, the same way the Portal controller does.
+	remoteClient, err := h.remoteClientFor(ctx, portal)
+	if err != nil {
+		return fmt.Errorf("build remote client for portal %s: %w", portalKey.Name, err)
+	}
+
+	baseURL := portal.Spec.Remote.URL
+	portalName := portal.Spec.Remote.Portal
+	log.V(1).Info("fetching active alerts from remote portal", "url", baseURL, "portalName", portalName)
+
+	result, err := remoteClient.FetchAlerts(ctx, baseURL, portalName)
+	if err != nil {
+		return fmt.Errorf("fetch remote alerts from %s: %w", baseURL, err)
+	}
+
+	alerts := toAlertsDomain(result.Alerts)
 	log.V(1).Info("fetched remote alerts", "count", len(alerts))
 	rc.Data[DataKeyAlerts] = alerts
 
 	return nil
+}
+
+// remoteClientFor returns a remoteclient configured with TLS from the Portal spec.
+func (h *FetchAlertsHandler) remoteClientFor(ctx context.Context, portal *sreportalv1alpha1.Portal) (*remoteclient.Client, error) {
+	if portal.Spec.Remote.TLS == nil {
+		return remoteclient.NewClient(), nil
+	}
+
+	tlsConfig, err := tlsutil.BuildTLSConfig(ctx, h.k8sReader, portal.Namespace, portal.Spec.Remote.TLS)
+	if err != nil {
+		return nil, fmt.Errorf("build TLS config: %w", err)
+	}
+
+	return remoteclient.NewClient(remoteclient.WithTLSConfig(tlsConfig)), nil
+}
+
+// toAlertsDomain converts CRD AlertStatus values to domain Alert objects.
+func toAlertsDomain(statuses []sreportalv1alpha1.AlertStatus) []domainalertmanager.Alert {
+	alerts := make([]domainalertmanager.Alert, 0, len(statuses))
+
+	for _, a := range statuses {
+		da := domainalertmanager.Alert{
+			Fingerprint: a.Fingerprint,
+			Labels:      a.Labels,
+			Annotations: a.Annotations,
+			State:       domainalertmanager.State(a.State),
+			StartsAt:    a.StartsAt.Time,
+			UpdatedAt:   a.UpdatedAt.Time,
+		}
+		if a.EndsAt != nil {
+			endsAt := a.EndsAt.Time
+			da.EndsAt = &endsAt
+		}
+
+		alerts = append(alerts, da)
+	}
+
+	return alerts
 }

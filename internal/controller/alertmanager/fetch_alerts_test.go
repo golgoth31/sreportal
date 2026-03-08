@@ -23,6 +23,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	alertmanagerctrl "github.com/golgoth31/sreportal/internal/controller/alertmanager"
@@ -37,6 +39,13 @@ type fakeFetcher struct {
 
 func (f *fakeFetcher) GetActiveAlerts(_ context.Context, _ string) ([]domainalertmanager.Alert, error) {
 	return f.alerts, f.err
+}
+
+func newScheme() *runtime.Scheme {
+	s := runtime.NewScheme()
+	_ = sreportalv1alpha1.AddToScheme(s)
+
+	return s
 }
 
 var _ = Describe("FetchAlertsHandler", func() {
@@ -63,8 +72,8 @@ var _ = Describe("FetchAlertsHandler", func() {
 				{Fingerprint: "bbb", Labels: map[string]string{"alertname": "DiskFull"}, State: domainalertmanager.StateActive},
 			}
 			localFetcher := &fakeFetcher{alerts: alerts}
-			remoteFetcher := &fakeFetcher{}
-			handler := alertmanagerctrl.NewFetchAlertsHandler(localFetcher, remoteFetcher)
+			k8sClient := fake.NewClientBuilder().WithScheme(newScheme()).Build()
+			handler := alertmanagerctrl.NewFetchAlertsHandler(localFetcher, k8sClient)
 			rc := newRC(false)
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
@@ -80,8 +89,8 @@ var _ = Describe("FetchAlertsHandler", func() {
 	Context("when fetcher returns empty list", func() {
 		It("should store empty slice in context data", func() {
 			localFetcher := &fakeFetcher{alerts: []domainalertmanager.Alert{}}
-			remoteFetcher := &fakeFetcher{}
-			handler := alertmanagerctrl.NewFetchAlertsHandler(localFetcher, remoteFetcher)
+			k8sClient := fake.NewClientBuilder().WithScheme(newScheme()).Build()
+			handler := alertmanagerctrl.NewFetchAlertsHandler(localFetcher, k8sClient)
 			rc := newRC(false)
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
@@ -95,8 +104,8 @@ var _ = Describe("FetchAlertsHandler", func() {
 	Context("when fetcher returns an error", func() {
 		It("should propagate the error", func() {
 			localFetcher := &fakeFetcher{err: errors.New("connection refused")}
-			remoteFetcher := &fakeFetcher{}
-			handler := alertmanagerctrl.NewFetchAlertsHandler(localFetcher, remoteFetcher)
+			k8sClient := fake.NewClientBuilder().WithScheme(newScheme()).Build()
+			handler := alertmanagerctrl.NewFetchAlertsHandler(localFetcher, k8sClient)
 			rc := newRC(false)
 
 			err := handler.Handle(context.Background(), rc)
@@ -106,32 +115,33 @@ var _ = Describe("FetchAlertsHandler", func() {
 	})
 
 	Context("when isRemote is true", func() {
-		It("should use remote fetcher instead of local", func() {
-			remoteAlerts := []domainalertmanager.Alert{
-				{Fingerprint: "remote-1", Labels: map[string]string{"alertname": "RemoteAlert"}, State: domainalertmanager.StateActive},
-			}
-			localFetcher := &fakeFetcher{err: errors.New("should not be called")}
-			remoteFetcher := &fakeFetcher{alerts: remoteAlerts}
-			handler := alertmanagerctrl.NewFetchAlertsHandler(localFetcher, remoteFetcher)
-			rc := newRC(true)
-
-			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
-
-			stored, ok := rc.Data[alertmanagerctrl.DataKeyAlerts].([]domainalertmanager.Alert)
-			Expect(ok).To(BeTrue())
-			Expect(stored).To(HaveLen(1))
-			Expect(stored[0].Fingerprint).To(Equal("remote-1"))
-		})
-
-		It("should propagate remote fetcher errors", func() {
+		It("should fail when portal is not found", func() {
 			localFetcher := &fakeFetcher{}
-			remoteFetcher := &fakeFetcher{err: errors.New("remote unreachable")}
-			handler := alertmanagerctrl.NewFetchAlertsHandler(localFetcher, remoteFetcher)
+			k8sClient := fake.NewClientBuilder().WithScheme(newScheme()).Build()
+			handler := alertmanagerctrl.NewFetchAlertsHandler(localFetcher, k8sClient)
 			rc := newRC(true)
 
 			err := handler.Handle(context.Background(), rc)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("remote unreachable"))
+			Expect(err.Error()).To(ContainSubstring("get portal"))
+		})
+
+		It("should fail when portal has no remote configuration", func() {
+			portal := &sreportalv1alpha1.Portal{
+				ObjectMeta: metav1.ObjectMeta{Name: "main", Namespace: "default"},
+				Spec:       sreportalv1alpha1.PortalSpec{Title: "Main"},
+			}
+			localFetcher := &fakeFetcher{}
+			k8sClient := fake.NewClientBuilder().
+				WithScheme(newScheme()).
+				WithObjects(portal).
+				Build()
+			handler := alertmanagerctrl.NewFetchAlertsHandler(localFetcher, k8sClient)
+			rc := newRC(true)
+
+			err := handler.Handle(context.Background(), rc)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("no remote configuration"))
 		})
 	})
 })

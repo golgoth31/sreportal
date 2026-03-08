@@ -111,7 +111,6 @@ var _ = Describe("Alertmanager Controller", func() {
 				directClient,
 				directClient.Scheme(),
 				fetcher,
-				&fakeFetcher{},
 			)
 
 			result, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -136,7 +135,6 @@ var _ = Describe("Alertmanager Controller", func() {
 				directClient,
 				directClient.Scheme(),
 				fetcher,
-				&fakeFetcher{},
 			)
 
 			result, err := controllerReconciler.Reconcile(ctx, reconcile.Request{

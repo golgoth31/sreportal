@@ -62,7 +62,7 @@ export function RootLayout() {
         {/* Footer */}
         <footer className="border-t py-4 px-4">
           <p className="text-center text-xs text-muted-foreground">
-            SRE Portal — Kubernetes DNS Management
+            SRE Portal
           </p>
         </footer>
 
