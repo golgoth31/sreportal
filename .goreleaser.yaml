@@ -19,9 +19,9 @@ builds:
       - v2
     ldflags:
       - -s -w
-      - -X github.com/golgoth31/sreportal/internal/version.Version={{ .Version }}
-      - -X github.com/golgoth31/sreportal/internal/version.Commit={{ .Commit }}
-      - -X github.com/golgoth31/sreportal/internal/version.Date={{ .Date }}
+      - -X github.com/golgoth31/sreportal/internal/version.version={{ .Version }}
+      - -X github.com/golgoth31/sreportal/internal/version.commit={{ .Commit }}
+      - -X github.com/golgoth31/sreportal/internal/version.date={{ .Date }}
 
 archives:
   - id: default

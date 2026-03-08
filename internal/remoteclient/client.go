@@ -200,6 +200,9 @@ func (c *Client) doFetchFQDNs(ctx context.Context, baseURL string, portalName st
 type AlertsFetchResult struct {
 	// Alerts contains the active alerts fetched from the remote portal.
 	Alerts []sreportalv1alpha1.AlertStatus
+	// RemoteAlertmanagerURL is the externally-reachable Alertmanager URL
+	// from the first remote resource that has one.
+	RemoteAlertmanagerURL string
 }
 
 // FetchAlerts fetches active alerts from a remote portal via the AlertmanagerService Connect API.
@@ -241,7 +244,13 @@ func (c *Client) doFetchAlerts(ctx context.Context, baseURL string, portalName s
 	}
 
 	var allAlerts []sreportalv1alpha1.AlertStatus
+	var remoteAlertmanagerURL string
+
 	for _, resource := range resp.Msg.Alertmanagers {
+		if remoteAlertmanagerURL == "" && resource.RemoteUrl != "" {
+			remoteAlertmanagerURL = resource.RemoteUrl
+		}
+
 		for _, a := range resource.Alerts {
 			alert := sreportalv1alpha1.AlertStatus{
 				Fingerprint: a.Fingerprint,
@@ -263,7 +272,10 @@ func (c *Client) doFetchAlerts(ctx context.Context, baseURL string, portalName s
 		}
 	}
 
-	return &AlertsFetchResult{Alerts: allAlerts}, nil
+	return &AlertsFetchResult{
+		Alerts:                allAlerts,
+		RemoteAlertmanagerURL: remoteAlertmanagerURL,
+	}, nil
 }
 
 // HealthCheck performs a health check on a remote portal by attempting to list portals.

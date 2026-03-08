@@ -35,6 +35,8 @@ import (
 const (
 	// DataKeyAlerts is the key for storing fetched alerts in ReconcileContext.Data.
 	DataKeyAlerts = "alerts"
+	// DataKeyRemoteAlertmanagerURL is the key for storing the remote Alertmanager URL.
+	DataKeyRemoteAlertmanagerURL = "remoteAlertmanagerURL"
 )
 
 // FetchAlertsHandler retrieves active alerts from either the local Alertmanager API
@@ -112,8 +114,12 @@ func (h *FetchAlertsHandler) handleRemote(ctx context.Context, rc *reconciler.Re
 	}
 
 	alerts := toAlertsDomain(result.Alerts)
-	log.V(1).Info("fetched remote alerts", "count", len(alerts))
+	log.V(1).Info("fetched remote alerts", "count", len(alerts), "remoteAlertmanagerURL", result.RemoteAlertmanagerURL)
 	rc.Data[DataKeyAlerts] = alerts
+
+	if result.RemoteAlertmanagerURL != "" {
+		rc.Data[DataKeyRemoteAlertmanagerURL] = result.RemoteAlertmanagerURL
+	}
 
 	return nil
 }

@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { NavLink, useNavigate, useParams } from "react-router";
 
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,12 @@ function PortalSelect({
   placeholder,
   onSelect,
 }: PortalSelectProps) {
-  if (portals.length === 0) return null;
+  const sortedPortals = useMemo(
+    () => [...portals].sort((a, b) => a.title.localeCompare(b.title)),
+    [portals]
+  );
+
+  if (sortedPortals.length === 0) return null;
 
   return (
     <Select value={activePortalName} onValueChange={onSelect}>
@@ -44,7 +49,7 @@ function PortalSelect({
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent position="popper" >
-        {portals.map((portal) => (
+        {sortedPortals.map((portal) => (
           <SelectItem key={portal.name} value={portal.name}>
             {portal.title}
           </SelectItem>

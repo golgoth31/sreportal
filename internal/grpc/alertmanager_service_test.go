@@ -175,6 +175,79 @@ func TestListAlerts_FiltersByState(t *testing.T) {
 	assert.Equal(t, "bbb", resp.Msg.Alertmanagers[0].Alerts[0].Fingerprint)
 }
 
+func TestListAlerts_WhenIsRemote_UsesStatusRemoteAlertmanagerURL(t *testing.T) {
+	scheme := newScheme(t)
+	startsAt := metav1.NewTime(time.Date(2026, 3, 8, 10, 0, 0, 0, time.UTC))
+
+	am := &sreportalv1alpha1.Alertmanager{
+		ObjectMeta: metav1.ObjectMeta{Name: "am-remote", Namespace: "default"},
+		Spec: sreportalv1alpha1.AlertmanagerSpec{
+			PortalRef: "remote-portal",
+			URL:       sreportalv1alpha1.AlertmanagerURL{Local: "http://placeholder:9093", Remote: "https://spec-url.example.com"},
+			IsRemote:  true,
+		},
+		Status: sreportalv1alpha1.AlertmanagerStatus{
+			RemoteAlertmanagerURL: "https://real-alertmanager.remote.example.com",
+			ActiveAlerts: []sreportalv1alpha1.AlertStatus{
+				{Fingerprint: "aaa", Labels: map[string]string{"alertname": "HighCPU"}, State: "active", StartsAt: startsAt, UpdatedAt: startsAt},
+			},
+		},
+	}
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(am).Build()
+	svc := svcgrpc.NewAlertmanagerService(c)
+
+	resp, err := svc.ListAlerts(context.Background(), connect.NewRequest(&alertmanagerv1.ListAlertsRequest{}))
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.Alertmanagers, 1)
+	assert.Equal(t, "https://real-alertmanager.remote.example.com", resp.Msg.Alertmanagers[0].RemoteUrl)
+}
+
+func TestListAlerts_WhenIsRemote_FallsBackToSpecURL(t *testing.T) {
+	scheme := newScheme(t)
+
+	am := &sreportalv1alpha1.Alertmanager{
+		ObjectMeta: metav1.ObjectMeta{Name: "am-remote", Namespace: "default"},
+		Spec: sreportalv1alpha1.AlertmanagerSpec{
+			PortalRef: "remote-portal",
+			URL:       sreportalv1alpha1.AlertmanagerURL{Local: "http://placeholder:9093", Remote: "https://spec-url.example.com"},
+			IsRemote:  true,
+		},
+		Status: sreportalv1alpha1.AlertmanagerStatus{},
+	}
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(am).Build()
+	svc := svcgrpc.NewAlertmanagerService(c)
+
+	resp, err := svc.ListAlerts(context.Background(), connect.NewRequest(&alertmanagerv1.ListAlertsRequest{}))
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.Alertmanagers, 1)
+	assert.Equal(t, "https://spec-url.example.com", resp.Msg.Alertmanagers[0].RemoteUrl)
+}
+
+func TestListAlerts_WhenNotRemote_UsesSpecURL(t *testing.T) {
+	scheme := newScheme(t)
+
+	am := &sreportalv1alpha1.Alertmanager{
+		ObjectMeta: metav1.ObjectMeta{Name: "am-local", Namespace: "default"},
+		Spec: sreportalv1alpha1.AlertmanagerSpec{
+			PortalRef: "main",
+			URL:       sreportalv1alpha1.AlertmanagerURL{Local: "http://alertmanager:9093", Remote: "https://alertmanager.example.com"},
+		},
+		Status: sreportalv1alpha1.AlertmanagerStatus{
+			RemoteAlertmanagerURL: "https://should-be-ignored.example.com",
+		},
+	}
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(am).Build()
+	svc := svcgrpc.NewAlertmanagerService(c)
+
+	resp, err := svc.ListAlerts(context.Background(), connect.NewRequest(&alertmanagerv1.ListAlertsRequest{}))
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.Alertmanagers, 1)
+	assert.Equal(t, "https://alertmanager.example.com", resp.Msg.Alertmanagers[0].RemoteUrl)
+}
+
 func TestListAlerts_WhenNoAlertmanagers_ReturnsEmpty(t *testing.T) {
 	scheme := newScheme(t)
 	c := fake.NewClientBuilder().WithScheme(scheme).Build()

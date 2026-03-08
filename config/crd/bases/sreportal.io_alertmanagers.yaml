@@ -195,6 +195,11 @@ spec:
                 description: lastReconcileTime is the timestamp of the last reconciliation
                 format: date-time
                 type: string
+              remoteAlertmanagerURL:
+                description: |-
+                  remoteAlertmanagerURL is the externally-reachable Alertmanager URL fetched from
+                  a remote portal. Only populated when spec.isRemote is true.
+                type: string
             type: object
         required:
         - spec
