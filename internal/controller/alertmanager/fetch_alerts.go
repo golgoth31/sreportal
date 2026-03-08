@@ -35,8 +35,9 @@ import (
 const (
 	// DataKeyAlerts is the key for storing fetched alerts in ReconcileContext.Data.
 	DataKeyAlerts = "alerts"
-	// DataKeyRemoteAlertmanagerURL is the key for storing the remote Alertmanager URL.
-	DataKeyRemoteAlertmanagerURL = "remoteAlertmanagerURL"
+
+	// LabelRemoteAlertmanagerName is the label key for identifying the remote alertmanager name.
+	LabelRemoteAlertmanagerName = "sreportal.io/remote-alertmanager-name"
 )
 
 // FetchAlertsHandler retrieves active alerts from either the local Alertmanager API
@@ -106,20 +107,20 @@ func (h *FetchAlertsHandler) handleRemote(ctx context.Context, rc *reconciler.Re
 
 	baseURL := portal.Spec.Remote.URL
 	portalName := portal.Spec.Remote.Portal
-	log.V(1).Info("fetching active alerts from remote portal", "url", baseURL, "portalName", portalName)
 
-	result, err := remoteClient.FetchAlerts(ctx, baseURL, portalName)
+	// Each local remote CR represents one specific alertmanager on the remote portal.
+	// The label identifies which remote alertmanager this CR corresponds to.
+	remoteAMName := rc.Resource.Labels[LabelRemoteAlertmanagerName]
+	log.V(1).Info("fetching active alerts from remote portal", "url", baseURL, "portalName", portalName, "remoteAlertmanager", remoteAMName)
+
+	result, err := remoteClient.FetchAlerts(ctx, baseURL, portalName, remoteAMName)
 	if err != nil {
 		return fmt.Errorf("fetch remote alerts from %s: %w", baseURL, err)
 	}
 
 	alerts := toAlertsDomain(result.Alerts)
-	log.V(1).Info("fetched remote alerts", "count", len(alerts), "remoteAlertmanagerURL", result.RemoteAlertmanagerURL)
+	log.V(1).Info("fetched remote alerts", "count", len(alerts))
 	rc.Data[DataKeyAlerts] = alerts
-
-	if result.RemoteAlertmanagerURL != "" {
-		rc.Data[DataKeyRemoteAlertmanagerURL] = result.RemoteAlertmanagerURL
-	}
 
 	return nil
 }

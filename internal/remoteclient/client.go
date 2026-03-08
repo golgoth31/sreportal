@@ -200,14 +200,23 @@ func (c *Client) doFetchFQDNs(ctx context.Context, baseURL string, portalName st
 type AlertsFetchResult struct {
 	// Alerts contains the active alerts fetched from the remote portal.
 	Alerts []sreportalv1alpha1.AlertStatus
-	// RemoteAlertmanagerURL is the externally-reachable Alertmanager URL
-	// from the first remote resource that has one.
-	RemoteAlertmanagerURL string
 }
 
-// FetchAlerts fetches active alerts from a remote portal via the AlertmanagerService Connect API.
-// The portalName parameter filters alerts by portal on the remote side.
-func (c *Client) FetchAlerts(ctx context.Context, baseURL string, portalName string) (*AlertsFetchResult, error) {
+// RemoteAlertmanagerInfo describes an alertmanager discovered on a remote portal.
+type RemoteAlertmanagerInfo struct {
+	// Name is the alertmanager resource name on the remote portal.
+	Name string
+	// Namespace is the alertmanager resource namespace on the remote portal.
+	Namespace string
+	// RemoteURL is the externally-reachable Alertmanager URL from the remote resource.
+	RemoteURL string
+	// LocalURL is the cluster-internal Alertmanager URL from the remote resource.
+	LocalURL string
+}
+
+// DiscoverAlertmanagers lists alertmanager resources available on a remote portal.
+// Used by the Portal controller to create one local CR per remote alertmanager.
+func (c *Client) DiscoverAlertmanagers(ctx context.Context, baseURL string, portalName string) ([]RemoteAlertmanagerInfo, error) {
 	var lastErr error
 
 	for attempt := 0; attempt < c.retryAttempts; attempt++ {
@@ -220,7 +229,59 @@ func (c *Client) FetchAlerts(ctx context.Context, baseURL string, portalName str
 			}
 		}
 
-		result, err := c.doFetchAlerts(ctx, baseURL, portalName)
+		result, err := c.doDiscoverAlertmanagers(ctx, baseURL, portalName)
+		if err == nil {
+			return result, nil
+		}
+		lastErr = err
+	}
+
+	return nil, fmt.Errorf("discover alertmanagers failed after %d attempts: %w", c.retryAttempts, lastErr)
+}
+
+func (c *Client) doDiscoverAlertmanagers(ctx context.Context, baseURL string, portalName string) ([]RemoteAlertmanagerInfo, error) {
+	alertsClient := sreportalv1connect.NewAlertmanagerServiceClient(
+		c.httpClient,
+		baseURL,
+	)
+
+	resp, err := alertsClient.ListAlerts(ctx, connect.NewRequest(&sreportalv1.ListAlertsRequest{
+		Portal: portalName,
+	}))
+	if err != nil {
+		return nil, fmt.Errorf("list alertmanagers from remote portal: %w", err)
+	}
+
+	infos := make([]RemoteAlertmanagerInfo, 0, len(resp.Msg.Alertmanagers))
+	for _, resource := range resp.Msg.Alertmanagers {
+		infos = append(infos, RemoteAlertmanagerInfo{
+			Name:      resource.Name,
+			Namespace: resource.Namespace,
+			RemoteURL: resource.RemoteUrl,
+			LocalURL:  resource.LocalUrl,
+		})
+	}
+
+	return infos, nil
+}
+
+// FetchAlerts fetches active alerts from a remote portal via the AlertmanagerService Connect API.
+// The portalName parameter filters alerts by portal on the remote side.
+// The alertmanagerName parameter filters for a specific alertmanager resource; if empty, all alerts are returned.
+func (c *Client) FetchAlerts(ctx context.Context, baseURL string, portalName string, alertmanagerName string) (*AlertsFetchResult, error) {
+	var lastErr error
+
+	for attempt := 0; attempt < c.retryAttempts; attempt++ {
+		if attempt > 0 {
+			delay := c.retryDelay * time.Duration(1<<(attempt-1))
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(delay):
+			}
+		}
+
+		result, err := c.doFetchAlerts(ctx, baseURL, portalName, alertmanagerName)
 		if err == nil {
 			return result, nil
 		}
@@ -230,7 +291,7 @@ func (c *Client) FetchAlerts(ctx context.Context, baseURL string, portalName str
 	return nil, fmt.Errorf("fetch alerts failed after %d attempts: %w", c.retryAttempts, lastErr)
 }
 
-func (c *Client) doFetchAlerts(ctx context.Context, baseURL string, portalName string) (*AlertsFetchResult, error) {
+func (c *Client) doFetchAlerts(ctx context.Context, baseURL string, portalName string, alertmanagerName string) (*AlertsFetchResult, error) {
 	alertsClient := sreportalv1connect.NewAlertmanagerServiceClient(
 		c.httpClient,
 		baseURL,
@@ -244,11 +305,11 @@ func (c *Client) doFetchAlerts(ctx context.Context, baseURL string, portalName s
 	}
 
 	var allAlerts []sreportalv1alpha1.AlertStatus
-	var remoteAlertmanagerURL string
 
 	for _, resource := range resp.Msg.Alertmanagers {
-		if remoteAlertmanagerURL == "" && resource.RemoteUrl != "" {
-			remoteAlertmanagerURL = resource.RemoteUrl
+		// Filter by alertmanager name if specified.
+		if alertmanagerName != "" && resource.Name != alertmanagerName {
+			continue
 		}
 
 		for _, a := range resource.Alerts {
@@ -273,8 +334,7 @@ func (c *Client) doFetchAlerts(ctx context.Context, baseURL string, portalName s
 	}
 
 	return &AlertsFetchResult{
-		Alerts:                allAlerts,
-		RemoteAlertmanagerURL: remoteAlertmanagerURL,
+		Alerts: allAlerts,
 	}, nil
 }
 

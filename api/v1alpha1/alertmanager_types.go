@@ -65,11 +65,6 @@ type AlertmanagerStatus struct {
 	// lastReconcileTime is the timestamp of the last reconciliation
 	// +optional
 	LastReconcileTime *metav1.Time `json:"lastReconcileTime,omitempty"`
-
-	// remoteAlertmanagerURL is the externally-reachable Alertmanager URL fetched from
-	// a remote portal. Only populated when spec.isRemote is true.
-	// +optional
-	RemoteAlertmanagerURL string `json:"remoteAlertmanagerURL,omitempty"`
 }
 
 // AlertStatus represents a single active alert from Alertmanager

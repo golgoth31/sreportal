@@ -73,17 +73,12 @@ func (s *AlertmanagerService) ListAlerts(
 			}
 		}
 
-		remoteURL := am.Spec.URL.Remote
-		if am.Spec.IsRemote && am.Status.RemoteAlertmanagerURL != "" {
-			remoteURL = am.Status.RemoteAlertmanagerURL
-		}
-
 		resource := &alertmanagerv1.AlertmanagerResource{
 			Name:      am.Name,
 			Namespace: am.Namespace,
 			PortalRef: am.Spec.PortalRef,
 			LocalUrl:  am.Spec.URL.Local,
-			RemoteUrl: remoteURL,
+			RemoteUrl: am.Spec.URL.Remote,
 			Alerts:    alerts,
 			Ready:     ready,
 		}

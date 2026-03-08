@@ -31,6 +31,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	alertmanagerctrl "github.com/golgoth31/sreportal/internal/controller/alertmanager"
 	"github.com/golgoth31/sreportal/internal/remoteclient"
 	"github.com/golgoth31/sreportal/internal/tlsutil"
 )
@@ -246,7 +247,7 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 			Type:               "AlertsSynced",
 			Status:             metav1.ConditionFalse,
 			Reason:             "AlertsSyncFailed",
-			Message:            fmt.Sprintf("Failed to create Alertmanager resource for remote portal: %v", err),
+			Message:            fmt.Sprintf("Failed to sync Alertmanager resources for remote portal: %v", err),
 			LastTransitionTime: metav1.Now(),
 		})
 	} else {
@@ -254,7 +255,7 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 			Type:               "AlertsSynced",
 			Status:             metav1.ConditionTrue,
 			Reason:             "AlertsSyncSuccess",
-			Message:            "Alertmanager resource synced for remote portal",
+			Message:            "Alertmanager resources synced for remote portal",
 			LastTransitionTime: metav1.Now(),
 		})
 	}
@@ -312,20 +313,63 @@ func setPortalCondition(conditions *[]metav1.Condition, newCondition metav1.Cond
 	*conditions = append(*conditions, newCondition)
 }
 
-// remoteAlertmanagerName returns the name of the Alertmanager CR for a remote portal.
-func remoteAlertmanagerName(portalName string) string {
-	return fmt.Sprintf("remote-%s", portalName)
+// remoteAlertmanagerName returns the name of the local Alertmanager CR
+// that mirrors a specific remote alertmanager.
+func remoteAlertmanagerName(portalName, remoteAMName string) string {
+	return fmt.Sprintf("remote-%s-%s", portalName, remoteAMName)
 }
 
-// reconcileRemoteAlertmanager creates or updates an Alertmanager CR for a remote portal.
-// The Alertmanager CR is configured with isRemote=true so the alertmanager controller
-// fetches alerts from the remote portal's Connect API instead of a local Alertmanager instance.
+// reconcileRemoteAlertmanager discovers alertmanagers on the remote portal and creates
+// one local Alertmanager CR per remote alertmanager. Each CR is configured with
+// isRemote=true and the correct spec.url.remote so the alertmanager controller can
+// fetch alerts independently. Orphaned local CRs (remote alertmanager no longer exists)
+// are garbage-collected via owner references.
 func (r *PortalReconciler) reconcileRemoteAlertmanager(ctx context.Context, portal *sreportalv1alpha1.Portal) error {
 	log := logf.FromContext(ctx)
 
-	amName := remoteAlertmanagerName(portal.Name)
-	am := &sreportalv1alpha1.Alertmanager{}
+	remoteClient, err := r.remoteClientFor(ctx, portal)
+	if err != nil {
+		return fmt.Errorf("build remote client: %w", err)
+	}
 
+	// Discover all alertmanagers on the remote portal.
+	remoteAMs, err := remoteClient.DiscoverAlertmanagers(ctx, portal.Spec.Remote.URL, portal.Spec.Remote.Portal)
+	if err != nil {
+		return fmt.Errorf("discover remote alertmanagers: %w", err)
+	}
+
+	log.V(1).Info("discovered remote alertmanagers", "count", len(remoteAMs))
+
+	// Track which local CR names are expected so we can clean up orphans.
+	expectedNames := make(map[string]struct{}, len(remoteAMs))
+
+	for _, remoteAM := range remoteAMs {
+		amName := remoteAlertmanagerName(portal.Name, remoteAM.Name)
+		expectedNames[amName] = struct{}{}
+
+		if err := r.ensureAlertmanagerCR(ctx, portal, amName, remoteAM); err != nil {
+			return fmt.Errorf("ensure alertmanager CR %s: %w", amName, err)
+		}
+	}
+
+	// Clean up orphaned local CRs that no longer have a corresponding remote alertmanager.
+	if err := r.cleanupOrphanedAlertmanagers(ctx, portal, expectedNames); err != nil {
+		return fmt.Errorf("cleanup orphaned alertmanagers: %w", err)
+	}
+
+	return nil
+}
+
+// ensureAlertmanagerCR creates or updates a local Alertmanager CR for a specific remote alertmanager.
+func (r *PortalReconciler) ensureAlertmanagerCR(
+	ctx context.Context,
+	portal *sreportalv1alpha1.Portal,
+	amName string,
+	remoteAM remoteclient.RemoteAlertmanagerInfo,
+) error {
+	log := logf.FromContext(ctx)
+
+	am := &sreportalv1alpha1.Alertmanager{}
 	err := r.Get(ctx, types.NamespacedName{Name: amName, Namespace: portal.Namespace}, am)
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("get Alertmanager: %w", err)
@@ -337,19 +381,21 @@ func (r *PortalReconciler) reconcileRemoteAlertmanager(ctx context.Context, port
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      amName,
 				Namespace: portal.Namespace,
+				Labels: map[string]string{
+					alertmanagerctrl.LabelRemoteAlertmanagerName: remoteAM.Name,
+				},
 			},
 			Spec: sreportalv1alpha1.AlertmanagerSpec{
 				PortalRef: portal.Name,
 				URL: sreportalv1alpha1.AlertmanagerURL{
 					Local:  portal.Spec.Remote.URL,
-					Remote: portal.Spec.Remote.URL,
+					Remote: remoteAM.RemoteURL,
 				},
 				IsRemote: true,
 			},
 		}
 	}
 
-	// Set owner reference so the Alertmanager is deleted when the Portal is deleted
 	if err := controllerutil.SetControllerReference(portal, am, r.Scheme); err != nil {
 		return fmt.Errorf("set controller reference: %w", err)
 	}
@@ -358,17 +404,70 @@ func (r *PortalReconciler) reconcileRemoteAlertmanager(ctx context.Context, port
 		if err := r.Create(ctx, am); err != nil {
 			return fmt.Errorf("create Alertmanager: %w", err)
 		}
-		log.Info("created Alertmanager CR for remote portal", "alertmanager", amName, "portal", portal.Name)
-	} else {
-		// Update spec fields that may have changed
-		am.Spec.PortalRef = portal.Name
-		am.Spec.URL.Local = portal.Spec.Remote.URL
-		am.Spec.URL.Remote = portal.Spec.Remote.URL
-		am.Spec.IsRemote = true
-		if err := r.Update(ctx, am); err != nil {
-			return fmt.Errorf("update Alertmanager: %w", err)
+		log.Info("created Alertmanager CR for remote alertmanager", "alertmanager", amName, "remoteAM", remoteAM.Name)
+
+		return nil
+	}
+
+	// Update spec fields that may have changed.
+	am.Spec.PortalRef = portal.Name
+	am.Spec.URL.Local = portal.Spec.Remote.URL
+	am.Spec.URL.Remote = remoteAM.RemoteURL
+	am.Spec.IsRemote = true
+
+	if am.Labels == nil {
+		am.Labels = make(map[string]string)
+	}
+	am.Labels[alertmanagerctrl.LabelRemoteAlertmanagerName] = remoteAM.Name
+
+	if err := r.Update(ctx, am); err != nil {
+		return fmt.Errorf("update Alertmanager: %w", err)
+	}
+	log.V(1).Info("updated Alertmanager CR for remote alertmanager", "alertmanager", amName, "remoteAM", remoteAM.Name)
+
+	return nil
+}
+
+// cleanupOrphanedAlertmanagers deletes local Alertmanager CRs owned by this portal
+// that no longer correspond to a remote alertmanager.
+func (r *PortalReconciler) cleanupOrphanedAlertmanagers(
+	ctx context.Context,
+	portal *sreportalv1alpha1.Portal,
+	expectedNames map[string]struct{},
+) error {
+	log := logf.FromContext(ctx)
+
+	var amList sreportalv1alpha1.AlertmanagerList
+	if err := r.List(ctx, &amList, client.InNamespace(portal.Namespace)); err != nil {
+		return fmt.Errorf("list alertmanagers: %w", err)
+	}
+
+	for i := range amList.Items {
+		am := &amList.Items[i]
+		if !am.Spec.IsRemote || am.Spec.PortalRef != portal.Name {
+			continue
 		}
-		log.Info("updated Alertmanager CR for remote portal", "alertmanager", amName, "portal", portal.Name)
+
+		if _, expected := expectedNames[am.Name]; expected {
+			continue
+		}
+
+		// Check owner reference to ensure we only delete CRs we own.
+		owned := false
+		for _, ref := range am.OwnerReferences {
+			if ref.UID == portal.UID {
+				owned = true
+				break
+			}
+		}
+		if !owned {
+			continue
+		}
+
+		log.Info("deleting orphaned Alertmanager CR", "alertmanager", am.Name)
+		if err := r.Delete(ctx, am); err != nil {
+			return fmt.Errorf("delete orphaned Alertmanager %s: %w", am.Name, err)
+		}
 	}
 
 	return nil

@@ -111,7 +111,6 @@ _Appears in:_
 | `activeAlerts` _[sreportal.io/v1alpha1.AlertStatus](#sreportaliov1alpha1alertstatus) array_ | activeAlerts is the list of currently firing alerts retrieved from the Alertmanager API |   |   |
 | `conditions` _[Condition](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#condition-v1-meta) array_ | conditions represent the current state of the Alertmanager resource. |   |   |
 | `lastReconcileTime` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | lastReconcileTime is the timestamp of the last reconciliation |   |   |
-| `remoteAlertmanagerURL` _string_ | remoteAlertmanagerURL is the externally-reachable Alertmanager URL fetched from a remote portal. Only populated when spec.isRemote is true. |   |   |
 
 
 

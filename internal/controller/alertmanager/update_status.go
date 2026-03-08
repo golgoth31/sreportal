@@ -58,10 +58,6 @@ func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 	rc.Resource.Status.ActiveAlerts = toAlertStatuses(domainAlerts)
 	rc.Resource.Status.LastReconcileTime = &now
 
-	if remoteURL, ok := rc.Data[DataKeyRemoteAlertmanagerURL].(string); ok {
-		rc.Resource.Status.RemoteAlertmanagerURL = remoteURL
-	}
-
 	readyCondition := metav1.Condition{
 		Type:               ConditionTypeReady,
 		Status:             metav1.ConditionTrue,
