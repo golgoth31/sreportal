@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.3](https://github.com/golgoth31/sreportal/compare/v1.11.2...v1.11.3) (2026-03-08)
+
+
+### Bug Fixes
+
+* **remote-alertmanager:** select remote Alertmanager via label ([57ef45a](https://github.com/golgoth31/sreportal/commit/57ef45a3cafa6c0856710279e18ca9892da9dd41))
+
 ## [1.11.2](https://github.com/golgoth31/sreportal/compare/v1.11.1...v1.11.2) (2026-03-08)
 
 
