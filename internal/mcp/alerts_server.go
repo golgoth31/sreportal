@@ -98,8 +98,8 @@ func (s *AlertsServer) registerAlertTools() {
 // AlertResult represents a single alert in the list results.
 type AlertResult struct {
 	Fingerprint string            `json:"fingerprint"`
-	Labels      map[string]string  `json:"labels"`
-	Annotations map[string]string  `json:"annotations,omitempty"`
+	Labels      map[string]string `json:"labels"`
+	Annotations map[string]string `json:"annotations,omitempty"`
 	State       string            `json:"state"`
 	StartsAt    string            `json:"starts_at"`
 	UpdatedAt   string            `json:"updated_at"`
@@ -108,14 +108,14 @@ type AlertResult struct {
 
 // AlertmanagerResult represents an Alertmanager resource with its alerts.
 type AlertmanagerResult struct {
-	Name               string       `json:"name"`
-	Namespace          string       `json:"namespace"`
-	PortalRef          string       `json:"portal_ref"`
-	LocalURL           string       `json:"local_url"`
-	RemoteURL          string       `json:"remote_url,omitempty"`
-	Ready              bool         `json:"ready"`
-	LastReconcileTime  string       `json:"last_reconcile_time,omitempty"`
-	Alerts             []AlertResult `json:"alerts"`
+	Name              string        `json:"name"`
+	Namespace         string        `json:"namespace"`
+	PortalRef         string        `json:"portal_ref"`
+	LocalURL          string        `json:"local_url"`
+	RemoteURL         string        `json:"remote_url,omitempty"`
+	Ready             bool          `json:"ready"`
+	LastReconcileTime string        `json:"last_reconcile_time,omitempty"`
+	Alerts            []AlertResult `json:"alerts"`
 }
 
 // handleListAlerts handles the list_alerts tool call.

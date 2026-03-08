@@ -414,7 +414,7 @@ func main() {
 				}
 			}()
 		case "streamable-http":
-			setupLog.Info("mounting MCP servers on web server", "dns", "/mcp", "/mcp/dns", "alerts", "/mcp/alerts")
+			setupLog.Info("mounting MCP servers on web server", "dns", []string{"/mcp", "/mcp/dns"}, "alerts", "/mcp/alerts")
 			webServer.MountHandler("/mcp", dnsMcpServer.Handler())
 			webServer.MountHandler("/mcp/dns", dnsMcpServer.Handler())
 			webServer.MountHandler("/mcp/alerts", alertsMcpServer.Handler())
