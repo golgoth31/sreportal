@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.11.1](https://github.com/golgoth31/sreportal/compare/v1.11.0...v1.11.1) (2026-03-08)
+
+
+### Bug Fixes
+
+* **alertmanager:** align remote alert fetch with Portal TLS config ([c879702](https://github.com/golgoth31/sreportal/commit/c8797023703a04e77857975c42b38937cd077a3a))
+* fix golangci-lint warnings ([fe97651](https://github.com/golgoth31/sreportal/commit/fe97651e61d6fd5644241532a38b1f897dbae262))
+* **version:** expose build metadata via VersionService endpoint ([0a25b11](https://github.com/golgoth31/sreportal/commit/0a25b116de6ac4052dc52d4e30d41f4d5c9482c3))
+
 ## [1.11.0](https://github.com/golgoth31/sreportal/compare/v1.10.0...v1.11.0) (2026-03-08)
 
 
