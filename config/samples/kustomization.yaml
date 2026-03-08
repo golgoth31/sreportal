@@ -2,4 +2,5 @@
 resources:
 - sreportal_v1alpha1_dns.yaml
 - sreportal_v1alpha1_portal.yaml
+- v1alpha1_alertmanager.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples

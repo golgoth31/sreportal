@@ -50,6 +50,7 @@ rules:
 - apiGroups:
   - sreportal.io
   resources:
+  - alertmanagers
   - dns
   - dnsrecords
   - portals
@@ -64,6 +65,7 @@ rules:
 - apiGroups:
   - sreportal.io
   resources:
+  - alertmanagers/finalizers
   - dns/finalizers
   - dnsrecords/finalizers
   - portals/finalizers
@@ -72,6 +74,7 @@ rules:
 - apiGroups:
   - sreportal.io
   resources:
+  - alertmanagers/status
   - dns/status
   - dnsrecords/status
   - portals/status

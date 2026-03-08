@@ -9,11 +9,13 @@ SRE Portal is a Kubernetes operator with a web dashboard for managing service st
 ### Current Implementation Status
 
 **Implemented:**
-- DNS discovery: 3 CRDs (DNS, DNSRecord, Portal), Chain-of-Responsibility reconciliation, external-dns integration
+- DNS discovery: 4 CRDs (DNS, DNSRecord, Portal, Alertmanager), Chain-of-Responsibility reconciliation, external-dns integration
 - Portal routing via `sreportal.io/portal` annotation on K8s resources
-- Web UI: React 19 app (Vite + shadcn/ui) with Links page (FQDN display)
-- Connect protocol gRPC API (DNSService, PortalService)
+- Alertmanager: CRD linked to Portal (portalRef), URL (local/remote), controller fetches active alerts from Alertmanager API and stores them in status
+- Web UI: React 19 app (Vite + shadcn/ui) with Links page (FQDN display), Alerts page (per-portal), left sidebar (Links / Alerts)
+- Connect protocol gRPC API (DNSService, PortalService, AlertmanagerService)
 - ConfigMap-driven operator configuration
+- MCP: two servers — DNS/portals at `/mcp` and `/mcp/dns`, alerts at `/mcp/alerts` (Streamable HTTP)
 
 **Not yet implemented:**
 - Status pages (Component, Incident, Maintenance CRDs)
@@ -35,7 +37,7 @@ SRE Portal is a Kubernetes operator with a web dashboard for managing service st
 - **Web UI**: React 19, Vite, Tailwind CSS v4, shadcn/ui, TanStack Query v5, React Router v7
 - **External DNS**: sigs.k8s.io/external-dns v0.20
 - **Testing**: Ginkgo v2 + Gomega with envtest
-- **MCP**: Model Context Protocol server (mark3labs/mcp-go), served on `/mcp` via the web server
+- **MCP**: Model Context Protocol (mark3labs/mcp-go): DNS server on `/mcp` and `/mcp/dns`, Alerts server on `/mcp/alerts`
 - **Deployment**: Single container (controller + gRPC + web UI + MCP)
 
 ## Common Commands
@@ -78,8 +80,9 @@ api/v1alpha1/
   dns_types.go                       # DNS CRD (manual entries + aggregated status)
   dnsrecord_types.go                 # DNSRecord CRD (external-dns source results)
   portal_types.go                    # Portal CRD (web UI portal configuration)
+  alertmanager_types.go              # Alertmanager CRD (portalRef, url.local/remote, activeAlerts status)
   groupversion_info.go               # Group/version registration
-  zz_generated.deepcopy.go           # Auto-generated
+  zz_generated.deepcopy.go          # Auto-generated
 internal/
   adapter/
     endpoint.go                      # Converts external-dns endpoints to CRD status
@@ -88,22 +91,30 @@ internal/
     dns_controller.go                # DNS reconciler (chain-based)
     source_controller.go             # DNSRecord reconciler (periodic, manager.Runnable)
     portal_controller.go             # Portal reconciler (simple status)
+    alertmanager_controller.go     # Alertmanager reconciler (chain: FetchAlerts → UpdateStatus)
     dns/                             # Chain handlers for DNS reconciliation
       aggregate_dnsrecords.go        # Fetch DNSRecords by portalRef
       collect_manual_entries.go      # Extract manual groups from DNS.spec
       aggregate_fqdns.go             # Merge external + manual groups
       update_status.go               # Write aggregated groups to DNS.status
+    alertmanager/                    # Chain handlers for Alertmanager reconciliation
+      fetch_alerts.go                # Fetch active alerts from spec.url.local (Alertmanager API v2)
+      update_status.go               # Write ActiveAlerts + conditions to status
     portal/                          # Portal controller utilities
   domain/
     dns/                             # Pure FQDN domain types (no external deps)
+    alertmanager/                    # Alert, Fetcher interface, sentinel errors
+  alertmanagerclient/               # HTTP client for Alertmanager API (GET /api/v2/alerts)
   reconciler/
     handler.go                       # Generic Chain-of-Responsibility framework (generics)
   grpc/
     dns_service.go                   # DNSService Connect implementation
     portal_service.go                # PortalService Connect implementation
+    alertmanager_service.go          # AlertmanagerService Connect implementation (ListAlerts)
     gen/                             # Auto-generated (buf) - DO NOT EDIT
   mcp/
-    server.go                        # MCP server (mounted on /mcp via web server)
+    server.go                        # DNSServer (DNS + portal tools), mount at /mcp and /mcp/dns
+    alerts_server.go                 # AlertsServer (list_alerts), mount at /mcp/alerts
     search_fqdns.go                  # search_fqdns tool handler
     list_portals.go                  # list_portals tool handler
     get_fqdn_details.go              # get_fqdn_details tool handler
@@ -115,6 +126,7 @@ internal/
 proto/sreportal/v1/
   dns.proto                          # DNSService (ListFQDNs, StreamFQDNs)
   portal.proto                       # PortalService (ListPortals)
+  alertmanager.proto                 # AlertmanagerService (ListAlerts)
 web/src/
   main.tsx                           # React entry point (QueryClient + RouterProvider)
   router.tsx                         # Routes + ErrorPage + PageSkeleton
@@ -124,10 +136,12 @@ web/src/
   components/
     RootLayout.tsx                   # Root layout (TooltipProvider, header, footer, Toaster)
     PortalNav.tsx                    # Portal navigation (NavLink for local, <a> for remote)
+    PortalSidebar.tsx                # Left sidebar: Links + Alerts (when portal has Alertmanagers)
     ThemeToggle.tsx                  # Theme cycle button (light → dark → system)
     ui/                              # shadcn/ui components (button, badge, table, …)
   pages/
     LinksPage.tsx                    # Container: search/group filters + FqdnGroupList
+    AlertsPage.tsx                   # Container: alerts per portal (search/state filters + AlertList)
   features/
     dns/
       domain/dns.types.ts            # Fqdn, FqdnGroup types + isSynced/hasSyncStatus helpers
@@ -140,8 +154,15 @@ web/src/
       domain/portal.types.ts         # Portal, RemoteSyncStatus types
       infrastructure/portalApi.ts    # listPortals() — module-level transport singleton
       hooks/usePortals.ts            # TanStack Query (30s stale)
+    alertmanager/
+      domain/alertmanager.types.ts   # Alert, AlertmanagerResource, formatAlertTime
+      infrastructure/alertmanagerApi.ts  # listAlerts(portal?, search?, state?)
+      hooks/useAlerts.ts             # TanStack Query per portal
+      hooks/usePortalsWithAlerts.ts  # Set of portal names that have Alertmanagers (for sidebar)
+      ui/AlertmanagerResourceCard.tsx # Collapsible card per Alertmanager CR + alerts table
+      ui/AlertList.tsx               # List of resources + loading/empty state
     mcp/
-      ui/McpPage.tsx                 # MCP setup page (Shadcn Table, CopyableCode)
+      ui/McpPage.tsx                 # MCP setup page (DNS + Alerts endpoints, tools table)
   gen/                               # Auto-generated Connect clients (buf) - DO NOT EDIT
 config/
   crd/bases/                         # Auto-generated CRD YAML - DO NOT EDIT
@@ -241,6 +262,35 @@ type RemoteSyncStatus struct {
 }
 ```
 
+### Alertmanager
+
+```go
+// Spec
+type AlertmanagerSpec struct {
+    PortalRef string           `json:"portalRef"`         // Required: Portal this resource is linked to
+    URL       *AlertmanagerURL `json:"url,omitempty"`     // Alertmanager API URLs
+}
+type AlertmanagerURL struct {
+    Local  string `json:"local"`            // Required: URL used by controller to fetch alerts (e.g. http://alertmanager:9093)
+    Remote string `json:"remote,omitempty"` // Optional: externally-reachable URL for dashboard links
+}
+
+// Status (populated by controller)
+type AlertmanagerStatus struct {
+    ActiveAlerts      []AlertStatus   // Firing alerts from GET /api/v2/alerts
+    Conditions        []metav1.Condition
+    LastReconcileTime *metav1.Time
+}
+type AlertStatus struct {
+    Fingerprint string
+    Labels, Annotations map[string]string
+    State string       // active, suppressed, unprocessed
+    StartsAt, EndsAt, UpdatedAt *metav1.Time
+}
+```
+
+Controller fetches alerts from `spec.url.local` (Alertmanager API v2) at each reconciliation; `url.remote` is for UI links only.
+
 **Remote Portal Feature:**
 - When `spec.remote` is set, the Portal fetches DNS data from a remote SRE Portal instance
 - The main portal (`spec.main=true`) cannot have `spec.remote` set (validated by webhook)
@@ -284,6 +334,11 @@ Not chain-based. Implements `manager.Runnable` for periodic reconciliation (defa
 Simple controller: sets `status.ready = true` with Ready condition.
 Includes `EnsureMainPortalRunnable` that creates a default "main" portal on startup.
 
+### Alertmanager Controller (Chain)
+1. **FetchAlerts** - GET Alertmanager API at `spec.url.local` (/api/v2/alerts), store alerts in context
+2. **UpdateStatus** - Write ActiveAlerts, LastReconcileTime, Ready condition to status
+Requeue every 2 minutes.
+
 ## gRPC/Connect API
 
 ### DNSService (`proto/sreportal/v1/dns.proto`)
@@ -293,16 +348,21 @@ Includes `EnsureMainPortalRunnable` that creates a default "main" portal on star
 ### PortalService (`proto/sreportal/v1/portal.proto`)
 - `ListPortals` - Lists all portals
 
+### AlertmanagerService (`proto/sreportal/v1/alertmanager.proto`)
+- `ListAlerts` - Lists Alertmanager resources with active alerts (filters: portal, namespace, search, state)
+
 ## Web UI (React 19)
 
 Single page app with:
 - **Stack**: React 19 + Vite + Tailwind CSS v4 + shadcn/ui + TanStack Query v5 + React Router v7
 - **Build output**: `web/dist/web/browser/` (embedded into Go binary via `ui_embed.go`)
 - **Architecture**: Feature-based Clean Architecture — domain → infrastructure → hooks → ui layers
-- **Routes**: `''` → `/main/links`, `:portalName/links` → LinksPage, `/help` → McpPage
+- **Routes**: `''` → `/main/links`, `:portalName/links` → LinksPage, `:portalName/alerts` → AlertsPage, `/help` → McpPage
+- **Sidebar**: Left menu per portal with Links and Alerts (Alerts only when portal has Alertmanager resources)
 - **LinksPage**: FQDNs grouped by group name, search + group filter, sync status dots
+- **AlertsPage**: Alertmanager resources with active alerts (search/state filters), collapsible cards per resource
 - **State**: TanStack Query for server state (5s polling for FQDNs, 30s stale for portals)
-- **Connect clients**: Module-level transport singletons in `dnsApi.ts` / `portalApi.ts`
+- **Connect clients**: Module-level transport singletons in `dnsApi.ts`, `portalApi.ts`, `alertmanagerApi.ts`
 - **Theme**: Light / dark / system toggle, stored in localStorage, applied via `.dark` class
 - **shadcn/ui components installed**: button, skeleton, sonner, tooltip, badge, input, select, collapsible, separator, table
 - **Error handling**: Router-level `errorElement` on all routes; error alert in LinksPage
@@ -331,8 +391,9 @@ Registers:
 1. **DNSReconciler** - Chain-based reconciliation with field indexer on `spec.portalRef`
 2. **SourceReconciler** - Periodic external-dns source polling (manager.Runnable)
 3. **PortalReconciler** - Simple status updates + EnsureMainPortalRunnable
-4. **DNSWebhook** - Validates `spec.portalRef` exists
-5. **Web server** (goroutine) - Echo v5 with h2c serving Connect handlers + React SPA + MCP at `/mcp`
+4. **AlertmanagerReconciler** - Chain FetchAlerts → UpdateStatus (Alertmanager API client injected)
+5. **DNSWebhook** - Validates `spec.portalRef` exists
+6. **Web server** (goroutine) - Echo v5 with h2c serving Connect handlers + React SPA + MCP at `/mcp`, `/mcp/dns`, `/mcp/alerts`
 
 K8s scheme registers: core types, external-dns v1alpha1, sreportal v1alpha1.
 

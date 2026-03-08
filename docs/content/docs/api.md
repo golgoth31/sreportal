@@ -7,9 +7,41 @@
 ## sreportal.io/v1alpha1
 
 ### Resource Types
+- [sreportal.io/v1alpha1.Alertmanager](#sreportaliov1alpha1alertmanager)
+- [sreportal.io/v1alpha1.AlertmanagerList](#sreportaliov1alpha1alertmanagerlist)
 - [sreportal.io/v1alpha1.DNS](#sreportaliov1alpha1dns)
 - [sreportal.io/v1alpha1.DNSRecord](#sreportaliov1alpha1dnsrecord)
 - [sreportal.io/v1alpha1.Portal](#sreportaliov1alpha1portal)
+
+
+#### sreportal.io/v1alpha1.Alertmanager
+
+Alertmanager is the Schema for the alertmanagers API
+
+_Appears in:_
+- [sreportal.io/v1alpha1.AlertmanagerList](#sreportaliov1alpha1alertmanagerlist)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `apiVersion` _string_ | `sreportal.io/v1alpha1` |   |   |
+| `kind` _string_ | `Alertmanager` |   |   |
+| `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#objectmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |   |   |
+| `spec` _[sreportal.io/v1alpha1.AlertmanagerSpec](#sreportaliov1alpha1alertmanagerspec)_ | spec defines the desired state of Alertmanager |   |   |
+| `status` _[sreportal.io/v1alpha1.AlertmanagerStatus](#sreportaliov1alpha1alertmanagerstatus)_ | status defines the observed state of Alertmanager |   |   |
+
+
+
+#### sreportal.io/v1alpha1.AlertmanagerList
+
+AlertmanagerList contains a list of Alertmanager
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `apiVersion` _string_ | `sreportal.io/v1alpha1` |   |   |
+| `kind` _string_ | `AlertmanagerList` |   |   |
+| `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#objectmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |   |   |
+| `items` _[sreportal.io/v1alpha1.Alertmanager](#sreportaliov1alpha1alertmanager) array_ |   |   |   |
+
 
 
 #### sreportal.io/v1alpha1.DNS
@@ -51,6 +83,70 @@ Portal is the Schema for the portals API
 | `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#objectmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |   |   |
 | `spec` _[sreportal.io/v1alpha1.PortalSpec](#sreportaliov1alpha1portalspec)_ | spec defines the desired state of Portal |   |   |
 | `status` _[sreportal.io/v1alpha1.PortalStatus](#sreportaliov1alpha1portalstatus)_ | status defines the observed state of Portal |   |   |
+
+
+
+#### sreportal.io/v1alpha1.AlertmanagerSpec
+
+AlertmanagerSpec defines the desired state of Alertmanager
+
+_Appears in:_
+- [sreportal.io/v1alpha1.Alertmanager](#sreportaliov1alpha1alertmanager)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `portalRef` _string_ | portalRef is the name of the Portal this Alertmanager resource is linked to |   |   |
+| `url` _[sreportal.io/v1alpha1.AlertmanagerURL](#sreportaliov1alpha1alertmanagerurl)_ | url contains the Alertmanager API endpoints |   |   |
+
+
+
+#### sreportal.io/v1alpha1.AlertmanagerURL
+
+AlertmanagerURL holds the local and remote Alertmanager API URLs
+url contains the Alertmanager API endpoints
+
+_Appears in:_
+- [sreportal.io/v1alpha1.AlertmanagerSpec](#sreportaliov1alpha1alertmanagerspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `local` _string_ | local is the URL used by the controller to fetch active alerts (e.g. http://alertmanager.monitoring:9093) |   | Pattern: `^https?://.*` |
+| `remote` _string_ | remote is an optional externally-reachable URL for dashboard links |   | Pattern: `^https?://.*` |
+
+
+
+#### sreportal.io/v1alpha1.AlertmanagerStatus
+
+AlertmanagerStatus defines the observed state of Alertmanager.
+remote is an optional externally-reachable URL for dashboard links
+
+_Appears in:_
+- [sreportal.io/v1alpha1.Alertmanager](#sreportaliov1alpha1alertmanager)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `activeAlerts` _[sreportal.io/v1alpha1.AlertStatus](#sreportaliov1alpha1alertstatus) array_ | activeAlerts is the list of currently firing alerts retrieved from the Alertmanager API |   |   |
+| `conditions` _[Condition](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#condition-v1-meta) array_ | conditions represent the current state of the Alertmanager resource. |   |   |
+| `lastReconcileTime` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | lastReconcileTime is the timestamp of the last reconciliation |   |   |
+
+
+
+#### sreportal.io/v1alpha1.AlertStatus
+
+AlertStatus represents a single active alert from Alertmanager
+
+_Appears in:_
+- [sreportal.io/v1alpha1.AlertmanagerStatus](#sreportaliov1alpha1alertmanagerstatus)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `fingerprint` _string_ | fingerprint is the unique identifier of the alert |   |   |
+| `labels` _[sreportal.io/v1alpha1.map[string]string](#sreportaliov1alpha1map[string]string)_ | labels are the identifying key-value pairs of the alert |   |   |
+| `annotations` _[sreportal.io/v1alpha1.map[string]string](#sreportaliov1alpha1map[string]string)_ | annotations are additional informational key-value pairs |   |   |
+| `state` _string_ | state is the alert state (active, suppressed, unprocessed) |   | Enum: [active suppressed unprocessed] |
+| `startsAt` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | startsAt is when the alert started firing |   |   |
+| `endsAt` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | endsAt is when the alert is expected to resolve |   |   |
+| `updatedAt` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | updatedAt is the last time the alert was updated |   |   |
 
 
 

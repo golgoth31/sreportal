@@ -31,6 +31,9 @@ function ErrorPage() {
 const LinksPage = lazy(() =>
   import("@/pages/LinksPage").then((m) => ({ default: m.LinksPage }))
 );
+const AlertsPage = lazy(() =>
+  import("@/pages/AlertsPage").then((m) => ({ default: m.AlertsPage }))
+);
 const McpPage = lazy(() =>
   import("@/features/mcp/ui/McpPage").then((m) => ({ default: m.McpPage }))
 );
@@ -51,6 +54,15 @@ export const router = createBrowserRouter([
         element: (
           <Suspense fallback={<PageSkeleton />}>
             <LinksPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: ":portalName/alerts",
+        errorElement: <ErrorPage />,
+        element: (
+          <Suspense fallback={<PageSkeleton />}>
+            <AlertsPage />
           </Suspense>
         ),
       },

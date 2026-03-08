@@ -42,7 +42,9 @@ import (
 	externaldnsv1alpha1 "sigs.k8s.io/external-dns/apis/v1alpha1"
 
 	sreportal "github.com/golgoth31/sreportal"
+	sreportaliov1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	"github.com/golgoth31/sreportal/internal/alertmanagerclient"
 	"github.com/golgoth31/sreportal/internal/config"
 	"github.com/golgoth31/sreportal/internal/controller"
 	portalctrl "github.com/golgoth31/sreportal/internal/controller/portal"
@@ -65,6 +67,7 @@ func init() {
 	utilruntime.Must(externaldnsv1alpha1.AddToScheme(scheme))
 
 	utilruntime.Must(sreportalv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(sreportaliov1alpha1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -333,6 +336,14 @@ func main() {
 		setupLog.Error(err, "unable to add main portal ensure runnable")
 		os.Exit(1)
 	}
+	if err := controller.NewAlertmanagerReconciler(
+		mgr.GetClient(),
+		mgr.GetScheme(),
+		alertmanagerclient.NewClient(),
+	).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Alertmanager")
+		os.Exit(1)
+	}
 	// +kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
@@ -388,21 +399,25 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Start MCP server if enabled
+	// Start MCP servers if enabled
 	if enableMCP {
-		mcpServer := mcp.New(mgr.GetClient(), &operatorConfig.GroupMapping)
+		dnsMcpServer := mcp.NewDNSServer(mgr.GetClient(), &operatorConfig.GroupMapping)
+		alertsMcpServer := mcp.NewAlertsServer(mgr.GetClient())
+
 		switch mcpTransport {
 		case "stdio":
 			go func() {
-				setupLog.Info("starting MCP server", "transport", "stdio")
-				if err := mcpServer.ServeStdio(); err != nil {
-					setupLog.Error(err, "MCP server failed, initiating shutdown")
+				setupLog.Info("starting MCP DNS server", "transport", "stdio")
+				if err := dnsMcpServer.ServeStdio(); err != nil {
+					setupLog.Error(err, "MCP DNS server failed, initiating shutdown")
 					cancel()
 				}
 			}()
 		case "streamable-http":
-			setupLog.Info("mounting MCP server on web server", "path", "/mcp")
-			webServer.MountHandler("/mcp", mcpServer.Handler())
+			setupLog.Info("mounting MCP servers on web server", "dns", []string{"/mcp", "/mcp/dns"}, "alerts", "/mcp/alerts")
+			webServer.MountHandler("/mcp", dnsMcpServer.Handler())
+			webServer.MountHandler("/mcp/dns", dnsMcpServer.Handler())
+			webServer.MountHandler("/mcp/alerts", alertsMcpServer.Handler())
 		default:
 			setupLog.Error(nil, "unknown MCP transport", "transport", mcpTransport)
 			os.Exit(1)

@@ -1,5 +1,5 @@
 import { HelpCircleIcon } from "lucide-react";
-import { NavLink, Outlet } from "react-router";
+import { NavLink, Outlet, useParams } from "react-router";
 
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
@@ -7,11 +7,14 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { usePortals } from "@/features/portal/hooks/usePortals";
 import { cn } from "@/lib/utils";
 import { PortalNav } from "./PortalNav";
+import { PortalSidebar } from "./PortalSidebar";
 import { SrePortalIcon } from "./SrePortalIcon";
 import { ThemeToggle } from "./ThemeToggle";
 
 export function RootLayout() {
   const { portals, isLoading } = usePortals();
+  const { portalName } = useParams<{ portalName?: string }>();
+  const showSidebar = portalName != null;
 
   return (
     <TooltipProvider>
@@ -52,10 +55,13 @@ export function RootLayout() {
           </div>
         </header>
 
-        {/* Main content */}
-        <main className="flex-1">
-          <Outlet />
-        </main>
+        {/* Content area: sidebar + main */}
+        <div className="flex flex-1 min-h-0">
+          {showSidebar && <PortalSidebar />}
+          <main className="flex-1 min-w-0 overflow-auto">
+            <Outlet />
+          </main>
+        </div>
 
         {/* Footer */}
         <footer className="border-t py-4 px-4">

@@ -38,7 +38,7 @@ type PortalResult struct {
 }
 
 // handleListPortals handles the list_portals tool call
-func (s *Server) handleListPortals(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (s *DNSServer) handleListPortals(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	// List all Portal resources
 	var portalList sreportalv1alpha1.PortalList
 	if err := s.client.List(ctx, &portalList); err != nil {

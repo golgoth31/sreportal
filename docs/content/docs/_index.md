@@ -3,7 +3,7 @@ title: Documentation
 breadcrumbs: false
 ---
 
-SRE Portal is a Kubernetes operator that discovers DNS records from your cluster resources and presents them in a unified web dashboard. It integrates with external-dns sources (Services, Ingresses, Istio, DNSEndpoints) and supports manual DNS entries through Custom Resources.
+SRE Portal is a Kubernetes operator that discovers DNS records from your cluster resources and presents them in a unified web dashboard. It integrates with external-dns sources (Services, Ingresses, Istio, DNSEndpoints), supports manual DNS entries and Alertmanager instances linked to portals through Custom Resources, and exposes MCP servers for AI assistant integration.
 
 ## Explore
 

@@ -42,7 +42,7 @@ type FQDNResult struct {
 }
 
 // handleSearchFQDNs handles the search_fqdns tool call
-func (s *Server) handleSearchFQDNs(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (s *DNSServer) handleSearchFQDNs(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	// Extract parameters using GetString helper methods
 	query := request.GetString("query", "")
 	source := request.GetString("source", "")

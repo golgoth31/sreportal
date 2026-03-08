@@ -88,17 +88,17 @@ var _ = Describe("MCP Server", func() {
 		}
 	})
 
-	Describe("Server creation", func() {
+	Describe("DNSServer creation", func() {
 		It("should create server with all tools registered", func() {
 			k8sClient := fake.NewClientBuilder().
 				WithScheme(scheme).
 				Build()
 
-			server := New(k8sClient, groupMapping)
-			Expect(server).NotTo(BeNil())
-			Expect(server.mcpServer).NotTo(BeNil())
-			Expect(server.client).NotTo(BeNil())
-			Expect(server.groupMapping).To(Equal(groupMapping))
+			dnsServer := NewDNSServer(k8sClient, groupMapping)
+			Expect(dnsServer).NotTo(BeNil())
+			Expect(dnsServer.mcpServer).NotTo(BeNil())
+			Expect(dnsServer.client).NotTo(BeNil())
+			Expect(dnsServer.groupMapping).To(Equal(groupMapping))
 		})
 
 		It("should handle nil groupMapping gracefully", func() {
@@ -106,9 +106,9 @@ var _ = Describe("MCP Server", func() {
 				WithScheme(scheme).
 				Build()
 
-			server := New(k8sClient, nil)
-			Expect(server).NotTo(BeNil())
-			Expect(server.groupMapping).To(BeNil())
+			dnsServer := NewDNSServer(k8sClient, nil)
+			Expect(dnsServer).NotTo(BeNil())
+			Expect(dnsServer.groupMapping).To(BeNil())
 		})
 	})
 
@@ -197,7 +197,7 @@ var _ = Describe("MCP Server", func() {
 					WithStatusSubresource(dns1, dns2).
 					Build()
 
-				server := New(k8sClient, groupMapping)
+				server := NewDNSServer(k8sClient, groupMapping)
 				request := newCallToolRequest("search_fqdns", map[string]any{})
 
 				result, err := server.handleSearchFQDNs(ctx, request)
@@ -222,7 +222,7 @@ var _ = Describe("MCP Server", func() {
 					WithStatusSubresource(dns1, dns2).
 					Build()
 
-				server := New(k8sClient, groupMapping)
+				server := NewDNSServer(k8sClient, groupMapping)
 				request := newCallToolRequest("search_fqdns", map[string]any{
 					"query": "api",
 				})
@@ -247,7 +247,7 @@ var _ = Describe("MCP Server", func() {
 					WithStatusSubresource(dns1).
 					Build()
 
-				server := New(k8sClient, groupMapping)
+				server := NewDNSServer(k8sClient, groupMapping)
 				request := newCallToolRequest("search_fqdns", map[string]any{
 					"query": "API",
 				})
@@ -268,7 +268,7 @@ var _ = Describe("MCP Server", func() {
 					WithStatusSubresource(dns1).
 					Build()
 
-				server := New(k8sClient, groupMapping)
+				server := NewDNSServer(k8sClient, groupMapping)
 				request := newCallToolRequest("search_fqdns", map[string]any{
 					"source": "manual",
 				})
@@ -289,7 +289,7 @@ var _ = Describe("MCP Server", func() {
 					WithStatusSubresource(dns1).
 					Build()
 
-				server := New(k8sClient, groupMapping)
+				server := NewDNSServer(k8sClient, groupMapping)
 				request := newCallToolRequest("search_fqdns", map[string]any{
 					"source": "external-dns",
 				})
@@ -313,7 +313,7 @@ var _ = Describe("MCP Server", func() {
 					WithStatusSubresource(dns1).
 					Build()
 
-				server := New(k8sClient, groupMapping)
+				server := NewDNSServer(k8sClient, groupMapping)
 				request := newCallToolRequest("search_fqdns", map[string]any{
 					"group": "WEB",
 				})
@@ -336,7 +336,7 @@ var _ = Describe("MCP Server", func() {
 					WithStatusSubresource(dns1, dns2).
 					Build()
 
-				server := New(k8sClient, groupMapping)
+				server := NewDNSServer(k8sClient, groupMapping)
 				request := newCallToolRequest("search_fqdns", map[string]any{
 					"namespace": "production",
 				})
@@ -358,7 +358,7 @@ var _ = Describe("MCP Server", func() {
 					WithStatusSubresource(dns1, dns2).
 					Build()
 
-				server := New(k8sClient, groupMapping)
+				server := NewDNSServer(k8sClient, groupMapping)
 				request := newCallToolRequest("search_fqdns", map[string]any{
 					"query":  "example",
 					"source": "manual",
@@ -381,7 +381,7 @@ var _ = Describe("MCP Server", func() {
 					WithStatusSubresource(dns1).
 					Build()
 
-				server := New(k8sClient, groupMapping)
+				server := NewDNSServer(k8sClient, groupMapping)
 				request := newCallToolRequest("search_fqdns", map[string]any{
 					"query": "nonexistent",
 				})
@@ -398,7 +398,7 @@ var _ = Describe("MCP Server", func() {
 					WithScheme(scheme).
 					Build()
 
-				server := New(k8sClient, groupMapping)
+				server := NewDNSServer(k8sClient, groupMapping)
 				request := newCallToolRequest("search_fqdns", map[string]any{})
 
 				result, err := server.handleSearchFQDNs(ctx, request)
@@ -424,7 +424,7 @@ var _ = Describe("MCP Server", func() {
 					}).
 					Build()
 
-				server := New(k8sClient, groupMapping)
+				server := NewDNSServer(k8sClient, groupMapping)
 				request := newCallToolRequest("search_fqdns", map[string]any{})
 
 				result, err := server.handleSearchFQDNs(ctx, request)
@@ -464,7 +464,7 @@ var _ = Describe("MCP Server", func() {
 					WithStatusSubresource(dnsWithSync).
 					Build()
 
-				server := New(k8sClient, groupMapping)
+				server := NewDNSServer(k8sClient, groupMapping)
 				request := newCallToolRequest("search_fqdns", map[string]any{})
 
 				result, err := server.handleSearchFQDNs(ctx, request)
@@ -495,7 +495,7 @@ var _ = Describe("MCP Server", func() {
 					WithStatusSubresource(dns1, dns1Copy).
 					Build()
 
-				server := New(k8sClient, groupMapping)
+				server := NewDNSServer(k8sClient, groupMapping)
 				request := newCallToolRequest("search_fqdns", map[string]any{})
 
 				result, err := server.handleSearchFQDNs(ctx, request)
@@ -545,7 +545,7 @@ var _ = Describe("MCP Server", func() {
 					WithStatusSubresource(portal1, portal2).
 					Build()
 
-				server := New(k8sClient, groupMapping)
+				server := NewDNSServer(k8sClient, groupMapping)
 				request := newCallToolRequest("list_portals", map[string]any{})
 
 				result, err := server.handleListPortals(ctx, request)
@@ -584,7 +584,7 @@ var _ = Describe("MCP Server", func() {
 					WithStatusSubresource(portal).
 					Build()
 
-				server := New(k8sClient, groupMapping)
+				server := NewDNSServer(k8sClient, groupMapping)
 				request := newCallToolRequest("list_portals", map[string]any{})
 
 				result, err := server.handleListPortals(ctx, request)
@@ -601,7 +601,7 @@ var _ = Describe("MCP Server", func() {
 					WithScheme(scheme).
 					Build()
 
-				server := New(k8sClient, groupMapping)
+				server := NewDNSServer(k8sClient, groupMapping)
 				request := newCallToolRequest("list_portals", map[string]any{})
 
 				result, err := server.handleListPortals(ctx, request)
@@ -624,7 +624,7 @@ var _ = Describe("MCP Server", func() {
 					}).
 					Build()
 
-				server := New(k8sClient, groupMapping)
+				server := NewDNSServer(k8sClient, groupMapping)
 				request := newCallToolRequest("list_portals", map[string]any{})
 
 				result, err := server.handleListPortals(ctx, request)
@@ -683,7 +683,7 @@ var _ = Describe("MCP Server", func() {
 					WithStatusSubresource(dns).
 					Build()
 
-				server := New(k8sClient, groupMapping)
+				server := NewDNSServer(k8sClient, groupMapping)
 				request := newCallToolRequest("get_fqdn_details", map[string]any{
 					"fqdn": "api.example.com",
 				})
@@ -714,7 +714,7 @@ var _ = Describe("MCP Server", func() {
 					WithStatusSubresource(dns).
 					Build()
 
-				server := New(k8sClient, groupMapping)
+				server := NewDNSServer(k8sClient, groupMapping)
 				request := newCallToolRequest("get_fqdn_details", map[string]any{
 					"fqdn": "API.EXAMPLE.COM",
 				})
@@ -734,7 +734,7 @@ var _ = Describe("MCP Server", func() {
 					WithStatusSubresource(dns).
 					Build()
 
-				server := New(k8sClient, groupMapping)
+				server := NewDNSServer(k8sClient, groupMapping)
 				request := newCallToolRequest("get_fqdn_details", map[string]any{
 					"fqdn": "api.example.com.",
 				})
@@ -759,7 +759,7 @@ var _ = Describe("MCP Server", func() {
 					WithStatusSubresource(dnsWithSync).
 					Build()
 
-				server := New(k8sClient, groupMapping)
+				server := NewDNSServer(k8sClient, groupMapping)
 				request := newCallToolRequest("get_fqdn_details", map[string]any{
 					"fqdn": "api.example.com",
 				})
@@ -786,7 +786,7 @@ var _ = Describe("MCP Server", func() {
 					WithStatusSubresource(dns).
 					Build()
 
-				server := New(k8sClient, groupMapping)
+				server := NewDNSServer(k8sClient, groupMapping)
 				request := newCallToolRequest("get_fqdn_details", map[string]any{
 					"fqdn": "nonexistent.example.com",
 				})
@@ -806,7 +806,7 @@ var _ = Describe("MCP Server", func() {
 					WithScheme(scheme).
 					Build()
 
-				server := New(k8sClient, groupMapping)
+				server := NewDNSServer(k8sClient, groupMapping)
 				request := newCallToolRequest("get_fqdn_details", map[string]any{})
 
 				result, err := server.handleGetFQDNDetails(ctx, request)
@@ -833,7 +833,7 @@ var _ = Describe("MCP Server", func() {
 					}).
 					Build()
 
-				server := New(k8sClient, groupMapping)
+				server := NewDNSServer(k8sClient, groupMapping)
 				request := newCallToolRequest("get_fqdn_details", map[string]any{
 					"fqdn": "api.example.com",
 				})
@@ -881,7 +881,7 @@ var _ = Describe("MCP Server", func() {
 				WithStatusSubresource(dns).
 				Build()
 
-			server := New(k8sClient, groupMapping)
+			server := NewDNSServer(k8sClient, groupMapping)
 			request := newCallToolRequest("search_fqdns", map[string]any{})
 
 			result, err := server.handleSearchFQDNs(ctx, request)
@@ -922,7 +922,7 @@ var _ = Describe("MCP Server", func() {
 				WithStatusSubresource(portal).
 				Build()
 
-			server := New(k8sClient, groupMapping)
+			server := NewDNSServer(k8sClient, groupMapping)
 			request := newCallToolRequest("list_portals", map[string]any{})
 
 			result, err := server.handleListPortals(ctx, request)
@@ -974,7 +974,7 @@ var _ = Describe("MCP Server", func() {
 				WithStatusSubresource(dns).
 				Build()
 
-			server := New(k8sClient, groupMapping)
+			server := NewDNSServer(k8sClient, groupMapping)
 			request := newCallToolRequest("get_fqdn_details", map[string]any{
 				"fqdn": "api.example.com",
 			})
@@ -1030,7 +1030,7 @@ var _ = Describe("MCP Server", func() {
 					WithStatusSubresource(dns).
 					Build()
 
-				server := New(k8sClient, groupMapping)
+				server := NewDNSServer(k8sClient, groupMapping)
 				request := newCallToolRequest("search_fqdns", map[string]any{})
 
 				result, err := server.handleSearchFQDNs(ctx, request)
@@ -1069,7 +1069,7 @@ var _ = Describe("MCP Server", func() {
 					WithStatusSubresource(dnsRecord).
 					Build()
 
-				server := New(k8sClient, groupMapping)
+				server := NewDNSServer(k8sClient, groupMapping)
 				request := newCallToolRequest("search_fqdns", map[string]any{})
 
 				result, err := server.handleSearchFQDNs(ctx, request)
@@ -1111,7 +1111,7 @@ var _ = Describe("MCP Server", func() {
 					WithStatusSubresource(dnsRecord).
 					Build()
 
-				server := New(k8sClient, groupMapping)
+				server := NewDNSServer(k8sClient, groupMapping)
 				request := newCallToolRequest("get_fqdn_details", map[string]any{
 					"fqdn": "ingress.example.com",
 				})
@@ -1139,7 +1139,7 @@ var _ = Describe("MCP Server", func() {
 					}).
 					Build()
 
-				server := New(k8sClient, groupMapping)
+				server := NewDNSServer(k8sClient, groupMapping)
 				request := newCallToolRequest("get_fqdn_details", map[string]any{
 					"fqdn": "test.example.com",
 				})

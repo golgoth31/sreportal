@@ -28,3 +28,11 @@ resources:
   # - dns_admin_role.yaml
   # - dns_editor_role.yaml
   # - dns_viewer_role.yaml
+  # For each CRD, "Admin", "Editor" and "Viewer" roles are scaffolded by
+  # default, aiding admins in cluster management. Those roles are
+  # not used by the sreportal itself. You can comment the following lines
+  # if you do not want those helpers be installed with your Project.
+  # - alertmanager_admin_role.yaml
+  # - alertmanager_editor_role.yaml
+  # - alertmanager_viewer_role.yaml
+

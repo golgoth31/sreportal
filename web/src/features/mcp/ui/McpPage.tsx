@@ -20,7 +20,7 @@ interface McpTool {
   filters: string[];
 }
 
-const MCP_TOOLS: McpTool[] = [
+const MCP_DNS_TOOLS: McpTool[] = [
   {
     name: "search_fqdns",
     description:
@@ -38,6 +38,15 @@ const MCP_TOOLS: McpTool[] = [
     description:
       "Get detailed information about a specific FQDN. Returns the full DNS record details including targets, record type, and metadata.",
     filters: ["fqdn"],
+  },
+];
+
+const MCP_ALERTS_TOOLS: McpTool[] = [
+  {
+    name: "list_alerts",
+    description:
+      "List active alerts from Alertmanager resources. Returns Alertmanager resources with their active alerts and labels.",
+    filters: ["portal", "namespace", "search", "state"],
   },
 ];
 
@@ -88,15 +97,28 @@ function CopyableCode({
   );
 }
 
+const MCP_DNS_ENDPOINT = "/mcp/dns";
+const MCP_ALERTS_ENDPOINT = "/mcp/alerts";
+
 export function McpPage() {
-  const mcpEndpoint = `${window.location.origin}/mcp`;
+  const baseUrl = window.location.origin;
+  const mcpDnsUrl = `${baseUrl}${MCP_DNS_ENDPOINT}`;
+  const mcpAlertsUrl = `${baseUrl}${MCP_ALERTS_ENDPOINT}`;
 
   const claudeDesktopConfig = JSON.stringify(
-    { mcpServers: { sreportal: { url: mcpEndpoint } } },
+    {
+      mcpServers: {
+        "sreportal-dns": { url: mcpDnsUrl },
+        "sreportal-alerts": { url: mcpAlertsUrl },
+      },
+    },
     null,
     2
   );
-  const claudeCodeCommand = `claude mcp add sreportal --transport http ${mcpEndpoint}`;
+  const claudeCodeCommands = [
+    `claude mcp add sreportal-dns --transport http ${mcpDnsUrl}`,
+    `claude mcp add sreportal-alerts --transport http ${mcpAlertsUrl}`,
+  ].join("\n");
 
   return (
     <div className="max-w-3xl mx-auto py-8 px-4 space-y-8">
@@ -116,9 +138,9 @@ export function McpPage() {
 
       <Separator />
 
-      {/* Tools table */}
+      {/* Tools: DNS server */}
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold">Available Tools</h2>
+        <h2 className="text-lg font-semibold">DNS &amp; Portals — /mcp/dns</h2>
         <Table>
           <TableHeader>
             <TableRow>
@@ -127,7 +149,49 @@ export function McpPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {MCP_TOOLS.map((tool) => (
+            {MCP_DNS_TOOLS.map((tool) => (
+              <TableRow key={tool.name}>
+                <TableCell className="align-top">
+                  <code className="font-mono text-xs font-semibold text-primary">
+                    {tool.name}
+                  </code>
+                </TableCell>
+                <TableCell className="space-y-2">
+                  <p className="text-muted-foreground text-sm leading-relaxed">
+                    {tool.description}
+                  </p>
+                  {tool.filters.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {tool.filters.map((f) => (
+                        <Badge
+                          key={f}
+                          variant="outline"
+                          className="font-mono text-xs"
+                        >
+                          {f}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </section>
+
+      {/* Tools: Alerts server */}
+      <section className="space-y-4">
+        <h2 className="text-lg font-semibold">Alerts — /mcp/alerts</h2>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-48">Tool</TableHead>
+              <TableHead>Description &amp; Filters</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {MCP_ALERTS_TOOLS.map((tool) => (
               <TableRow key={tool.name}>
                 <TableCell className="align-top">
                   <code className="font-mono text-xs font-semibold text-primary">
@@ -181,12 +245,12 @@ export function McpPage() {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Claude Code</h2>
         <p className="text-muted-foreground text-sm">
-          Run this command to register the MCP server:
+          Run these commands to register both MCP servers:
         </p>
         <CopyableCode
           id="claude-code-command"
-          value={claudeCodeCommand}
-          label="Claude Code command"
+          value={claudeCodeCommands}
+          label="Claude Code commands"
         />
       </section>
 
@@ -194,27 +258,40 @@ export function McpPage() {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Cursor</h2>
         <p className="text-muted-foreground text-sm">
-          In Cursor settings, add an MCP server with type{" "}
+          In Cursor settings, add MCP servers with type{" "}
           <code className="font-mono text-xs bg-muted border rounded px-1 py-0.5">
             http
           </code>{" "}
-          and URL:
+          and these URLs:
         </p>
-        <CopyableCode
-          id="cursor-endpoint"
-          value={mcpEndpoint}
-          label="MCP endpoint URL"
-        />
+        <div className="space-y-2">
+          <CopyableCode
+            id="cursor-endpoint-dns"
+            value={mcpDnsUrl}
+            label="MCP DNS endpoint URL"
+          />
+          <CopyableCode
+            id="cursor-endpoint-alerts"
+            value={mcpAlertsUrl}
+            label="MCP Alerts endpoint URL"
+          />
+        </div>
       </section>
 
       <Separator />
 
-      {/* MCP endpoint */}
+      {/* MCP endpoints */}
       <section className="space-y-2">
         <p className="text-muted-foreground text-xs">
-          MCP endpoint:{" "}
+          MCP DNS:{" "}
           <code className="font-mono text-xs bg-muted border rounded px-1 py-0.5">
-            {mcpEndpoint}
+            {mcpDnsUrl}
+          </code>
+        </p>
+        <p className="text-muted-foreground text-xs">
+          MCP Alerts:{" "}
+          <code className="font-mono text-xs bg-muted border rounded px-1 py-0.5">
+            {mcpAlertsUrl}
           </code>
         </p>
       </section>

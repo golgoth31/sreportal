@@ -23,9 +23,17 @@ Then open [http://localhost:8082](http://localhost:8082) in your browser.
 |-------|-------------|
 | `/` | Redirects to `/main/links` |
 | `/:portalName/links` | Displays FQDNs for the specified portal |
-| `/help` | MCP setup instructions and available tools |
+| `/:portalName/alerts` | Displays Alertmanager resources and active alerts for the portal |
+| `/help` | MCP setup instructions (DNS and Alerts endpoints) and available tools |
 
-The root URL redirects to the `main` portal's links page. Each portal defined in the cluster gets its own route.
+The root URL redirects to the `main` portal's links page. Each portal has its own Links and (when it has Alertmanager resources) Alerts routes.
+
+## Sidebar
+
+When viewing a portal, a left sidebar shows:
+
+- **Links** — navigates to `/:portalName/links`
+- **Alerts** — shown only if the portal has at least one Alertmanager resource; navigates to `/:portalName/alerts`
 
 ## Features
 
@@ -46,9 +54,13 @@ The links page provides:
 - **Source filter**: show only `manual`, `external-dns`, or `remote` entries
 - **Namespace filter**: filter by originating namespace
 
+### Alerts Page
+
+For portals that have Alertmanager resources, the Alerts page lists each Alertmanager CR with its active alerts. You can filter by search text and alert state (e.g. active, suppressed). Each resource is shown in a collapsible card with labels, annotations, and timestamps.
+
 ### Portal Navigation
 
-When multiple portals exist, the navigation bar allows switching between portals. Each portal shows only the FQDNs routed to it.
+When multiple portals exist, the navigation bar allows switching between portals. Each portal shows only the FQDNs (and alerts) routed to it.
 
 ### Theme Toggle
 
@@ -57,7 +69,8 @@ The toolbar includes a theme toggle button that cycles between light, dark, and 
 ### Help / MCP Page
 
 The Help page (`/help`) provides:
-- A table of available MCP tools (`search_fqdns`, `list_portals`, `get_fqdn_details`) with their descriptions and filters
+- Two MCP endpoints: DNS/portals (`/mcp` or `/mcp/dns`) and Alerts (`/mcp/alerts`), each with its tools table
+- Tools: `search_fqdns`, `list_portals`, `get_fqdn_details` (DNS); `list_alerts` (Alerts)
 - Setup instructions for Claude Desktop, Claude Code, and Cursor with copy-to-clipboard config snippets
 - Example queries to try with an AI assistant
 

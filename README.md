@@ -7,11 +7,12 @@ A Kubernetes operator that discovers DNS records from your cluster resources and
 - **DNS Discovery** -- Automatically discover DNS records from Services, Ingresses, Istio Gateways, and external-dns endpoints across all namespaces
 - **Portal Routing** -- Organize endpoints into multiple portals using simple Kubernetes annotations (`sreportal.io/portal`)
 - **Remote Portals** -- Federate DNS data across clusters by connecting portals to remote SRE Portal instances
-- **Web Dashboard** -- React-powered SPA with search, filters, grouping, and light/dark theme served directly by the operator
-- **MCP Server** -- Built-in [Model Context Protocol](https://modelcontextprotocol.io/) server for AI assistant integration (Claude Desktop, Claude Code, Cursor)
-- **Connect API** -- gRPC-compatible [Connect protocol](https://connectrpc.com) API for listing and streaming FQDN updates
+- **Alertmanager Integration** -- Link Prometheus Alertmanager instances to portals; display active alerts in the dashboard
+- **Web Dashboard** -- React-powered SPA with Links (FQDNs), Alerts (per-portal), sidebar navigation, and light/dark theme
+- **MCP Servers** -- Built-in [Model Context Protocol](https://modelcontextprotocol.io/) for AI assistants: DNS/portals at `/mcp` and `/mcp/dns`, alerts at `/mcp/alerts`
+- **Connect API** -- gRPC-compatible [Connect protocol](https://connectrpc.com) API for FQDNs, portals, and alerts
 - **Flexible Grouping** -- Group FQDNs by annotation, label, namespace, or custom rules
-- **Single Container** -- Controller, gRPC API, web UI, and MCP server all run in one container
+- **Single Container** -- Controller, gRPC API, web UI, and MCP servers all run in one container
 
 ## Architecture
 
@@ -26,18 +27,19 @@ A Kubernetes operator that discovers DNS records from your cluster resources and
 │         │                 │               │          │
 │         └─────────┬───────┴───────┬───────┘          │
 │                   │               │                  │
-│            K8s API Server    MCP Server               │
-│                              (/mcp endpoint)          │
+│            K8s API Server    MCP (/mcp, /mcp/dns,     │
+│                              /mcp/alerts)            │
 └──────────────────────────────────────────────────────┘
 ```
 
-SRE Portal defines three CRDs:
+SRE Portal defines four CRDs:
 
 | CRD | Description |
 |-----|-------------|
 | **Portal** | Named web dashboard view with optional remote federation |
 | **DNS** | Manual DNS entry groups linked to a portal |
 | **DNSRecord** | Auto-discovered endpoints (managed by the operator) |
+| **Alertmanager** | Alertmanager instance linked to a portal; operator fetches active alerts and exposes them in the UI and API |
 
 ## Quick Start
 
@@ -83,11 +85,21 @@ spec:
 
 ### Connect an AI Assistant (MCP)
 
-SRE Portal exposes an MCP server at `/mcp` for AI-powered DNS lookups.
+SRE Portal exposes two MCP servers (Streamable HTTP):
 
-**Claude Code:**
+| Endpoint | Tools |
+|----------|--------|
+| `/mcp` or `/mcp/dns` | `search_fqdns`, `list_portals`, `get_fqdn_details` |
+| `/mcp/alerts` | `list_alerts` |
+
+**Claude Code (DNS/portals):**
 ```bash
 claude mcp add sreportal --transport http http://localhost:8082/mcp
+```
+
+**Claude Code (alerts):**
+```bash
+claude mcp add sreportal-alerts --transport http http://localhost:8082/mcp/alerts
 ```
 
 **Claude Desktop** (`claude_desktop_config.json`):
@@ -97,12 +109,14 @@ claude mcp add sreportal --transport http http://localhost:8082/mcp
     "sreportal": {
       "transport": "http",
       "url": "http://localhost:8082/mcp"
+    },
+    "sreportal-alerts": {
+      "transport": "http",
+      "url": "http://localhost:8082/mcp/alerts"
     }
   }
 }
 ```
-
-Available MCP tools: `search_fqdns`, `list_portals`, `get_fqdn_details`.
 
 ## Documentation
 

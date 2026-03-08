@@ -83,7 +83,7 @@ export function PortalNav({ portals, isLoading }: PortalNavProps) {
   }
 
   return (
-    <nav className="flex items-center gap-1" aria-label="Portal navigation">
+    <nav className="flex items-center gap-1 flex-wrap" aria-label="Portal navigation">
       {mainPortal && (
         <NavLink to={`/${mainPortal.subPath || mainPortal.name}/links`}>
           {({ isActive }) => (
