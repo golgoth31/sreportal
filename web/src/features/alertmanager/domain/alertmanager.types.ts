@@ -3,11 +3,13 @@
  * No React or infrastructure dependencies.
  */
 
+export type AlertState = "active" | "suppressed" | "unprocessed";
+
 export interface Alert {
   readonly fingerprint: string;
   readonly labels: Readonly<Record<string, string>>;
   readonly annotations: Readonly<Record<string, string>>;
-  readonly state: string;
+  readonly state: AlertState;
   readonly startsAt: string;
   readonly endsAt: string | undefined;
   readonly updatedAt: string;

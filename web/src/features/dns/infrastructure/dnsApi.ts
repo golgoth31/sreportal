@@ -8,9 +8,10 @@ import {
   ListFQDNsRequestSchema,
   type OriginResourceRef,
 } from "@/gen/sreportal/v1/dns_pb";
-import type { Fqdn, OriginRef } from "../domain/dns.types";
+import type { Fqdn, OriginRef, SyncStatus } from "../domain/dns.types";
 
 const transport = createConnectTransport({ baseUrl: window.location.origin });
+const client = createClient(DNSService, transport);
 
 function toDomainOriginRef(ref: OriginResourceRef): OriginRef {
   return { kind: ref.kind, namespace: ref.namespace, name: ref.name };
@@ -27,12 +28,11 @@ function toDomainFqdn(f: FQDN): Fqdn {
     dnsResourceName: f.dnsResourceName,
     dnsResourceNamespace: f.dnsResourceNamespace,
     originRef: f.originRef ? toDomainOriginRef(f.originRef) : undefined,
-    syncStatus: f.syncStatus,
+    syncStatus: f.syncStatus as SyncStatus,
   };
 }
 
 export async function listFqdns(portal: string): Promise<Fqdn[]> {
-  const client = createClient(DNSService, transport);
   const request = create(ListFQDNsRequestSchema, {
     portal,
     namespace: "",

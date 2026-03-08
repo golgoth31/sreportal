@@ -1,7 +1,6 @@
 import { HelpCircleIcon } from "lucide-react";
 import { NavLink, Outlet, useParams } from "react-router";
 
-import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { usePortals } from "@/features/portal/hooks/usePortals";
@@ -35,20 +34,17 @@ export function RootLayout() {
 
             {/* Right actions */}
             <div className="flex items-center gap-1 shrink-0">
-              <NavLink to="/help">
-                {({ isActive }) => (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn(isActive && "bg-accent")}
-                    aria-label="Help and MCP integration"
-                    asChild
-                  >
-                    <span>
-                      <HelpCircleIcon className="size-4" />
-                    </span>
-                  </Button>
-                )}
+              <NavLink
+                to="/help"
+                className={({ isActive }) =>
+                  cn(
+                    "inline-flex items-center justify-center rounded-md size-9 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+                    isActive && "bg-accent"
+                  )
+                }
+                aria-label="Help and MCP integration"
+              >
+                <HelpCircleIcon className="size-4" />
               </NavLink>
               <ThemeToggle />
             </div>

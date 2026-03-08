@@ -20,7 +20,7 @@ function ErrorPage() {
   const error = useRouteError();
   const message = error instanceof Error ? error.message : String(error);
   return (
-    <div className="max-w-screen-xl mx-auto px-4 py-16 flex flex-col items-center gap-4 text-center">
+    <div role="alert" className="max-w-screen-xl mx-auto px-4 py-16 flex flex-col items-center gap-4 text-center">
       <AlertCircleIcon className="size-10 text-destructive" />
       <h1 className="text-xl font-semibold">Something went wrong</h1>
       <p className="text-muted-foreground text-sm">{message}</p>

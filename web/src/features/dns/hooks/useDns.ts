@@ -2,7 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 
 import { listFqdns } from "../infrastructure/dnsApi";
-import type { FqdnGroup } from "../domain/dns.types";
+import type { Fqdn, FqdnGroup } from "../domain/dns.types";
+
+const EMPTY_FQDNS: Fqdn[] = [];
 
 export function useDns(portal: string) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -15,7 +17,7 @@ export function useDns(portal: string) {
     refetchInterval: 5_000,
   });
 
-  const fqdns = query.data ?? [];
+  const fqdns = query.data ?? EMPTY_FQDNS;
 
   const filtered = useMemo(() => {
     const lowerSearch = searchTerm.toLowerCase();

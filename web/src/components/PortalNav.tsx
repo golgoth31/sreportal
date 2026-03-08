@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { NavLink, useNavigate, useParams } from "react-router";
 
 import { Button } from "@/components/ui/button";
@@ -66,12 +67,15 @@ export function PortalNav({ portals, isLoading }: PortalNavProps) {
   const activeRemotePortalName =
     remotePortals.find((p) => (p.subPath || p.name) === portalName)?.name ?? "";
 
-  function handlePortalSelect(name: string) {
-    const portal = portals.find((p) => p.name === name);
-    if (portal) {
-      void navigate(`/${portal.subPath || portal.name}/links`);
-    }
-  }
+  const handlePortalSelect = useCallback(
+    (name: string) => {
+      const portal = portals.find((p) => p.name === name);
+      if (portal) {
+        void navigate(`/${portal.subPath || portal.name}/links`);
+      }
+    },
+    [portals, navigate]
+  );
 
   if (isLoading) {
     return (

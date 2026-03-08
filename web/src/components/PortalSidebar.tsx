@@ -39,7 +39,7 @@ export function PortalSidebar() {
             )
           }
         >
-          <LinkIcon className="size-4 shrink-0" aria-hidden />
+          <LinkIcon className="size-4 shrink-0" aria-hidden="true" />
           <span>DNS</span>
         </NavLink>
         {showAlerts && (
@@ -54,7 +54,7 @@ export function PortalSidebar() {
               )
             }
           >
-            <AlertTriangleIcon className="size-4 shrink-0" aria-hidden />
+            <AlertTriangleIcon className="size-4 shrink-0" aria-hidden="true" />
             <span>Alerts</span>
           </NavLink>
         )}

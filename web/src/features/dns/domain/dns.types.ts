@@ -4,6 +4,8 @@ export interface OriginRef {
   readonly name: string;
 }
 
+export type SyncStatus = "sync" | "notavailable" | "notsync" | "";
+
 export interface Fqdn {
   readonly name: string;
   readonly source: string;
@@ -14,17 +16,16 @@ export interface Fqdn {
   readonly dnsResourceName: string;
   readonly dnsResourceNamespace: string;
   readonly originRef?: OriginRef;
-  /** "sync" | "notavailable" | "notsync" | "" (empty = not tracked) */
-  readonly syncStatus: string;
+  readonly syncStatus: SyncStatus;
 }
 
 /** Returns true only when DNS resolution is confirmed in sync. */
-export function isSynced(syncStatus: string): boolean {
+export function isSynced(syncStatus: SyncStatus): boolean {
   return syncStatus === "sync";
 }
 
 /** Returns true when a sync status is available to display. */
-export function hasSyncStatus(syncStatus: string): boolean {
+export function hasSyncStatus(syncStatus: SyncStatus): boolean {
   return syncStatus !== "";
 }
 

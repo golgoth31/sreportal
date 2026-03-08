@@ -8,9 +8,10 @@ import {
   type Alert as ProtoAlert,
   type AlertmanagerResource as ProtoResource,
 } from "@/gen/sreportal/v1/alertmanager_pb";
-import type { Alert, AlertmanagerResource } from "../domain/alertmanager.types";
+import type { Alert, AlertmanagerResource, AlertState } from "../domain/alertmanager.types";
 
 const transport = createConnectTransport({ baseUrl: window.location.origin });
+const client = createClient(AlertmanagerService, transport);
 
 function timestampToIso(
   ts: { seconds?: bigint; nanos?: number } | undefined
@@ -25,7 +26,7 @@ function toDomainAlert(a: ProtoAlert): Alert {
     fingerprint: a.fingerprint,
     labels: { ...a.labels },
     annotations: { ...(a.annotations ?? {}) },
-    state: a.state,
+    state: a.state as AlertState,
     startsAt: timestampToIso(a.startsAt),
     endsAt: a.endsAt ? timestampToIso(a.endsAt) : undefined,
     updatedAt: timestampToIso(a.updatedAt),
@@ -53,7 +54,6 @@ export interface ListAlertsParams {
 }
 
 export async function listAlerts(params: ListAlertsParams = {}): Promise<AlertmanagerResource[]> {
-  const client = createClient(AlertmanagerService, transport);
   const request = create(ListAlertsRequestSchema, {
     portal: params.portal ?? "",
     namespace: params.namespace ?? "",

@@ -10,6 +10,7 @@ import {
 import type { Portal } from "../domain/portal.types";
 
 const transport = createConnectTransport({ baseUrl: window.location.origin });
+const client = createClient(PortalService, transport);
 
 function toDomainPortal(p: ProtoPortal): Portal {
   return {
@@ -33,7 +34,6 @@ function toDomainPortal(p: ProtoPortal): Portal {
 }
 
 export async function listPortals(): Promise<Portal[]> {
-  const client = createClient(PortalService, transport);
   const request = create(ListPortalsRequestSchema, { namespace: "" });
   const response = await client.listPortals(request);
   return response.portals.map(toDomainPortal);
