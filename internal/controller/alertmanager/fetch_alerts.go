@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/go-logr/logr"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
@@ -32,30 +33,58 @@ const (
 	DataKeyAlerts = "alerts"
 )
 
-// FetchAlertsHandler retrieves active alerts from the Alertmanager API
-// using the local URL defined in the resource spec.
+// FetchAlertsHandler retrieves active alerts from either the local Alertmanager API
+// or a remote SRE Portal, depending on the IsRemote flag on the resource spec.
 type FetchAlertsHandler struct {
-	fetcher domainalertmanager.Fetcher
+	localFetcher  domainalertmanager.Fetcher
+	remoteFetcher domainalertmanager.Fetcher
 }
 
 // NewFetchAlertsHandler creates a new FetchAlertsHandler.
-func NewFetchAlertsHandler(f domainalertmanager.Fetcher) *FetchAlertsHandler {
-	return &FetchAlertsHandler{fetcher: f}
+func NewFetchAlertsHandler(localFetcher domainalertmanager.Fetcher, remoteFetcher domainalertmanager.Fetcher) *FetchAlertsHandler {
+	return &FetchAlertsHandler{
+		localFetcher:  localFetcher,
+		remoteFetcher: remoteFetcher,
+	}
 }
 
 // Handle implements reconciler.Handler.
 func (h *FetchAlertsHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager]) error {
 	log := logf.FromContext(ctx).WithName("fetch-alerts")
 
-	localURL := rc.Resource.Spec.URL.Local
-	log.V(1).Info("fetching active alerts", "url", localURL)
+	if rc.Resource.Spec.IsRemote {
+		return h.handleRemote(ctx, rc, log)
+	}
 
-	alerts, err := h.fetcher.GetActiveAlerts(ctx, localURL)
+	return h.handleLocal(ctx, rc, log)
+}
+
+func (h *FetchAlertsHandler) handleLocal(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager], log logr.Logger) error {
+	localURL := rc.Resource.Spec.URL.Local
+	log.V(1).Info("fetching active alerts from local Alertmanager", "url", localURL)
+
+	alerts, err := h.localFetcher.GetActiveAlerts(ctx, localURL)
 	if err != nil {
 		return fmt.Errorf("fetch alerts from %s: %w", localURL, err)
 	}
 
 	log.V(1).Info("fetched alerts", "count", len(alerts))
+	rc.Data[DataKeyAlerts] = alerts
+
+	return nil
+}
+
+func (h *FetchAlertsHandler) handleRemote(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager], log logr.Logger) error {
+	// For remote portals, URL.Local contains the combined "baseURL|portalName" string
+	remoteURL := rc.Resource.Spec.URL.Local
+	log.V(1).Info("fetching active alerts from remote portal", "url", remoteURL)
+
+	alerts, err := h.remoteFetcher.GetActiveAlerts(ctx, remoteURL)
+	if err != nil {
+		return fmt.Errorf("fetch remote alerts from %s: %w", remoteURL, err)
+	}
+
+	log.V(1).Info("fetched remote alerts", "count", len(alerts))
 	rc.Data[DataKeyAlerts] = alerts
 
 	return nil

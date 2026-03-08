@@ -306,6 +306,27 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 		})
 	}
 
+	// Create or update Alertmanager CR for remote portal so the alertmanager
+	// controller can fetch alerts from the remote portal's API.
+	if err := r.reconcileRemoteAlertmanager(ctx, portal); err != nil {
+		log.Error(err, "failed to reconcile Alertmanager for remote portal")
+		setPortalCondition(&portal.Status.Conditions, metav1.Condition{
+			Type:               "AlertsSynced",
+			Status:             metav1.ConditionFalse,
+			Reason:             "AlertsSyncFailed",
+			Message:            fmt.Sprintf("Failed to create Alertmanager resource for remote portal: %v", err),
+			LastTransitionTime: metav1.Now(),
+		})
+	} else {
+		setPortalCondition(&portal.Status.Conditions, metav1.Condition{
+			Type:               "AlertsSynced",
+			Status:             metav1.ConditionTrue,
+			Reason:             "AlertsSyncSuccess",
+			Message:            "Alertmanager resource synced for remote portal",
+			LastTransitionTime: metav1.Now(),
+		})
+	}
+
 	readyCondition := metav1.Condition{
 		Type:               "Ready",
 		Status:             metav1.ConditionTrue,
@@ -357,6 +378,72 @@ func setPortalCondition(conditions *[]metav1.Condition, newCondition metav1.Cond
 	}
 
 	*conditions = append(*conditions, newCondition)
+}
+
+// remoteAlertmanagerName returns the name of the Alertmanager CR for a remote portal.
+func remoteAlertmanagerName(portalName string) string {
+	return fmt.Sprintf("remote-%s", portalName)
+}
+
+// reconcileRemoteAlertmanager creates or updates an Alertmanager CR for a remote portal.
+// The Alertmanager CR is configured with isRemote=true so the alertmanager controller
+// fetches alerts from the remote portal's Connect API instead of a local Alertmanager instance.
+func (r *PortalReconciler) reconcileRemoteAlertmanager(ctx context.Context, portal *sreportalv1alpha1.Portal) error {
+	log := logf.FromContext(ctx)
+
+	amName := remoteAlertmanagerName(portal.Name)
+	am := &sreportalv1alpha1.Alertmanager{}
+
+	// URL.Local stores the combined "baseURL|portalName" used by the RemoteFetcher.
+	remotePortalName := portal.Spec.Remote.Portal
+	localURL := portal.Spec.Remote.URL + "|" + remotePortalName
+
+	err := r.Get(ctx, types.NamespacedName{Name: amName, Namespace: portal.Namespace}, am)
+	if err != nil && !errors.IsNotFound(err) {
+		return fmt.Errorf("get Alertmanager: %w", err)
+	}
+
+	isNew := errors.IsNotFound(err)
+	if isNew {
+		am = &sreportalv1alpha1.Alertmanager{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      amName,
+				Namespace: portal.Namespace,
+			},
+			Spec: sreportalv1alpha1.AlertmanagerSpec{
+				PortalRef: portal.Name,
+				URL: sreportalv1alpha1.AlertmanagerURL{
+					Local:  localURL,
+					Remote: portal.Spec.Remote.URL,
+				},
+				IsRemote: true,
+			},
+		}
+	}
+
+	// Set owner reference so the Alertmanager is deleted when the Portal is deleted
+	if err := controllerutil.SetControllerReference(portal, am, r.Scheme); err != nil {
+		return fmt.Errorf("set controller reference: %w", err)
+	}
+
+	if isNew {
+		if err := r.Create(ctx, am); err != nil {
+			return fmt.Errorf("create Alertmanager: %w", err)
+		}
+		log.Info("created Alertmanager CR for remote portal", "alertmanager", amName, "portal", portal.Name)
+	} else {
+		// Update spec fields that may have changed
+		am.Spec.PortalRef = portal.Name
+		am.Spec.URL.Local = localURL
+		am.Spec.URL.Remote = portal.Spec.Remote.URL
+		am.Spec.IsRemote = true
+		if err := r.Update(ctx, am); err != nil {
+			return fmt.Errorf("update Alertmanager: %w", err)
+		}
+		log.Info("updated Alertmanager CR for remote portal", "alertmanager", amName, "portal", portal.Name)
+	}
+
+	return nil
 }
 
 // remoteDNSName returns the name of the DNS CR for a remote portal.

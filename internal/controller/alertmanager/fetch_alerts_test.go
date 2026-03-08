@@ -40,7 +40,7 @@ func (f *fakeFetcher) GetActiveAlerts(_ context.Context, _ string) ([]domainaler
 }
 
 var _ = Describe("FetchAlertsHandler", func() {
-	newRC := func() *reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager] {
+	newRC := func(isRemote bool) *reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager] {
 		return &reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager]{
 			Resource: &sreportalv1alpha1.Alertmanager{
 				ObjectMeta: metav1.ObjectMeta{Name: "test-am", Namespace: "default"},
@@ -49,20 +49,23 @@ var _ = Describe("FetchAlertsHandler", func() {
 					URL: sreportalv1alpha1.AlertmanagerURL{
 						Local: "http://alertmanager:9093",
 					},
+					IsRemote: isRemote,
 				},
 			},
 			Data: make(map[string]any),
 		}
 	}
 
-	Context("when fetcher returns alerts", func() {
+	Context("when fetcher returns alerts (local)", func() {
 		It("should store alerts in context data", func() {
 			alerts := []domainalertmanager.Alert{
 				{Fingerprint: "aaa", Labels: map[string]string{"alertname": "HighCPU"}, State: domainalertmanager.StateActive},
 				{Fingerprint: "bbb", Labels: map[string]string{"alertname": "DiskFull"}, State: domainalertmanager.StateActive},
 			}
-			handler := alertmanagerctrl.NewFetchAlertsHandler(&fakeFetcher{alerts: alerts})
-			rc := newRC()
+			localFetcher := &fakeFetcher{alerts: alerts}
+			remoteFetcher := &fakeFetcher{}
+			handler := alertmanagerctrl.NewFetchAlertsHandler(localFetcher, remoteFetcher)
+			rc := newRC(false)
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
@@ -76,8 +79,10 @@ var _ = Describe("FetchAlertsHandler", func() {
 
 	Context("when fetcher returns empty list", func() {
 		It("should store empty slice in context data", func() {
-			handler := alertmanagerctrl.NewFetchAlertsHandler(&fakeFetcher{alerts: []domainalertmanager.Alert{}})
-			rc := newRC()
+			localFetcher := &fakeFetcher{alerts: []domainalertmanager.Alert{}}
+			remoteFetcher := &fakeFetcher{}
+			handler := alertmanagerctrl.NewFetchAlertsHandler(localFetcher, remoteFetcher)
+			rc := newRC(false)
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
@@ -89,12 +94,44 @@ var _ = Describe("FetchAlertsHandler", func() {
 
 	Context("when fetcher returns an error", func() {
 		It("should propagate the error", func() {
-			handler := alertmanagerctrl.NewFetchAlertsHandler(&fakeFetcher{err: errors.New("connection refused")})
-			rc := newRC()
+			localFetcher := &fakeFetcher{err: errors.New("connection refused")}
+			remoteFetcher := &fakeFetcher{}
+			handler := alertmanagerctrl.NewFetchAlertsHandler(localFetcher, remoteFetcher)
+			rc := newRC(false)
 
 			err := handler.Handle(context.Background(), rc)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("connection refused"))
+		})
+	})
+
+	Context("when isRemote is true", func() {
+		It("should use remote fetcher instead of local", func() {
+			remoteAlerts := []domainalertmanager.Alert{
+				{Fingerprint: "remote-1", Labels: map[string]string{"alertname": "RemoteAlert"}, State: domainalertmanager.StateActive},
+			}
+			localFetcher := &fakeFetcher{err: errors.New("should not be called")}
+			remoteFetcher := &fakeFetcher{alerts: remoteAlerts}
+			handler := alertmanagerctrl.NewFetchAlertsHandler(localFetcher, remoteFetcher)
+			rc := newRC(true)
+
+			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
+
+			stored, ok := rc.Data[alertmanagerctrl.DataKeyAlerts].([]domainalertmanager.Alert)
+			Expect(ok).To(BeTrue())
+			Expect(stored).To(HaveLen(1))
+			Expect(stored[0].Fingerprint).To(Equal("remote-1"))
+		})
+
+		It("should propagate remote fetcher errors", func() {
+			localFetcher := &fakeFetcher{}
+			remoteFetcher := &fakeFetcher{err: errors.New("remote unreachable")}
+			handler := alertmanagerctrl.NewFetchAlertsHandler(localFetcher, remoteFetcher)
+			rc := newRC(true)
+
+			err := handler.Handle(context.Background(), rc)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("remote unreachable"))
 		})
 	})
 })

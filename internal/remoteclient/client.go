@@ -196,6 +196,76 @@ func (c *Client) doFetchFQDNs(ctx context.Context, baseURL string, portalName st
 	}, nil
 }
 
+// AlertsFetchResult contains the result of fetching alerts from a remote portal.
+type AlertsFetchResult struct {
+	// Alerts contains the active alerts fetched from the remote portal.
+	Alerts []sreportalv1alpha1.AlertStatus
+}
+
+// FetchAlerts fetches active alerts from a remote portal via the AlertmanagerService Connect API.
+// The portalName parameter filters alerts by portal on the remote side.
+func (c *Client) FetchAlerts(ctx context.Context, baseURL string, portalName string) (*AlertsFetchResult, error) {
+	var lastErr error
+
+	for attempt := 0; attempt < c.retryAttempts; attempt++ {
+		if attempt > 0 {
+			delay := c.retryDelay * time.Duration(1<<(attempt-1))
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(delay):
+			}
+		}
+
+		result, err := c.doFetchAlerts(ctx, baseURL, portalName)
+		if err == nil {
+			return result, nil
+		}
+		lastErr = err
+	}
+
+	return nil, fmt.Errorf("fetch alerts failed after %d attempts: %w", c.retryAttempts, lastErr)
+}
+
+func (c *Client) doFetchAlerts(ctx context.Context, baseURL string, portalName string) (*AlertsFetchResult, error) {
+	alertsClient := sreportalv1connect.NewAlertmanagerServiceClient(
+		c.httpClient,
+		baseURL,
+	)
+
+	resp, err := alertsClient.ListAlerts(ctx, connect.NewRequest(&sreportalv1.ListAlertsRequest{
+		Portal: portalName,
+	}))
+	if err != nil {
+		return nil, fmt.Errorf("fetch alerts from remote portal: %w", err)
+	}
+
+	var allAlerts []sreportalv1alpha1.AlertStatus
+	for _, resource := range resp.Msg.Alertmanagers {
+		for _, a := range resource.Alerts {
+			alert := sreportalv1alpha1.AlertStatus{
+				Fingerprint: a.Fingerprint,
+				Labels:      a.Labels,
+				Annotations: a.Annotations,
+				State:       a.State,
+			}
+			if a.StartsAt != nil {
+				alert.StartsAt = metav1.NewTime(a.StartsAt.AsTime())
+			}
+			if a.UpdatedAt != nil {
+				alert.UpdatedAt = metav1.NewTime(a.UpdatedAt.AsTime())
+			}
+			if a.EndsAt != nil {
+				endsAt := metav1.NewTime(a.EndsAt.AsTime())
+				alert.EndsAt = &endsAt
+			}
+			allAlerts = append(allAlerts, alert)
+		}
+	}
+
+	return &AlertsFetchResult{Alerts: allAlerts}, nil
+}
+
 // HealthCheck performs a health check on a remote portal by attempting to list portals.
 func (c *Client) HealthCheck(ctx context.Context, baseURL string) error {
 	portalClient := sreportalv1connect.NewPortalServiceClient(

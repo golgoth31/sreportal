@@ -30,6 +30,11 @@ type AlertmanagerSpec struct {
 	// url contains the Alertmanager API endpoints
 	// +kubebuilder:validation:Required
 	URL AlertmanagerURL `json:"url"`
+
+	// IsRemote indicates that the corresponding portal is remote and the operator should fetch alerts from the remote portal instead of local Alertmanager API.
+	// This field is used to determine how to fetch alerts.
+	// +optional
+	IsRemote bool `json:"isRemote,omitempty"`
 }
 
 // AlertmanagerURL holds the local and remote Alertmanager API URLs

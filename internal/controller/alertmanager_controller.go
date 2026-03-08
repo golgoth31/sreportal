@@ -43,9 +43,9 @@ type AlertmanagerReconciler struct {
 }
 
 // NewAlertmanagerReconciler creates a new AlertmanagerReconciler with the handler chain.
-func NewAlertmanagerReconciler(c client.Client, scheme *runtime.Scheme, fetcher domainalertmanager.Fetcher) *AlertmanagerReconciler {
+func NewAlertmanagerReconciler(c client.Client, scheme *runtime.Scheme, localFetcher domainalertmanager.Fetcher, remoteFetcher domainalertmanager.Fetcher) *AlertmanagerReconciler {
 	handlers := []reconciler.Handler[*sreportalv1alpha1.Alertmanager]{
-		alertmanagerchain.NewFetchAlertsHandler(fetcher),
+		alertmanagerchain.NewFetchAlertsHandler(localFetcher, remoteFetcher),
 		alertmanagerchain.NewUpdateStatusHandler(c),
 	}
 
@@ -69,7 +69,7 @@ func (r *AlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	log.V(1).Info("reconciling Alertmanager", "name", resource.Name, "portalRef", resource.Spec.PortalRef)
+	log.V(1).Info("reconciling Alertmanager", "name", resource.Name, "portalRef", resource.Spec.PortalRef, "isRemote", resource.Spec.IsRemote)
 
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager]{
 		Resource: &resource,
