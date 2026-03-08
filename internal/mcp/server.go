@@ -28,32 +28,32 @@ import (
 	"github.com/golgoth31/sreportal/internal/config"
 )
 
-// Server wraps the MCP server with SRE Portal functionality
-type Server struct {
+// DNSServer wraps the MCP server with SRE Portal DNS/portal functionality.
+// Mount at /mcp/dns for Streamable HTTP.
+type DNSServer struct {
 	mcpServer    *server.MCPServer
 	client       client.Client
 	groupMapping *config.GroupMappingConfig
 }
 
-// New creates a new MCP server instance
-func New(k8sClient client.Client, groupMapping *config.GroupMappingConfig) *Server {
-	s := &Server{
+// NewDNSServer creates a new MCP server instance for DNS and portals.
+func NewDNSServer(k8sClient client.Client, groupMapping *config.GroupMappingConfig) *DNSServer {
+	s := &DNSServer{
 		client:       k8sClient,
 		groupMapping: groupMapping,
 	}
 
-	// Create the MCP server with session lifecycle hooks
 	hooks := &server.Hooks{}
 	hooks.AddOnRegisterSession(func(ctx context.Context, session server.ClientSession) {
-		logger := log.FromContext(ctx).WithName("mcp")
+		logger := log.FromContext(ctx).WithName("mcp-dns")
 		logger.Info("client session registered", "sessionID", session.SessionID())
 	})
 	hooks.AddOnUnregisterSession(func(ctx context.Context, session server.ClientSession) {
-		logger := log.FromContext(ctx).WithName("mcp")
+		logger := log.FromContext(ctx).WithName("mcp-dns")
 		logger.Info("client session unregistered", "sessionID", session.SessionID())
 	})
 	hooks.AddAfterInitialize(func(ctx context.Context, _ any, message *mcp.InitializeRequest, _ *mcp.InitializeResult) {
-		logger := log.FromContext(ctx).WithName("mcp")
+		logger := log.FromContext(ctx).WithName("mcp-dns")
 		logger.Info("client initialized",
 			"clientName", message.Params.ClientInfo.Name,
 			"clientVersion", message.Params.ClientInfo.Version,
@@ -62,20 +62,19 @@ func New(k8sClient client.Client, groupMapping *config.GroupMappingConfig) *Serv
 	})
 
 	s.mcpServer = server.NewMCPServer(
-		"sreportal",
+		"sreportal-dns",
 		"1.0.0",
 		server.WithToolCapabilities(true),
 		server.WithHooks(hooks),
 	)
 
-	// Register tools
-	s.registerTools()
+	s.registerDNSTools()
 
 	return s
 }
 
-// registerTools registers all MCP tools
-func (s *Server) registerTools() {
+// registerDNSTools registers DNS and portal MCP tools.
+func (s *DNSServer) registerDNSTools() {
 	// Register search_fqdns tool
 	s.mcpServer.AddTool(
 		mcp.NewTool("search_fqdns",
@@ -123,13 +122,13 @@ func (s *Server) registerTools() {
 	)
 }
 
-// ServeStdio starts the MCP server using stdio transport
-func (s *Server) ServeStdio() error {
+// ServeStdio starts the MCP server using stdio transport.
+func (s *DNSServer) ServeStdio() error {
 	return server.ServeStdio(s.mcpServer)
 }
 
 // Handler returns an http.Handler for the MCP Streamable HTTP transport.
-// The caller is responsible for mounting it at the desired path (e.g. "/mcp").
-func (s *Server) Handler() http.Handler {
+// Mount at /mcp/dns.
+func (s *DNSServer) Handler() http.Handler {
 	return server.NewStreamableHTTPServer(s.mcpServer)
 }

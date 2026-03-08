@@ -44,7 +44,7 @@ type FQDNDetails struct {
 }
 
 // handleGetFQDNDetails handles the get_fqdn_details tool call
-func (s *Server) handleGetFQDNDetails(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (s *DNSServer) handleGetFQDNDetails(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	// Extract required parameter
 	fqdn, err := request.RequireString("fqdn")
 	if err != nil {

@@ -399,21 +399,25 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Start MCP server if enabled
+	// Start MCP servers if enabled
 	if enableMCP {
-		mcpServer := mcp.New(mgr.GetClient(), &operatorConfig.GroupMapping)
+		dnsMcpServer := mcp.NewDNSServer(mgr.GetClient(), &operatorConfig.GroupMapping)
+		alertsMcpServer := mcp.NewAlertsServer(mgr.GetClient())
+
 		switch mcpTransport {
 		case "stdio":
 			go func() {
-				setupLog.Info("starting MCP server", "transport", "stdio")
-				if err := mcpServer.ServeStdio(); err != nil {
-					setupLog.Error(err, "MCP server failed, initiating shutdown")
+				setupLog.Info("starting MCP DNS server", "transport", "stdio")
+				if err := dnsMcpServer.ServeStdio(); err != nil {
+					setupLog.Error(err, "MCP DNS server failed, initiating shutdown")
 					cancel()
 				}
 			}()
 		case "streamable-http":
-			setupLog.Info("mounting MCP server on web server", "path", "/mcp")
-			webServer.MountHandler("/mcp", mcpServer.Handler())
+			setupLog.Info("mounting MCP servers on web server", "dns", "/mcp", "/mcp/dns", "alerts", "/mcp/alerts")
+			webServer.MountHandler("/mcp", dnsMcpServer.Handler())
+			webServer.MountHandler("/mcp/dns", dnsMcpServer.Handler())
+			webServer.MountHandler("/mcp/alerts", alertsMcpServer.Handler())
 		default:
 			setupLog.Error(nil, "unknown MCP transport", "transport", mcpTransport)
 			os.Exit(1)

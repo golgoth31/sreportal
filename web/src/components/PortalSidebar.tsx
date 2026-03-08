@@ -40,7 +40,7 @@ export function PortalSidebar() {
           }
         >
           <LinkIcon className="size-4 shrink-0" aria-hidden />
-          <span>Links</span>
+          <span>DNS</span>
         </NavLink>
         {showAlerts && (
           <NavLink
