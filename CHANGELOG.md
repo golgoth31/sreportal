@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.11.0](https://github.com/golgoth31/sreportal/compare/v1.10.0...v1.11.0) (2026-03-08)
+
+
+### Features
+
+* **alertmanager:** support fetching alerts from remote portals ([3bfcd8b](https://github.com/golgoth31/sreportal/commit/3bfcd8b0c89b3dce8f752aab442f5847f88e69f7))
+
+
+### Bug Fixes
+
+* **alertmanager:** tighten alert state typing for safer filtering ([18dd776](https://github.com/golgoth31/sreportal/commit/18dd7762acfb6dcf8beb583d1be876d49fa6e917))
+
 ## [1.10.0](https://github.com/golgoth31/sreportal/compare/v1.9.4...v1.10.0) (2026-03-08)
 
 
