@@ -10,4 +10,5 @@ spec:
   portalRef: main
   url:
     local: https://alertmanager.notrenet.ovh
+    remote: https://alertmanager.notrenet.ovh
 
