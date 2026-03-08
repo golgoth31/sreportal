@@ -8,7 +8,6 @@
 
 ### Resource Types
 - [sreportal.io/v1alpha1.Alertmanager](#sreportaliov1alpha1alertmanager)
-- [sreportal.io/v1alpha1.AlertmanagerList](#sreportaliov1alpha1alertmanagerlist)
 - [sreportal.io/v1alpha1.DNS](#sreportaliov1alpha1dns)
 - [sreportal.io/v1alpha1.DNSRecord](#sreportaliov1alpha1dnsrecord)
 - [sreportal.io/v1alpha1.Portal](#sreportaliov1alpha1portal)
@@ -18,9 +17,6 @@
 
 Alertmanager is the Schema for the alertmanagers API
 
-_Appears in:_
-- [sreportal.io/v1alpha1.AlertmanagerList](#sreportaliov1alpha1alertmanagerlist)
-
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
 | `apiVersion` _string_ | `sreportal.io/v1alpha1` |   |   |
@@ -28,19 +24,6 @@ _Appears in:_
 | `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#objectmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |   |   |
 | `spec` _[sreportal.io/v1alpha1.AlertmanagerSpec](#sreportaliov1alpha1alertmanagerspec)_ | spec defines the desired state of Alertmanager |   |   |
 | `status` _[sreportal.io/v1alpha1.AlertmanagerStatus](#sreportaliov1alpha1alertmanagerstatus)_ | status defines the observed state of Alertmanager |   |   |
-
-
-
-#### sreportal.io/v1alpha1.AlertmanagerList
-
-AlertmanagerList contains a list of Alertmanager
-
-| Field | Description | Default | Validation |
-| --- | --- | --- | --- |
-| `apiVersion` _string_ | `sreportal.io/v1alpha1` |   |   |
-| `kind` _string_ | `AlertmanagerList` |   |   |
-| `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#objectmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |   |   |
-| `items` _[sreportal.io/v1alpha1.Alertmanager](#sreportaliov1alpha1alertmanager) array_ |   |   |   |
 
 
 

@@ -2,7 +2,7 @@ processor:
   ignoreGroupVersions:
     - "GVK"
   ignoreTypes:
-    - "(DNS|DNSRecord|Portal)List$"
+    - ".*List$"
   ignoreFields:
     # - "status$"
     - "TypeMeta$"
