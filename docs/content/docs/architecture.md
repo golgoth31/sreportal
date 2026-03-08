@@ -16,7 +16,7 @@ graph TB
         Controllers["Controllers\n(controller-runtime)"]
         API["Connect gRPC API\n(h2c)"]
         WebUI["Web UI\n(React SPA / Echo v5)"]
-        MCP["MCP Server\n(/mcp endpoint)"]
+        MCP["MCP Servers\n(/mcp, /mcp/dns, /mcp/alerts)"]
     end
 
     WebUI --> API
@@ -30,11 +30,11 @@ The four components share the same process:
 - **Controllers** reconcile CRDs using controller-runtime
 - **Connect API** serves gRPC-compatible endpoints over HTTP/2 (h2c)
 - **Web UI** serves the React SPA as static files via Echo v5
-- **MCP Server** exposes a [Model Context Protocol](https://modelcontextprotocol.io/) endpoint at `/mcp` for AI assistant integration
+- **MCP Servers** expose [Model Context Protocol](https://modelcontextprotocol.io/) at `/mcp` and `/mcp/dns` (DNS/portals) and `/mcp/alerts` (alerts) for AI assistant integration
 
 ## Custom Resource Definitions
 
-SRE Portal defines three CRDs that work together:
+SRE Portal defines four CRDs that work together:
 
 ```mermaid
 graph TD
@@ -42,6 +42,8 @@ graph TD
     (manual entries)"]
     Portal -->|portalRef| DNSRecord["DNSRecord
     (auto-discovered)"]
+    Portal -->|portalRef| Alertmanager["Alertmanager
+    (alert source)"]
 ```
 
 ### Portal
@@ -57,6 +59,10 @@ Contains manually defined DNS entry groups linked to a portal via `spec.portalRe
 ### DNSRecord
 
 Created and managed automatically by the source controller. Each DNSRecord represents endpoints discovered from a specific source type (Service, Ingress, etc.) for a specific portal.
+
+### Alertmanager
+
+Links an Alertmanager instance to a portal via `spec.portalRef`. The spec defines `url.local` (used by the controller to fetch active alerts from the Alertmanager API) and optional `url.remote` (for dashboard links). The Alertmanager controller periodically fetches alerts and stores them in `status.activeAlerts`.
 
 ## Design Principles
 
@@ -101,6 +107,10 @@ The source controller implements `manager.Runnable` for periodic reconciliation 
 
 A simple controller that sets `status.ready = true` with a `Ready` condition. It also runs an `EnsureMainPortalRunnable` that creates the default `main` portal on startup if none exists.
 
+### Alertmanager Controller (Chain)
+
+Uses the same Chain-of-Responsibility pattern as the DNS controller. The chain has two steps: **FetchAlerts** (HTTP GET to `spec.url.local`, Alertmanager API v2) and **UpdateStatus** (write `activeAlerts`, conditions, `lastReconcileTime` to status). Reconciles periodically (default ~2 minutes).
+
 ## Connect API
 
 The API uses the [Connect protocol](https://connectrpc.com) (gRPC-compatible over HTTP/1.1 and HTTP/2) with protobuf definitions in `proto/sreportal/v1/`.
@@ -118,9 +128,17 @@ The API uses the [Connect protocol](https://connectrpc.com) (gRPC-compatible ove
 |-----|-------------|
 | `ListPortals` | Lists all portals |
 
-## MCP Server
+### AlertmanagerService
 
-The operator includes a built-in [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server mounted at `/mcp` on the web server port. It exposes three tools for AI assistants (Claude Desktop, Claude Code, Cursor):
+| RPC | Description |
+|-----|-------------|
+| `ListAlerts` | Lists Alertmanager resources with active alerts (filters: portal, namespace, search, state) |
+
+## MCP Servers
+
+The operator includes two built-in [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) servers on the web server port, using Streamable HTTP transport:
+
+**DNS / Portals** (mounted at `/mcp` and `/mcp/dns`; `/mcp` is kept for backward compatibility):
 
 | Tool | Description |
 |------|-------------|
@@ -128,7 +146,11 @@ The operator includes a built-in [Model Context Protocol](https://modelcontextpr
 | `list_portals` | List all available portals |
 | `get_fqdn_details` | Get detailed information about a specific FQDN |
 
-The MCP server uses Streamable HTTP transport and reads the same DNS status data as the Connect API.
+**Alerts** (mounted at `/mcp/alerts`):
+
+| Tool | Description |
+|------|-------------|
+| `list_alerts` | List Alertmanager resources and their active alerts (optional filters: portal, search, state) |
 
 ## Data Flow
 
