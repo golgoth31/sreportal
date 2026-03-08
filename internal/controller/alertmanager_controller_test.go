@@ -18,11 +18,14 @@ package controller
 
 import (
 	"context"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -52,9 +55,18 @@ var _ = Describe("Alertmanager Controller", func() {
 		}
 		alertmanager := &sreportalv1alpha1.Alertmanager{}
 
+		// directClient reads/writes from the API server directly. The manager's client
+		// uses a cache that is not updated for Alertmanager (no controller watches it),
+		// so Create/Get/Patch would be inconsistent. Use directClient for all operations.
+		var directClient client.Client
+
 		BeforeEach(func() {
+			var err error
+			directClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
+			Expect(err).NotTo(HaveOccurred())
+
 			By("creating the custom resource for the Kind Alertmanager")
-			err := k8sClient.Get(ctx, typeNamespacedName, alertmanager)
+			err = directClient.Get(ctx, typeNamespacedName, alertmanager)
 			if err != nil && errors.IsNotFound(err) {
 				resource := &sreportalv1alpha1.Alertmanager{
 					ObjectMeta: metav1.ObjectMeta{
@@ -68,33 +80,36 @@ var _ = Describe("Alertmanager Controller", func() {
 						},
 					},
 				}
-				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+				Expect(directClient.Create(ctx, resource)).To(Succeed())
 			}
 		})
 
 		AfterEach(func() {
 			resource := &sreportalv1alpha1.Alertmanager{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(directClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
 
 			By("Cleanup the specific resource instance Alertmanager")
-			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+			Expect(directClient.Delete(ctx, resource)).To(Succeed())
 		})
 
 		It("should successfully reconcile and populate status with alerts", func() {
 			By("Reconciling the created resource")
+			startsAt := time.Date(2026, 3, 8, 10, 0, 0, 0, time.UTC)
+			updatedAt := time.Date(2026, 3, 8, 10, 5, 0, 0, time.UTC)
 			fetcher := &fakeFetcher{
 				alerts: []domainalertmanager.Alert{
 					{
 						Fingerprint: "aaa",
 						Labels:      map[string]string{"alertname": "HighCPU", "severity": "critical"},
 						State:       domainalertmanager.StateActive,
+						StartsAt:    startsAt,
+						UpdatedAt:   updatedAt,
 					},
 				},
 			}
 			controllerReconciler := NewAlertmanagerReconciler(
-				k8sClient,
-				k8sClient.Scheme(),
+				directClient,
+				directClient.Scheme(),
 				fetcher,
 			)
 
@@ -105,7 +120,7 @@ var _ = Describe("Alertmanager Controller", func() {
 			Expect(result.RequeueAfter).To(Equal(alertmanagerRequeueAfter))
 
 			var updated sreportalv1alpha1.Alertmanager
-			Expect(k8sClient.Get(ctx, typeNamespacedName, &updated)).To(Succeed())
+			Expect(directClient.Get(ctx, typeNamespacedName, &updated)).To(Succeed())
 			Expect(updated.Status.ActiveAlerts).To(HaveLen(1))
 			Expect(updated.Status.ActiveAlerts[0].Labels["alertname"]).To(Equal("HighCPU"))
 			Expect(updated.Status.LastReconcileTime).NotTo(BeNil())
@@ -117,8 +132,8 @@ var _ = Describe("Alertmanager Controller", func() {
 				err: domainalertmanager.ErrFetchAlerts,
 			}
 			controllerReconciler := NewAlertmanagerReconciler(
-				k8sClient,
-				k8sClient.Scheme(),
+				directClient,
+				directClient.Scheme(),
 				fetcher,
 			)
 
