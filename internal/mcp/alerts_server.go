@@ -136,7 +136,7 @@ func (s *AlertsServer) handleListAlerts(ctx context.Context, request mcp.CallToo
 		return mcp.NewToolResultError(fmt.Sprintf("failed to list Alertmanager resources: %v", err)), nil
 	}
 
-	var results []AlertmanagerResult
+	results := make([]AlertmanagerResult, 0, len(amList.Items))
 	searchLower := strings.ToLower(search)
 
 	for _, am := range amList.Items {

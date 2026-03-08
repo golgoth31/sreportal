@@ -70,7 +70,7 @@ func (c *Client) GetActiveAlerts(ctx context.Context, baseURL string) ([]alertma
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", alertmanager.ErrFetchAlerts, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("%w: unexpected status %d", alertmanager.ErrFetchAlerts, resp.StatusCode)

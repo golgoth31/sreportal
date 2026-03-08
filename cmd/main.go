@@ -42,7 +42,6 @@ import (
 	externaldnsv1alpha1 "sigs.k8s.io/external-dns/apis/v1alpha1"
 
 	sreportal "github.com/golgoth31/sreportal"
-	sreportaliov1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/alertmanagerclient"
 	"github.com/golgoth31/sreportal/internal/config"
@@ -68,7 +67,6 @@ func init() {
 	utilruntime.Must(externaldnsv1alpha1.AddToScheme(scheme))
 
 	utilruntime.Must(sreportalv1alpha1.AddToScheme(scheme))
-	utilruntime.Must(sreportaliov1alpha1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
