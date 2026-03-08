@@ -36,6 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
+	sreportaliov1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	// +kubebuilder:scaffold:imports
 )
@@ -65,6 +66,9 @@ var _ = BeforeSuite(func() {
 
 	var err error
 	err = sreportalv1alpha1.AddToScheme(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
+
+	err = sreportaliov1alpha1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
 	// +kubebuilder:scaffold:scheme

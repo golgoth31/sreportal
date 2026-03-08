@@ -1,0 +1,13 @@
+apiVersion: sreportal.io/v1alpha1
+kind: Alertmanager
+metadata:
+  labels:
+    app.kubernetes.io/name: sreportal
+    app.kubernetes.io/managed-by: kustomize
+  name: alertmanager-sample
+  namespace: sreportal-system
+spec:
+  portalRef: main
+  url:
+    local: https://alertmanager.notrenet.ovh
+

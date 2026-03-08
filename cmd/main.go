@@ -42,7 +42,9 @@ import (
 	externaldnsv1alpha1 "sigs.k8s.io/external-dns/apis/v1alpha1"
 
 	sreportal "github.com/golgoth31/sreportal"
+	sreportaliov1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	"github.com/golgoth31/sreportal/internal/alertmanagerclient"
 	"github.com/golgoth31/sreportal/internal/config"
 	"github.com/golgoth31/sreportal/internal/controller"
 	portalctrl "github.com/golgoth31/sreportal/internal/controller/portal"
@@ -65,6 +67,7 @@ func init() {
 	utilruntime.Must(externaldnsv1alpha1.AddToScheme(scheme))
 
 	utilruntime.Must(sreportalv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(sreportaliov1alpha1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -331,6 +334,14 @@ func main() {
 		portalNamespace,
 	)); err != nil {
 		setupLog.Error(err, "unable to add main portal ensure runnable")
+		os.Exit(1)
+	}
+	if err := controller.NewAlertmanagerReconciler(
+		mgr.GetClient(),
+		mgr.GetScheme(),
+		alertmanagerclient.NewClient(),
+	).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Alertmanager")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

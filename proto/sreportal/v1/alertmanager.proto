@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package sreportal.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// AlertmanagerService provides access to Alertmanager alert data
+service AlertmanagerService {
+  // ListAlerts returns all active alerts from Alertmanager resources
+  rpc ListAlerts(ListAlertsRequest) returns (ListAlertsResponse);
+}
+
+// ListAlertsRequest is the request for listing alerts
+message ListAlertsRequest {
+  // portal filters alerts by portal name (empty for all portals)
+  string portal = 1;
+
+  // namespace filters alerts by namespace (empty for all namespaces)
+  string namespace = 2;
+
+  // search filters alerts by label value substring
+  string search = 3;
+
+  // state filters alerts by state (empty for all states)
+  string state = 4;
+}
+
+// ListAlertsResponse contains the list of alerts
+message ListAlertsResponse {
+  // alertmanagers is the list of Alertmanager resources with their alerts
+  repeated AlertmanagerResource alertmanagers = 1;
+}
+
+// AlertmanagerResource represents an Alertmanager CR with its metadata and alerts
+message AlertmanagerResource {
+  // name is the Alertmanager resource name
+  string name = 1;
+
+  // namespace is the Alertmanager resource namespace
+  string namespace = 2;
+
+  // portal_ref is the portal this Alertmanager is linked to
+  string portal_ref = 3;
+
+  // local_url is the local Alertmanager API URL used by the controller
+  string local_url = 4;
+
+  // remote_url is the externally-reachable Alertmanager URL for dashboard links
+  string remote_url = 5;
+
+  // alerts is the list of active alerts
+  repeated Alert alerts = 6;
+
+  // last_reconcile_time is when the alerts were last fetched
+  google.protobuf.Timestamp last_reconcile_time = 7;
+
+  // ready indicates whether the last reconciliation succeeded
+  bool ready = 8;
+}
+
+// Alert represents a single active alert from Alertmanager
+message Alert {
+  // fingerprint is the unique identifier of the alert
+  string fingerprint = 1;
+
+  // labels are the identifying key-value pairs
+  map<string, string> labels = 2;
+
+  // annotations are additional informational key-value pairs
+  map<string, string> annotations = 3;
+
+  // state is the alert state (active, suppressed, unprocessed)
+  string state = 4;
+
+  // starts_at is when the alert started firing
+  google.protobuf.Timestamp starts_at = 5;
+
+  // ends_at is when the alert is expected to resolve
+  google.protobuf.Timestamp ends_at = 6;
+
+  // updated_at is the last time the alert was updated
+  google.protobuf.Timestamp updated_at = 7;
+}

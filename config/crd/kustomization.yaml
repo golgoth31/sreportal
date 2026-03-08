@@ -5,6 +5,7 @@ resources:
   - bases/sreportal.io_dnsrecords.yaml
   - bases/sreportal.io_dns.yaml
   - bases/sreportal.io_portals.yaml
+  - bases/sreportal.io_alertmanagers.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches:
