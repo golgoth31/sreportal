@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.2](https://github.com/golgoth31/sreportal/compare/v1.11.1...v1.11.2) (2026-03-08)
+
+
+### Bug Fixes
+
+* **alertmanager:** surface remote Alertmanager URL for remote portals ([fc1b137](https://github.com/golgoth31/sreportal/commit/fc1b1373f0979e5d838ddca0beaf2230f0df6b21))
+
 ## [1.11.1](https://github.com/golgoth31/sreportal/compare/v1.11.0...v1.11.1) (2026-03-08)
 
 
