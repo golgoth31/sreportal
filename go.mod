@@ -1,6 +1,6 @@
 module github.com/golgoth31/sreportal
 
-go 1.25.3
+go 1.26
 
 require (
 	connectrpc.com/connect v1.19.1
