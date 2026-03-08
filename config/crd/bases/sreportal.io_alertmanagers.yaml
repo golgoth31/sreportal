@@ -51,7 +51,7 @@ spec:
             properties:
               isRemote:
                 description: |-
-                  IsRemote indicate that the correspondig portal is remote and the operator should fetch alerts from the remote portal instead of local Alertmanager API.
+                  IsRemote indicates that the corresponding portal is remote and the operator should fetch alerts from the remote portal instead of local Alertmanager API.
                   This field is used to determine how to fetch alerts.
                 type: boolean
               portalRef:

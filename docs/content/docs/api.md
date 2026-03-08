@@ -80,13 +80,13 @@ _Appears in:_
 | --- | --- | --- | --- |
 | `portalRef` _string_ | portalRef is the name of the Portal this Alertmanager resource is linked to |   |   |
 | `url` _[sreportal.io/v1alpha1.AlertmanagerURL](#sreportaliov1alpha1alertmanagerurl)_ | url contains the Alertmanager API endpoints |   |   |
+| `isRemote` _boolean_ | IsRemote indicates that the corresponding portal is remote and the operator should fetch alerts from the remote portal instead of local Alertmanager API. This field is used to determine how to fetch alerts. |   |   |
 
 
 
 #### sreportal.io/v1alpha1.AlertmanagerURL
 
 AlertmanagerURL holds the local and remote Alertmanager API URLs
-url contains the Alertmanager API endpoints
 
 _Appears in:_
 - [sreportal.io/v1alpha1.AlertmanagerSpec](#sreportaliov1alpha1alertmanagerspec)
