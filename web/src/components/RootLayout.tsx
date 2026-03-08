@@ -4,6 +4,7 @@ import { NavLink, Outlet, useParams } from "react-router";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { usePortals } from "@/features/portal/hooks/usePortals";
+import { useVersion } from "@/features/version/hooks/useVersion";
 import { cn } from "@/lib/utils";
 import { PortalNav } from "./PortalNav";
 import { PortalSidebar } from "./PortalSidebar";
@@ -12,6 +13,8 @@ import { ThemeToggle } from "./ThemeToggle";
 
 export function RootLayout() {
   const { portals, isLoading } = usePortals();
+  const { version } = useVersion();
+
   const { portalName } = useParams<{ portalName?: string }>();
   const showSidebar = portalName != null;
 
@@ -62,7 +65,7 @@ export function RootLayout() {
         {/* Footer */}
         <footer className="border-t py-4 px-4">
           <p className="text-center text-xs text-muted-foreground">
-            SRE Portal
+            SRE Portal{version ? ` — ${version}` : ""}
           </p>
         </footer>
 

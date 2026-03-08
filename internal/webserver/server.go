@@ -133,6 +133,10 @@ func (s *Server) setupRoutes() {
 	amPath, amHandler := sreportalv1connect.NewAlertmanagerServiceHandler(alertmanagerService)
 	s.echo.Any(amPath+"*", echo.WrapHandler(amHandler))
 
+	versionService := grpc.NewVersionService()
+	versionPath, versionHandler := sreportalv1connect.NewVersionServiceHandler(versionService)
+	s.echo.Any(versionPath+"*", echo.WrapHandler(versionHandler))
+
 	// API health check
 	s.echo.GET("/api/health", s.healthHandler)
 
