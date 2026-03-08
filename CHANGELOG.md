@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.10.0](https://github.com/golgoth31/sreportal/compare/v1.9.4...v1.10.0) (2026-03-08)
+
+
+### Features
+
+* monitoring ([#106](https://github.com/golgoth31/sreportal/issues/106)) ([12ab827](https://github.com/golgoth31/sreportal/commit/12ab827bec9de772c95009d8369f93095a7ee78c))
+
+
+### Bug Fixes
+
+* **deps:** update dependency shadcn to v4 ([#105](https://github.com/golgoth31/sreportal/issues/105)) ([dc94da6](https://github.com/golgoth31/sreportal/commit/dc94da60f060ea189ad5983ead6029d83ebc86fa))
+* **deps:** update module github.com/mark3labs/mcp-go to v0.45.0 ([#104](https://github.com/golgoth31/sreportal/issues/104)) ([885a0f1](https://github.com/golgoth31/sreportal/commit/885a0f1d7f25e9b8827d29217b6d42d9eb3419d1))
+* **deps:** update module sigs.k8s.io/controller-runtime to v0.23.3 ([#99](https://github.com/golgoth31/sreportal/issues/99)) ([b2328c4](https://github.com/golgoth31/sreportal/commit/b2328c40ee57018d0938b869f3493b987549328c))
+
 ## [1.9.4](https://github.com/golgoth31/sreportal/compare/v1.9.3...v1.9.4) (2026-03-04)
 
 
