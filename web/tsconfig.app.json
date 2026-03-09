@@ -23,6 +23,7 @@
     // Disabled: buf-generated files in web/src/gen/ use TypeScript enum which
     // is not erasable syntax. Re-enable only if gen files are updated.
     // "erasableSyntaxOnly": true,
+    "noUncheckedIndexedAccess": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
     "baseUrl": ".",

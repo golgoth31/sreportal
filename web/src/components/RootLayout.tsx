@@ -3,6 +3,7 @@ import { NavLink, Outlet, useParams } from "react-router";
 
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { usePortalsWithAlerts } from "@/features/alertmanager/hooks/usePortalsWithAlerts";
 import { usePortals } from "@/features/portal/hooks/usePortals";
 import { useVersion } from "@/features/version/hooks/useVersion";
 import { cn } from "@/lib/utils";
@@ -14,6 +15,7 @@ import { ThemeToggle } from "./ThemeToggle";
 export function RootLayout() {
   const { portals, isLoading } = usePortals();
   const { version } = useVersion();
+  const { portalNamesWithAlerts } = usePortalsWithAlerts();
 
   const { portalName } = useParams<{ portalName?: string }>();
   const showSidebar = portalName != null;
@@ -56,7 +58,13 @@ export function RootLayout() {
 
         {/* Content area: sidebar + main */}
         <div className="flex flex-1 min-h-0">
-          {showSidebar && <PortalSidebar />}
+          {showSidebar && (
+            <PortalSidebar
+              portalName={portalName}
+              portals={portals}
+              portalNamesWithAlerts={portalNamesWithAlerts}
+            />
+          )}
           <main className="flex-1 min-w-0 overflow-auto">
             <Outlet />
           </main>

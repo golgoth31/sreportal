@@ -1,6 +1,4 @@
 import { CheckIcon, CopyIcon, NetworkIcon } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,6 +7,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 import { cn } from "@/lib/utils";
 import { hasSyncStatus, isSynced } from "../domain/dns.types";
 import type { Fqdn } from "../domain/dns.types";
@@ -18,22 +17,7 @@ interface FqdnCardProps {
 }
 
 export function FqdnCard({ fqdn }: FqdnCardProps) {
-  const [copied, setCopied] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-
-  useEffect(() => () => clearTimeout(timerRef.current), []);
-
-  const handleCopy = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(fqdn.name);
-      setCopied(true);
-      toast.success("Copied to clipboard");
-      clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error("Failed to copy");
-    }
-  }, [fqdn.name]);
+  const { copied, copy } = useCopyToClipboard(fqdn.name);
 
   const sourceLabel = fqdn.source === "manual" ? "Manual" : "External DNS";
   const synced = isSynced(fqdn.syncStatus);
@@ -77,7 +61,7 @@ export function FqdnCard({ fqdn }: FqdnCardProps) {
               variant="ghost"
               size="icon"
               className="size-7 shrink-0"
-              onClick={handleCopy}
+              onClick={copy}
               aria-label="Copy FQDN to clipboard"
             >
               {copied ? (

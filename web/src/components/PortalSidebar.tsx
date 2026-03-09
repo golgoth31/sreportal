@@ -1,17 +1,20 @@
 import { AlertTriangleIcon, LinkIcon } from "lucide-react";
-import { NavLink, useParams } from "react-router";
+import { NavLink } from "react-router";
 
-import { usePortals } from "@/features/portal/hooks/usePortals";
-import { usePortalsWithAlerts } from "@/features/alertmanager/hooks/usePortalsWithAlerts";
+import type { Portal } from "@/features/portal/domain/portal.types";
 import { cn } from "@/lib/utils";
 
-export function PortalSidebar() {
-  const { portalName } = useParams<{ portalName?: string }>();
-  const { portals } = usePortals();
-  const { portalNamesWithAlerts } = usePortalsWithAlerts();
+interface PortalSidebarProps {
+  portalName: string;
+  portals: Portal[];
+  portalNamesWithAlerts: ReadonlySet<string>;
+}
 
-  if (portalName == null) return null;
-
+export function PortalSidebar({
+  portalName,
+  portals,
+  portalNamesWithAlerts,
+}: PortalSidebarProps) {
   const currentPortal = portals.find(
     (p) => (p.subPath || p.name) === portalName
   );

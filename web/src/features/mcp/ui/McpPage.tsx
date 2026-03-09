@@ -1,6 +1,4 @@
 import { CheckIcon, CopyIcon, PlugIcon } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 
 interface McpTool {
   name: string;
@@ -59,22 +58,7 @@ function CopyableCode({
   value: string;
   label: string;
 }) {
-  const [copied, setCopied] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-
-  useEffect(() => () => clearTimeout(timerRef.current), []);
-
-  const handleCopy = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      toast.success("Copied to clipboard");
-      clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error("Failed to copy");
-    }
-  }, [value]);
+  const { copied, copy } = useCopyToClipboard(value);
 
   return (
     <div className="relative rounded-md bg-muted border">
@@ -82,7 +66,7 @@ function CopyableCode({
         variant="ghost"
         size="icon"
         className="absolute right-2 top-2 size-7 z-10"
-        onClick={handleCopy}
+        onClick={copy}
         aria-label={`Copy ${label}`}
       >
         {copied ? (
