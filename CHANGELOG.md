@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.11.5](https://github.com/golgoth31/sreportal/compare/v1.11.4...v1.11.5) (2026-03-09)
+
+
+### Bug Fixes
+
+* missing file ([0139f38](https://github.com/golgoth31/sreportal/commit/0139f38e16d221b151a116075cc7339217aca5cb))
+* **web:** fix bugs ([021a53c](https://github.com/golgoth31/sreportal/commit/021a53c7bb9ad907c6fb09f810992871d8529f41))
+
 ## [1.11.4](https://github.com/golgoth31/sreportal/compare/v1.11.3...v1.11.4) (2026-03-09)
 
 
