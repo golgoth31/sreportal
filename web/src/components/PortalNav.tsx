@@ -95,12 +95,13 @@ export function PortalNav({ portals, isLoading }: PortalNavProps) {
     <nav className="flex items-center gap-1 flex-wrap" aria-label="Portal navigation">
       {mainPortal && (
         <NavLink to={`/${mainPortal.subPath || mainPortal.name}/links`}>
-          {({ isActive }) => (
+          {() => (
             <Button
               variant="ghost"
               size="sm"
               className={cn(
-                isActive && "bg-primary/10 text-primary font-semibold shadow-primary"
+                (mainPortal.subPath || mainPortal.name) === portalName &&
+                  "bg-primary/10 text-primary font-semibold shadow-primary"
               )}
               asChild
             >

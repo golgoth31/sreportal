@@ -3,7 +3,7 @@ import {
   ExternalLinkIcon,
   AlertTriangleIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,17 +12,10 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import type { AlertmanagerResource } from "../domain/alertmanager.types";
-import { formatAlertTime, getAlertName } from "../domain/alertmanager.types";
+import { groupAlertsByName } from "../domain/alertmanager.types";
+import { AlertGroupCard } from "./AlertGroupCard";
 
 interface AlertmanagerResourceCardProps {
   resource: AlertmanagerResource;
@@ -32,6 +25,11 @@ export function AlertmanagerResourceCard({ resource }: AlertmanagerResourceCardP
   const [open, setOpen] = useState(true);
   const alertCount = resource.alerts.length;
   const displayUrl = resource.remoteUrl || resource.localUrl;
+
+  const alertGroups = useMemo(
+    () => groupAlertsByName(resource.alerts),
+    [resource.alerts]
+  );
 
   return (
     <Collapsible open={open} onOpenChange={setOpen} className="w-full">
@@ -89,43 +87,11 @@ export function AlertmanagerResourceCard({ resource }: AlertmanagerResourceCardP
                 No active alerts.
               </p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Alert</TableHead>
-                    <TableHead>State</TableHead>
-                    <TableHead>Started</TableHead>
-                    <TableHead className="hidden sm:table-cell">Summary</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {resource.alerts.map((alert) => (
-                    <TableRow key={alert.fingerprint}>
-                      <TableCell className="font-medium">
-                        {getAlertName(alert) || alert.fingerprint.slice(0, 8)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            alert.state === "active" ? "destructive" : "secondary"
-                          }
-                          className="text-xs"
-                        >
-                          {alert.state}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-xs">
-                        {formatAlertTime(alert.startsAt)}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-xs hidden sm:table-cell max-w-[12rem] truncate">
-                        {alert.annotations["summary"] ??
-                          alert.annotations["description"] ??
-                          "—"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <div className="space-y-1">
+                {alertGroups.map((group) => (
+                  <AlertGroupCard key={group.name} group={group} />
+                ))}
+              </div>
             )}
           </div>
         </CollapsibleContent>
