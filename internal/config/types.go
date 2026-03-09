@@ -69,11 +69,18 @@ type SourcesConfig struct {
 	DNSEndpoint         *DNSEndpointConfig         `json:"dnsEndpoint,omitempty" yaml:"dnsEndpoint,omitempty"`
 	IstioGateway        *IstioGatewayConfig        `json:"istioGateway,omitempty" yaml:"istioGateway,omitempty"`
 	IstioVirtualService *IstioVirtualServiceConfig `json:"istioVirtualService,omitempty" yaml:"istioVirtualService,omitempty"`
+	// Gateway API route sources
+	GatewayHTTPRoute *GatewayHTTPRouteConfig `json:"gatewayHTTPRoute,omitempty" yaml:"gatewayHTTPRoute,omitempty"`
+	GatewayGRPCRoute *GatewayGRPCRouteConfig `json:"gatewayGRPCRoute,omitempty" yaml:"gatewayGRPCRoute,omitempty"`
+	GatewayTLSRoute  *GatewayTLSRouteConfig  `json:"gatewayTLSRoute,omitempty" yaml:"gatewayTLSRoute,omitempty"`
+	GatewayTCPRoute  *GatewayTCPRouteConfig  `json:"gatewayTCPRoute,omitempty" yaml:"gatewayTCPRoute,omitempty"`
+	GatewayUDPRoute  *GatewayUDPRouteConfig  `json:"gatewayUDPRoute,omitempty" yaml:"gatewayUDPRoute,omitempty"`
 	// Priority defines the preferred order of source types when the same FQDN+RecordType
 	// is discovered by multiple sources. Sources listed earlier take precedence over later ones.
 	// When a source is not listed, it receives the lowest priority. When empty, targets from
 	// all sources are merged (backward-compatible default).
-	// Valid values: "service", "ingress", "dnsendpoint", "istio-gateway", "istio-virtualservice".
+	// Valid values: "service", "ingress", "dnsendpoint", "istio-gateway", "istio-virtualservice",
+	// "gateway-httproute", "gateway-grpcroute", "gateway-tlsroute", "gateway-tcproute", "gateway-udproute".
 	Priority []string `json:"priority,omitempty" yaml:"priority,omitempty"`
 }
 
@@ -167,6 +174,56 @@ type IstioVirtualServiceConfig struct {
 	CombineFQDNAndAnnotation bool `json:"combineFqdnAndAnnotation,omitempty" yaml:"combineFqdnAndAnnotation,omitempty"`
 	// IgnoreHostnameAnnotation ignores hostname annotations.
 	IgnoreHostnameAnnotation bool `json:"ignoreHostnameAnnotation,omitempty" yaml:"ignoreHostnameAnnotation,omitempty"`
+}
+
+// GatewayRouteConfig is a base config shared by all Gateway API route types.
+// It contains common fields used by HTTPRoute, GRPCRoute, TLSRoute, TCPRoute, and UDPRoute sources.
+type GatewayRouteConfig struct {
+	// Enabled controls whether this Gateway API source is active.
+	Enabled bool `json:"enabled" yaml:"enabled"`
+	// Namespace restricts watching to a specific namespace. Empty means all namespaces.
+	Namespace string `json:"namespace,omitempty" yaml:"namespace,omitempty"`
+	// AnnotationFilter filters routes by annotation.
+	AnnotationFilter string `json:"annotationFilter,omitempty" yaml:"annotationFilter,omitempty"`
+	// LabelFilter filters routes by label selector.
+	LabelFilter string `json:"labelFilter,omitempty" yaml:"labelFilter,omitempty"`
+	// FQDNTemplate is a Go template for generating hostnames.
+	FQDNTemplate string `json:"fqdnTemplate,omitempty" yaml:"fqdnTemplate,omitempty"`
+	// CombineFQDNAndAnnotation combines template and annotation hostnames.
+	CombineFQDNAndAnnotation bool `json:"combineFqdnAndAnnotation,omitempty" yaml:"combineFqdnAndAnnotation,omitempty"`
+	// IgnoreHostnameAnnotation ignores hostname annotations.
+	IgnoreHostnameAnnotation bool `json:"ignoreHostnameAnnotation,omitempty" yaml:"ignoreHostnameAnnotation,omitempty"`
+	// GatewayName filters routes by parent Gateway name.
+	GatewayName string `json:"gatewayName,omitempty" yaml:"gatewayName,omitempty"`
+	// GatewayNamespace filters routes by parent Gateway namespace.
+	GatewayNamespace string `json:"gatewayNamespace,omitempty" yaml:"gatewayNamespace,omitempty"`
+	// GatewayLabelFilter filters parent Gateways by label selector.
+	GatewayLabelFilter string `json:"gatewayLabelFilter,omitempty" yaml:"gatewayLabelFilter,omitempty"`
+}
+
+// GatewayHTTPRouteConfig configures the Gateway API HTTPRoute source.
+type GatewayHTTPRouteConfig struct {
+	GatewayRouteConfig `json:",inline" yaml:",inline"`
+}
+
+// GatewayGRPCRouteConfig configures the Gateway API GRPCRoute source.
+type GatewayGRPCRouteConfig struct {
+	GatewayRouteConfig `json:",inline" yaml:",inline"`
+}
+
+// GatewayTLSRouteConfig configures the Gateway API TLSRoute source.
+type GatewayTLSRouteConfig struct {
+	GatewayRouteConfig `json:",inline" yaml:",inline"`
+}
+
+// GatewayTCPRouteConfig configures the Gateway API TCPRoute source.
+type GatewayTCPRouteConfig struct {
+	GatewayRouteConfig `json:",inline" yaml:",inline"`
+}
+
+// GatewayUDPRouteConfig configures the Gateway API UDPRoute source.
+type GatewayUDPRouteConfig struct {
+	GatewayRouteConfig `json:",inline" yaml:",inline"`
 }
 
 // GroupMappingConfig configures how FQDNs are organized into groups for the UI.
