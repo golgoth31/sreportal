@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.4](https://github.com/golgoth31/sreportal/compare/v1.11.3...v1.11.4) (2026-03-09)
+
+
+### Bug Fixes
+
+* **alertmanager:** improve alert browsing via grouping by name ([ba3a621](https://github.com/golgoth31/sreportal/commit/ba3a621ca421ca54b3305879bde1b1e846e7963f))
+
 ## [1.11.3](https://github.com/golgoth31/sreportal/compare/v1.11.2...v1.11.3) (2026-03-08)
 
 
