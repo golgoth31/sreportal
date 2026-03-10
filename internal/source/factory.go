@@ -78,7 +78,6 @@ type Factory struct {
 	restConfig    *rest.Config
 	istioClient   istioclient.Interface
 	gatewayClient gatewayclient.Interface
-	dynamicClient dynamic.Interface
 }
 
 // NewFactory creates a new source Factory.
@@ -202,10 +201,6 @@ func (f *Factory) BuildTypedSources(ctx context.Context, cfg *config.OperatorCon
 			log.Error(err, "failed to create gateway client")
 			return nil, err
 		}
-		if err := f.ensureDynamicClient(); err != nil {
-			log.Error(err, "failed to create dynamic client")
-			return nil, err
-		}
 		src, err := f.buildGatewayHTTPRouteSource(cfg.Sources.GatewayHTTPRoute)
 		if err != nil {
 			log.Error(err, "failed to build gateway-httproute source")
@@ -225,10 +220,6 @@ func (f *Factory) BuildTypedSources(ctx context.Context, cfg *config.OperatorCon
 		log.Info("building gateway-grpcroute source", "namespace", cfg.Sources.GatewayGRPCRoute.Namespace)
 		if err := f.ensureGatewayClient(); err != nil {
 			log.Error(err, "failed to create gateway client")
-			return nil, err
-		}
-		if err := f.ensureDynamicClient(); err != nil {
-			log.Error(err, "failed to create dynamic client")
 			return nil, err
 		}
 		src, err := f.buildGatewayGRPCRouteSource(cfg.Sources.GatewayGRPCRoute)
@@ -252,10 +243,6 @@ func (f *Factory) BuildTypedSources(ctx context.Context, cfg *config.OperatorCon
 			log.Error(err, "failed to create gateway client")
 			return nil, err
 		}
-		if err := f.ensureDynamicClient(); err != nil {
-			log.Error(err, "failed to create dynamic client")
-			return nil, err
-		}
 		src, err := f.buildGatewayTLSRouteSource(cfg.Sources.GatewayTLSRoute)
 		if err != nil {
 			log.Error(err, "failed to build gateway-tlsroute source")
@@ -277,10 +264,6 @@ func (f *Factory) BuildTypedSources(ctx context.Context, cfg *config.OperatorCon
 			log.Error(err, "failed to create gateway client")
 			return nil, err
 		}
-		if err := f.ensureDynamicClient(); err != nil {
-			log.Error(err, "failed to create dynamic client")
-			return nil, err
-		}
 		src, err := f.buildGatewayTCPRouteSource(cfg.Sources.GatewayTCPRoute)
 		if err != nil {
 			log.Error(err, "failed to build gateway-tcproute source")
@@ -300,10 +283,6 @@ func (f *Factory) BuildTypedSources(ctx context.Context, cfg *config.OperatorCon
 		log.Info("building gateway-udproute source", "namespace", cfg.Sources.GatewayUDPRoute.Namespace)
 		if err := f.ensureGatewayClient(); err != nil {
 			log.Error(err, "failed to create gateway client")
-			return nil, err
-		}
-		if err := f.ensureDynamicClient(); err != nil {
-			log.Error(err, "failed to create dynamic client")
 			return nil, err
 		}
 		src, err := f.buildGatewayUDPRouteSource(cfg.Sources.GatewayUDPRoute)
@@ -497,13 +476,10 @@ func parseLabelSelector(selector string) (labels.Selector, error) {
 	return labels.Parse(selector)
 }
 
-// sreportalClientGenerator implements external-dns source.ClientGenerator.
-// It wraps pre-existing clients from the Factory rather than creating new ones.
 type sreportalClientGenerator struct {
 	kubeClient    kubernetes.Interface
 	gatewayClient gatewayclient.Interface
 	istioClient   istioclient.Interface
-	dynamicClient dynamic.Interface
 }
 
 func (g *sreportalClientGenerator) KubeClient() (kubernetes.Interface, error) {
@@ -528,10 +504,7 @@ func (g *sreportalClientGenerator) IstioClient() (istioclient.Interface, error) 
 }
 
 func (g *sreportalClientGenerator) DynamicKubernetesClient() (dynamic.Interface, error) {
-	if g.dynamicClient == nil {
-		return nil, fmt.Errorf("dynamic client not initialized")
-	}
-	return g.dynamicClient, nil
+	return nil, fmt.Errorf("dynamic client not supported")
 }
 
 func (g *sreportalClientGenerator) CloudFoundryClient(_, _, _ string) (*cfclient.Client, error) {
@@ -554,18 +527,6 @@ func (f *Factory) ensureGatewayClient() error {
 	return nil
 }
 
-func (f *Factory) ensureDynamicClient() error {
-	if f.dynamicClient != nil {
-		return nil
-	}
-	dc, err := dynamic.NewForConfig(f.restConfig)
-	if err != nil {
-		return fmt.Errorf("failed to create dynamic client: %w", err)
-	}
-	f.dynamicClient = dc
-	return nil
-}
-
 func (f *Factory) buildGatewayHTTPRouteSource(cfg *config.GatewayHTTPRouteConfig) (Source, error) {
 	labelSelector, err := parseLabelSelector(cfg.LabelFilter)
 	if err != nil {
@@ -575,7 +536,6 @@ func (f *Factory) buildGatewayHTTPRouteSource(cfg *config.GatewayHTTPRouteConfig
 	clientGen := &sreportalClientGenerator{
 		kubeClient:    f.kubeClient,
 		gatewayClient: f.gatewayClient,
-		dynamicClient: f.dynamicClient,
 	}
 
 	sourceCfg := &externaldnssource.Config{
@@ -602,7 +562,6 @@ func (f *Factory) buildGatewayGRPCRouteSource(cfg *config.GatewayGRPCRouteConfig
 	clientGen := &sreportalClientGenerator{
 		kubeClient:    f.kubeClient,
 		gatewayClient: f.gatewayClient,
-		dynamicClient: f.dynamicClient,
 	}
 
 	sourceCfg := &externaldnssource.Config{
@@ -629,7 +588,6 @@ func (f *Factory) buildGatewayTLSRouteSource(cfg *config.GatewayTLSRouteConfig) 
 	clientGen := &sreportalClientGenerator{
 		kubeClient:    f.kubeClient,
 		gatewayClient: f.gatewayClient,
-		dynamicClient: f.dynamicClient,
 	}
 
 	sourceCfg := &externaldnssource.Config{
@@ -656,7 +614,6 @@ func (f *Factory) buildGatewayTCPRouteSource(cfg *config.GatewayTCPRouteConfig) 
 	clientGen := &sreportalClientGenerator{
 		kubeClient:    f.kubeClient,
 		gatewayClient: f.gatewayClient,
-		dynamicClient: f.dynamicClient,
 	}
 
 	sourceCfg := &externaldnssource.Config{
@@ -683,7 +640,6 @@ func (f *Factory) buildGatewayUDPRouteSource(cfg *config.GatewayUDPRouteConfig) 
 	clientGen := &sreportalClientGenerator{
 		kubeClient:    f.kubeClient,
 		gatewayClient: f.gatewayClient,
-		dynamicClient: f.dynamicClient,
 	}
 
 	sourceCfg := &externaldnssource.Config{
