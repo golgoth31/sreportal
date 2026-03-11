@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.0](https://github.com/golgoth31/sreportal/compare/v1.11.5...v1.12.0) (2026-03-11)
+
+
+### Features
+
+* **alertmanager:** show silencd and receivers ([f7f0144](https://github.com/golgoth31/sreportal/commit/f7f014443af57d1d7eb6a7346956661fdf135617))
+
 ## [1.11.5](https://github.com/golgoth31/sreportal/compare/v1.11.4...v1.11.5) (2026-03-09)
 
 
