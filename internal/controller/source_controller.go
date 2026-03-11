@@ -25,8 +25,6 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -41,7 +39,7 @@ import (
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/adapter"
 	"github.com/golgoth31/sreportal/internal/config"
-	srcfactory "github.com/golgoth31/sreportal/internal/source"
+	"github.com/golgoth31/sreportal/internal/source"
 )
 
 const (
@@ -53,21 +51,18 @@ const (
 // portalSourceKey identifies a unique (portal, sourceType) pair.
 type portalSourceKey struct {
 	portalName string
-	sourceType srcfactory.SourceType
+	sourceType source.SourceType
 }
 
 // SourceReconciler reconciles external-dns sources and updates DNSRecord CRs.
 type SourceReconciler struct {
 	client.Client
-	Scheme        *runtime.Scheme
-	KubeClient    kubernetes.Interface
-	RestConfig    *rest.Config
-	Config        *config.OperatorConfig
-	sourceFactory *srcfactory.Factory
+	config        *config.OperatorConfig
+	sourceFactory *source.Factory
 	dynamicClient dynamic.Interface
 
 	mu           sync.RWMutex
-	typedSources []srcfactory.TypedSource
+	typedSources []source.TypedSource
 
 	// sourceFailures tracks consecutive endpoint-collection failures per source type.
 	//
@@ -78,16 +73,16 @@ type SourceReconciler struct {
 	// External visibility: when failures exceed maxSourceConsecutiveFailures the
 	// state is surfaced as a NotReady condition on the DNSRecord via markSourceDegraded,
 	// giving operators a Kubernetes-native signal without requiring an in-memory dashboard.
-	sourceFailures map[srcfactory.SourceType]int
+	sourceFailures map[source.SourceType]int
 }
 
 // NewSourceReconciler creates a new SourceReconciler.
 func NewSourceReconciler(
 	c client.Client,
-	scheme *runtime.Scheme,
 	kubeClient kubernetes.Interface,
 	restConfig *rest.Config,
 	cfg *config.OperatorConfig,
+	builders []source.Builder,
 ) *SourceReconciler {
 	dynClient, err := dynamic.NewForConfig(restConfig)
 	if err != nil {
@@ -96,13 +91,10 @@ func NewSourceReconciler(
 
 	return &SourceReconciler{
 		Client:         c,
-		Scheme:         scheme,
-		KubeClient:     kubeClient,
-		RestConfig:     restConfig,
-		Config:         cfg,
-		sourceFactory:  srcfactory.NewFactory(kubeClient, restConfig),
+		config:         cfg,
+		sourceFactory:  source.NewFactory(kubeClient, restConfig, builders),
 		dynamicClient:  dynClient,
-		sourceFailures: make(map[srcfactory.SourceType]int),
+		sourceFailures: make(map[source.SourceType]int),
 	}
 }
 
@@ -136,7 +128,7 @@ func (r *SourceReconciler) Start(ctx context.Context) error {
 		log.Error(err, "failed to build sources at startup, will retry on next tick")
 	}
 
-	ticker := time.NewTicker(r.Config.Reconciliation.Interval.Duration())
+	ticker := time.NewTicker(r.config.Reconciliation.Interval.Duration())
 	defer ticker.Stop()
 
 	// Run once immediately so the first reconciliation does not wait a full interval.
@@ -276,7 +268,7 @@ func (r *SourceReconciler) buildPortalIndex(ctx context.Context) (*portalIndex, 
 // conditions once maxSourceConsecutiveFailures is reached.
 func (r *SourceReconciler) collectByPortalSource(
 	ctx context.Context,
-	typedSources []srcfactory.TypedSource,
+	typedSources []source.TypedSource,
 	idx *portalIndex,
 ) map[portalSourceKey][]*endpoint.Endpoint {
 	log := logf.FromContext(ctx).WithName("source")
@@ -361,7 +353,7 @@ func (r *SourceReconciler) rebuildSources(ctx context.Context) error {
 	log := ctrl.Log.WithName("source")
 	log.Info("rebuilding sources from config")
 
-	typedSources, err := r.sourceFactory.BuildTypedSources(ctx, r.Config)
+	typedSources, err := r.sourceFactory.BuildTypedSources(ctx, r.config)
 	if err != nil {
 		return err
 	}
@@ -419,7 +411,7 @@ func (r *SourceReconciler) ensureDNSResource(
 func (r *SourceReconciler) reconcileDNSRecord(
 	ctx context.Context,
 	portal *sreportalv1alpha1.Portal,
-	sourceType srcfactory.SourceType,
+	sourceType source.SourceType,
 	endpoints []*endpoint.Endpoint,
 ) error {
 	log := logf.FromContext(ctx).WithName("source")
@@ -527,9 +519,8 @@ func (r *SourceReconciler) deleteOrphanedDNSRecords(
 ) error {
 	log := logf.FromContext(ctx).WithName("source")
 
-	// Get enabled source types
-	enabledTypes := srcfactory.EnabledSourceTypes(r.Config)
-	enabledSet := make(map[srcfactory.SourceType]bool)
+	enabledTypes := r.sourceFactory.EnabledSourceTypes(r.config)
+	enabledSet := make(map[source.SourceType]bool)
 	for _, t := range enabledTypes {
 		enabledSet[t] = true
 	}
@@ -546,7 +537,7 @@ func (r *SourceReconciler) deleteOrphanedDNSRecords(
 	// Delete DNSRecords for disabled sources or portals with no endpoints
 	for i := range dnsRecordList.Items {
 		rec := &dnsRecordList.Items[i]
-		sourceType := srcfactory.SourceType(rec.Spec.SourceType)
+		sourceType := source.SourceType(rec.Spec.SourceType)
 
 		key := portalSourceKey{portalName: portal.Name, sourceType: sourceType}
 
@@ -590,12 +581,12 @@ func setDNSRecordCondition(conditions *[]metav1.Condition, newCondition metav1.C
 
 // enrichEndpoints looks up the original K8s resources and copies sreportal annotations
 // (sreportal.io/portal, sreportal.io/groups) to endpoint labels.
-func (r *SourceReconciler) enrichEndpoints(ctx context.Context, sourceType srcfactory.SourceType, endpoints []*endpoint.Endpoint) {
+func (r *SourceReconciler) enrichEndpoints(ctx context.Context, sourceType source.SourceType, endpoints []*endpoint.Endpoint) {
 	if r.dynamicClient == nil {
 		return
 	}
 
-	gvr, ok := gvrForSourceType(sourceType)
+	gvr, ok := r.sourceFactory.GVRForSourceType(sourceType)
 	if !ok {
 		return
 	}
@@ -631,6 +622,7 @@ func (r *SourceReconciler) enrichEndpoints(ctx context.Context, sourceType srcfa
 	}
 }
 
+<<<<<<< HEAD
 // gvrForSourceType returns the GroupVersionResource for a given source type.
 func gvrForSourceType(sourceType srcfactory.SourceType) (schema.GroupVersionResource, bool) {
 	switch sourceType {
@@ -657,6 +649,8 @@ func gvrForSourceType(sourceType srcfactory.SourceType) (schema.GroupVersionReso
 	}
 }
 
+=======
+>>>>>>> d1f01ae (feat(factory): refactor factory for maintenability)
 // markSourceDegraded sets a NotReady condition on the DNSRecord that corresponds
 // to the given portal and source type, surfacing a persistent collection failure.
 // If the DNSRecord does not yet exist no action is taken (it will be created
@@ -664,7 +658,7 @@ func gvrForSourceType(sourceType srcfactory.SourceType) (schema.GroupVersionReso
 func (r *SourceReconciler) markSourceDegraded(
 	ctx context.Context,
 	portal *sreportalv1alpha1.Portal,
-	sourceType srcfactory.SourceType,
+	sourceType source.SourceType,
 	cause error,
 	count int,
 ) {
@@ -698,14 +692,14 @@ func (r *SourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 // SetTypedSources sets the typed sources directly. This is useful for testing.
-func (r *SourceReconciler) SetTypedSources(sources []srcfactory.TypedSource) {
+func (r *SourceReconciler) SetTypedSources(sources []source.TypedSource) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.typedSources = sources
 }
 
 // GetTypedSources returns the current typed sources. This is useful for testing.
-func (r *SourceReconciler) GetTypedSources() []srcfactory.TypedSource {
+func (r *SourceReconciler) GetTypedSources() []source.TypedSource {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.typedSources

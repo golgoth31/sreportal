@@ -25,14 +25,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
-	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/external-dns/endpoint"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/adapter"
 	"github.com/golgoth31/sreportal/internal/config"
-	srcfactory "github.com/golgoth31/sreportal/internal/source"
+	"github.com/golgoth31/sreportal/internal/source"
+	"github.com/golgoth31/sreportal/internal/source/service"
 )
 
 // newLoadBalancerEndpoint creates an endpoint that simulates what external-dns
@@ -107,10 +107,10 @@ var _ = Describe("SourceReconciler", func() {
 
 		reconciler = NewSourceReconciler(
 			k8sClient,
-			scheme.Scheme,
 			kubeClient,
 			cfg,
 			testConfig,
+			[]source.Builder{service.NewBuilder()},
 		)
 	})
 
@@ -140,16 +140,6 @@ var _ = Describe("SourceReconciler", func() {
 		}
 	})
 
-	Context("NewSourceReconciler", func() {
-		It("should create reconciler with correct fields", func() {
-			Expect(reconciler.Client).NotTo(BeNil())
-			Expect(reconciler.Scheme).NotTo(BeNil())
-			Expect(reconciler.KubeClient).NotTo(BeNil())
-			Expect(reconciler.RestConfig).NotTo(BeNil())
-			Expect(reconciler.Config).To(Equal(testConfig))
-		})
-	})
-
 	Context("reconcileDNSRecord", func() {
 		It("should create DNSRecord for a portal and source type", func() {
 			// Create Portal
@@ -168,7 +158,7 @@ var _ = Describe("SourceReconciler", func() {
 			}
 
 			// Reconcile DNSRecord
-			err := reconciler.reconcileDNSRecord(ctx, portal, srcfactory.SourceTypeService, endpoints)
+			err := reconciler.reconcileDNSRecord(ctx, portal, service.SourceTypeService, endpoints)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Verify DNSRecord created
@@ -200,7 +190,7 @@ var _ = Describe("SourceReconciler", func() {
 			endpoints := []*endpoint.Endpoint{
 				{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
 			}
-			err := reconciler.reconcileDNSRecord(ctx, portal, srcfactory.SourceTypeService, endpoints)
+			err := reconciler.reconcileDNSRecord(ctx, portal, service.SourceTypeService, endpoints)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Second reconciliation with new endpoint
@@ -208,7 +198,7 @@ var _ = Describe("SourceReconciler", func() {
 				{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
 				{DNSName: "web.example.com", RecordType: "A", Targets: []string{"10.0.0.2"}},
 			}
-			err = reconciler.reconcileDNSRecord(ctx, portal, srcfactory.SourceTypeService, endpoints)
+			err = reconciler.reconcileDNSRecord(ctx, portal, service.SourceTypeService, endpoints)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Verify DNSRecord updated
@@ -301,7 +291,7 @@ var _ = Describe("SourceReconciler", func() {
 			endpoints := []*endpoint.Endpoint{
 				{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
 			}
-			err := reconciler.reconcileDNSRecord(ctx, portal, srcfactory.SourceTypeService, endpoints)
+			err := reconciler.reconcileDNSRecord(ctx, portal, service.SourceTypeService, endpoints)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Verify DNSRecord exists
@@ -340,7 +330,7 @@ var _ = Describe("SourceReconciler", func() {
 
 			typedSources := reconciler.GetTypedSources()
 			Expect(typedSources).To(HaveLen(1))
-			Expect(typedSources[0].Type).To(Equal(srcfactory.SourceTypeService))
+			Expect(typedSources[0].Type).To(Equal(service.SourceTypeService))
 		})
 	})
 })
@@ -374,10 +364,10 @@ var _ = Describe("SourceReconciler LoadBalancer Integration", func() {
 
 		reconciler = NewSourceReconciler(
 			k8sClient,
-			scheme.Scheme,
 			kubeClient,
 			cfg,
 			testConfig,
+			[]source.Builder{service.NewBuilder()},
 		)
 	})
 
@@ -422,7 +412,7 @@ var _ = Describe("SourceReconciler LoadBalancer Integration", func() {
 			}
 
 			// Reconcile
-			err := reconciler.reconcileDNSRecord(ctx, portal, srcfactory.SourceTypeService, endpoints)
+			err := reconciler.reconcileDNSRecord(ctx, portal, service.SourceTypeService, endpoints)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Verify DNSRecord
@@ -459,7 +449,7 @@ var _ = Describe("SourceReconciler LoadBalancer Integration", func() {
 				),
 			}
 
-			err := reconciler.reconcileDNSRecord(ctx, portal, srcfactory.SourceTypeService, endpoints)
+			err := reconciler.reconcileDNSRecord(ctx, portal, service.SourceTypeService, endpoints)
 			Expect(err).NotTo(HaveOccurred())
 
 			dnsRecordKey := types.NamespacedName{
@@ -522,7 +512,7 @@ var _ = Describe("SourceReconciler LoadBalancer Integration", func() {
 
 			typedSources := reconciler.GetTypedSources()
 			Expect(typedSources).To(HaveLen(1))
-			Expect(typedSources[0].Type).To(Equal(srcfactory.SourceTypeService))
+			Expect(typedSources[0].Type).To(Equal(service.SourceTypeService))
 		})
 
 		It("should return empty sources when service source is disabled", func() {
@@ -530,10 +520,10 @@ var _ = Describe("SourceReconciler LoadBalancer Integration", func() {
 
 			disabledReconciler := NewSourceReconciler(
 				k8sClient,
-				scheme.Scheme,
 				kubeClient,
 				cfg,
 				testConfig,
+				[]source.Builder{service.NewBuilder()},
 			)
 
 			err := disabledReconciler.rebuildSources(ctx)

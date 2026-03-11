@@ -41,6 +41,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	externaldnsv1alpha1 "sigs.k8s.io/external-dns/apis/v1alpha1"
 
+	"sigs.k8s.io/external-dns/source/annotations"
+
 	sreportal "github.com/golgoth31/sreportal"
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/alertmanagerclient"
@@ -48,6 +50,12 @@ import (
 	"github.com/golgoth31/sreportal/internal/controller"
 	portalctrl "github.com/golgoth31/sreportal/internal/controller/portal"
 	"github.com/golgoth31/sreportal/internal/mcp"
+	"github.com/golgoth31/sreportal/internal/source"
+	"github.com/golgoth31/sreportal/internal/source/dnsendpoint"
+	"github.com/golgoth31/sreportal/internal/source/ingress"
+	"github.com/golgoth31/sreportal/internal/source/istiogateway"
+	"github.com/golgoth31/sreportal/internal/source/istiovirtualservice"
+	"github.com/golgoth31/sreportal/internal/source/service"
 	"github.com/golgoth31/sreportal/internal/version"
 	webhookv1alpha1 "github.com/golgoth31/sreportal/internal/webhook/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/webserver"
@@ -293,13 +301,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Source reconciler for external-dns source integration
+	annotations.SetAnnotationPrefix("external-dns.alpha.kubernetes.io/")
+
+	sourceBuilders := []source.Builder{
+		service.NewBuilder(),
+		ingress.NewBuilder(),
+		dnsendpoint.NewBuilder(),
+		istiogateway.NewBuilder(),
+		istiovirtualservice.NewBuilder(),
+	}
 	sourceReconciler := controller.NewSourceReconciler(
 		mgr.GetClient(),
-		mgr.GetScheme(),
 		kubeClient,
 		restConfig,
 		operatorConfig,
+		sourceBuilders,
 	)
 	if err := sourceReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Source")
