@@ -85,6 +85,7 @@ export function AlertsPage() {
             <SelectItem value={ALL_STATES_VALUE}>All states</SelectItem>
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="suppressed">Suppressed</SelectItem>
+            <SelectItem value="silenced">Silenced</SelectItem>
             <SelectItem value="unprocessed">Unprocessed</SelectItem>
           </SelectContent>
         </Select>

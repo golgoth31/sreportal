@@ -56,6 +56,10 @@ type AlertmanagerStatus struct {
 	// +optional
 	ActiveAlerts []AlertStatus `json:"activeAlerts,omitempty"`
 
+	// silences is the list of active silences for identifying silenced alerts
+	// +optional
+	Silences []SilenceStatus `json:"silences,omitempty"`
+
 	// conditions represent the current state of the Alertmanager resource.
 	// +listType=map
 	// +listMapKey=type
@@ -92,6 +96,33 @@ type AlertStatus struct {
 
 	// updatedAt is the last time the alert was updated
 	UpdatedAt metav1.Time `json:"updatedAt"`
+
+	// receivers are the notification integrations this alert is routed to
+	// +optional
+	Receivers []string `json:"receivers,omitempty"`
+
+	// silencedBy contains the IDs of silences that suppress this alert
+	// +optional
+	SilencedBy []string `json:"silencedBy,omitempty"`
+}
+
+// SilenceStatus represents a silence from Alertmanager (for identifying silenced alerts)
+type SilenceStatus struct {
+	ID        string          `json:"id"`
+	Matchers  []MatcherStatus `json:"matchers"`
+	StartsAt  metav1.Time     `json:"startsAt"`
+	EndsAt    metav1.Time     `json:"endsAt"`
+	Status    string          `json:"status"`
+	CreatedBy string          `json:"createdBy"`
+	Comment   string          `json:"comment"`
+	UpdatedAt metav1.Time     `json:"updatedAt"`
+}
+
+// MatcherStatus is a label matcher within a silence
+type MatcherStatus struct {
+	Name    string `json:"name"`
+	Value   string `json:"value"`
+	IsRegex bool   `json:"isRegex"`
 }
 
 // +kubebuilder:object:root=true

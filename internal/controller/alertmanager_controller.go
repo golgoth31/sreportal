@@ -43,11 +43,17 @@ type AlertmanagerReconciler struct {
 }
 
 // NewAlertmanagerReconciler creates a new AlertmanagerReconciler with the handler chain.
+// localDataFetcher may be nil; then localFetcher is used for basic alerts only.
 // The K8s client is used by the FetchAlertsHandler to look up Portal CRs and read
 // TLS secrets when fetching alerts from remote portals.
-func NewAlertmanagerReconciler(c client.Client, scheme *runtime.Scheme, localFetcher domainalertmanager.Fetcher) *AlertmanagerReconciler {
+func NewAlertmanagerReconciler(
+	c client.Client,
+	scheme *runtime.Scheme,
+	localDataFetcher domainalertmanager.DataFetcher,
+	localFetcher domainalertmanager.Fetcher,
+) *AlertmanagerReconciler {
 	handlers := []reconciler.Handler[*sreportalv1alpha1.Alertmanager]{
-		alertmanagerchain.NewFetchAlertsHandler(localFetcher, c),
+		alertmanagerchain.NewFetchAlertsHandler(localDataFetcher, localFetcher, c),
 		alertmanagerchain.NewUpdateStatusHandler(c),
 	}
 

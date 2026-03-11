@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file sreportal/v1/alertmanager.proto.
  */
 export const file_sreportal_v1_alertmanager: GenFile = /*@__PURE__*/
-  fileDesc("Ch9zcmVwb3J0YWwvdjEvYWxlcnRtYW5hZ2VyLnByb3RvEgxzcmVwb3J0YWwudjEiVQoRTGlzdEFsZXJ0c1JlcXVlc3QSDgoGcG9ydGFsGAEgASgJEhEKCW5hbWVzcGFjZRgCIAEoCRIOCgZzZWFyY2gYAyABKAkSDQoFc3RhdGUYBCABKAkiTwoSTGlzdEFsZXJ0c1Jlc3BvbnNlEjkKDWFsZXJ0bWFuYWdlcnMYASADKAsyIi5zcmVwb3J0YWwudjEuQWxlcnRtYW5hZ2VyUmVzb3VyY2Ui3wEKFEFsZXJ0bWFuYWdlclJlc291cmNlEgwKBG5hbWUYASABKAkSEQoJbmFtZXNwYWNlGAIgASgJEhIKCnBvcnRhbF9yZWYYAyABKAkSEQoJbG9jYWxfdXJsGAQgASgJEhIKCnJlbW90ZV91cmwYBSABKAkSIwoGYWxlcnRzGAYgAygLMhMuc3JlcG9ydGFsLnYxLkFsZXJ0EjcKE2xhc3RfcmVjb25jaWxlX3RpbWUYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg0KBXJlYWR5GAggASgIIoYDCgVBbGVydBITCgtmaW5nZXJwcmludBgBIAEoCRIvCgZsYWJlbHMYAiADKAsyHy5zcmVwb3J0YWwudjEuQWxlcnQuTGFiZWxzRW50cnkSOQoLYW5ub3RhdGlvbnMYAyADKAsyJC5zcmVwb3J0YWwudjEuQWxlcnQuQW5ub3RhdGlvbnNFbnRyeRINCgVzdGF0ZRgEIAEoCRItCglzdGFydHNfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEisKB2VuZHNfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wGi0KC0xhYmVsc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEaMgoQQW5ub3RhdGlvbnNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBMmYKE0FsZXJ0bWFuYWdlclNlcnZpY2USTwoKTGlzdEFsZXJ0cxIfLnNyZXBvcnRhbC52MS5MaXN0QWxlcnRzUmVxdWVzdBogLnNyZXBvcnRhbC52MS5MaXN0QWxlcnRzUmVzcG9uc2VCwQEKEGNvbS5zcmVwb3J0YWwudjFCEUFsZXJ0bWFuYWdlclByb3RvUAFaSWdpdGh1Yi5jb20vZ29sZ290aDMxL3NyZXBvcnRhbC9pbnRlcm5hbC9ncnBjL2dlbi9zcmVwb3J0YWwvdjE7c3JlcG9ydGFsdjGiAgNTWFiqAgxTcmVwb3J0YWwuVjHKAgxTcmVwb3J0YWxcVjHiAhhTcmVwb3J0YWxcVjFcR1BCTWV0YWRhdGHqAg1TcmVwb3J0YWw6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp]);
+  fileDesc("Ch9zcmVwb3J0YWwvdjEvYWxlcnRtYW5hZ2VyLnByb3RvEgxzcmVwb3J0YWwudjEiVQoRTGlzdEFsZXJ0c1JlcXVlc3QSDgoGcG9ydGFsGAEgASgJEhEKCW5hbWVzcGFjZRgCIAEoCRIOCgZzZWFyY2gYAyABKAkSDQoFc3RhdGUYBCABKAkiTwoSTGlzdEFsZXJ0c1Jlc3BvbnNlEjkKDWFsZXJ0bWFuYWdlcnMYASADKAsyIi5zcmVwb3J0YWwudjEuQWxlcnRtYW5hZ2VyUmVzb3VyY2UiiAIKFEFsZXJ0bWFuYWdlclJlc291cmNlEgwKBG5hbWUYASABKAkSEQoJbmFtZXNwYWNlGAIgASgJEhIKCnBvcnRhbF9yZWYYAyABKAkSEQoJbG9jYWxfdXJsGAQgASgJEhIKCnJlbW90ZV91cmwYBSABKAkSIwoGYWxlcnRzGAYgAygLMhMuc3JlcG9ydGFsLnYxLkFsZXJ0EjcKE2xhc3RfcmVjb25jaWxlX3RpbWUYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg0KBXJlYWR5GAggASgIEicKCHNpbGVuY2VzGAkgAygLMhUuc3JlcG9ydGFsLnYxLlNpbGVuY2Ui/wEKB1NpbGVuY2USCgoCaWQYASABKAkSJwoIbWF0Y2hlcnMYAiADKAsyFS5zcmVwb3J0YWwudjEuTWF0Y2hlchItCglzdGFydHNfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEisKB2VuZHNfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg4KBnN0YXR1cxgFIAEoCRISCgpjcmVhdGVkX2J5GAYgASgJEg8KB2NvbW1lbnQYByABKAkSLgoKdXBkYXRlZF9hdBgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiOAoHTWF0Y2hlchIMCgRuYW1lGAEgASgJEg0KBXZhbHVlGAIgASgJEhAKCGlzX3JlZ2V4GAMgASgIIq4DCgVBbGVydBITCgtmaW5nZXJwcmludBgBIAEoCRIvCgZsYWJlbHMYAiADKAsyHy5zcmVwb3J0YWwudjEuQWxlcnQuTGFiZWxzRW50cnkSOQoLYW5ub3RhdGlvbnMYAyADKAsyJC5zcmVwb3J0YWwudjEuQWxlcnQuQW5ub3RhdGlvbnNFbnRyeRINCgVzdGF0ZRgEIAEoCRItCglzdGFydHNfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEisKB2VuZHNfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhEKCXJlY2VpdmVycxgIIAMoCRITCgtzaWxlbmNlZF9ieRgJIAMoCRotCgtMYWJlbHNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBGjIKEEFubm90YXRpb25zRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ATJmChNBbGVydG1hbmFnZXJTZXJ2aWNlEk8KCkxpc3RBbGVydHMSHy5zcmVwb3J0YWwudjEuTGlzdEFsZXJ0c1JlcXVlc3QaIC5zcmVwb3J0YWwudjEuTGlzdEFsZXJ0c1Jlc3BvbnNlQsEBChBjb20uc3JlcG9ydGFsLnYxQhFBbGVydG1hbmFnZXJQcm90b1ABWklnaXRodWIuY29tL2dvbGdvdGgzMS9zcmVwb3J0YWwvaW50ZXJuYWwvZ3JwYy9nZW4vc3JlcG9ydGFsL3YxO3NyZXBvcnRhbHYxogIDU1hYqgIMU3JlcG9ydGFsLlYxygIMU3JlcG9ydGFsXFYx4gIYU3JlcG9ydGFsXFYxXEdQQk1ldGFkYXRh6gINU3JlcG9ydGFsOjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp]);
 
 /**
  * ListAlertsRequest is the request for listing alerts
@@ -138,6 +138,13 @@ export type AlertmanagerResource = Message<"sreportal.v1.AlertmanagerResource"> 
    * @generated from field: bool ready = 8;
    */
   ready: boolean;
+
+  /**
+   * silences are active silences for identifying silenced alerts
+   *
+   * @generated from field: repeated sreportal.v1.Silence silences = 9;
+   */
+  silences: Silence[];
 };
 
 /**
@@ -146,6 +153,89 @@ export type AlertmanagerResource = Message<"sreportal.v1.AlertmanagerResource"> 
  */
 export const AlertmanagerResourceSchema: GenMessage<AlertmanagerResource> = /*@__PURE__*/
   messageDesc(file_sreportal_v1_alertmanager, 2);
+
+/**
+ * Silence represents a mute rule in Alertmanager
+ *
+ * @generated from message sreportal.v1.Silence
+ */
+export type Silence = Message<"sreportal.v1.Silence"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: repeated sreportal.v1.Matcher matchers = 2;
+   */
+  matchers: Matcher[];
+
+  /**
+   * @generated from field: google.protobuf.Timestamp starts_at = 3;
+   */
+  startsAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp ends_at = 4;
+   */
+  endsAt?: Timestamp;
+
+  /**
+   * @generated from field: string status = 5;
+   */
+  status: string;
+
+  /**
+   * @generated from field: string created_by = 6;
+   */
+  createdBy: string;
+
+  /**
+   * @generated from field: string comment = 7;
+   */
+  comment: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp updated_at = 8;
+   */
+  updatedAt?: Timestamp;
+};
+
+/**
+ * Describes the message sreportal.v1.Silence.
+ * Use `create(SilenceSchema)` to create a new message.
+ */
+export const SilenceSchema: GenMessage<Silence> = /*@__PURE__*/
+  messageDesc(file_sreportal_v1_alertmanager, 3);
+
+/**
+ * Matcher is a label matcher within a silence
+ *
+ * @generated from message sreportal.v1.Matcher
+ */
+export type Matcher = Message<"sreportal.v1.Matcher"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string value = 2;
+   */
+  value: string;
+
+  /**
+   * @generated from field: bool is_regex = 3;
+   */
+  isRegex: boolean;
+};
+
+/**
+ * Describes the message sreportal.v1.Matcher.
+ * Use `create(MatcherSchema)` to create a new message.
+ */
+export const MatcherSchema: GenMessage<Matcher> = /*@__PURE__*/
+  messageDesc(file_sreportal_v1_alertmanager, 4);
 
 /**
  * Alert represents a single active alert from Alertmanager
@@ -201,6 +291,20 @@ export type Alert = Message<"sreportal.v1.Alert"> & {
    * @generated from field: google.protobuf.Timestamp updated_at = 7;
    */
   updatedAt?: Timestamp;
+
+  /**
+   * receivers are the notification integrations this alert is routed to
+   *
+   * @generated from field: repeated string receivers = 8;
+   */
+  receivers: string[];
+
+  /**
+   * silenced_by contains the IDs of silences that suppress this alert
+   *
+   * @generated from field: repeated string silenced_by = 9;
+   */
+  silencedBy: string[];
 };
 
 /**
@@ -208,7 +312,7 @@ export type Alert = Message<"sreportal.v1.Alert"> & {
  * Use `create(AlertSchema)` to create a new message.
  */
 export const AlertSchema: GenMessage<Alert> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_alertmanager, 3);
+  messageDesc(file_sreportal_v1_alertmanager, 5);
 
 /**
  * AlertmanagerService provides access to Alertmanager alert data

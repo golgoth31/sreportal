@@ -26,3 +26,19 @@ func TestAlert_AlertName_WhenMissing_ReturnsEmpty(t *testing.T) {
 
 	assert.Equal(t, "", a.AlertName())
 }
+
+func TestAlert_IsSilenced_WhenSilencedByNotEmpty_ReturnsTrue(t *testing.T) {
+	a := alertmanager.Alert{
+		Labels:     map[string]string{"alertname": "Test"},
+		SilencedBy: []string{"silence-uuid-1"},
+	}
+	assert.True(t, a.IsSilenced())
+}
+
+func TestAlert_IsSilenced_WhenSilencedByEmpty_ReturnsFalse(t *testing.T) {
+	a := alertmanager.Alert{
+		Labels:     map[string]string{"alertname": "Test"},
+		SilencedBy: nil,
+	}
+	assert.False(t, a.IsSilenced())
+}

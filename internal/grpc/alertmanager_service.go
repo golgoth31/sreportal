@@ -81,6 +81,7 @@ func (s *AlertmanagerService) ListAlerts(
 			RemoteUrl: am.Spec.URL.Remote,
 			Alerts:    alerts,
 			Ready:     ready,
+			Silences:  toProtoSilences(am.Status.Silences),
 		}
 
 		if am.Status.LastReconcileTime != nil {
@@ -122,6 +123,8 @@ func toProtoAlerts(statuses []sreportalv1alpha1.AlertStatus, search, stateFilter
 			State:       s.State,
 			StartsAt:    timestamppb.New(s.StartsAt.Time),
 			UpdatedAt:   timestamppb.New(s.UpdatedAt.Time),
+			Receivers:   s.Receivers,
+			SilencedBy:  s.SilencedBy,
 		}
 		if s.EndsAt != nil {
 			a.EndsAt = timestamppb.New(s.EndsAt.Time)
@@ -144,4 +147,32 @@ func matchesSearch(s sreportalv1alpha1.AlertStatus, searchLower string) bool {
 		}
 	}
 	return false
+}
+
+func toProtoSilences(statuses []sreportalv1alpha1.SilenceStatus) []*alertmanagerv1.Silence {
+	if len(statuses) == 0 {
+		return nil
+	}
+	silences := make([]*alertmanagerv1.Silence, 0, len(statuses))
+	for _, s := range statuses {
+		matchers := make([]*alertmanagerv1.Matcher, 0, len(s.Matchers))
+		for _, m := range s.Matchers {
+			matchers = append(matchers, &alertmanagerv1.Matcher{
+				Name:    m.Name,
+				Value:   m.Value,
+				IsRegex: m.IsRegex,
+			})
+		}
+		silences = append(silences, &alertmanagerv1.Silence{
+			Id:        s.ID,
+			Matchers:  matchers,
+			StartsAt:  timestamppb.New(s.StartsAt.Time),
+			EndsAt:    timestamppb.New(s.EndsAt.Time),
+			Status:    s.Status,
+			CreatedBy: s.CreatedBy,
+			Comment:   s.Comment,
+			UpdatedAt: timestamppb.New(s.UpdatedAt.Time),
+		})
+	}
+	return silences
 }

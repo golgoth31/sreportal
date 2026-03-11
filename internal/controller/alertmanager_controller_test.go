@@ -110,6 +110,7 @@ var _ = Describe("Alertmanager Controller", func() {
 			controllerReconciler := NewAlertmanagerReconciler(
 				directClient,
 				directClient.Scheme(),
+				nil,
 				fetcher,
 			)
 
@@ -134,6 +135,7 @@ var _ = Describe("Alertmanager Controller", func() {
 			controllerReconciler := NewAlertmanagerReconciler(
 				directClient,
 				directClient.Scheme(),
+				nil,
 				fetcher,
 			)
 

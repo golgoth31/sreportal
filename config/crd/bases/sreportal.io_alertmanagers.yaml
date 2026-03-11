@@ -107,6 +107,18 @@ spec:
                       description: labels are the identifying key-value pairs of the
                         alert
                       type: object
+                    receivers:
+                      description: receivers are the notification integrations this
+                        alert is routed to
+                      items:
+                        type: string
+                      type: array
+                    silencedBy:
+                      description: silencedBy contains the IDs of silences that suppress
+                        this alert
+                      items:
+                        type: string
+                      type: array
                     startsAt:
                       description: startsAt is when the alert started firing
                       format: date-time
@@ -195,6 +207,57 @@ spec:
                 description: lastReconcileTime is the timestamp of the last reconciliation
                 format: date-time
                 type: string
+              silences:
+                description: silences is the list of active silences for identifying
+                  silenced alerts
+                items:
+                  description: SilenceStatus represents a silence from Alertmanager
+                    (for identifying silenced alerts)
+                  properties:
+                    comment:
+                      type: string
+                    createdBy:
+                      type: string
+                    endsAt:
+                      format: date-time
+                      type: string
+                    id:
+                      type: string
+                    matchers:
+                      items:
+                        description: MatcherStatus is a label matcher within a silence
+                        properties:
+                          isRegex:
+                            type: boolean
+                          name:
+                            type: string
+                          value:
+                            type: string
+                        required:
+                        - isRegex
+                        - name
+                        - value
+                        type: object
+                      type: array
+                    startsAt:
+                      format: date-time
+                      type: string
+                    status:
+                      type: string
+                    updatedAt:
+                      format: date-time
+                      type: string
+                  required:
+                  - comment
+                  - createdBy
+                  - endsAt
+                  - id
+                  - matchers
+                  - startsAt
+                  - status
+                  - updatedAt
+                  type: object
+                type: array
             type: object
         required:
         - spec

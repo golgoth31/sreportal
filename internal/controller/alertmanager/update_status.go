@@ -53,9 +53,15 @@ func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 		domainAlerts = data
 	}
 
+	var domainSilences []domainalertmanager.Silence
+	if data, ok := rc.Data[DataKeySilences].([]domainalertmanager.Silence); ok {
+		domainSilences = data
+	}
+
 	base := rc.Resource.DeepCopy()
 
 	rc.Resource.Status.ActiveAlerts = toAlertStatuses(domainAlerts)
+	rc.Resource.Status.Silences = toSilenceStatuses(domainSilences)
 	rc.Resource.Status.LastReconcileTime = &now
 
 	readyCondition := metav1.Condition{
@@ -82,6 +88,10 @@ func toAlertStatuses(alerts []domainalertmanager.Alert) []sreportalv1alpha1.Aler
 
 	statuses := make([]sreportalv1alpha1.AlertStatus, 0, len(alerts))
 	for _, a := range alerts {
+		receivers := make([]string, 0, len(a.Receivers))
+		for _, r := range a.Receivers {
+			receivers = append(receivers, r.Name())
+		}
 		s := sreportalv1alpha1.AlertStatus{
 			Fingerprint: a.Fingerprint,
 			Labels:      a.Labels,
@@ -89,12 +99,43 @@ func toAlertStatuses(alerts []domainalertmanager.Alert) []sreportalv1alpha1.Aler
 			State:       string(a.State),
 			StartsAt:    metav1.NewTime(a.StartsAt),
 			UpdatedAt:   metav1.NewTime(a.UpdatedAt),
+			Receivers:   receivers,
+			SilencedBy:  a.SilencedBy,
 		}
 		if a.EndsAt != nil {
 			endsAt := metav1.NewTime(*a.EndsAt)
 			s.EndsAt = &endsAt
 		}
 		statuses = append(statuses, s)
+	}
+	return statuses
+}
+
+func toSilenceStatuses(silences []domainalertmanager.Silence) []sreportalv1alpha1.SilenceStatus {
+	if len(silences) == 0 {
+		return nil
+	}
+
+	statuses := make([]sreportalv1alpha1.SilenceStatus, 0, len(silences))
+	for _, s := range silences {
+		matchers := make([]sreportalv1alpha1.MatcherStatus, 0, len(s.Matchers()))
+		for _, m := range s.Matchers() {
+			matchers = append(matchers, sreportalv1alpha1.MatcherStatus{
+				Name:    m.Name,
+				Value:   m.Value,
+				IsRegex: m.IsRegex,
+			})
+		}
+		statuses = append(statuses, sreportalv1alpha1.SilenceStatus{
+			ID:        s.ID(),
+			Matchers:  matchers,
+			StartsAt:  metav1.NewTime(s.StartsAt()),
+			EndsAt:    metav1.NewTime(s.EndsAt()),
+			Status:    string(s.Status()),
+			CreatedBy: s.CreatedBy(),
+			Comment:   s.Comment(),
+			UpdatedAt: metav1.NewTime(s.UpdatedAt()),
+		})
 	}
 	return statuses
 }

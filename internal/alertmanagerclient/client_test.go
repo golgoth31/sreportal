@@ -114,3 +114,99 @@ func TestGetActiveAlerts_WithCustomHTTPClient(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, alerts)
 }
+
+func TestGetReceivers_ParsesResponse(t *testing.T) {
+	body := `[{"name":"team-oncall"},{"name":"pagerduty"}]`
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/v2/receivers", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(body))
+	}))
+	defer srv.Close()
+
+	c := alertmanagerclient.NewClient()
+	receivers, err := c.GetReceivers(context.Background(), srv.URL)
+	require.NoError(t, err)
+	require.Len(t, receivers, 2)
+	assert.Equal(t, "team-oncall", receivers[0].Name())
+	assert.Equal(t, "pagerduty", receivers[1].Name())
+}
+
+func TestGetSilences_ParsesResponse(t *testing.T) {
+	body := `[{
+		"id":"silence-123",
+		"status":{"state":"active"},
+		"matchers":[{"name":"alertname","value":"HighCPU","isRegex":false}],
+		"startsAt":"2026-03-08T10:00:00Z",
+		"endsAt":"2026-03-08T12:00:00Z",
+		"createdBy":"ops@example.com",
+		"comment":"maintenance",
+		"updatedAt":"2026-03-08T10:00:00Z"
+	}]`
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/v2/silences", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(body))
+	}))
+	defer srv.Close()
+
+	c := alertmanagerclient.NewClient()
+	silences, err := c.GetSilences(context.Background(), srv.URL)
+	require.NoError(t, err)
+	require.Len(t, silences, 1)
+	assert.Equal(t, "silence-123", silences[0].ID())
+	assert.Equal(t, "ops@example.com", silences[0].CreatedBy())
+	assert.Equal(t, "maintenance", silences[0].Comment())
+	assert.Equal(t, alertmanager.SilenceStatusActive, silences[0].Status())
+}
+
+func TestGetAlertmanagerData_ReturnsAlertsWithReceiversAndSilences(t *testing.T) {
+	callCount := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/v2/alerts":
+			_, _ = w.Write([]byte(`[{
+				"fingerprint":"abc",
+				"labels":{"alertname":"HighCPU"},
+				"annotations":{},
+				"receivers":[{"name":"team-oncall"}],
+				"status":{"state":"active","silencedBy":["sil-1"]},
+				"startsAt":"2026-03-08T10:00:00Z",
+				"endsAt":"0001-01-01T00:00:00Z",
+				"updatedAt":"2026-03-08T10:05:00Z"
+			}]`))
+		case "/api/v2/receivers":
+			_, _ = w.Write([]byte(`[{"name":"team-oncall"}]`))
+		case "/api/v2/silences":
+			_, _ = w.Write([]byte(`[{
+				"id":"sil-1",
+				"status":{"state":"active"},
+				"matchers":[{"name":"alertname","value":"HighCPU","isRegex":false}],
+				"startsAt":"2026-03-08T10:00:00Z",
+				"endsAt":"2026-03-08T12:00:00Z",
+				"createdBy":"ops",
+				"comment":"mute",
+				"updatedAt":"2026-03-08T10:00:00Z"
+			}]`))
+		default:
+			t.Errorf("unexpected path %s", r.URL.Path)
+		}
+		callCount++
+	}))
+	defer srv.Close()
+
+	c := alertmanagerclient.NewClient()
+	data, err := c.GetAlertmanagerData(context.Background(), srv.URL)
+	require.NoError(t, err)
+	require.Len(t, data.Alerts, 1)
+	assert.Equal(t, "abc", data.Alerts[0].Fingerprint)
+	assert.True(t, data.Alerts[0].IsSilenced())
+	require.Len(t, data.Alerts[0].Receivers, 1)
+	assert.Equal(t, "team-oncall", data.Alerts[0].Receivers[0].Name())
+	require.Len(t, data.Silences, 1)
+	assert.Equal(t, "sil-1", data.Silences[0].ID())
+	require.Len(t, data.Receivers, 1)
+	assert.Equal(t, "team-oncall", data.Receivers[0].Name())
+	assert.Equal(t, 3, callCount)
+}

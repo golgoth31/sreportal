@@ -18,17 +18,23 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import type { AlertGroup } from "../domain/alertmanager.types";
-import { formatAlertTime } from "../domain/alertmanager.types";
+import {
+  formatAlertTime,
+  isSilenced,
+} from "../domain/alertmanager.types";
 
 interface AlertGroupCardProps {
   group: AlertGroup;
 }
 
+const silencedBadgeClassName =
+  "text-xs bg-blue-500/10 text-blue-600 border-blue-200 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-800";
+
 export function AlertGroupCard({ group }: AlertGroupCardProps) {
   const [open, setOpen] = useState(false);
-  const count = group.alerts.length;
 
-  const hasActive = group.alerts.some((a) => a.state === "active");
+  const activeCount = group.alerts.filter((a) => a.state === "active").length;
+  const silencedCount = group.alerts.filter((a) => isSilenced(a)).length;
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -49,12 +55,26 @@ export function AlertGroupCard({ group }: AlertGroupCardProps) {
             />
             <span className="font-medium text-sm">{group.name}</span>
           </div>
-          <Badge
-            variant={hasActive ? "destructive" : "secondary"}
-            className="text-xs"
-          >
-            {count}
-          </Badge>
+          <div className="flex flex-wrap gap-1.5">
+            {activeCount > 0 && (
+              <Badge variant="destructive" className="text-xs">
+                {activeCount}
+              </Badge>
+            )}
+            {silencedCount > 0 && (
+              <Badge
+                variant="outline"
+                className={cn("text-xs", silencedBadgeClassName)}
+              >
+                {silencedCount}
+              </Badge>
+            )}
+            {activeCount === 0 && silencedCount === 0 && (
+              <Badge variant="secondary" className="text-xs">
+                {group.alerts.length}
+              </Badge>
+            )}
+          </div>
         </Button>
       </CollapsibleTrigger>
 
@@ -64,6 +84,7 @@ export function AlertGroupCard({ group }: AlertGroupCardProps) {
             <TableHeader>
               <TableRow>
                 <TableHead>State</TableHead>
+                <TableHead className="hidden sm:table-cell">Receivers</TableHead>
                 <TableHead>Started</TableHead>
                 <TableHead className="hidden sm:table-cell">
                   Summary
@@ -77,14 +98,39 @@ export function AlertGroupCard({ group }: AlertGroupCardProps) {
               {group.alerts.map((alert) => (
                 <TableRow key={alert.fingerprint}>
                   <TableCell>
-                    <Badge
-                      variant={
-                        alert.state === "active" ? "destructive" : "secondary"
-                      }
-                      className="text-xs"
-                    >
-                      {alert.state}
-                    </Badge>
+                    <div className="flex flex-wrap gap-1">
+                      {isSilenced(alert) ? (
+                        <Badge
+                          variant="outline"
+                          className={cn("text-xs", silencedBadgeClassName)}
+                        >
+                          silenced
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant={
+                            alert.state === "active"
+                              ? "destructive"
+                              : "secondary"
+                          }
+                          className="text-xs"
+                        >
+                          {alert.state}
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell
+                    className="text-muted-foreground text-xs hidden sm:table-cell max-w-[10rem] truncate"
+                    title={
+                      alert.receivers.length > 0
+                        ? alert.receivers.join(", ")
+                        : undefined
+                    }
+                  >
+                    {alert.receivers.length > 0
+                      ? alert.receivers.join(", ")
+                      : "\u2014"}
                   </TableCell>
                   <TableCell className="text-muted-foreground text-xs">
                     {formatAlertTime(alert.startsAt)}

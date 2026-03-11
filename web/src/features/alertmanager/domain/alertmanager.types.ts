@@ -13,6 +13,15 @@ export interface Alert {
   readonly startsAt: string;
   readonly endsAt: string | undefined;
   readonly updatedAt: string;
+  /** Receivers this alert is routed to */
+  readonly receivers: readonly string[];
+  /** IDs of silences that suppress this alert */
+  readonly silencedBy: readonly string[];
+}
+
+/** Returns true when the alert is suppressed by one or more silences */
+export function isSilenced(alert: Alert): boolean {
+  return alert.silencedBy.length > 0;
 }
 
 export interface AlertmanagerResource {
@@ -24,6 +33,24 @@ export interface AlertmanagerResource {
   readonly alerts: readonly Alert[];
   readonly lastReconcileTime: string | undefined;
   readonly ready: boolean;
+  readonly silences?: readonly Silence[];
+}
+
+export interface Silence {
+  readonly id: string;
+  readonly matchers: readonly Matcher[];
+  readonly startsAt: string;
+  readonly endsAt: string;
+  readonly status: string;
+  readonly createdBy: string;
+  readonly comment: string;
+  readonly updatedAt: string;
+}
+
+export interface Matcher {
+  readonly name: string;
+  readonly value: string;
+  readonly isRegex: boolean;
 }
 
 export interface AlertGroup {

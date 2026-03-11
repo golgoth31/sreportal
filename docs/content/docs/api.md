@@ -109,6 +109,7 @@ _Appears in:_
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
 | `activeAlerts` _[sreportal.io/v1alpha1.AlertStatus](#sreportaliov1alpha1alertstatus) array_ | activeAlerts is the list of currently firing alerts retrieved from the Alertmanager API |   |   |
+| `silences` _[sreportal.io/v1alpha1.SilenceStatus](#sreportaliov1alpha1silencestatus) array_ | silences is the list of active silences for identifying silenced alerts |   |   |
 | `conditions` _[Condition](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#condition-v1-meta) array_ | conditions represent the current state of the Alertmanager resource. |   |   |
 | `lastReconcileTime` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | lastReconcileTime is the timestamp of the last reconciliation |   |   |
 
@@ -130,6 +131,43 @@ _Appears in:_
 | `startsAt` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | startsAt is when the alert started firing |   |   |
 | `endsAt` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | endsAt is when the alert is expected to resolve |   |   |
 | `updatedAt` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | updatedAt is the last time the alert was updated |   |   |
+| `receivers` _string array_ | receivers are the notification integrations this alert is routed to |   |   |
+| `silencedBy` _string array_ | silencedBy contains the IDs of silences that suppress this alert |   |   |
+
+
+
+#### sreportal.io/v1alpha1.SilenceStatus
+
+SilenceStatus represents a silence from Alertmanager (for identifying silenced alerts)
+
+_Appears in:_
+- [sreportal.io/v1alpha1.AlertmanagerStatus](#sreportaliov1alpha1alertmanagerstatus)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `id` _string_ |   |   |   |
+| `matchers` _[sreportal.io/v1alpha1.MatcherStatus](#sreportaliov1alpha1matcherstatus) array_ |   |   |   |
+| `startsAt` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ |   |   |   |
+| `endsAt` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ |   |   |   |
+| `status` _string_ |   |   |   |
+| `createdBy` _string_ |   |   |   |
+| `comment` _string_ |   |   |   |
+| `updatedAt` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ |   |   |   |
+
+
+
+#### sreportal.io/v1alpha1.MatcherStatus
+
+MatcherStatus is a label matcher within a silence
+
+_Appears in:_
+- [sreportal.io/v1alpha1.SilenceStatus](#sreportaliov1alpha1silencestatus)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `name` _string_ |   |   |   |
+| `value` _string_ |   |   |   |
+| `isRegex` _boolean_ |   |   |   |
 
 
 

@@ -73,7 +73,7 @@ var _ = Describe("FetchAlertsHandler", func() {
 			}
 			localFetcher := &fakeFetcher{alerts: alerts}
 			k8sClient := fake.NewClientBuilder().WithScheme(newScheme()).Build()
-			handler := alertmanagerctrl.NewFetchAlertsHandler(localFetcher, k8sClient)
+			handler := alertmanagerctrl.NewFetchAlertsHandler(nil, localFetcher, k8sClient)
 			rc := newRC(false)
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
@@ -90,7 +90,7 @@ var _ = Describe("FetchAlertsHandler", func() {
 		It("should store empty slice in context data", func() {
 			localFetcher := &fakeFetcher{alerts: []domainalertmanager.Alert{}}
 			k8sClient := fake.NewClientBuilder().WithScheme(newScheme()).Build()
-			handler := alertmanagerctrl.NewFetchAlertsHandler(localFetcher, k8sClient)
+			handler := alertmanagerctrl.NewFetchAlertsHandler(nil, localFetcher, k8sClient)
 			rc := newRC(false)
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
@@ -105,7 +105,7 @@ var _ = Describe("FetchAlertsHandler", func() {
 		It("should propagate the error", func() {
 			localFetcher := &fakeFetcher{err: errors.New("connection refused")}
 			k8sClient := fake.NewClientBuilder().WithScheme(newScheme()).Build()
-			handler := alertmanagerctrl.NewFetchAlertsHandler(localFetcher, k8sClient)
+			handler := alertmanagerctrl.NewFetchAlertsHandler(nil, localFetcher, k8sClient)
 			rc := newRC(false)
 
 			err := handler.Handle(context.Background(), rc)
@@ -118,7 +118,7 @@ var _ = Describe("FetchAlertsHandler", func() {
 		It("should fail when portal is not found", func() {
 			localFetcher := &fakeFetcher{}
 			k8sClient := fake.NewClientBuilder().WithScheme(newScheme()).Build()
-			handler := alertmanagerctrl.NewFetchAlertsHandler(localFetcher, k8sClient)
+			handler := alertmanagerctrl.NewFetchAlertsHandler(nil, localFetcher, k8sClient)
 			rc := newRC(true)
 
 			err := handler.Handle(context.Background(), rc)
@@ -136,7 +136,7 @@ var _ = Describe("FetchAlertsHandler", func() {
 				WithScheme(newScheme()).
 				WithObjects(portal).
 				Build()
-			handler := alertmanagerctrl.NewFetchAlertsHandler(localFetcher, k8sClient)
+			handler := alertmanagerctrl.NewFetchAlertsHandler(nil, localFetcher, k8sClient)
 			rc := newRC(true)
 
 			err := handler.Handle(context.Background(), rc)

@@ -334,10 +334,12 @@ func main() {
 		setupLog.Error(err, "unable to add main portal ensure runnable")
 		os.Exit(1)
 	}
+	amClient := alertmanagerclient.NewClient()
 	if err := controller.NewAlertmanagerReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),
-		alertmanagerclient.NewClient(),
+		amClient,
+		amClient,
 	).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Alertmanager")
 		os.Exit(1)

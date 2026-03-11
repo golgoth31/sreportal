@@ -159,7 +159,9 @@ type AlertmanagerResource struct {
 	// last_reconcile_time is when the alerts were last fetched
 	LastReconcileTime *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=last_reconcile_time,json=lastReconcileTime,proto3" json:"last_reconcile_time,omitempty"`
 	// ready indicates whether the last reconciliation succeeded
-	Ready         bool `protobuf:"varint,8,opt,name=ready,proto3" json:"ready,omitempty"`
+	Ready bool `protobuf:"varint,8,opt,name=ready,proto3" json:"ready,omitempty"`
+	// silences are active silences for identifying silenced alerts
+	Silences      []*Silence `protobuf:"bytes,9,rep,name=silences,proto3" json:"silences,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -250,6 +252,175 @@ func (x *AlertmanagerResource) GetReady() bool {
 	return false
 }
 
+func (x *AlertmanagerResource) GetSilences() []*Silence {
+	if x != nil {
+		return x.Silences
+	}
+	return nil
+}
+
+// Silence represents a mute rule in Alertmanager
+type Silence struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Matchers      []*Matcher             `protobuf:"bytes,2,rep,name=matchers,proto3" json:"matchers,omitempty"`
+	StartsAt      *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=starts_at,json=startsAt,proto3" json:"starts_at,omitempty"`
+	EndsAt        *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=ends_at,json=endsAt,proto3" json:"ends_at,omitempty"`
+	Status        string                 `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
+	CreatedBy     string                 `protobuf:"bytes,6,opt,name=created_by,json=createdBy,proto3" json:"created_by,omitempty"`
+	Comment       string                 `protobuf:"bytes,7,opt,name=comment,proto3" json:"comment,omitempty"`
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Silence) Reset() {
+	*x = Silence{}
+	mi := &file_sreportal_v1_alertmanager_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Silence) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Silence) ProtoMessage() {}
+
+func (x *Silence) ProtoReflect() protoreflect.Message {
+	mi := &file_sreportal_v1_alertmanager_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Silence.ProtoReflect.Descriptor instead.
+func (*Silence) Descriptor() ([]byte, []int) {
+	return file_sreportal_v1_alertmanager_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *Silence) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Silence) GetMatchers() []*Matcher {
+	if x != nil {
+		return x.Matchers
+	}
+	return nil
+}
+
+func (x *Silence) GetStartsAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.StartsAt
+	}
+	return nil
+}
+
+func (x *Silence) GetEndsAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.EndsAt
+	}
+	return nil
+}
+
+func (x *Silence) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *Silence) GetCreatedBy() string {
+	if x != nil {
+		return x.CreatedBy
+	}
+	return ""
+}
+
+func (x *Silence) GetComment() string {
+	if x != nil {
+		return x.Comment
+	}
+	return ""
+}
+
+func (x *Silence) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+// Matcher is a label matcher within a silence
+type Matcher struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Value         string                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	IsRegex       bool                   `protobuf:"varint,3,opt,name=is_regex,json=isRegex,proto3" json:"is_regex,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Matcher) Reset() {
+	*x = Matcher{}
+	mi := &file_sreportal_v1_alertmanager_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Matcher) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Matcher) ProtoMessage() {}
+
+func (x *Matcher) ProtoReflect() protoreflect.Message {
+	mi := &file_sreportal_v1_alertmanager_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Matcher.ProtoReflect.Descriptor instead.
+func (*Matcher) Descriptor() ([]byte, []int) {
+	return file_sreportal_v1_alertmanager_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *Matcher) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Matcher) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+func (x *Matcher) GetIsRegex() bool {
+	if x != nil {
+		return x.IsRegex
+	}
+	return false
+}
+
 // Alert represents a single active alert from Alertmanager
 type Alert struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -266,14 +437,18 @@ type Alert struct {
 	// ends_at is when the alert is expected to resolve
 	EndsAt *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=ends_at,json=endsAt,proto3" json:"ends_at,omitempty"`
 	// updated_at is the last time the alert was updated
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	// receivers are the notification integrations this alert is routed to
+	Receivers []string `protobuf:"bytes,8,rep,name=receivers,proto3" json:"receivers,omitempty"`
+	// silenced_by contains the IDs of silences that suppress this alert
+	SilencedBy    []string `protobuf:"bytes,9,rep,name=silenced_by,json=silencedBy,proto3" json:"silenced_by,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Alert) Reset() {
 	*x = Alert{}
-	mi := &file_sreportal_v1_alertmanager_proto_msgTypes[3]
+	mi := &file_sreportal_v1_alertmanager_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -285,7 +460,7 @@ func (x *Alert) String() string {
 func (*Alert) ProtoMessage() {}
 
 func (x *Alert) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_alertmanager_proto_msgTypes[3]
+	mi := &file_sreportal_v1_alertmanager_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -298,7 +473,7 @@ func (x *Alert) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Alert.ProtoReflect.Descriptor instead.
 func (*Alert) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_alertmanager_proto_rawDescGZIP(), []int{3}
+	return file_sreportal_v1_alertmanager_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *Alert) GetFingerprint() string {
@@ -350,6 +525,20 @@ func (x *Alert) GetUpdatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *Alert) GetReceivers() []string {
+	if x != nil {
+		return x.Receivers
+	}
+	return nil
+}
+
+func (x *Alert) GetSilencedBy() []string {
+	if x != nil {
+		return x.SilencedBy
+	}
+	return nil
+}
+
 var File_sreportal_v1_alertmanager_proto protoreflect.FileDescriptor
 
 const file_sreportal_v1_alertmanager_proto_rawDesc = "" +
@@ -361,7 +550,7 @@ const file_sreportal_v1_alertmanager_proto_rawDesc = "" +
 	"\x06search\x18\x03 \x01(\tR\x06search\x12\x14\n" +
 	"\x05state\x18\x04 \x01(\tR\x05state\"^\n" +
 	"\x12ListAlertsResponse\x12H\n" +
-	"\ralertmanagers\x18\x01 \x03(\v2\".sreportal.v1.AlertmanagerResourceR\ralertmanagers\"\xb2\x02\n" +
+	"\ralertmanagers\x18\x01 \x03(\v2\".sreportal.v1.AlertmanagerResourceR\ralertmanagers\"\xe5\x02\n" +
 	"\x14AlertmanagerResource\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1c\n" +
 	"\tnamespace\x18\x02 \x01(\tR\tnamespace\x12\x1d\n" +
@@ -372,7 +561,23 @@ const file_sreportal_v1_alertmanager_proto_rawDesc = "" +
 	"remote_url\x18\x05 \x01(\tR\tremoteUrl\x12+\n" +
 	"\x06alerts\x18\x06 \x03(\v2\x13.sreportal.v1.AlertR\x06alerts\x12J\n" +
 	"\x13last_reconcile_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x11lastReconcileTime\x12\x14\n" +
-	"\x05ready\x18\b \x01(\bR\x05ready\"\xe4\x03\n" +
+	"\x05ready\x18\b \x01(\bR\x05ready\x121\n" +
+	"\bsilences\x18\t \x03(\v2\x15.sreportal.v1.SilenceR\bsilences\"\xc6\x02\n" +
+	"\aSilence\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x121\n" +
+	"\bmatchers\x18\x02 \x03(\v2\x15.sreportal.v1.MatcherR\bmatchers\x127\n" +
+	"\tstarts_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\bstartsAt\x123\n" +
+	"\aends_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x06endsAt\x12\x16\n" +
+	"\x06status\x18\x05 \x01(\tR\x06status\x12\x1d\n" +
+	"\n" +
+	"created_by\x18\x06 \x01(\tR\tcreatedBy\x12\x18\n" +
+	"\acomment\x18\a \x01(\tR\acomment\x129\n" +
+	"\n" +
+	"updated_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"N\n" +
+	"\aMatcher\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\x12\x19\n" +
+	"\bis_regex\x18\x03 \x01(\bR\aisRegex\"\xa3\x04\n" +
 	"\x05Alert\x12 \n" +
 	"\vfingerprint\x18\x01 \x01(\tR\vfingerprint\x127\n" +
 	"\x06labels\x18\x02 \x03(\v2\x1f.sreportal.v1.Alert.LabelsEntryR\x06labels\x12F\n" +
@@ -381,7 +586,10 @@ const file_sreportal_v1_alertmanager_proto_rawDesc = "" +
 	"\tstarts_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\bstartsAt\x123\n" +
 	"\aends_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x06endsAt\x129\n" +
 	"\n" +
-	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x1a9\n" +
+	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x1c\n" +
+	"\treceivers\x18\b \x03(\tR\treceivers\x12\x1f\n" +
+	"\vsilenced_by\x18\t \x03(\tR\n" +
+	"silencedBy\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a>\n" +
@@ -405,32 +613,39 @@ func file_sreportal_v1_alertmanager_proto_rawDescGZIP() []byte {
 	return file_sreportal_v1_alertmanager_proto_rawDescData
 }
 
-var file_sreportal_v1_alertmanager_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_sreportal_v1_alertmanager_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_sreportal_v1_alertmanager_proto_goTypes = []any{
 	(*ListAlertsRequest)(nil),     // 0: sreportal.v1.ListAlertsRequest
 	(*ListAlertsResponse)(nil),    // 1: sreportal.v1.ListAlertsResponse
 	(*AlertmanagerResource)(nil),  // 2: sreportal.v1.AlertmanagerResource
-	(*Alert)(nil),                 // 3: sreportal.v1.Alert
-	nil,                           // 4: sreportal.v1.Alert.LabelsEntry
-	nil,                           // 5: sreportal.v1.Alert.AnnotationsEntry
-	(*timestamppb.Timestamp)(nil), // 6: google.protobuf.Timestamp
+	(*Silence)(nil),               // 3: sreportal.v1.Silence
+	(*Matcher)(nil),               // 4: sreportal.v1.Matcher
+	(*Alert)(nil),                 // 5: sreportal.v1.Alert
+	nil,                           // 6: sreportal.v1.Alert.LabelsEntry
+	nil,                           // 7: sreportal.v1.Alert.AnnotationsEntry
+	(*timestamppb.Timestamp)(nil), // 8: google.protobuf.Timestamp
 }
 var file_sreportal_v1_alertmanager_proto_depIdxs = []int32{
-	2, // 0: sreportal.v1.ListAlertsResponse.alertmanagers:type_name -> sreportal.v1.AlertmanagerResource
-	3, // 1: sreportal.v1.AlertmanagerResource.alerts:type_name -> sreportal.v1.Alert
-	6, // 2: sreportal.v1.AlertmanagerResource.last_reconcile_time:type_name -> google.protobuf.Timestamp
-	4, // 3: sreportal.v1.Alert.labels:type_name -> sreportal.v1.Alert.LabelsEntry
-	5, // 4: sreportal.v1.Alert.annotations:type_name -> sreportal.v1.Alert.AnnotationsEntry
-	6, // 5: sreportal.v1.Alert.starts_at:type_name -> google.protobuf.Timestamp
-	6, // 6: sreportal.v1.Alert.ends_at:type_name -> google.protobuf.Timestamp
-	6, // 7: sreportal.v1.Alert.updated_at:type_name -> google.protobuf.Timestamp
-	0, // 8: sreportal.v1.AlertmanagerService.ListAlerts:input_type -> sreportal.v1.ListAlertsRequest
-	1, // 9: sreportal.v1.AlertmanagerService.ListAlerts:output_type -> sreportal.v1.ListAlertsResponse
-	9, // [9:10] is the sub-list for method output_type
-	8, // [8:9] is the sub-list for method input_type
-	8, // [8:8] is the sub-list for extension type_name
-	8, // [8:8] is the sub-list for extension extendee
-	0, // [0:8] is the sub-list for field type_name
+	2,  // 0: sreportal.v1.ListAlertsResponse.alertmanagers:type_name -> sreportal.v1.AlertmanagerResource
+	5,  // 1: sreportal.v1.AlertmanagerResource.alerts:type_name -> sreportal.v1.Alert
+	8,  // 2: sreportal.v1.AlertmanagerResource.last_reconcile_time:type_name -> google.protobuf.Timestamp
+	3,  // 3: sreportal.v1.AlertmanagerResource.silences:type_name -> sreportal.v1.Silence
+	4,  // 4: sreportal.v1.Silence.matchers:type_name -> sreportal.v1.Matcher
+	8,  // 5: sreportal.v1.Silence.starts_at:type_name -> google.protobuf.Timestamp
+	8,  // 6: sreportal.v1.Silence.ends_at:type_name -> google.protobuf.Timestamp
+	8,  // 7: sreportal.v1.Silence.updated_at:type_name -> google.protobuf.Timestamp
+	6,  // 8: sreportal.v1.Alert.labels:type_name -> sreportal.v1.Alert.LabelsEntry
+	7,  // 9: sreportal.v1.Alert.annotations:type_name -> sreportal.v1.Alert.AnnotationsEntry
+	8,  // 10: sreportal.v1.Alert.starts_at:type_name -> google.protobuf.Timestamp
+	8,  // 11: sreportal.v1.Alert.ends_at:type_name -> google.protobuf.Timestamp
+	8,  // 12: sreportal.v1.Alert.updated_at:type_name -> google.protobuf.Timestamp
+	0,  // 13: sreportal.v1.AlertmanagerService.ListAlerts:input_type -> sreportal.v1.ListAlertsRequest
+	1,  // 14: sreportal.v1.AlertmanagerService.ListAlerts:output_type -> sreportal.v1.ListAlertsResponse
+	14, // [14:15] is the sub-list for method output_type
+	13, // [13:14] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_sreportal_v1_alertmanager_proto_init() }
@@ -444,7 +659,7 @@ func file_sreportal_v1_alertmanager_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_sreportal_v1_alertmanager_proto_rawDesc), len(file_sreportal_v1_alertmanager_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

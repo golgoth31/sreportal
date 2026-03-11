@@ -7,8 +7,15 @@ import {
   ListAlertsRequestSchema,
   type Alert as ProtoAlert,
   type AlertmanagerResource as ProtoResource,
+  type Silence as ProtoSilence,
 } from "@/gen/sreportal/v1/alertmanager_pb";
-import type { Alert, AlertmanagerResource, AlertState } from "../domain/alertmanager.types";
+import type {
+  Alert,
+  AlertmanagerResource,
+  AlertState,
+  Matcher,
+  Silence,
+} from "../domain/alertmanager.types";
 
 const transport = createConnectTransport({ baseUrl: window.location.origin });
 const client = createClient(AlertmanagerService, transport);
@@ -30,6 +37,26 @@ function toDomainAlert(a: ProtoAlert): Alert {
     startsAt: timestampToIso(a.startsAt),
     endsAt: a.endsAt ? timestampToIso(a.endsAt) : undefined,
     updatedAt: timestampToIso(a.updatedAt),
+    receivers: a.receivers ?? [],
+    silencedBy: a.silencedBy ?? [],
+  };
+}
+
+function toDomainSilence(s: ProtoSilence): Silence {
+  const matchers: Matcher[] = (s.matchers ?? []).map((m) => ({
+    name: m.name,
+    value: m.value,
+    isRegex: m.isRegex,
+  }));
+  return {
+    id: s.id,
+    matchers,
+    startsAt: timestampToIso(s.startsAt),
+    endsAt: timestampToIso(s.endsAt) ?? "",
+    status: s.status,
+    createdBy: s.createdBy,
+    comment: s.comment,
+    updatedAt: timestampToIso(s.updatedAt),
   };
 }
 
@@ -43,6 +70,7 @@ function toDomainResource(r: ProtoResource): AlertmanagerResource {
     alerts: r.alerts.map(toDomainAlert),
     lastReconcileTime: r.lastReconcileTime ? timestampToIso(r.lastReconcileTime) : undefined,
     ready: r.ready,
+    silences: (r.silences ?? []).map(toDomainSilence),
   };
 }
 

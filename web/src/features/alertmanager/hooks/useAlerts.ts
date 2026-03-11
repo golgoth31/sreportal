@@ -2,7 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 
 import { listAlerts } from "../infrastructure/alertmanagerApi";
-import type { Alert, AlertmanagerResource } from "../domain/alertmanager.types";
+import {
+  type Alert,
+  type AlertmanagerResource,
+  isSilenced,
+} from "../domain/alertmanager.types";
 
 const EMPTY_RESOURCES: AlertmanagerResource[] = [];
 
@@ -42,7 +46,11 @@ export function useAlerts({ portal }: UseAlertsParams) {
         let filtered = resource.alerts;
 
         if (stateFilter) {
-          filtered = filtered.filter((a) => a.state === stateFilter);
+          if (stateFilter === "silenced") {
+            filtered = filtered.filter((a) => isSilenced(a));
+          } else {
+            filtered = filtered.filter((a) => a.state === stateFilter);
+          }
         }
 
         if (lowerSearch) {

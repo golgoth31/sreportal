@@ -36,24 +36,35 @@ const (
 	// DataKeyAlerts is the key for storing fetched alerts in ReconcileContext.Data.
 	DataKeyAlerts = "alerts"
 
+	// DataKeySilences is the key for storing fetched silences in ReconcileContext.Data.
+	DataKeySilences = "silences"
+
 	// LabelRemoteAlertmanagerName is the label key for identifying the remote alertmanager name.
 	LabelRemoteAlertmanagerName = "sreportal.io/remote-alertmanager-name"
 )
 
 // FetchAlertsHandler retrieves active alerts from either the local Alertmanager API
 // or a remote SRE Portal, depending on the IsRemote flag on the resource spec.
+// For local, uses DataFetcher when available to get alerts with receivers and silences.
 // For remote portals, it looks up the Portal CR to obtain TLS configuration and
 // builds a TLS-aware remoteclient — the same approach as the Portal controller.
 type FetchAlertsHandler struct {
-	localFetcher domainalertmanager.Fetcher
-	k8sReader    client.Reader
+	localDataFetcher domainalertmanager.DataFetcher
+	localFetcher     domainalertmanager.Fetcher
+	k8sReader        client.Reader
 }
 
 // NewFetchAlertsHandler creates a new FetchAlertsHandler.
-func NewFetchAlertsHandler(localFetcher domainalertmanager.Fetcher, k8sReader client.Reader) *FetchAlertsHandler {
+// localDataFetcher may be nil; then localFetcher is used for basic alerts only.
+func NewFetchAlertsHandler(
+	localDataFetcher domainalertmanager.DataFetcher,
+	localFetcher domainalertmanager.Fetcher,
+	k8sReader client.Reader,
+) *FetchAlertsHandler {
 	return &FetchAlertsHandler{
-		localFetcher: localFetcher,
-		k8sReader:    k8sReader,
+		localDataFetcher: localDataFetcher,
+		localFetcher:     localFetcher,
+		k8sReader:        k8sReader,
 	}
 }
 
@@ -70,16 +81,26 @@ func (h *FetchAlertsHandler) Handle(ctx context.Context, rc *reconciler.Reconcil
 
 func (h *FetchAlertsHandler) handleLocal(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager], log logr.Logger) error {
 	localURL := rc.Resource.Spec.URL.Local
-	log.V(1).Info("fetching active alerts from local Alertmanager", "url", localURL)
 
+	if h.localDataFetcher != nil {
+		log.V(1).Info("fetching alertmanager data (alerts+receivers+silences) from local", "url", localURL)
+		data, err := h.localDataFetcher.GetAlertmanagerData(ctx, localURL)
+		if err != nil {
+			return fmt.Errorf("fetch alertmanager data from %s: %w", localURL, err)
+		}
+		log.V(1).Info("fetched alertmanager data", "alerts", len(data.Alerts), "silences", len(data.Silences))
+		rc.Data[DataKeyAlerts] = data.Alerts
+		rc.Data[DataKeySilences] = data.Silences
+		return nil
+	}
+
+	log.V(1).Info("fetching active alerts from local Alertmanager", "url", localURL)
 	alerts, err := h.localFetcher.GetActiveAlerts(ctx, localURL)
 	if err != nil {
 		return fmt.Errorf("fetch alerts from %s: %w", localURL, err)
 	}
-
 	log.V(1).Info("fetched alerts", "count", len(alerts))
 	rc.Data[DataKeyAlerts] = alerts
-
 	return nil
 }
 

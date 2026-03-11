@@ -56,6 +56,28 @@ message AlertmanagerResource {
 
   // ready indicates whether the last reconciliation succeeded
   bool ready = 8;
+
+  // silences are active silences for identifying silenced alerts
+  repeated Silence silences = 9;
+}
+
+// Silence represents a mute rule in Alertmanager
+message Silence {
+  string id = 1;
+  repeated Matcher matchers = 2;
+  google.protobuf.Timestamp starts_at = 3;
+  google.protobuf.Timestamp ends_at = 4;
+  string status = 5;
+  string created_by = 6;
+  string comment = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+// Matcher is a label matcher within a silence
+message Matcher {
+  string name = 1;
+  string value = 2;
+  bool is_regex = 3;
 }
 
 // Alert represents a single active alert from Alertmanager
@@ -80,4 +102,10 @@ message Alert {
 
   // updated_at is the last time the alert was updated
   google.protobuf.Timestamp updated_at = 7;
+
+  // receivers are the notification integrations this alert is routed to
+  repeated string receivers = 8;
+
+  // silenced_by contains the IDs of silences that suppress this alert
+  repeated string silenced_by = 9;
 }
