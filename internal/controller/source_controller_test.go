@@ -31,7 +31,7 @@ import (
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/adapter"
 	"github.com/golgoth31/sreportal/internal/config"
-	"github.com/golgoth31/sreportal/internal/source"
+	"github.com/golgoth31/sreportal/internal/source/registry"
 	"github.com/golgoth31/sreportal/internal/source/service"
 )
 
@@ -110,7 +110,7 @@ var _ = Describe("SourceReconciler", func() {
 			kubeClient,
 			cfg,
 			testConfig,
-			[]source.Builder{service.NewBuilder()},
+			[]registry.Builder{service.NewBuilder()},
 		)
 	})
 
@@ -367,7 +367,7 @@ var _ = Describe("SourceReconciler LoadBalancer Integration", func() {
 			kubeClient,
 			cfg,
 			testConfig,
-			[]source.Builder{service.NewBuilder()},
+			[]registry.Builder{service.NewBuilder()},
 		)
 	})
 
@@ -523,7 +523,7 @@ var _ = Describe("SourceReconciler LoadBalancer Integration", func() {
 				kubeClient,
 				cfg,
 				testConfig,
-				[]source.Builder{service.NewBuilder()},
+				[]registry.Builder{service.NewBuilder()},
 			)
 
 			err := disabledReconciler.rebuildSources(ctx)

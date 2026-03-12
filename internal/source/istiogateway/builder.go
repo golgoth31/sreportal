@@ -24,12 +24,12 @@ import (
 	externaldnssource "sigs.k8s.io/external-dns/source"
 
 	"github.com/golgoth31/sreportal/internal/config"
-	"github.com/golgoth31/sreportal/internal/source"
+	"github.com/golgoth31/sreportal/internal/source/registry"
 )
 
 // +kubebuilder:rbac:groups=networking.istio.io,resources=gateways,verbs=get;list;watch
 
-const SourceTypeIstioGateway source.SourceType = "istio-gateway"
+const SourceTypeIstioGateway registry.SourceType = "istio-gateway"
 
 // Builder creates external-dns Istio Gateway sources.
 type Builder struct {
@@ -39,13 +39,13 @@ type Builder struct {
 // NewBuilder creates a new Istio Gateway source builder.
 func NewBuilder() *Builder { return &Builder{} }
 
-func (b *Builder) Type() source.SourceType { return SourceTypeIstioGateway }
+func (b *Builder) Type() registry.SourceType { return SourceTypeIstioGateway }
 
 func (b *Builder) Enabled(cfg *config.OperatorConfig) bool {
 	return cfg.Sources.IstioGateway != nil && cfg.Sources.IstioGateway.Enabled
 }
 
-func (b *Builder) Build(ctx context.Context, deps source.Deps, cfg *config.OperatorConfig) (source.Source, error) {
+func (b *Builder) Build(ctx context.Context, deps registry.Deps, cfg *config.OperatorConfig) (registry.Source, error) {
 	if err := b.ensureIstioClient(deps); err != nil {
 		return nil, err
 	}
@@ -66,11 +66,11 @@ func (b *Builder) GVR() (schema.GroupVersionResource, bool) {
 	return schema.GroupVersionResource{Group: "networking.istio.io", Version: "v1", Resource: "gateways"}, true
 }
 
-func (b *Builder) ensureIstioClient(deps source.Deps) error {
+func (b *Builder) ensureIstioClient(deps registry.Deps) error {
 	if b.istioClient != nil {
 		return nil
 	}
 	var err error
-	b.istioClient, err = source.NewIstioClient(deps.RestConfig)
+	b.istioClient, err = registry.NewIstioClient(deps.RestConfig)
 	return err
 }

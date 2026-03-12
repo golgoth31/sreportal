@@ -23,12 +23,12 @@ import (
 	externaldnssource "sigs.k8s.io/external-dns/source"
 
 	"github.com/golgoth31/sreportal/internal/config"
-	"github.com/golgoth31/sreportal/internal/source"
+	"github.com/golgoth31/sreportal/internal/source/registry"
 )
 
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch
 
-const SourceTypeIngress source.SourceType = "ingress"
+const SourceTypeIngress registry.SourceType = "ingress"
 
 // Builder creates external-dns Ingress sources.
 type Builder struct{}
@@ -36,15 +36,15 @@ type Builder struct{}
 // NewBuilder creates a new Ingress source builder.
 func NewBuilder() *Builder { return &Builder{} }
 
-func (b *Builder) Type() source.SourceType { return SourceTypeIngress }
+func (b *Builder) Type() registry.SourceType { return SourceTypeIngress }
 
 func (b *Builder) Enabled(cfg *config.OperatorConfig) bool {
 	return cfg.Sources.Ingress != nil && cfg.Sources.Ingress.Enabled
 }
 
-func (b *Builder) Build(ctx context.Context, deps source.Deps, cfg *config.OperatorConfig) (source.Source, error) {
+func (b *Builder) Build(ctx context.Context, deps registry.Deps, cfg *config.OperatorConfig) (registry.Source, error) {
 	ic := cfg.Sources.Ingress
-	labelSelector, err := source.ParseLabelSelector(ic.LabelFilter)
+	labelSelector, err := registry.ParseLabelSelector(ic.LabelFilter)
 	if err != nil {
 		return nil, err
 	}

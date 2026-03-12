@@ -29,18 +29,19 @@ import (
 
 	"github.com/cloudfoundry-community/go-cfclient"
 	"github.com/golgoth31/sreportal/internal/config"
+	"github.com/golgoth31/sreportal/internal/source/registry"
 )
 
 // Factory assembles external-dns sources from registered builders.
 type Factory struct {
-	deps     Deps
-	builders []Builder
+	deps     registry.Deps
+	builders []registry.Builder
 }
 
 // NewFactory creates a Factory with the given builders.
-func NewFactory(kubeClient kubernetes.Interface, restConfig *rest.Config, builders []Builder) *Factory {
+func NewFactory(kubeClient kubernetes.Interface, restConfig *rest.Config, builders []registry.Builder) *Factory {
 	return &Factory{
-		deps: Deps{
+		deps: registry.Deps{
 			KubeClient: kubeClient,
 			RestConfig: restConfig,
 		},
@@ -50,9 +51,9 @@ func NewFactory(kubeClient kubernetes.Interface, restConfig *rest.Config, builde
 
 // BuildTypedSources creates external-dns sources for all enabled types.
 // Sources are built in the order of registered builders.
-func (f *Factory) BuildTypedSources(ctx context.Context, cfg *config.OperatorConfig) ([]TypedSource, error) {
+func (f *Factory) BuildTypedSources(ctx context.Context, cfg *config.OperatorConfig) ([]registry.TypedSource, error) {
 	log := ctrl.Log.WithName("source-factory")
-	var typedSources []TypedSource
+	var typedSources []registry.TypedSource
 
 	for _, b := range f.builders {
 		if !b.Enabled(cfg) {
@@ -64,7 +65,7 @@ func (f *Factory) BuildTypedSources(ctx context.Context, cfg *config.OperatorCon
 		if err != nil {
 			return nil, fmt.Errorf("build %s source: %w", b.Type(), err)
 		}
-		typedSources = append(typedSources, TypedSource{Type: b.Type(), Source: src})
+		typedSources = append(typedSources, registry.TypedSource{Type: b.Type(), Source: src})
 		log.Info("source built successfully", "type", b.Type())
 	}
 
@@ -178,8 +179,8 @@ func (f *Factory) BuildTypedSources(ctx context.Context, cfg *config.OperatorCon
 }
 
 // EnabledSourceTypes returns the list of enabled source types from configuration.
-func (f *Factory) EnabledSourceTypes(cfg *config.OperatorConfig) []SourceType {
-	var types []SourceType
+func (f *Factory) EnabledSourceTypes(cfg *config.OperatorConfig) []registry.SourceType {
+	var types []registry.SourceType
 	for _, b := range f.builders {
 		if b.Enabled(cfg) {
 			types = append(types, b.Type())
@@ -191,7 +192,7 @@ func (f *Factory) EnabledSourceTypes(cfg *config.OperatorConfig) []SourceType {
 // GVRForSourceType resolves the GroupVersionResource for a given source type
 // by looking up the registered builder. Returns false if no builder matches
 // or the source type does not support annotation enrichment.
-func (f *Factory) GVRForSourceType(sourceType SourceType) (schema.GroupVersionResource, bool) {
+func (f *Factory) GVRForSourceType(sourceType registry.SourceType) (schema.GroupVersionResource, bool) {
 	for _, b := range f.builders {
 		if b.Type() == sourceType {
 			return b.GVR()

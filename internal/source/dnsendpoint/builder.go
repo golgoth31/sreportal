@@ -24,12 +24,12 @@ import (
 	externaldnssource "sigs.k8s.io/external-dns/source"
 
 	"github.com/golgoth31/sreportal/internal/config"
-	"github.com/golgoth31/sreportal/internal/source"
+	"github.com/golgoth31/sreportal/internal/source/registry"
 )
 
 // +kubebuilder:rbac:groups=externaldns.k8s.io,resources=dnsendpoints,verbs=get;list;watch
 
-const SourceTypeDNSEndpoint source.SourceType = "dnsendpoint"
+const SourceTypeDNSEndpoint registry.SourceType = "dnsendpoint"
 
 // Builder creates external-dns CRD (DNSEndpoint) sources.
 type Builder struct{}
@@ -37,13 +37,13 @@ type Builder struct{}
 // NewBuilder creates a new DNSEndpoint source builder.
 func NewBuilder() *Builder { return &Builder{} }
 
-func (b *Builder) Type() source.SourceType { return SourceTypeDNSEndpoint }
+func (b *Builder) Type() registry.SourceType { return SourceTypeDNSEndpoint }
 
 func (b *Builder) Enabled(cfg *config.OperatorConfig) bool {
 	return cfg.Sources.DNSEndpoint != nil && cfg.Sources.DNSEndpoint.Enabled
 }
 
-func (b *Builder) Build(_ context.Context, deps source.Deps, cfg *config.OperatorConfig) (source.Source, error) {
+func (b *Builder) Build(_ context.Context, deps registry.Deps, cfg *config.OperatorConfig) (registry.Source, error) {
 	crdClient, scheme, err := externaldnssource.NewCRDClientForAPIVersionKind(
 		deps.KubeClient,
 		"",

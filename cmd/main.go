@@ -51,11 +51,6 @@ import (
 	portalctrl "github.com/golgoth31/sreportal/internal/controller/portal"
 	"github.com/golgoth31/sreportal/internal/mcp"
 	"github.com/golgoth31/sreportal/internal/source"
-	"github.com/golgoth31/sreportal/internal/source/dnsendpoint"
-	"github.com/golgoth31/sreportal/internal/source/ingress"
-	"github.com/golgoth31/sreportal/internal/source/istiogateway"
-	"github.com/golgoth31/sreportal/internal/source/istiovirtualservice"
-	"github.com/golgoth31/sreportal/internal/source/service"
 	"github.com/golgoth31/sreportal/internal/version"
 	webhookv1alpha1 "github.com/golgoth31/sreportal/internal/webhook/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/webserver"
@@ -284,15 +279,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := controller.NewDNSReconciler(
-		mgr.GetClient(),
-		mgr.GetScheme(),
-		operatorConfig,
-	).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "DNS")
-		os.Exit(1)
-	}
-
 	// Create kubernetes clientset for external-dns sources
 	restConfig := ctrl.GetConfigOrDie()
 	kubeClient, err := kubernetes.NewForConfig(restConfig)
@@ -303,13 +289,17 @@ func main() {
 
 	annotations.SetAnnotationPrefix("external-dns.alpha.kubernetes.io/")
 
-	sourceBuilders := []source.Builder{
-		service.NewBuilder(),
-		ingress.NewBuilder(),
-		dnsendpoint.NewBuilder(),
-		istiogateway.NewBuilder(),
-		istiovirtualservice.NewBuilder(),
+	sourceBuilders := source.DefaultBuilders()
+	if err := controller.NewDNSReconciler(
+		mgr.GetClient(),
+		mgr.GetScheme(),
+		operatorConfig,
+		sourceBuilders,
+	).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "DNS")
+		os.Exit(1)
 	}
+
 	sourceReconciler := controller.NewSourceReconciler(
 		mgr.GetClient(),
 		kubeClient,

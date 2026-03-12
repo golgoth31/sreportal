@@ -25,6 +25,7 @@ import (
 
 	"github.com/golgoth31/sreportal/internal/config"
 	"github.com/golgoth31/sreportal/internal/source"
+	"github.com/golgoth31/sreportal/internal/source/registry"
 	"github.com/golgoth31/sreportal/internal/source/service"
 )
 
@@ -35,25 +36,25 @@ func TestSource(t *testing.T) {
 
 var _ = Describe("ParseLabelSelector", func() {
 	It("should return Everything for empty selector", func() {
-		sel, err := source.ParseLabelSelector("")
+		sel, err := registry.ParseLabelSelector("")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(sel.String()).To(Equal(""))
 	})
 
 	It("should parse valid selector", func() {
-		sel, err := source.ParseLabelSelector("app=nginx")
+		sel, err := registry.ParseLabelSelector("app=nginx")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(sel.String()).To(Equal("app=nginx"))
 	})
 
 	It("should parse complex selector", func() {
-		sel, err := source.ParseLabelSelector("app=nginx,env in (prod,staging)")
+		sel, err := registry.ParseLabelSelector("app=nginx,env in (prod,staging)")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(sel.Empty()).To(BeFalse())
 	})
 
 	It("should return error for invalid selector", func() {
-		_, err := source.ParseLabelSelector("invalid===selector")
+		_, err := registry.ParseLabelSelector("invalid===selector")
 		Expect(err).To(HaveOccurred())
 	})
 })
@@ -86,7 +87,7 @@ var _ = Describe("Factory.BuildTypedSources", func() {
 	Context("with service builder but disabled config", func() {
 		BeforeEach(func() {
 			ctx = context.Background()
-			factory = source.NewFactory(nil, nil, []source.Builder{
+			factory = source.NewFactory(nil, nil, []registry.Builder{
 				service.NewBuilder(),
 			})
 		})
@@ -117,19 +118,19 @@ var _ = Describe("Factory.BuildTypedSources", func() {
 
 var _ = Describe("Factory.EnabledSourceTypes", func() {
 	It("should return empty when all disabled", func() {
-		factory := source.NewFactory(nil, nil, []source.Builder{service.NewBuilder()})
+		factory := source.NewFactory(nil, nil, []registry.Builder{service.NewBuilder()})
 		cfg := &config.OperatorConfig{Sources: config.SourcesConfig{}}
 		Expect(factory.EnabledSourceTypes(cfg)).To(BeEmpty())
 	})
 
 	It("should return enabled types", func() {
-		factory := source.NewFactory(nil, nil, []source.Builder{service.NewBuilder()})
+		factory := source.NewFactory(nil, nil, []registry.Builder{service.NewBuilder()})
 		cfg := &config.OperatorConfig{
 			Sources: config.SourcesConfig{
 				Service: &config.ServiceConfig{Enabled: true},
 			},
 		}
 		types := factory.EnabledSourceTypes(cfg)
-		Expect(types).To(Equal([]source.SourceType{service.SourceTypeService}))
+		Expect(types).To(Equal([]registry.SourceType{service.SourceTypeService}))
 	})
 })

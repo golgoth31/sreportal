@@ -23,12 +23,12 @@ import (
 	externaldnssource "sigs.k8s.io/external-dns/source"
 
 	"github.com/golgoth31/sreportal/internal/config"
-	"github.com/golgoth31/sreportal/internal/source"
+	"github.com/golgoth31/sreportal/internal/source/registry"
 )
 
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch
 
-const SourceTypeService source.SourceType = "service"
+const SourceTypeService registry.SourceType = "service"
 
 // Builder creates external-dns Service sources.
 type Builder struct{}
@@ -36,15 +36,15 @@ type Builder struct{}
 // NewBuilder creates a new Service source builder.
 func NewBuilder() *Builder { return &Builder{} }
 
-func (b *Builder) Type() source.SourceType { return SourceTypeService }
+func (b *Builder) Type() registry.SourceType { return SourceTypeService }
 
 func (b *Builder) Enabled(cfg *config.OperatorConfig) bool {
 	return cfg.Sources.Service != nil && cfg.Sources.Service.Enabled
 }
 
-func (b *Builder) Build(ctx context.Context, deps source.Deps, cfg *config.OperatorConfig) (source.Source, error) {
+func (b *Builder) Build(ctx context.Context, deps registry.Deps, cfg *config.OperatorConfig) (registry.Source, error) {
 	sc := cfg.Sources.Service
-	labelSelector, err := source.ParseLabelSelector(sc.LabelFilter)
+	labelSelector, err := registry.ParseLabelSelector(sc.LabelFilter)
 	if err != nil {
 		return nil, err
 	}

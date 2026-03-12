@@ -32,6 +32,8 @@ import (
 	"github.com/golgoth31/sreportal/internal/config"
 	"github.com/golgoth31/sreportal/internal/controller/dns"
 	"github.com/golgoth31/sreportal/internal/reconciler"
+	"github.com/golgoth31/sreportal/internal/source"
+	"github.com/golgoth31/sreportal/internal/source/registry"
 )
 
 const (
@@ -47,15 +49,17 @@ type DNSReconciler struct {
 }
 
 // NewDNSReconciler creates a new DNSReconciler with the handler chain.
+// builders is the same list used by the source factory (e.g. source.DefaultBuilders())
+// so that priority filtering and enabled sources stay in sync.
 // When cfg.Reconciliation.DisableDNSCheck is true, the ResolveDNSHandler step
 // is omitted and FQDNs will not carry a SyncStatus.
-func NewDNSReconciler(c client.Client, scheme *runtime.Scheme, cfg *config.OperatorConfig) *DNSReconciler {
+func NewDNSReconciler(c client.Client, scheme *runtime.Scheme, cfg *config.OperatorConfig, builders []registry.Builder) *DNSReconciler {
 	var groupMappingConfig *config.GroupMappingConfig
 	var sourcePriority []string
 	disableDNSCheck := false
 	if cfg != nil {
 		groupMappingConfig = &cfg.GroupMapping
-		sourcePriority = filteredSourcePriority(cfg)
+		sourcePriority = source.FilterPriorityOrder(cfg.Sources.Priority, builders, cfg)
 		disableDNSCheck = cfg.Reconciliation.DisableDNSCheck
 	}
 
@@ -74,47 +78,6 @@ func NewDNSReconciler(c client.Client, scheme *runtime.Scheme, cfg *config.Opera
 		Scheme: scheme,
 		chain:  reconciler.NewChain(handlers...),
 	}
-}
-
-// filteredSourcePriority returns the configured Sources.Priority list filtered to only
-// include enabled sources. When a source appears in the priority list but is disabled
-// (or missing) in configuration, a warning is logged and the source is ignored.
-func filteredSourcePriority(cfg *config.OperatorConfig) []string {
-	if cfg == nil {
-		return nil
-	}
-
-	log := ctrl.Log.WithName("dns").WithName("priority")
-
-	enabled := func(name string) bool {
-		switch name {
-		case "service":
-			return cfg.Sources.Service != nil && cfg.Sources.Service.Enabled
-		case "ingress":
-			return cfg.Sources.Ingress != nil && cfg.Sources.Ingress.Enabled
-		case "dnsendpoint":
-			return cfg.Sources.DNSEndpoint != nil && cfg.Sources.DNSEndpoint.Enabled
-		case "istio-gateway":
-			return cfg.Sources.IstioGateway != nil && cfg.Sources.IstioGateway.Enabled
-		case "istio-virtualservice":
-			return cfg.Sources.IstioVirtualService != nil && cfg.Sources.IstioVirtualService.Enabled
-		default:
-			// Unknown source type – keep it as-is; ApplySourcePriority will simply
-			// ignore it if no endpoints are produced for that source.
-			return true
-		}
-	}
-
-	var filtered []string
-	for _, src := range cfg.Sources.Priority {
-		if !enabled(src) {
-			log.Info("source in priority list is disabled and will be ignored",
-				"source", src)
-			continue
-		}
-		filtered = append(filtered, src)
-	}
-	return filtered
 }
 
 // +kubebuilder:rbac:groups=sreportal.io,resources=dns,verbs=get;list;watch;create;update;patch;delete

@@ -17,58 +17,22 @@ limitations under the License.
 package source
 
 import (
-	"context"
-	"fmt"
-
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	externaldnssource "sigs.k8s.io/external-dns/source"
-
-	"github.com/golgoth31/sreportal/internal/config"
+	"github.com/golgoth31/sreportal/internal/source/dnsendpoint"
+	"github.com/golgoth31/sreportal/internal/source/ingress"
+	"github.com/golgoth31/sreportal/internal/source/istiogateway"
+	"github.com/golgoth31/sreportal/internal/source/istiovirtualservice"
+	"github.com/golgoth31/sreportal/internal/source/registry"
+	"github.com/golgoth31/sreportal/internal/source/service"
 )
 
-// Source is an alias for the external-dns source.Source interface.
-type Source = externaldnssource.Source
-
-// SourceType represents the type of external-dns source.
-type SourceType string
-
-// TypedSource pairs a Source with its type.
-type TypedSource struct {
-	Type   SourceType
-	Source Source
-}
-
-// Deps holds the infrastructure dependencies that source builders need.
-type Deps struct {
-	KubeClient kubernetes.Interface
-	RestConfig *rest.Config
-}
-
-// Builder creates an external-dns Source for a specific source type.
-// Each source type implements this interface in its own package.
-type Builder interface {
-	// Type returns the source type identifier.
-	Type() SourceType
-	// Enabled reports whether this source is configured and active.
-	Enabled(cfg *config.OperatorConfig) bool
-	// Build constructs the Source. Called only when Enabled returns true.
-	Build(ctx context.Context, deps Deps, cfg *config.OperatorConfig) (Source, error)
-	// GVR returns the GroupVersionResource for annotation enrichment.
-	// Returns false if enrichment is not supported for this source type.
-	GVR() (schema.GroupVersionResource, bool)
-}
-
-// ParseLabelSelector parses a label selector string, returning Everything for empty input.
-func ParseLabelSelector(selector string) (labels.Selector, error) {
-	if selector == "" {
-		return labels.Everything(), nil
+// DefaultBuilders returns all registered source builders in default order.
+// Used by the Source reconciler and passed to the DNS reconciler for priority filtering.
+func DefaultBuilders() []registry.Builder {
+	return []registry.Builder{
+		service.NewBuilder(),
+		ingress.NewBuilder(),
+		dnsendpoint.NewBuilder(),
+		istiogateway.NewBuilder(),
+		istiovirtualservice.NewBuilder(),
 	}
-	sel, err := labels.Parse(selector)
-	if err != nil {
-		return nil, fmt.Errorf("parse label selector %q: %w", selector, err)
-	}
-	return sel, nil
 }

@@ -40,6 +40,7 @@ import (
 	"github.com/golgoth31/sreportal/internal/adapter"
 	"github.com/golgoth31/sreportal/internal/config"
 	"github.com/golgoth31/sreportal/internal/source"
+	"github.com/golgoth31/sreportal/internal/source/registry"
 )
 
 const (
@@ -51,7 +52,7 @@ const (
 // portalSourceKey identifies a unique (portal, sourceType) pair.
 type portalSourceKey struct {
 	portalName string
-	sourceType source.SourceType
+	sourceType registry.SourceType
 }
 
 // SourceReconciler reconciles external-dns sources and updates DNSRecord CRs.
@@ -62,7 +63,7 @@ type SourceReconciler struct {
 	dynamicClient dynamic.Interface
 
 	mu           sync.RWMutex
-	typedSources []source.TypedSource
+	typedSources []registry.TypedSource
 
 	// sourceFailures tracks consecutive endpoint-collection failures per source type.
 	//
@@ -73,7 +74,7 @@ type SourceReconciler struct {
 	// External visibility: when failures exceed maxSourceConsecutiveFailures the
 	// state is surfaced as a NotReady condition on the DNSRecord via markSourceDegraded,
 	// giving operators a Kubernetes-native signal without requiring an in-memory dashboard.
-	sourceFailures map[source.SourceType]int
+	sourceFailures map[registry.SourceType]int
 }
 
 // NewSourceReconciler creates a new SourceReconciler.
@@ -82,7 +83,7 @@ func NewSourceReconciler(
 	kubeClient kubernetes.Interface,
 	restConfig *rest.Config,
 	cfg *config.OperatorConfig,
-	builders []source.Builder,
+	builders []registry.Builder,
 ) *SourceReconciler {
 	dynClient, err := dynamic.NewForConfig(restConfig)
 	if err != nil {
@@ -94,7 +95,7 @@ func NewSourceReconciler(
 		config:         cfg,
 		sourceFactory:  source.NewFactory(kubeClient, restConfig, builders),
 		dynamicClient:  dynClient,
-		sourceFailures: make(map[source.SourceType]int),
+		sourceFailures: make(map[registry.SourceType]int),
 	}
 }
 
@@ -257,7 +258,7 @@ func (r *SourceReconciler) buildPortalIndex(ctx context.Context) (*portalIndex, 
 // conditions once maxSourceConsecutiveFailures is reached.
 func (r *SourceReconciler) collectByPortalSource(
 	ctx context.Context,
-	typedSources []source.TypedSource,
+	typedSources []registry.TypedSource,
 	idx *portalIndex,
 ) map[portalSourceKey][]*endpoint.Endpoint {
 	log := logf.FromContext(ctx).WithName("source")
@@ -400,7 +401,7 @@ func (r *SourceReconciler) ensureDNSResource(
 func (r *SourceReconciler) reconcileDNSRecord(
 	ctx context.Context,
 	portal *sreportalv1alpha1.Portal,
-	sourceType source.SourceType,
+	sourceType registry.SourceType,
 	endpoints []*endpoint.Endpoint,
 ) error {
 	log := logf.FromContext(ctx).WithName("source")
@@ -509,7 +510,7 @@ func (r *SourceReconciler) deleteOrphanedDNSRecords(
 	log := logf.FromContext(ctx).WithName("source")
 
 	enabledTypes := r.sourceFactory.EnabledSourceTypes(r.config)
-	enabledSet := make(map[source.SourceType]bool)
+	enabledSet := make(map[registry.SourceType]bool)
 	for _, t := range enabledTypes {
 		enabledSet[t] = true
 	}
@@ -526,7 +527,7 @@ func (r *SourceReconciler) deleteOrphanedDNSRecords(
 	// Delete DNSRecords for disabled sources or portals with no endpoints
 	for i := range dnsRecordList.Items {
 		rec := &dnsRecordList.Items[i]
-		sourceType := source.SourceType(rec.Spec.SourceType)
+		sourceType := registry.SourceType(rec.Spec.SourceType)
 
 		key := portalSourceKey{portalName: portal.Name, sourceType: sourceType}
 
@@ -570,7 +571,7 @@ func setDNSRecordCondition(conditions *[]metav1.Condition, newCondition metav1.C
 
 // enrichEndpoints looks up the original K8s resources and copies sreportal annotations
 // (sreportal.io/portal, sreportal.io/groups) to endpoint labels.
-func (r *SourceReconciler) enrichEndpoints(ctx context.Context, sourceType source.SourceType, endpoints []*endpoint.Endpoint) {
+func (r *SourceReconciler) enrichEndpoints(ctx context.Context, sourceType registry.SourceType, endpoints []*endpoint.Endpoint) {
 	if r.dynamicClient == nil {
 		return
 	}
@@ -618,7 +619,7 @@ func (r *SourceReconciler) enrichEndpoints(ctx context.Context, sourceType sourc
 func (r *SourceReconciler) markSourceDegraded(
 	ctx context.Context,
 	portal *sreportalv1alpha1.Portal,
-	sourceType source.SourceType,
+	sourceType registry.SourceType,
 	cause error,
 	count int,
 ) {
@@ -652,14 +653,14 @@ func (r *SourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 // SetTypedSources sets the typed sources directly. This is useful for testing.
-func (r *SourceReconciler) SetTypedSources(sources []source.TypedSource) {
+func (r *SourceReconciler) SetTypedSources(sources []registry.TypedSource) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.typedSources = sources
 }
 
 // GetTypedSources returns the current typed sources. This is useful for testing.
-func (r *SourceReconciler) GetTypedSources() []source.TypedSource {
+func (r *SourceReconciler) GetTypedSources() []registry.TypedSource {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.typedSources
