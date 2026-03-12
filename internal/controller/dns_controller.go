@@ -55,7 +55,7 @@ func NewDNSReconciler(c client.Client, scheme *runtime.Scheme, cfg *config.Opera
 	disableDNSCheck := false
 	if cfg != nil {
 		groupMappingConfig = &cfg.GroupMapping
-		sourcePriority = cfg.Sources.Priority
+		sourcePriority = filteredSourcePriority(cfg)
 		disableDNSCheck = cfg.Reconciliation.DisableDNSCheck
 	}
 
@@ -74,6 +74,47 @@ func NewDNSReconciler(c client.Client, scheme *runtime.Scheme, cfg *config.Opera
 		Scheme: scheme,
 		chain:  reconciler.NewChain(handlers...),
 	}
+}
+
+// filteredSourcePriority returns the configured Sources.Priority list filtered to only
+// include enabled sources. When a source appears in the priority list but is disabled
+// (or missing) in configuration, a warning is logged and the source is ignored.
+func filteredSourcePriority(cfg *config.OperatorConfig) []string {
+	if cfg == nil {
+		return nil
+	}
+
+	log := ctrl.Log.WithName("dns").WithName("priority")
+
+	enabled := func(name string) bool {
+		switch name {
+		case "service":
+			return cfg.Sources.Service != nil && cfg.Sources.Service.Enabled
+		case "ingress":
+			return cfg.Sources.Ingress != nil && cfg.Sources.Ingress.Enabled
+		case "dnsendpoint":
+			return cfg.Sources.DNSEndpoint != nil && cfg.Sources.DNSEndpoint.Enabled
+		case "istio-gateway":
+			return cfg.Sources.IstioGateway != nil && cfg.Sources.IstioGateway.Enabled
+		case "istio-virtualservice":
+			return cfg.Sources.IstioVirtualService != nil && cfg.Sources.IstioVirtualService.Enabled
+		default:
+			// Unknown source type – keep it as-is; ApplySourcePriority will simply
+			// ignore it if no endpoints are produced for that source.
+			return true
+		}
+	}
+
+	var filtered []string
+	for _, src := range cfg.Sources.Priority {
+		if !enabled(src) {
+			log.Info("source in priority list is disabled and will be ignored",
+				"source", src)
+			continue
+		}
+		filtered = append(filtered, src)
+	}
+	return filtered
 }
 
 // +kubebuilder:rbac:groups=sreportal.io,resources=dns,verbs=get;list;watch;create;update;patch;delete

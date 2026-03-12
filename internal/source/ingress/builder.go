@@ -26,6 +26,8 @@ import (
 	"github.com/golgoth31/sreportal/internal/source"
 )
 
+// +kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch
+
 const SourceTypeIngress source.SourceType = "ingress"
 
 // Builder creates external-dns Ingress sources.

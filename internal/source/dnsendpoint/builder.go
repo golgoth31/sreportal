@@ -27,6 +27,8 @@ import (
 	"github.com/golgoth31/sreportal/internal/source"
 )
 
+// +kubebuilder:rbac:groups=externaldns.k8s.io,resources=dnsendpoints,verbs=get;list;watch
+
 const SourceTypeDNSEndpoint source.SourceType = "dnsendpoint"
 
 // Builder creates external-dns CRD (DNSEndpoint) sources.

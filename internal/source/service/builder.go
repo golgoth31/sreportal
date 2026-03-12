@@ -26,6 +26,8 @@ import (
 	"github.com/golgoth31/sreportal/internal/source"
 )
 
+// +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch
+
 const SourceTypeService source.SourceType = "service"
 
 // Builder creates external-dns Service sources.

@@ -27,6 +27,8 @@ import (
 	"github.com/golgoth31/sreportal/internal/source"
 )
 
+// +kubebuilder:rbac:groups=networking.istio.io,resources=virtualservices,verbs=get;list;watch
+
 const SourceTypeIstioVirtualService source.SourceType = "istio-virtualservice"
 
 // Builder creates external-dns Istio VirtualService sources.

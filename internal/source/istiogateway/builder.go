@@ -27,6 +27,8 @@ import (
 	"github.com/golgoth31/sreportal/internal/source"
 )
 
+// +kubebuilder:rbac:groups=networking.istio.io,resources=gateways,verbs=get;list;watch
+
 const SourceTypeIstioGateway source.SourceType = "istio-gateway"
 
 // Builder creates external-dns Istio Gateway sources.
