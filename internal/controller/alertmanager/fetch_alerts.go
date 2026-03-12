@@ -140,8 +140,10 @@ func (h *FetchAlertsHandler) handleRemote(ctx context.Context, rc *reconciler.Re
 	}
 
 	alerts := toAlertsDomain(result.Alerts)
-	log.V(1).Info("fetched remote alerts", "count", len(alerts))
+	silences := toSilencesDomain(result.Silences)
+	log.V(1).Info("fetched remote alerts", "alerts", len(alerts), "silences", len(silences))
 	rc.Data[DataKeyAlerts] = alerts
+	rc.Data[DataKeySilences] = silences
 
 	return nil
 }
@@ -165,6 +167,14 @@ func toAlertsDomain(statuses []sreportalv1alpha1.AlertStatus) []domainalertmanag
 	alerts := make([]domainalertmanager.Alert, 0, len(statuses))
 
 	for _, a := range statuses {
+		receivers := make([]domainalertmanager.Receiver, 0, len(a.Receivers))
+		for _, name := range a.Receivers {
+			r, err := domainalertmanager.NewReceiver(name)
+			if err == nil {
+				receivers = append(receivers, r)
+			}
+		}
+
 		da := domainalertmanager.Alert{
 			Fingerprint: a.Fingerprint,
 			Labels:      a.Labels,
@@ -172,6 +182,8 @@ func toAlertsDomain(statuses []sreportalv1alpha1.AlertStatus) []domainalertmanag
 			State:       domainalertmanager.State(a.State),
 			StartsAt:    a.StartsAt.Time,
 			UpdatedAt:   a.UpdatedAt.Time,
+			Receivers:   receivers,
+			SilencedBy:  a.SilencedBy,
 		}
 		if a.EndsAt != nil {
 			endsAt := a.EndsAt.Time
@@ -182,4 +194,36 @@ func toAlertsDomain(statuses []sreportalv1alpha1.AlertStatus) []domainalertmanag
 	}
 
 	return alerts
+}
+
+// toSilencesDomain converts CRD SilenceStatus values to domain Silence objects.
+func toSilencesDomain(statuses []sreportalv1alpha1.SilenceStatus) []domainalertmanager.Silence {
+	silences := make([]domainalertmanager.Silence, 0, len(statuses))
+
+	for _, s := range statuses {
+		matchers := make([]domainalertmanager.Matcher, 0, len(s.Matchers))
+		for _, m := range s.Matchers {
+			matchers = append(matchers, domainalertmanager.Matcher{
+				Name:    m.Name,
+				Value:   m.Value,
+				IsRegex: m.IsRegex,
+			})
+		}
+
+		silence, err := domainalertmanager.NewSilence(
+			s.ID,
+			matchers,
+			s.StartsAt.Time,
+			s.EndsAt.Time,
+			domainalertmanager.SilenceStatus(s.Status),
+			s.CreatedBy,
+			s.Comment,
+			s.UpdatedAt.Time,
+		)
+		if err == nil {
+			silences = append(silences, silence)
+		}
+	}
+
+	return silences
 }

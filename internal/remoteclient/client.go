@@ -200,6 +200,8 @@ func (c *Client) doFetchFQDNs(ctx context.Context, baseURL string, portalName st
 type AlertsFetchResult struct {
 	// Alerts contains the active alerts fetched from the remote portal.
 	Alerts []sreportalv1alpha1.AlertStatus
+	// Silences contains the silences fetched from the remote portal.
+	Silences []sreportalv1alpha1.SilenceStatus
 }
 
 // RemoteAlertmanagerInfo describes an alertmanager discovered on a remote portal.
@@ -305,6 +307,7 @@ func (c *Client) doFetchAlerts(ctx context.Context, baseURL string, portalName s
 	}
 
 	var allAlerts []sreportalv1alpha1.AlertStatus
+	var allSilences []sreportalv1alpha1.SilenceStatus
 
 	for _, resource := range resp.Msg.Alertmanagers {
 		// Filter by alertmanager name if specified.
@@ -318,6 +321,8 @@ func (c *Client) doFetchAlerts(ctx context.Context, baseURL string, portalName s
 				Labels:      a.Labels,
 				Annotations: a.Annotations,
 				State:       a.State,
+				Receivers:   a.Receivers,
+				SilencedBy:  a.SilencedBy,
 			}
 			if a.StartsAt != nil {
 				alert.StartsAt = metav1.NewTime(a.StartsAt.AsTime())
@@ -331,10 +336,39 @@ func (c *Client) doFetchAlerts(ctx context.Context, baseURL string, portalName s
 			}
 			allAlerts = append(allAlerts, alert)
 		}
+
+		for _, s := range resource.Silences {
+			matchers := make([]sreportalv1alpha1.MatcherStatus, 0, len(s.Matchers))
+			for _, m := range s.Matchers {
+				matchers = append(matchers, sreportalv1alpha1.MatcherStatus{
+					Name:    m.Name,
+					Value:   m.Value,
+					IsRegex: m.IsRegex,
+				})
+			}
+			silence := sreportalv1alpha1.SilenceStatus{
+				ID:        s.Id,
+				Matchers:  matchers,
+				Status:    s.Status,
+				CreatedBy: s.CreatedBy,
+				Comment:   s.Comment,
+			}
+			if s.StartsAt != nil {
+				silence.StartsAt = metav1.NewTime(s.StartsAt.AsTime())
+			}
+			if s.EndsAt != nil {
+				silence.EndsAt = metav1.NewTime(s.EndsAt.AsTime())
+			}
+			if s.UpdatedAt != nil {
+				silence.UpdatedAt = metav1.NewTime(s.UpdatedAt.AsTime())
+			}
+			allSilences = append(allSilences, silence)
+		}
 	}
 
 	return &AlertsFetchResult{
-		Alerts: allAlerts,
+		Alerts:   allAlerts,
+		Silences: allSilences,
 	}, nil
 }
 
