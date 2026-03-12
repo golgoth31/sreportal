@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.1](https://github.com/golgoth31/sreportal/compare/v1.12.0...v1.12.1) (2026-03-12)
+
+
+### Bug Fixes
+
+* **alertmanager:** propagate silences and receivers from remote portals ([aa763a3](https://github.com/golgoth31/sreportal/commit/aa763a31932cc053a1e518e0c085782f204f4784))
+
 ## [1.12.0](https://github.com/golgoth31/sreportal/compare/v1.11.5...v1.12.0) (2026-03-11)
 
 
