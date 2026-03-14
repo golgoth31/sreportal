@@ -69,20 +69,11 @@ type SourcesConfig struct {
 	DNSEndpoint         *DNSEndpointConfig         `json:"dnsEndpoint,omitempty" yaml:"dnsEndpoint,omitempty"`
 	IstioGateway        *IstioGatewayConfig        `json:"istioGateway,omitempty" yaml:"istioGateway,omitempty"`
 	IstioVirtualService *IstioVirtualServiceConfig `json:"istioVirtualService,omitempty" yaml:"istioVirtualService,omitempty"`
-<<<<<<< HEAD
-	// Gateway API route sources
-	GatewayHTTPRoute *GatewayHTTPRouteConfig `json:"gatewayHTTPRoute,omitempty" yaml:"gatewayHTTPRoute,omitempty"`
-	GatewayGRPCRoute *GatewayGRPCRouteConfig `json:"gatewayGRPCRoute,omitempty" yaml:"gatewayGRPCRoute,omitempty"`
-	GatewayTLSRoute  *GatewayTLSRouteConfig  `json:"gatewayTLSRoute,omitempty" yaml:"gatewayTLSRoute,omitempty"`
-	GatewayTCPRoute  *GatewayTCPRouteConfig  `json:"gatewayTCPRoute,omitempty" yaml:"gatewayTCPRoute,omitempty"`
-	GatewayUDPRoute  *GatewayUDPRouteConfig  `json:"gatewayUDPRoute,omitempty" yaml:"gatewayUDPRoute,omitempty"`
-=======
 	GatewayHTTPRoute    *GatewayRouteConfig        `json:"gatewayHTTPRoute,omitempty" yaml:"gatewayHTTPRoute,omitempty"`
 	GatewayGRPCRoute    *GatewayRouteConfig        `json:"gatewayGRPCRoute,omitempty" yaml:"gatewayGRPCRoute,omitempty"`
 	GatewayTLSRoute     *GatewayRouteConfig        `json:"gatewayTLSRoute,omitempty" yaml:"gatewayTLSRoute,omitempty"`
 	GatewayTCPRoute     *GatewayRouteConfig        `json:"gatewayTCPRoute,omitempty" yaml:"gatewayTCPRoute,omitempty"`
 	GatewayUDPRoute     *GatewayRouteConfig        `json:"gatewayUDPRoute,omitempty" yaml:"gatewayUDPRoute,omitempty"`
->>>>>>> 88e6489 (feat(sources): add Gateway API route sources and optional GVR version)
 	// Priority defines the preferred order of source types when the same FQDN+RecordType
 	// is discovered by multiple sources. Sources listed earlier take precedence over later ones.
 	// When a source is not listed, it receives the lowest priority. When empty, targets from
