@@ -136,11 +136,11 @@ generate-all: manifests generate proto ## Generate all code (CRDs, DeepCopy, pro
 
 .PHONY: run
 run: manifests generate fmt vet generate-certs ## Run a controller from your host (dev mode: UI served from filesystem).
-	go run ./cmd/main.go --log-level=info --enable-mcp --mcp-transport streamable-http --webhook-cert-path=$(CERTSDIR) --config=./config/samples/test_config.yaml
+	go run ./cmd/main.go --log-level=debug --enable-mcp --mcp-transport streamable-http --webhook-cert-path=$(CERTSDIR) --config=./config/samples/test_config.yaml
 
 .PHONY: run2
 run2: manifests generate fmt vet generate-certs2 ## Run a second controller from your host (dev mode: UI served from filesystem).
-	go run ./cmd/main.go -log-level=debug --dev-mode --web-bind-address=:8091 --health-probe-bind-address=:9091 --webhook-port=9444 --webhook-cert-path=$(CERTSDIR) --config=./config/samples/test_config.yaml
+	go run ./cmd/main.go -log-level=debug --web-bind-address=:8091 --health-probe-bind-address=:9091 --webhook-port=9444 --webhook-cert-path=$(CERTSDIR) --config=./config/samples/test_config.yaml
 
 # If you wish to build the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64). However, you must enable docker buildKit for it.
