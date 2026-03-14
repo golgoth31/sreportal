@@ -18,6 +18,11 @@ package source
 
 import (
 	"github.com/golgoth31/sreportal/internal/source/dnsendpoint"
+	"github.com/golgoth31/sreportal/internal/source/gatewaygrpcroute"
+	"github.com/golgoth31/sreportal/internal/source/gatewayhttproute"
+	"github.com/golgoth31/sreportal/internal/source/gatewaytcproute"
+	"github.com/golgoth31/sreportal/internal/source/gatewaytlsroute"
+	"github.com/golgoth31/sreportal/internal/source/gatewayudproute"
 	"github.com/golgoth31/sreportal/internal/source/ingress"
 	"github.com/golgoth31/sreportal/internal/source/istiogateway"
 	"github.com/golgoth31/sreportal/internal/source/istiovirtualservice"
@@ -34,5 +39,10 @@ func DefaultBuilders() []registry.Builder {
 		dnsendpoint.NewBuilder(),
 		istiogateway.NewBuilder(),
 		istiovirtualservice.NewBuilder(),
+		gatewayhttproute.NewBuilder(),
+		gatewaygrpcroute.NewBuilder(),
+		gatewaytlsroute.NewBuilder(),
+		gatewaytcproute.NewBuilder(),
+		gatewayudproute.NewBuilder(),
 	}
 }

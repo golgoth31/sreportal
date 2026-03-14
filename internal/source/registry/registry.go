@@ -61,6 +61,8 @@ type Builder interface {
 	Build(ctx context.Context, deps Deps, cfg *config.OperatorConfig) (Source, error)
 	// GVR returns the GroupVersionResource for annotation enrichment.
 	// Returns false if enrichment is not supported for this source type.
+	// Version may be empty: the consumer will resolve it via discovery (e.g. for Gateway API
+	// where the preferred version varies by cluster).
 	GVR() (schema.GroupVersionResource, bool)
 }
 

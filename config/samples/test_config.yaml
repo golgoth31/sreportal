@@ -25,6 +25,18 @@ sources:
   istioGateway:
     enabled: false
 
+  # Gateway API route sources (disabled by default — require Gateway API CRDs)
+  gatewayHTTPRoute:
+    enabled: false
+  gatewayGRPCRoute:
+    enabled: false
+  gatewayTLSRoute:
+    enabled: false
+  gatewayTCPRoute:
+    enabled: false
+  gatewayUDPRoute:
+    enabled: false
+
   # Priority defines which source wins when the same FQDN+RecordType is discovered
   # by multiple sources. Sources listed first take precedence. Sources omitted from
   # the list still contribute FQDNs they uniquely own, but lose to any listed source.
@@ -35,6 +47,11 @@ sources:
     - service
     - istio-gateway
     - istio-virtualservice
+    - gateway-httproute
+    - gateway-grpcroute
+    - gateway-tlsroute
+    - gateway-tcproute
+    - gateway-udproute
 
 groupMapping:
   defaultGroup: "Discovered Services"

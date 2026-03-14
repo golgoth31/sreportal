@@ -25,7 +25,9 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -59,12 +61,17 @@ type portalSourceKey struct {
 // SourceReconciler reconciles external-dns sources and updates DNSRecord CRs.
 type SourceReconciler struct {
 	client.Client
-	config        *config.OperatorConfig
-	sourceFactory *source.Factory
-	dynamicClient dynamic.Interface
+	config          *config.OperatorConfig
+	sourceFactory   *source.Factory
+	dynamicClient   dynamic.Interface
+	discoveryClient discovery.DiscoveryInterface
 
 	mu           sync.RWMutex
 	typedSources []registry.TypedSource
+
+	// gvrCache resolves Group+Resource to full GVR when Version is empty (discovery).
+	gvrCacheMu sync.RWMutex
+	gvrCache   map[schema.GroupResource]schema.GroupVersionResource
 
 	// sourceFailures tracks consecutive endpoint-collection failures per source type.
 	//
@@ -90,13 +97,16 @@ func NewSourceReconciler(
 	if err != nil {
 		log.Default().WithName("source").Error(err, "failed to create dynamic client, annotation enrichment disabled")
 	}
+	discoClient := discovery.NewDiscoveryClientForConfigOrDie(restConfig)
 
 	return &SourceReconciler{
-		Client:         c,
-		config:         cfg,
-		sourceFactory:  source.NewFactory(kubeClient, restConfig, builders),
-		dynamicClient:  dynClient,
-		sourceFailures: make(map[registry.SourceType]int),
+		Client:          c,
+		config:          cfg,
+		sourceFactory:   source.NewFactory(kubeClient, restConfig, builders),
+		dynamicClient:   dynClient,
+		discoveryClient: discoClient,
+		gvrCache:        make(map[schema.GroupResource]schema.GroupVersionResource),
+		sourceFailures:  make(map[registry.SourceType]int),
 	}
 }
 
@@ -570,6 +580,49 @@ func setDNSRecordCondition(conditions *[]metav1.Condition, newCondition metav1.C
 	*conditions = append(*conditions, newCondition)
 }
 
+// resolveGVR returns a full GVR. If gvr.Version is empty, it uses discovery to resolve
+// the preferred version and caches the result.
+func (r *SourceReconciler) resolveGVR(ctx context.Context, gvr schema.GroupVersionResource) (schema.GroupVersionResource, error) {
+	if gvr.Version != "" {
+		return gvr, nil
+	}
+	gr := gvr.GroupResource()
+	r.gvrCacheMu.RLock()
+	if resolved, ok := r.gvrCache[gr]; ok {
+		r.gvrCacheMu.RUnlock()
+		return resolved, nil
+	}
+	r.gvrCacheMu.RUnlock()
+
+	lists, err := r.discoveryClient.ServerPreferredResources()
+	if err != nil {
+		return schema.GroupVersionResource{}, fmt.Errorf("discovery: %w", err)
+	}
+	for _, list := range lists {
+		if list.GroupVersion == "" {
+			continue
+		}
+		gv, err := schema.ParseGroupVersion(list.GroupVersion)
+		if err != nil || gv.Group != gvr.Group {
+			continue
+		}
+		for i := range list.APIResources {
+			if list.APIResources[i].Name == gvr.Resource {
+				resolved := schema.GroupVersionResource{
+					Group:    gv.Group,
+					Version:  gv.Version,
+					Resource: gvr.Resource,
+				}
+				r.gvrCacheMu.Lock()
+				r.gvrCache[gr] = resolved
+				r.gvrCacheMu.Unlock()
+				return resolved, nil
+			}
+		}
+	}
+	return schema.GroupVersionResource{}, fmt.Errorf("no version found for %s/%s", gvr.Group, gvr.Resource)
+}
+
 // enrichEndpoints looks up the original K8s resources and copies sreportal annotations
 // (sreportal.io/portal, sreportal.io/groups) to endpoint labels.
 func (r *SourceReconciler) enrichEndpoints(ctx context.Context, sourceType registry.SourceType, endpoints []*endpoint.Endpoint) {
@@ -583,6 +636,14 @@ func (r *SourceReconciler) enrichEndpoints(ctx context.Context, sourceType regis
 	}
 
 	log := log.FromContext(ctx).WithName("source")
+	if gvr.Version == "" {
+		resolved, err := r.resolveGVR(ctx, gvr)
+		if err != nil {
+			log.V(2).Info("skip annotation enrichment, could not resolve GVR", "gvr", gvr, "error", err)
+			return
+		}
+		gvr = resolved
+	}
 
 	// Group endpoints by resource reference to avoid duplicate lookups
 	byResource := make(map[string][]*endpoint.Endpoint)
