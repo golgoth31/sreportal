@@ -20,6 +20,7 @@ import (
 	"context"
 	"crypto/tls"
 	"flag"
+	"fmt"
 	"io/fs"
 	"os"
 	"strings"
@@ -35,7 +36,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -49,6 +49,7 @@ import (
 	"github.com/golgoth31/sreportal/internal/config"
 	"github.com/golgoth31/sreportal/internal/controller"
 	portalctrl "github.com/golgoth31/sreportal/internal/controller/portal"
+	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/mcp"
 	"github.com/golgoth31/sreportal/internal/source"
 	"github.com/golgoth31/sreportal/internal/version"
@@ -58,8 +59,7 @@ import (
 )
 
 var (
-	scheme   = runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("setup")
+	scheme = runtime.NewScheme()
 )
 
 func init() {
@@ -125,14 +125,22 @@ func main() {
 	flag.StringVar(&corsAllowedOrigins, "cors-allowed-origins", "",
 		"Comma-separated list of origins allowed for CORS requests (e.g. http://localhost:5173). "+
 			"Leave empty to disable CORS. In dev mode, http://localhost:5173 is added automatically.")
-	opts := zap.Options{}
-	if devMode {
-		opts.Development = true
-	}
-	opts.BindFlags(flag.CommandLine)
+	var logCfg log.Config
+	logCfg.BindFlags(flag.CommandLine)
 	flag.Parse()
 
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	if devMode && logCfg.Level == log.LevelInfoValue {
+		logCfg.Level = log.LevelDebugValue
+	}
+	logCfg.AddCaller = true
+	if err := log.Init(logCfg); err != nil {
+		// Cannot use setupLog yet — fall back to stderr.
+		fmt.Fprintf(os.Stderr, "failed to initialise logger: %v\n", err)
+		os.Exit(1)
+	}
+	ctrl.SetLogger(log.Default().ToLogr())
+
+	setupLog := log.Default().WithName("setup")
 
 	// Environment variables (Kubernetes Downward API)
 	podName := os.Getenv("POD_NAME")

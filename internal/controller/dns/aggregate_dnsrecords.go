@@ -20,11 +20,11 @@ import (
 	"context"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/adapter"
 	"github.com/golgoth31/sreportal/internal/config"
+	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
@@ -58,7 +58,7 @@ func NewAggregateDNSRecordsHandler(c client.Client, cfg *config.GroupMappingConf
 
 // Handle implements reconciler.Handler
 func (h *AggregateDNSRecordsHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.DNS]) error {
-	log := logf.FromContext(ctx).WithName("aggregate-dnsrecords")
+	logger := log.FromContext(ctx).WithName("aggregate-dnsrecords")
 
 	// List DNSRecords belonging to the same portal as this DNS resource
 	var dnsRecordList sreportalv1alpha1.DNSRecordList
@@ -66,16 +66,16 @@ func (h *AggregateDNSRecordsHandler) Handle(ctx context.Context, rc *reconciler.
 		client.InNamespace(rc.Resource.Namespace),
 		client.MatchingFields{IndexFieldPortalRef: rc.Resource.Spec.PortalRef},
 	); err != nil {
-		log.Error(err, "failed to list DNSRecords")
+		logger.Error(err, "failed to list DNSRecords")
 		return err
 	}
 
-	log.V(1).Info("found DNSRecords", "count", len(dnsRecordList.Items), "portalRef", rc.Resource.Spec.PortalRef)
+	logger.V(1).Info("found DNSRecords", "count", len(dnsRecordList.Items), "portalRef", rc.Resource.Spec.PortalRef)
 
 	// Group endpoints by source type for priority-based deduplication
 	endpointsBySource := make(map[string][]sreportalv1alpha1.EndpointStatus)
 	for _, rec := range dnsRecordList.Items {
-		log.V(2).Info("processing DNSRecord",
+		logger.V(2).Info("processing DNSRecord",
 			"name", rec.Name,
 			"sourceType", rec.Spec.SourceType,
 			"endpointCount", len(rec.Status.Endpoints))
@@ -85,12 +85,12 @@ func (h *AggregateDNSRecordsHandler) Handle(ctx context.Context, rc *reconciler.
 	// Apply source priority (or flatten without deduplication when priority is not configured)
 	allEndpoints := adapter.ApplySourcePriority(endpointsBySource, h.sourcePriority)
 
-	log.V(1).Info("aggregated endpoints", "totalCount", len(allEndpoints))
+	logger.V(1).Info("aggregated endpoints", "totalCount", len(allEndpoints))
 
 	// Convert endpoints to groups using mapping configuration
 	groups := adapter.EndpointStatusToGroups(allEndpoints, h.config)
 
-	log.V(1).Info("converted to groups", "groupCount", len(groups))
+	logger.V(1).Info("converted to groups", "groupCount", len(groups))
 
 	// Store in context for downstream handlers
 	rc.Data[DataKeyExternalGroups] = groups

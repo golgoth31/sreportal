@@ -23,12 +23,11 @@ import (
 	"net/http"
 	"strings"
 
+	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 )
 
 // AlertsServer wraps the MCP server for Alertmanager alerts.

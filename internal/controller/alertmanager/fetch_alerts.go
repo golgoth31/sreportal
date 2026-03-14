@@ -20,13 +20,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	domainalertmanager "github.com/golgoth31/sreportal/internal/domain/alertmanager"
+	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 	"github.com/golgoth31/sreportal/internal/remoteclient"
 	"github.com/golgoth31/sreportal/internal/tlsutil"
@@ -70,41 +69,41 @@ func NewFetchAlertsHandler(
 
 // Handle implements reconciler.Handler.
 func (h *FetchAlertsHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager]) error {
-	log := logf.FromContext(ctx).WithName("fetch-alerts")
+	logger := log.FromContext(ctx).WithName("fetch-alerts")
 
 	if rc.Resource.Spec.IsRemote {
-		return h.handleRemote(ctx, rc, log)
+		return h.handleRemote(ctx, rc, logger)
 	}
 
-	return h.handleLocal(ctx, rc, log)
+	return h.handleLocal(ctx, rc, logger)
 }
 
-func (h *FetchAlertsHandler) handleLocal(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager], log logr.Logger) error {
+func (h *FetchAlertsHandler) handleLocal(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager], logger *log.Logger) error {
 	localURL := rc.Resource.Spec.URL.Local
 
 	if h.localDataFetcher != nil {
-		log.V(1).Info("fetching alertmanager data (alerts+receivers+silences) from local", "url", localURL)
+		logger.V(1).Info("fetching alertmanager data (alerts+receivers+silences) from local", "url", localURL)
 		data, err := h.localDataFetcher.GetAlertmanagerData(ctx, localURL)
 		if err != nil {
 			return fmt.Errorf("fetch alertmanager data from %s: %w", localURL, err)
 		}
-		log.V(1).Info("fetched alertmanager data", "alerts", len(data.Alerts), "silences", len(data.Silences))
+		logger.V(1).Info("fetched alertmanager data", "alerts", len(data.Alerts), "silences", len(data.Silences))
 		rc.Data[DataKeyAlerts] = data.Alerts
 		rc.Data[DataKeySilences] = data.Silences
 		return nil
 	}
 
-	log.V(1).Info("fetching active alerts from local Alertmanager", "url", localURL)
+	logger.V(1).Info("fetching active alerts from local Alertmanager", "url", localURL)
 	alerts, err := h.localFetcher.GetActiveAlerts(ctx, localURL)
 	if err != nil {
 		return fmt.Errorf("fetch alerts from %s: %w", localURL, err)
 	}
-	log.V(1).Info("fetched alerts", "count", len(alerts))
+	logger.V(1).Info("fetched alerts", "count", len(alerts))
 	rc.Data[DataKeyAlerts] = alerts
 	return nil
 }
 
-func (h *FetchAlertsHandler) handleRemote(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager], log logr.Logger) error {
+func (h *FetchAlertsHandler) handleRemote(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager], logger *log.Logger) error {
 	// Look up the Portal CR to get the remote URL and TLS configuration.
 	portal := &sreportalv1alpha1.Portal{}
 	portalKey := types.NamespacedName{
@@ -132,7 +131,7 @@ func (h *FetchAlertsHandler) handleRemote(ctx context.Context, rc *reconciler.Re
 	// Each local remote CR represents one specific alertmanager on the remote portal.
 	// The label identifies which remote alertmanager this CR corresponds to.
 	remoteAMName := rc.Resource.Labels[LabelRemoteAlertmanagerName]
-	log.V(1).Info("fetching active alerts from remote portal", "url", baseURL, "portalName", portalName, "remoteAlertmanager", remoteAMName)
+	logger.V(1).Info("fetching active alerts from remote portal", "url", baseURL, "portalName", portalName, "remoteAlertmanager", remoteAMName)
 
 	result, err := remoteClient.FetchAlerts(ctx, baseURL, portalName, remoteAMName)
 	if err != nil {
@@ -141,7 +140,7 @@ func (h *FetchAlertsHandler) handleRemote(ctx context.Context, rc *reconciler.Re
 
 	alerts := toAlertsDomain(result.Alerts)
 	silences := toSilencesDomain(result.Silences)
-	log.V(1).Info("fetched remote alerts", "alerts", len(alerts), "silences", len(silences))
+	logger.V(1).Info("fetched remote alerts", "alerts", len(alerts), "silences", len(silences))
 	rc.Data[DataKeyAlerts] = alerts
 	rc.Data[DataKeySilences] = silences
 

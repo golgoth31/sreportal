@@ -20,8 +20,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/golgoth31/sreportal/internal/log"
 	ctrl "sigs.k8s.io/controller-runtime"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
@@ -29,7 +29,7 @@ import (
 
 // nolint:unused
 // log is for logging in this package.
-var portallog = logf.Log.WithName("portal-resource")
+var portallog = log.Default().WithName("portal-resource")
 
 // SetupPortalWebhookWithManager registers the webhook for Portal in the manager.
 func SetupPortalWebhookWithManager(mgr ctrl.Manager) error {

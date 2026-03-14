@@ -17,9 +17,8 @@ limitations under the License.
 package source
 
 import (
-	ctrl "sigs.k8s.io/controller-runtime"
-
 	"github.com/golgoth31/sreportal/internal/config"
+	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/source/registry"
 )
 
@@ -35,7 +34,7 @@ func FilterPriorityOrder(priority []string, builders []registry.Builder, cfg *co
 		return priority
 	}
 
-	log := ctrl.Log.WithName("source").WithName("priority")
+	logger := log.Default().WithName("source").WithName("priority")
 	enabledTypes := make(map[string]bool)
 	for _, b := range builders {
 		if b.Enabled(cfg) {
@@ -46,7 +45,7 @@ func FilterPriorityOrder(priority []string, builders []registry.Builder, cfg *co
 	var filtered []string
 	for _, name := range priority {
 		if !enabledTypes[name] {
-			log.Info("source in priority list is disabled or unknown and will be ignored",
+			logger.Warn("source in priority list is disabled or unknown and will be ignored",
 				"source", name)
 			continue
 		}

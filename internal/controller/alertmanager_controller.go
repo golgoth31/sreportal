@@ -23,11 +23,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	alertmanagerchain "github.com/golgoth31/sreportal/internal/controller/alertmanager"
 	domainalertmanager "github.com/golgoth31/sreportal/internal/domain/alertmanager"
+	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
@@ -70,14 +70,14 @@ func NewAlertmanagerReconciler(
 
 // Reconcile fetches active alerts from Alertmanager and updates the resource status.
 func (r *AlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := logf.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
 	var resource sreportalv1alpha1.Alertmanager
 	if err := r.Get(ctx, req.NamespacedName, &resource); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	log.V(1).Info("reconciling Alertmanager", "name", resource.Name, "portalRef", resource.Spec.PortalRef, "isRemote", resource.Spec.IsRemote)
+	logger.V(1).Info("reconciling Alertmanager", "name", resource.Name, "portalRef", resource.Spec.PortalRef, "isRemote", resource.Spec.IsRemote)
 
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager]{
 		Resource: &resource,
@@ -85,7 +85,7 @@ func (r *AlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	if err := r.chain.Execute(ctx, rc); err != nil {
-		log.Error(err, "reconciliation chain failed")
+		logger.Error(err, "reconciliation chain failed")
 		return ctrl.Result{RequeueAfter: alertmanagerRequeueAfter}, nil
 	}
 

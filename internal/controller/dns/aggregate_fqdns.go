@@ -21,9 +21,9 @@ import (
 	"sort"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
@@ -49,7 +49,7 @@ func NewAggregateFQDNsHandler() *AggregateFQDNsHandler {
 
 // Handle implements reconciler.Handler
 func (h *AggregateFQDNsHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.DNS]) error {
-	log := logf.FromContext(ctx).WithName("aggregate-fqdns")
+	logger := log.FromContext(ctx).WithName("aggregate-fqdns")
 	now := metav1.Now()
 
 	// Map to store groups by name
@@ -61,7 +61,7 @@ func (h *AggregateFQDNsHandler) Handle(ctx context.Context, rc *reconciler.Recon
 			groupCopy := group
 			groupMap[group.Name] = &groupCopy
 		}
-		log.V(1).Info("added external groups from DNSRecords", "count", len(externalGroups))
+		logger.V(1).Info("added external groups from DNSRecords", "count", len(externalGroups))
 	}
 
 	// Process manual groups — merge FQDNs with any external group of the same name.
@@ -109,7 +109,7 @@ func (h *AggregateFQDNsHandler) Handle(ctx context.Context, rc *reconciler.Recon
 		return groups[i].Name < groups[j].Name
 	})
 
-	log.V(1).Info("aggregated groups", "count", len(groups))
+	logger.V(1).Info("aggregated groups", "count", len(groups))
 	rc.Data[DataKeyAggregatedGroups] = groups
 	return nil
 }

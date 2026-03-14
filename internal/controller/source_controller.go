@@ -32,8 +32,9 @@ import (
 	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+
+	"github.com/golgoth31/sreportal/internal/log"
 	"sigs.k8s.io/external-dns/endpoint"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
@@ -87,7 +88,7 @@ func NewSourceReconciler(
 ) *SourceReconciler {
 	dynClient, err := dynamic.NewForConfig(restConfig)
 	if err != nil {
-		ctrl.Log.WithName("source").Error(err, "failed to create dynamic client, annotation enrichment disabled")
+		log.Default().WithName("source").Error(err, "failed to create dynamic client, annotation enrichment disabled")
 	}
 
 	return &SourceReconciler{
@@ -110,12 +111,12 @@ func NewSourceReconciler(
 // failures are surfaced as NotReady conditions on the relevant DNSRecord via
 // markSourceDegraded, giving operators a Kubernetes-native signal.
 func (r *SourceReconciler) Start(ctx context.Context) error {
-	log := ctrl.Log.WithName("source")
+	logger := log.Default().WithName("source")
 
 	// Best-effort source initialisation at startup — sources may become available
 	// later (e.g. CRDs not yet installed), so failures are non-fatal.
 	if err := r.rebuildSources(ctx); err != nil {
-		log.Error(err, "failed to build sources at startup, will retry on next tick")
+		logger.Error(err, "failed to build sources at startup, will retry on next tick")
 	}
 
 	ticker := time.NewTicker(r.config.Reconciliation.Interval.Duration())
@@ -123,17 +124,17 @@ func (r *SourceReconciler) Start(ctx context.Context) error {
 
 	// Run once immediately so the first reconciliation does not wait a full interval.
 	if err := r.reconcile(ctx); err != nil {
-		log.Error(err, "initial reconciliation failed")
+		logger.Error(err, "initial reconciliation failed")
 	}
 
 	for {
 		select {
 		case <-ctx.Done():
-			log.Info("stopping source reconciler")
+			logger.Info("stopping source reconciler")
 			return nil
 		case <-ticker.C:
 			if err := r.reconcile(ctx); err != nil {
-				log.Error(err, "periodic reconciliation failed")
+				logger.Error(err, "periodic reconciliation failed")
 			}
 		}
 	}
@@ -147,7 +148,7 @@ type portalIndex struct {
 }
 
 func (r *SourceReconciler) reconcile(ctx context.Context) error {
-	log := logf.FromContext(ctx).WithName("source")
+	log := log.FromContext(ctx).WithName("source")
 
 	r.mu.RLock()
 	sourcesBuilt := len(r.typedSources) > 0
@@ -206,7 +207,7 @@ func (r *SourceReconciler) reconcile(ctx context.Context) error {
 // buildPortalIndex lists all Portals and builds a lookup index for the reconciliation loop.
 // Returns nil (without error) when there are no local portals to reconcile.
 func (r *SourceReconciler) buildPortalIndex(ctx context.Context) (*portalIndex, error) {
-	log := logf.FromContext(ctx).WithName("source")
+	log := log.FromContext(ctx).WithName("source")
 
 	var portalList sreportalv1alpha1.PortalList
 	if err := r.List(ctx, &portalList); err != nil {
@@ -261,7 +262,7 @@ func (r *SourceReconciler) collectByPortalSource(
 	typedSources []registry.TypedSource,
 	idx *portalIndex,
 ) map[portalSourceKey][]*endpoint.Endpoint {
-	log := logf.FromContext(ctx).WithName("source")
+	log := log.FromContext(ctx).WithName("source")
 
 	result := make(map[portalSourceKey][]*endpoint.Endpoint)
 
@@ -309,7 +310,7 @@ func (r *SourceReconciler) resolveEndpointPortal(
 	ep *endpoint.Endpoint,
 	idx *portalIndex,
 ) (string, *sreportalv1alpha1.Portal) {
-	log := logf.FromContext(ctx).WithName("source")
+	log := log.FromContext(ctx).WithName("source")
 
 	portalName := adapter.ResolvePortal(ep)
 	var target *sreportalv1alpha1.Portal
@@ -363,7 +364,7 @@ func (r *SourceReconciler) ensureDNSResource(
 	ctx context.Context,
 	portal *sreportalv1alpha1.Portal,
 ) error {
-	log := logf.FromContext(ctx).WithName("source")
+	log := log.FromContext(ctx).WithName("source")
 
 	name := portal.Name
 	key := client.ObjectKey{Namespace: portal.Namespace, Name: name}
@@ -404,7 +405,7 @@ func (r *SourceReconciler) reconcileDNSRecord(
 	sourceType registry.SourceType,
 	endpoints []*endpoint.Endpoint,
 ) error {
-	log := logf.FromContext(ctx).WithName("source")
+	log := log.FromContext(ctx).WithName("source")
 
 	name := fmt.Sprintf("%s-%s", portal.Name, sourceType)
 	now := metav1.Now()
@@ -507,7 +508,7 @@ func (r *SourceReconciler) deleteOrphanedDNSRecords(
 	portal *sreportalv1alpha1.Portal,
 	activeKeys map[portalSourceKey][]*endpoint.Endpoint,
 ) error {
-	log := logf.FromContext(ctx).WithName("source")
+	log := log.FromContext(ctx).WithName("source")
 
 	enabledTypes := r.sourceFactory.EnabledSourceTypes(r.config)
 	enabledSet := make(map[registry.SourceType]bool)
@@ -581,7 +582,7 @@ func (r *SourceReconciler) enrichEndpoints(ctx context.Context, sourceType regis
 		return
 	}
 
-	log := logf.FromContext(ctx).WithName("source")
+	log := log.FromContext(ctx).WithName("source")
 
 	// Group endpoints by resource reference to avoid duplicate lookups
 	byResource := make(map[string][]*endpoint.Endpoint)
@@ -623,7 +624,7 @@ func (r *SourceReconciler) markSourceDegraded(
 	cause error,
 	count int,
 ) {
-	log := logf.FromContext(ctx).WithName("source")
+	log := log.FromContext(ctx).WithName("source")
 	name := fmt.Sprintf("%s-%s", portal.Name, sourceType)
 
 	var rec sreportalv1alpha1.DNSRecord

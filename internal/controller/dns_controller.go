@@ -25,8 +25,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	"github.com/golgoth31/sreportal/internal/log"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/config"
@@ -90,7 +91,7 @@ func NewDNSReconciler(c client.Client, scheme *runtime.Scheme, cfg *config.Opera
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 func (r *DNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := logf.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
 	// Fetch the DNS resource
 	var resource sreportalv1alpha1.DNS
@@ -101,13 +102,13 @@ func (r *DNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	// Skip DNS resources owned by a Portal (these are managed by PortalReconciler for remote portals)
 	for _, ownerRef := range resource.OwnerReferences {
 		if ownerRef.Kind == "Portal" && ownerRef.Controller != nil && *ownerRef.Controller {
-			log.V(1).Info("skipping DNS resource owned by Portal (remote portal)",
+			logger.V(1).Info("skipping DNS resource owned by Portal (remote portal)",
 				"name", resource.Name, "namespace", resource.Namespace, "portal", ownerRef.Name)
 			return ctrl.Result{}, nil
 		}
 	}
 
-	log.Info("reconciling DNS resource", "name", resource.Name, "namespace", resource.Namespace)
+	logger.Info("reconciling DNS resource", "name", resource.Name, "namespace", resource.Namespace)
 
 	// Create reconcile context
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.DNS]{
@@ -117,7 +118,7 @@ func (r *DNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 
 	// Execute handler chain
 	if err := r.chain.Execute(ctx, rc); err != nil {
-		log.Error(err, "reconciliation failed")
+		logger.Error(err, "reconciliation failed")
 		return ctrl.Result{}, err
 	}
 
@@ -126,7 +127,7 @@ func (r *DNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		rc.Result.RequeueAfter = DefaultRequeueAfter
 	}
 
-	log.Info("reconciliation completed", "requeueAfter", rc.Result.RequeueAfter)
+	logger.Info("reconciliation completed", "requeueAfter", rc.Result.RequeueAfter)
 	return rc.Result, nil
 }
 

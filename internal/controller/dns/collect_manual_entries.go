@@ -19,9 +19,8 @@ package dns
 import (
 	"context"
 
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
@@ -40,10 +39,10 @@ func NewCollectManualEntriesHandler() *CollectManualEntriesHandler {
 
 // Handle implements reconciler.Handler
 func (h *CollectManualEntriesHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.DNS]) error {
-	log := logf.FromContext(ctx).WithName("collect-manual-entries")
+	logger := log.FromContext(ctx).WithName("collect-manual-entries")
 
 	groups := rc.Resource.Spec.Groups
-	log.V(1).Info("collected manual groups", "count", len(groups))
+	logger.V(1).Info("collected manual groups", "count", len(groups))
 
 	rc.Data[DataKeyManualGroups] = groups
 	return nil
