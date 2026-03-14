@@ -133,6 +133,7 @@ func main() {
 		logCfg.Level = log.LevelDebugValue
 	}
 	logCfg.AddCaller = true
+	logCfg.DevMode = devMode
 	if err := log.Init(logCfg); err != nil {
 		// Cannot use setupLog yet — fall back to stderr.
 		fmt.Fprintf(os.Stderr, "failed to initialise logger: %v\n", err)

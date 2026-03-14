@@ -90,8 +90,10 @@ type Config struct {
 	Output io.Writer
 	// AddCaller adds source file and line number to log entries when true.
 	AddCaller bool
-	// StacktraceLevel sets the level at which stack traces are recorded.
-	// Defaults to error. Set to a very high level to disable.
+	// DevMode when true enables stack traces for Warn and Error. When false, no stack traces.
+	DevMode bool
+	// StacktraceLevel sets the level at which stack traces are recorded (optional).
+	// When nil, behaviour is driven by DevMode: stack at Error in dev, disabled otherwise.
 	StacktraceLevel *Level
 }
 
@@ -132,15 +134,18 @@ func Init(cfg Config) error {
 		opts = append(opts, zap.AddCaller())
 	}
 
-	stackLevel := zapcore.ErrorLevel
+	// Stack traces: only in dev mode unless StacktraceLevel is explicitly set.
+	stackLevel := zapcore.Level(127) // above Fatal → never record in production
 	if cfg.StacktraceLevel != nil {
 		stackLevel = toZapLevel(*cfg.StacktraceLevel)
+	} else if cfg.DevMode {
+		stackLevel = zapcore.ErrorLevel
 	}
 	opts = append(opts, zap.AddStacktrace(stackLevel))
 
 	zapLogger := zap.New(core, opts...)
 
-	// Wire into slog.Default via zapslog.
+	// Wire into slog.Default via zapslog (same threshold: stack only in dev or when explicit).
 	slogHandler := zapslog.NewHandler(zapLogger.Core(),
 		zapslog.AddStacktraceAt(slog.Level(stackLevel)),
 	)
