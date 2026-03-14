@@ -24,11 +24,35 @@ config:
       istioVirtualService:
         enabled: false
         namespace: ""
+      # Gateway API route sources (requires Gateway API CRDs v1.0+)
+      gatewayHTTPRoute:
+        enabled: false
+        namespace: ""
+        gatewayName: ""
+        gatewayNamespace: ""
+        gatewayLabelFilter: ""
+      gatewayGRPCRoute:
+        enabled: false
+        namespace: ""
+      gatewayTLSRoute:
+        enabled: false
+        namespace: ""
+      gatewayTCPRoute:
+        enabled: false
+        namespace: ""
+      gatewayUDPRoute:
+        enabled: false
+        namespace: ""
       # Priority defines which source wins when the same FQDN+RecordType is discovered
       # by multiple sources. Sources listed first take precedence.
       # Remove or leave empty to merge targets from all sources (default).
       priority:
         - dnsendpoint
+        - gateway-httproute
+        - gateway-grpcroute
+        - gateway-tlsroute
+        - gateway-tcproute
+        - gateway-udproute
         - ingress
         - service
         - istio-gateway

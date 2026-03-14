@@ -101,5 +101,50 @@ func (c *OperatorConfig) LogSummary() map[string]any {
 		summary["sources.istioVirtualService"] = nil
 	}
 
+	if c.Sources.GatewayHTTPRoute != nil {
+		summary["sources.gatewayHTTPRoute.enabled"] = c.Sources.GatewayHTTPRoute.Enabled
+		summary["sources.gatewayHTTPRoute.namespace"] = c.Sources.GatewayHTTPRoute.Namespace
+		summary["sources.gatewayHTTPRoute.gatewayName"] = c.Sources.GatewayHTTPRoute.GatewayName
+		summary["sources.gatewayHTTPRoute.gatewayNamespace"] = c.Sources.GatewayHTTPRoute.GatewayNamespace
+	} else {
+		summary["sources.gatewayHTTPRoute"] = nil
+	}
+
+	if c.Sources.GatewayGRPCRoute != nil {
+		summary["sources.gatewayGRPCRoute.enabled"] = c.Sources.GatewayGRPCRoute.Enabled
+		summary["sources.gatewayGRPCRoute.namespace"] = c.Sources.GatewayGRPCRoute.Namespace
+		summary["sources.gatewayGRPCRoute.gatewayName"] = c.Sources.GatewayGRPCRoute.GatewayName
+		summary["sources.gatewayGRPCRoute.gatewayNamespace"] = c.Sources.GatewayGRPCRoute.GatewayNamespace
+	} else {
+		summary["sources.gatewayGRPCRoute"] = nil
+	}
+
+	if c.Sources.GatewayTLSRoute != nil {
+		summary["sources.gatewayTLSRoute.enabled"] = c.Sources.GatewayTLSRoute.Enabled
+		summary["sources.gatewayTLSRoute.namespace"] = c.Sources.GatewayTLSRoute.Namespace
+		summary["sources.gatewayTLSRoute.gatewayName"] = c.Sources.GatewayTLSRoute.GatewayName
+		summary["sources.gatewayTLSRoute.gatewayNamespace"] = c.Sources.GatewayTLSRoute.GatewayNamespace
+	} else {
+		summary["sources.gatewayTLSRoute"] = nil
+	}
+
+	if c.Sources.GatewayTCPRoute != nil {
+		summary["sources.gatewayTCPRoute.enabled"] = c.Sources.GatewayTCPRoute.Enabled
+		summary["sources.gatewayTCPRoute.namespace"] = c.Sources.GatewayTCPRoute.Namespace
+		summary["sources.gatewayTCPRoute.gatewayName"] = c.Sources.GatewayTCPRoute.GatewayName
+		summary["sources.gatewayTCPRoute.gatewayNamespace"] = c.Sources.GatewayTCPRoute.GatewayNamespace
+	} else {
+		summary["sources.gatewayTCPRoute"] = nil
+	}
+
+	if c.Sources.GatewayUDPRoute != nil {
+		summary["sources.gatewayUDPRoute.enabled"] = c.Sources.GatewayUDPRoute.Enabled
+		summary["sources.gatewayUDPRoute.namespace"] = c.Sources.GatewayUDPRoute.Namespace
+		summary["sources.gatewayUDPRoute.gatewayName"] = c.Sources.GatewayUDPRoute.GatewayName
+		summary["sources.gatewayUDPRoute.gatewayNamespace"] = c.Sources.GatewayUDPRoute.GatewayNamespace
+	} else {
+		summary["sources.gatewayUDPRoute"] = nil
+	}
+
 	return summary
 }

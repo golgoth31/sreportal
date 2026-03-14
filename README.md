@@ -1,10 +1,10 @@
 # SRE Portal
 
-A Kubernetes operator that discovers DNS records from your cluster resources and presents them in a unified web dashboard. It integrates with external-dns sources (Services, Ingresses, Istio Gateways, DNSEndpoints) and supports manual DNS entries through Custom Resources.
+A Kubernetes operator that discovers DNS records from your cluster resources and presents them in a unified web dashboard. It integrates with external-dns sources (Services, Ingresses, Istio Gateways, Gateway API routes, DNSEndpoints) and supports manual DNS entries through Custom Resources.
 
 ## Features
 
-- **DNS Discovery** -- Automatically discover DNS records from Services, Ingresses, Istio Gateways, and external-dns endpoints across all namespaces
+- **DNS Discovery** -- Automatically discover DNS records from Services, Ingresses, Istio Gateways, Gateway API routes (HTTPRoute, GRPCRoute, TLSRoute, TCPRoute, UDPRoute), and external-dns endpoints across all namespaces
 - **Portal Routing** -- Organize endpoints into multiple portals using simple Kubernetes annotations (`sreportal.io/portal`)
 - **Remote Portals** -- Federate DNS data across clusters by connecting portals to remote SRE Portal instances
 - **Alertmanager Integration** -- Link Prometheus Alertmanager instances to portals; display active alerts in the dashboard

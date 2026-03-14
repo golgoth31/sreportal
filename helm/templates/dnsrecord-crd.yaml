@@ -71,6 +71,11 @@ spec:
                 - dnsendpoint
                 - istio-gateway
                 - istio-virtualservice
+                - gateway-httproute
+                - gateway-grpcroute
+                - gateway-tlsroute
+                - gateway-tcproute
+                - gateway-udproute
                 type: string
             required:
             - portalRef

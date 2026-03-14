@@ -30,7 +30,7 @@ layout: hextra-home
 {{< hextra/feature-grid >}}
   {{< hextra/feature-card
     title="DNS Discovery"
-    subtitle="Automatically discover DNS records from Services, Ingresses, Istio Gateways, and external-dns endpoints across all namespaces."
+    subtitle="Automatically discover DNS records from Services, Ingresses, Istio Gateways, Gateway API routes, and external-dns endpoints across all namespaces."
     class="hx-aspect-auto md:hx-aspect-[1.1/1] max-md:hx-min-h-[340px]"
     style="background: radial-gradient(ellipse at 50% 80%,rgba(59,130,246,0.15),hsla(0,0%,100%,0));"
   >}}

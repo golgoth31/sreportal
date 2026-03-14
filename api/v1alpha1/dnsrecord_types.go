@@ -24,7 +24,7 @@ import (
 type DNSRecordSpec struct {
 	// sourceType indicates the external-dns source type that provides this record
 	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Enum=service;ingress;dnsendpoint;istio-gateway;istio-virtualservice
+	// +kubebuilder:validation:Enum=service;ingress;dnsendpoint;istio-gateway;istio-virtualservice;gateway-httproute;gateway-grpcroute;gateway-tlsroute;gateway-tcproute;gateway-udproute
 	SourceType string `json:"sourceType"`
 
 	// portalRef is the name of the Portal this record belongs to

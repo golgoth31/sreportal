@@ -15,6 +15,9 @@ sources:
     enabled: false
     ingressClassNames: [] # Empty = all ingress classes
 
+  gatewayHTTPRoute:
+    enabled: false
+
   # DNSEndpoint disabled - requires external-dns CRDs
   dnsEndpoint:
     enabled: false

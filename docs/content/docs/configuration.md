@@ -116,6 +116,105 @@ sources:
     ignoreHostnameAnnotation: false
 ```
 
+### Gateway API HTTPRoute
+
+Discovers DNS names from Gateway API HTTPRoute resources. Requires Gateway API CRDs (v1.0+).
+
+```yaml
+sources:
+  gatewayHTTPRoute:
+    enabled: false             # Disabled by default
+    namespace: ""              # Empty = all namespaces
+    annotationFilter: ""
+    labelFilter: ""
+    fqdnTemplate: ""
+    combineFqdnAndAnnotation: false
+    ignoreHostnameAnnotation: false
+    gatewayName: ""            # Filter by parent Gateway name
+    gatewayNamespace: ""       # Filter by parent Gateway namespace
+    gatewayLabelFilter: ""     # Filter parent Gateways by label selector
+```
+
+### Gateway API GRPCRoute
+
+Discovers DNS names from Gateway API GRPCRoute resources. Requires Gateway API CRDs (v1.0+).
+
+```yaml
+sources:
+  gatewayGRPCRoute:
+    enabled: false             # Disabled by default
+    namespace: ""              # Empty = all namespaces
+    annotationFilter: ""
+    labelFilter: ""
+    fqdnTemplate: ""
+    combineFqdnAndAnnotation: false
+    ignoreHostnameAnnotation: false
+    gatewayName: ""
+    gatewayNamespace: ""
+    gatewayLabelFilter: ""
+```
+
+### Gateway API TLSRoute
+
+Discovers DNS names from Gateway API TLSRoute resources. Requires Gateway API CRDs (v1alpha2).
+
+```yaml
+sources:
+  gatewayTLSRoute:
+    enabled: false             # Disabled by default
+    namespace: ""              # Empty = all namespaces
+    annotationFilter: ""
+    labelFilter: ""
+    fqdnTemplate: ""
+    combineFqdnAndAnnotation: false
+    ignoreHostnameAnnotation: false
+    gatewayName: ""
+    gatewayNamespace: ""
+    gatewayLabelFilter: ""
+```
+
+### Gateway API TCPRoute
+
+Discovers DNS names from Gateway API TCPRoute resources. Requires Gateway API CRDs (v1alpha2).
+
+Note: TCPRoute specs do not contain hostnames. Use the `external-dns.alpha.kubernetes.io/hostname` annotation on the TCPRoute to specify hostnames.
+
+```yaml
+sources:
+  gatewayTCPRoute:
+    enabled: false             # Disabled by default
+    namespace: ""              # Empty = all namespaces
+    annotationFilter: ""
+    labelFilter: ""
+    fqdnTemplate: ""
+    combineFqdnAndAnnotation: false
+    ignoreHostnameAnnotation: false
+    gatewayName: ""
+    gatewayNamespace: ""
+    gatewayLabelFilter: ""
+```
+
+### Gateway API UDPRoute
+
+Discovers DNS names from Gateway API UDPRoute resources. Requires Gateway API CRDs (v1alpha2).
+
+Note: UDPRoute specs do not contain hostnames. Use the `external-dns.alpha.kubernetes.io/hostname` annotation on the UDPRoute to specify hostnames.
+
+```yaml
+sources:
+  gatewayUDPRoute:
+    enabled: false             # Disabled by default
+    namespace: ""              # Empty = all namespaces
+    annotationFilter: ""
+    labelFilter: ""
+    fqdnTemplate: ""
+    combineFqdnAndAnnotation: false
+    ignoreHostnameAnnotation: false
+    gatewayName: ""
+    gatewayNamespace: ""
+    gatewayLabelFilter: ""
+```
+
 ### Priority
 
 Controls which source wins when the same FQDN + record type is discovered by multiple sources. Sources listed first take precedence over sources listed later.
@@ -126,13 +225,18 @@ When `priority` is empty or omitted, targets from all sources are merged togethe
 sources:
   priority:
     - dnsendpoint
+    - gateway-httproute
+    - gateway-grpcroute
+    - gateway-tlsroute
+    - gateway-tcproute
+    - gateway-udproute
     - ingress
     - service
     - istio-gateway
     - istio-virtualservice
 ```
 
-Valid values correspond to the source types: `dnsendpoint`, `ingress`, `service`, `istio-gateway`, `istio-virtualservice`.
+Valid values correspond to the source types: `dnsendpoint`, `ingress`, `service`, `istio-gateway`, `istio-virtualservice`, `gateway-httproute`, `gateway-grpcroute`, `gateway-tlsroute`, `gateway-tcproute`, `gateway-udproute`.
 
 ## Group Mapping
 
@@ -214,8 +318,30 @@ data:
       istioVirtualService:
         enabled: false
         namespace: ""
+      gatewayHTTPRoute:
+        enabled: false
+        namespace: ""
+        gatewayName: ""
+        gatewayNamespace: ""
+      gatewayGRPCRoute:
+        enabled: false
+        namespace: ""
+      gatewayTLSRoute:
+        enabled: false
+        namespace: ""
+      gatewayTCPRoute:
+        enabled: false
+        namespace: ""
+      gatewayUDPRoute:
+        enabled: false
+        namespace: ""
       priority:
         - dnsendpoint
+        - gateway-httproute
+        - gateway-grpcroute
+        - gateway-tlsroute
+        - gateway-tcproute
+        - gateway-udproute
         - ingress
         - service
         - istio-gateway
