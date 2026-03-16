@@ -17,7 +17,7 @@ require (
 	go.uber.org/zap/exp v0.3.0
 	golang.org/x/net v0.51.0
 	google.golang.org/protobuf v1.36.11
-	istio.io/client-go v1.29.0
+	istio.io/client-go v1.29.1
 	k8s.io/api v0.35.1
 	k8s.io/apimachinery v0.35.1
 	k8s.io/client-go v0.35.1
