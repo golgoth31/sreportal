@@ -123,7 +123,7 @@ func TestInit_JSONFormat_ProducesJSONOutput(t *testing.T) {
 
 	// Assert — must be valid JSON
 	output := buf.String()
-	for _, line := range strings.Split(strings.TrimSpace(output), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(output), "\n") {
 		if line == "" {
 			continue
 		}

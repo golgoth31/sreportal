@@ -26,7 +26,7 @@ import (
 // ToLogr returns a logr.Logger backed by this Logger's underlying slog.Handler.
 // Use this to bridge into controller-runtime: ctrl.SetLogger(log.Default().ToLogr()).
 func (l *Logger) ToLogr() logr.Logger {
-	return logr.FromSlogHandler(l.Logger.Handler())
+	return logr.FromSlogHandler(l.Handler())
 }
 
 // FromContext extracts the logr.Logger that controller-runtime injected into ctx,

@@ -42,7 +42,7 @@ func FilterPriorityOrder(priority []string, builders []registry.Builder, cfg *co
 		}
 	}
 
-	var filtered []string
+	filtered := make([]string, 0, len(priority))
 	for _, name := range priority {
 		if !enabledTypes[name] {
 			logger.Warn("source in priority list is disabled or unknown and will be ignored",

@@ -50,7 +50,7 @@ func NewFactory(kubeClient kubernetes.Interface, restConfig *rest.Config, builde
 // Sources are built in the order of registered builders.
 func (f *Factory) BuildTypedSources(ctx context.Context, cfg *config.OperatorConfig) ([]registry.TypedSource, error) {
 	log := ctrl.Log.WithName("source-factory")
-	var typedSources []registry.TypedSource
+	typedSources := make([]registry.TypedSource, 0, len(f.builders))
 
 	for _, b := range f.builders {
 		if !b.Enabled(cfg) {

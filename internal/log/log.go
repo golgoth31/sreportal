@@ -55,7 +55,7 @@ func (l *Logger) Slog() *slog.Logger {
 
 // WithName returns a new Logger with the given name as a group (for structured output).
 func (l *Logger) WithName(name string) *Logger {
-	return &Logger{Logger: l.Logger.WithGroup(name)}
+	return &Logger{Logger: l.WithGroup(name)}
 }
 
 // With returns a new Logger with the given key-value pairs attached.
