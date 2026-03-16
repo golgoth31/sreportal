@@ -20,12 +20,11 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/golgoth31/sreportal/internal/config"
+	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	"github.com/golgoth31/sreportal/internal/config"
 )
 
 // DNSServer wraps the MCP server with SRE Portal DNS/portal functionality.

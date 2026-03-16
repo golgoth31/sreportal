@@ -20,6 +20,7 @@ import (
 	"context"
 	"crypto/tls"
 	"flag"
+	"fmt"
 	"io/fs"
 	"os"
 	"strings"
@@ -35,11 +36,12 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	externaldnsv1alpha1 "sigs.k8s.io/external-dns/apis/v1alpha1"
+
+	"sigs.k8s.io/external-dns/source/annotations"
 
 	sreportal "github.com/golgoth31/sreportal"
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
@@ -47,7 +49,9 @@ import (
 	"github.com/golgoth31/sreportal/internal/config"
 	"github.com/golgoth31/sreportal/internal/controller"
 	portalctrl "github.com/golgoth31/sreportal/internal/controller/portal"
+	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/mcp"
+	"github.com/golgoth31/sreportal/internal/source"
 	"github.com/golgoth31/sreportal/internal/version"
 	webhookv1alpha1 "github.com/golgoth31/sreportal/internal/webhook/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/webserver"
@@ -55,8 +59,7 @@ import (
 )
 
 var (
-	scheme   = runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("setup")
+	scheme = runtime.NewScheme()
 )
 
 func init() {
@@ -122,14 +125,23 @@ func main() {
 	flag.StringVar(&corsAllowedOrigins, "cors-allowed-origins", "",
 		"Comma-separated list of origins allowed for CORS requests (e.g. http://localhost:5173). "+
 			"Leave empty to disable CORS. In dev mode, http://localhost:5173 is added automatically.")
-	opts := zap.Options{}
-	if devMode {
-		opts.Development = true
-	}
-	opts.BindFlags(flag.CommandLine)
+	var logCfg log.Config
+	logCfg.BindFlags(flag.CommandLine)
 	flag.Parse()
 
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	if devMode && logCfg.Level == log.LevelInfoValue {
+		logCfg.Level = log.LevelDebugValue
+	}
+	logCfg.AddCaller = true
+	logCfg.DevMode = devMode
+	if err := log.Init(logCfg); err != nil {
+		// Cannot use setupLog yet — fall back to stderr.
+		fmt.Fprintf(os.Stderr, "failed to initialise logger: %v\n", err)
+		os.Exit(1)
+	}
+	ctrl.SetLogger(log.Default().ToLogr())
+
+	setupLog := log.Default().WithName("setup")
 
 	// Environment variables (Kubernetes Downward API)
 	podName := os.Getenv("POD_NAME")
@@ -276,15 +288,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := controller.NewDNSReconciler(
-		mgr.GetClient(),
-		mgr.GetScheme(),
-		operatorConfig,
-	).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "DNS")
-		os.Exit(1)
-	}
-
 	// Create kubernetes clientset for external-dns sources
 	restConfig := ctrl.GetConfigOrDie()
 	kubeClient, err := kubernetes.NewForConfig(restConfig)
@@ -293,13 +296,25 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Source reconciler for external-dns source integration
-	sourceReconciler := controller.NewSourceReconciler(
+	annotations.SetAnnotationPrefix("external-dns.alpha.kubernetes.io/")
+
+	sourceBuilders := source.DefaultBuilders()
+	if err := controller.NewDNSReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),
+		operatorConfig,
+		sourceBuilders,
+	).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "DNS")
+		os.Exit(1)
+	}
+
+	sourceReconciler := controller.NewSourceReconciler(
+		mgr.GetClient(),
 		kubeClient,
 		restConfig,
 		operatorConfig,
+		sourceBuilders,
 	)
 	if err := sourceReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Source")

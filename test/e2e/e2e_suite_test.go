@@ -49,6 +49,10 @@ func TestE2E(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
+	By("ensuring the target cluster is localhost (safety guard)")
+	ExpectWithOffset(1, utils.EnsureLocalCluster()).To(Succeed(),
+		"e2e tests must target a local Kind cluster, never a remote cluster")
+
 	By("building the manager image")
 	cmd := exec.Command("make", "docker-build", fmt.Sprintf("IMG=%s", managerImage))
 	_, err := utils.Run(cmd)

@@ -23,12 +23,11 @@ import (
 	"net/http"
 	"strings"
 
+	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 )
 
 // AlertsServer wraps the MCP server for Alertmanager alerts.
@@ -102,20 +101,43 @@ type AlertResult struct {
 	Annotations map[string]string `json:"annotations,omitempty"`
 	State       string            `json:"state"`
 	StartsAt    string            `json:"starts_at"`
+	EndsAt      string            `json:"ends_at,omitempty"`
 	UpdatedAt   string            `json:"updated_at"`
 	AlertName   string            `json:"alertname,omitempty"`
+	Receivers   []string          `json:"receivers,omitempty"`
+	SilencedBy  []string          `json:"silenced_by,omitempty"`
+}
+
+// MatcherResult represents a label matcher within a silence.
+type MatcherResult struct {
+	Name    string `json:"name"`
+	Value   string `json:"value"`
+	IsRegex bool   `json:"is_regex"`
+}
+
+// SilenceResult represents a silence from Alertmanager (for identifying silenced alerts).
+type SilenceResult struct {
+	ID        string          `json:"id"`
+	Matchers  []MatcherResult `json:"matchers"`
+	StartsAt  string          `json:"starts_at"`
+	EndsAt    string          `json:"ends_at"`
+	Status    string          `json:"status"`
+	CreatedBy string          `json:"created_by"`
+	Comment   string          `json:"comment"`
+	UpdatedAt string          `json:"updated_at"`
 }
 
 // AlertmanagerResult represents an Alertmanager resource with its alerts.
 type AlertmanagerResult struct {
-	Name              string        `json:"name"`
-	Namespace         string        `json:"namespace"`
-	PortalRef         string        `json:"portal_ref"`
-	LocalURL          string        `json:"local_url"`
-	RemoteURL         string        `json:"remote_url,omitempty"`
-	Ready             bool          `json:"ready"`
-	LastReconcileTime string        `json:"last_reconcile_time,omitempty"`
-	Alerts            []AlertResult `json:"alerts"`
+	Name              string          `json:"name"`
+	Namespace         string          `json:"namespace"`
+	PortalRef         string          `json:"portal_ref"`
+	LocalURL          string          `json:"local_url"`
+	RemoteURL         string          `json:"remote_url,omitempty"`
+	Ready             bool            `json:"ready"`
+	LastReconcileTime string          `json:"last_reconcile_time,omitempty"`
+	Alerts            []AlertResult   `json:"alerts"`
+	Silences          []SilenceResult `json:"silences,omitempty"`
 }
 
 // handleListAlerts handles the list_alerts tool call.
@@ -157,6 +179,10 @@ func (s *AlertsServer) handleListAlerts(ctx context.Context, request mcp.CallToo
 			if !a.StartsAt.IsZero() {
 				startsAt = a.StartsAt.Format("2006-01-02T15:04:05Z07:00")
 			}
+			endsAt := ""
+			if a.EndsAt != nil && !a.EndsAt.IsZero() {
+				endsAt = a.EndsAt.Format("2006-01-02T15:04:05Z07:00")
+			}
 			updatedAt := ""
 			if !a.UpdatedAt.IsZero() {
 				updatedAt = a.UpdatedAt.Format("2006-01-02T15:04:05Z07:00")
@@ -168,14 +194,44 @@ func (s *AlertsServer) handleListAlerts(ctx context.Context, request mcp.CallToo
 				Annotations: a.Annotations,
 				State:       a.State,
 				StartsAt:    startsAt,
+				EndsAt:      endsAt,
 				UpdatedAt:   updatedAt,
 				AlertName:   a.Labels["alertname"],
+				Receivers:   a.Receivers,
+				SilencedBy:  a.SilencedBy,
 			})
 		}
 
 		lastReconcile := ""
 		if am.Status.LastReconcileTime != nil && !am.Status.LastReconcileTime.IsZero() {
 			lastReconcile = am.Status.LastReconcileTime.Format("2006-01-02T15:04:05Z07:00")
+		}
+
+		silences := make([]SilenceResult, 0, len(am.Status.Silences))
+		for _, s := range am.Status.Silences {
+			startsAt := s.StartsAt.Format("2006-01-02T15:04:05Z07:00")
+			endsAt := s.EndsAt.Format("2006-01-02T15:04:05Z07:00")
+			updatedAt := s.UpdatedAt.Format("2006-01-02T15:04:05Z07:00")
+
+			matchers := make([]MatcherResult, 0, len(s.Matchers))
+			for _, m := range s.Matchers {
+				matchers = append(matchers, MatcherResult{
+					Name:    m.Name,
+					Value:   m.Value,
+					IsRegex: m.IsRegex,
+				})
+			}
+
+			silences = append(silences, SilenceResult{
+				ID:        s.ID,
+				Matchers:  matchers,
+				StartsAt:  startsAt,
+				EndsAt:    endsAt,
+				Status:    s.Status,
+				CreatedBy: s.CreatedBy,
+				Comment:   s.Comment,
+				UpdatedAt: updatedAt,
+			})
 		}
 
 		results = append(results, AlertmanagerResult{
@@ -187,6 +243,7 @@ func (s *AlertsServer) handleListAlerts(ctx context.Context, request mcp.CallToo
 			Ready:             isAlertmanagerReady(am),
 			LastReconcileTime: lastReconcile,
 			Alerts:            alerts,
+			Silences:          silences,
 		})
 	}
 

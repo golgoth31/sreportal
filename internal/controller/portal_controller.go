@@ -28,10 +28,10 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	alertmanagerctrl "github.com/golgoth31/sreportal/internal/controller/alertmanager"
+	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/remoteclient"
 	"github.com/golgoth31/sreportal/internal/tlsutil"
 )
@@ -62,14 +62,14 @@ func NewPortalReconciler(c client.Client, scheme *runtime.Scheme) *PortalReconci
 
 // Reconcile updates the Portal status conditions.
 func (r *PortalReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := logf.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
 	var portal sreportalv1alpha1.Portal
 	if err := r.Get(ctx, req.NamespacedName, &portal); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	log.Info("reconciling Portal", "name", portal.Name, "namespace", portal.Namespace)
+	logger.Info("reconciling Portal", "name", portal.Name, "namespace", portal.Namespace)
 
 	// Check if this is a remote portal
 	if portal.Spec.Remote != nil {
@@ -121,14 +121,14 @@ func (r *PortalReconciler) remoteClientFor(ctx context.Context, portal *sreporta
 
 // reconcileRemotePortal handles reconciliation for remote portals (Remote specified).
 func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sreportalv1alpha1.Portal) (ctrl.Result, error) {
-	log := logf.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
 	remote := portal.Spec.Remote
-	log.Info("reconciling remote portal", "url", remote.URL, "remotePortal", remote.Portal)
+	logger.Info("reconciling remote portal", "url", remote.URL, "remotePortal", remote.Portal)
 
 	remoteClient, err := r.remoteClientFor(ctx, portal)
 	if err != nil {
-		log.Error(err, "failed to build remote client", "url", remote.URL)
+		logger.Error(err, "failed to build remote client", "url", remote.URL)
 
 		base := portal.DeepCopy()
 		portal.Status.Ready = false
@@ -158,9 +158,10 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 	}
 
 	// Perform health check on remote portal
+	remoteLog := log.Default().WithName("portal").WithName("remote")
 	err = remoteClient.HealthCheck(ctx, remote.URL)
 	if err != nil {
-		log.Error(err, "remote portal health check failed", "url", remote.URL)
+		remoteLog.Error(err, "remote portal health check failed", "name", portal.Name, "namespace", portal.Namespace, "url", remote.URL, "error", err.Error())
 
 		base := portal.DeepCopy()
 		portal.Status.Ready = false
@@ -186,7 +187,7 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 	// Fetch remote portal info
 	result, err := remoteClient.FetchFQDNs(ctx, remote.URL, remote.Portal)
 	if err != nil {
-		log.Error(err, "failed to fetch FQDNs from remote portal", "url", remote.URL, "remotePortal", remote.Portal)
+		remoteLog.Warn("failed to fetch FQDNs from remote portal", "name", portal.Name, "namespace", portal.Namespace, "url", remote.URL, "remotePortal", remote.Portal, "error", err.Error())
 
 		base := portal.DeepCopy()
 		portal.Status.Ready = false
@@ -221,7 +222,7 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 	// block the portal being marked Ready — the remote connection succeeded —
 	// but we surface it as a separate DNSSynced condition so operators can act.
 	if err := r.reconcileRemoteDNS(ctx, portal, result); err != nil {
-		log.Error(err, "failed to reconcile DNS for remote portal")
+		remoteLog.Warn("failed to reconcile DNS for remote portal", "name", portal.Name, "namespace", portal.Namespace, "error", err.Error())
 		setPortalCondition(&portal.Status.Conditions, metav1.Condition{
 			Type:               "DNSSynced",
 			Status:             metav1.ConditionFalse,
@@ -242,7 +243,7 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 	// Create or update Alertmanager CR for remote portal so the alertmanager
 	// controller can fetch alerts from the remote portal's API.
 	if err := r.reconcileRemoteAlertmanager(ctx, portal); err != nil {
-		log.Error(err, "failed to reconcile Alertmanager for remote portal")
+		remoteLog.Error(err, "failed to reconcile Alertmanager for remote portal")
 		setPortalCondition(&portal.Status.Conditions, metav1.Condition{
 			Type:               "AlertsSynced",
 			Status:             metav1.ConditionFalse,
@@ -273,7 +274,7 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 		return ctrl.Result{}, fmt.Errorf("patch Portal status: %w", err)
 	}
 
-	log.Info("remote portal sync successful",
+	remoteLog.Info("remote portal sync successful",
 		"url", remote.URL,
 		"remotePortal", remote.Portal,
 		"fqdnCount", result.FQDNCount,
@@ -325,7 +326,7 @@ func remoteAlertmanagerName(portalName, remoteAMName string) string {
 // fetch alerts independently. Orphaned local CRs (remote alertmanager no longer exists)
 // are garbage-collected via owner references.
 func (r *PortalReconciler) reconcileRemoteAlertmanager(ctx context.Context, portal *sreportalv1alpha1.Portal) error {
-	log := logf.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
 	remoteClient, err := r.remoteClientFor(ctx, portal)
 	if err != nil {
@@ -338,7 +339,7 @@ func (r *PortalReconciler) reconcileRemoteAlertmanager(ctx context.Context, port
 		return fmt.Errorf("discover remote alertmanagers: %w", err)
 	}
 
-	log.V(1).Info("discovered remote alertmanagers", "count", len(remoteAMs))
+	logger.V(1).Info("discovered remote alertmanagers", "count", len(remoteAMs))
 
 	// Track which local CR names are expected so we can clean up orphans.
 	expectedNames := make(map[string]struct{}, len(remoteAMs))
@@ -367,7 +368,7 @@ func (r *PortalReconciler) ensureAlertmanagerCR(
 	amName string,
 	remoteAM remoteclient.RemoteAlertmanagerInfo,
 ) error {
-	log := logf.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
 	am := &sreportalv1alpha1.Alertmanager{}
 	err := r.Get(ctx, types.NamespacedName{Name: amName, Namespace: portal.Namespace}, am)
@@ -404,7 +405,7 @@ func (r *PortalReconciler) ensureAlertmanagerCR(
 		if err := r.Create(ctx, am); err != nil {
 			return fmt.Errorf("create Alertmanager: %w", err)
 		}
-		log.Info("created Alertmanager CR for remote alertmanager", "alertmanager", amName, "remoteAM", remoteAM.Name)
+		logger.Info("created Alertmanager CR for remote alertmanager", "alertmanager", amName, "remoteAM", remoteAM.Name)
 
 		return nil
 	}
@@ -423,7 +424,7 @@ func (r *PortalReconciler) ensureAlertmanagerCR(
 	if err := r.Update(ctx, am); err != nil {
 		return fmt.Errorf("update Alertmanager: %w", err)
 	}
-	log.V(1).Info("updated Alertmanager CR for remote alertmanager", "alertmanager", amName, "remoteAM", remoteAM.Name)
+	logger.V(1).Info("updated Alertmanager CR for remote alertmanager", "alertmanager", amName, "remoteAM", remoteAM.Name)
 
 	return nil
 }
@@ -435,7 +436,7 @@ func (r *PortalReconciler) cleanupOrphanedAlertmanagers(
 	portal *sreportalv1alpha1.Portal,
 	expectedNames map[string]struct{},
 ) error {
-	log := logf.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
 	var amList sreportalv1alpha1.AlertmanagerList
 	if err := r.List(ctx, &amList, client.InNamespace(portal.Namespace)); err != nil {
@@ -464,7 +465,7 @@ func (r *PortalReconciler) cleanupOrphanedAlertmanagers(
 			continue
 		}
 
-		log.Info("deleting orphaned Alertmanager CR", "alertmanager", am.Name)
+		logger.Info("deleting orphaned Alertmanager CR", "alertmanager", am.Name)
 		if err := r.Delete(ctx, am); err != nil {
 			return fmt.Errorf("delete orphaned Alertmanager %s: %w", am.Name, err)
 		}
@@ -480,7 +481,7 @@ func remoteDNSName(portalName string) string {
 
 // reconcileRemoteDNS creates or updates a DNS CR with FQDNs fetched from a remote portal.
 func (r *PortalReconciler) reconcileRemoteDNS(ctx context.Context, portal *sreportalv1alpha1.Portal, result *remoteclient.FetchResult) error {
-	log := logf.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
 	dnsName := remoteDNSName(portal.Name)
 	dns := &sreportalv1alpha1.DNS{}
@@ -514,7 +515,7 @@ func (r *PortalReconciler) reconcileRemoteDNS(ctx context.Context, portal *srepo
 		if err := r.Create(ctx, dns); err != nil {
 			return fmt.Errorf("failed to create DNS: %w", err)
 		}
-		log.Info("created DNS CR for remote portal", "dns", dnsName, "portal", portal.Name)
+		logger.Info("created DNS CR for remote portal", "dns", dnsName, "portal", portal.Name)
 	} else {
 		// Update spec if needed (portalRef might have changed)
 		dns.Spec.PortalRef = portal.Name
@@ -543,7 +544,7 @@ func (r *PortalReconciler) reconcileRemoteDNS(ctx context.Context, portal *srepo
 		return fmt.Errorf("patch DNS status: %w", err)
 	}
 
-	log.Info("updated DNS status with remote FQDNs",
+	logger.Info("updated DNS status with remote FQDNs",
 		"dns", dnsName,
 		"portal", portal.Name,
 		"fqdnCount", result.FQDNCount,

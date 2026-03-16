@@ -21,10 +21,9 @@ import (
 	"sync"
 	"time"
 
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
+	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
@@ -47,11 +46,11 @@ func NewResolveDNSHandler(r domaindns.Resolver) *ResolveDNSHandler {
 
 // Handle implements reconciler.Handler.
 func (h *ResolveDNSHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.DNS]) error {
-	log := logf.FromContext(ctx).WithName("resolve-dns")
+	logger := log.FromContext(ctx).WithName("resolve-dns")
 
 	groups, ok := rc.Data[DataKeyAggregatedGroups].([]sreportalv1alpha1.FQDNGroupStatus)
 	if !ok || len(groups) == 0 {
-		log.V(1).Info("no aggregated groups to resolve")
+		logger.V(1).Info("no aggregated groups to resolve")
 		return nil
 	}
 
@@ -76,7 +75,7 @@ func (h *ResolveDNSHandler) Handle(ctx context.Context, rc *reconciler.Reconcile
 		return nil
 	}
 
-	log.V(1).Info("resolving FQDNs", "count", len(refs))
+	logger.V(1).Info("resolving FQDNs", "count", len(refs))
 
 	// Parallel resolution with semaphore.
 	sem := make(chan struct{}, maxConcurrentLookups)
@@ -101,6 +100,6 @@ func (h *ResolveDNSHandler) Handle(ctx context.Context, rc *reconciler.Reconcile
 	wg.Wait()
 
 	rc.Data[DataKeyAggregatedGroups] = groups
-	log.V(1).Info("DNS resolution completed", "count", len(refs))
+	logger.V(1).Info("DNS resolution completed", "count", len(refs))
 	return nil
 }

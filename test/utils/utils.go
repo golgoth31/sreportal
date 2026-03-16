@@ -20,6 +20,8 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"net"
+	"net/url"
 	"os"
 	"os/exec"
 	"strings"
@@ -34,6 +36,73 @@ const (
 	defaultKindBinary  = "kind"
 	defaultKindCluster = "kind"
 )
+
+// kindClusterName returns the Kind cluster name from environment or the default.
+func kindClusterName() string {
+	if v, ok := os.LookupEnv("KIND_CLUSTER"); ok {
+		return v
+	}
+	return defaultKindCluster
+}
+
+// KindContext returns the kubectl context name for the Kind cluster (kind-<clusterName>).
+func KindContext() string {
+	return "kind-" + kindClusterName()
+}
+
+// KubectlCmd creates an exec.Cmd for kubectl that always targets the Kind cluster context.
+// This prevents accidental execution against a non-local cluster.
+func KubectlCmd(args ...string) *exec.Cmd {
+	fullArgs := append([]string{"--context", KindContext()}, args...)
+	return exec.Command("kubectl", fullArgs...)
+}
+
+// EnsureLocalCluster validates that the Kind context exists and its server URL
+// resolves to localhost. This is a safety guard to prevent e2e tests from running
+// against a remote cluster.
+func EnsureLocalCluster() error {
+	ctx := KindContext()
+
+	// Get the server URL for the Kind context.
+	cmd := exec.Command("kubectl", "config", "view",
+		"--minify", "--context", ctx,
+		"-o", "jsonpath={.clusters[0].cluster.server}")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("context %q not found in kubeconfig: %w", ctx, err)
+	}
+
+	serverURL := strings.TrimSpace(string(output))
+	if serverURL == "" {
+		return fmt.Errorf("no server URL for context %q", ctx)
+	}
+
+	parsed, err := url.Parse(serverURL)
+	if err != nil {
+		return fmt.Errorf("invalid server URL %q: %w", serverURL, err)
+	}
+
+	host := parsed.Hostname()
+	if host == "localhost" || host == "127.0.0.1" || host == "::1" {
+		return nil
+	}
+
+	// Resolve the hostname and verify all addresses are loopback.
+	addrs, err := net.LookupHost(host)
+	if err != nil {
+		return fmt.Errorf("cannot resolve server host %q: %w", host, err)
+	}
+	for _, addr := range addrs {
+		if ip := net.ParseIP(addr); ip == nil || !ip.IsLoopback() {
+			return fmt.Errorf(
+				"e2e safety guard: context %q server %q resolves to non-localhost address %s",
+				ctx, serverURL, addr,
+			)
+		}
+	}
+
+	return nil
+}
 
 func warnError(err error) {
 	_, _ = fmt.Fprintf(GinkgoWriter, "warning: %v\n", err)
@@ -61,8 +130,8 @@ func Run(cmd *exec.Cmd) (string, error) {
 
 // UninstallCertManager uninstalls the cert manager
 func UninstallCertManager() {
-	url := fmt.Sprintf(certmanagerURLTmpl, certmanagerVersion)
-	cmd := exec.Command("kubectl", "delete", "-f", url)
+	certmanagerURL := fmt.Sprintf(certmanagerURLTmpl, certmanagerVersion)
+	cmd := KubectlCmd("delete", "-f", certmanagerURL)
 	if _, err := Run(cmd); err != nil {
 		warnError(err)
 	}
@@ -73,7 +142,7 @@ func UninstallCertManager() {
 		"cert-manager-controller",
 	}
 	for _, lease := range kubeSystemLeases {
-		cmd = exec.Command("kubectl", "delete", "lease", lease,
+		cmd = KubectlCmd("delete", "lease", lease,
 			"-n", "kube-system", "--ignore-not-found", "--force", "--grace-period=0")
 		if _, err := Run(cmd); err != nil {
 			warnError(err)
@@ -83,14 +152,14 @@ func UninstallCertManager() {
 
 // InstallCertManager installs the cert manager bundle.
 func InstallCertManager() error {
-	url := fmt.Sprintf(certmanagerURLTmpl, certmanagerVersion)
-	cmd := exec.Command("kubectl", "apply", "-f", url)
+	certmanagerURL := fmt.Sprintf(certmanagerURLTmpl, certmanagerVersion)
+	cmd := KubectlCmd("apply", "-f", certmanagerURL)
 	if _, err := Run(cmd); err != nil {
 		return err
 	}
 	// Wait for cert-manager-webhook to be ready, which can take time if cert-manager
 	// was re-installed after uninstalling on a cluster.
-	cmd = exec.Command("kubectl", "wait", "deployment.apps/cert-manager-webhook",
+	cmd = KubectlCmd("wait", "deployment.apps/cert-manager-webhook",
 		"--for", "condition=Available",
 		"--namespace", "cert-manager",
 		"--timeout", "5m",
@@ -114,7 +183,7 @@ func IsCertManagerCRDsInstalled() bool {
 	}
 
 	// Execute the kubectl command to get all CRDs
-	cmd := exec.Command("kubectl", "get", "crds")
+	cmd := KubectlCmd("get", "crds")
 	output, err := Run(cmd)
 	if err != nil {
 		return false

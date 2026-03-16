@@ -29,11 +29,11 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	dnsv1 "github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1"
 	"github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1/sreportalv1connect"
+	"github.com/golgoth31/sreportal/internal/log"
 )
 
 // streamPollInterval is how often the shared FQDN cache is refreshed and
@@ -98,10 +98,10 @@ func (s *DNSService) Start(ctx context.Context) error {
 // refreshCache fetches all DNS resources, builds the FQDN snapshot, and
 // broadcasts to waiting StreamFQDNs goroutines.
 func (s *DNSService) refreshCache(ctx context.Context, readyOnce *sync.Once) {
-	log := logf.FromContext(ctx).WithName("dns-cache")
+	logger := log.FromContext(ctx).WithName("dns-cache")
 	fqdns, err := s.fetchAllFQDNs(ctx)
 	if err != nil {
-		log.Error(err, "failed to refresh FQDN cache, retaining previous snapshot")
+		logger.Error(err, "failed to refresh FQDN cache, retaining previous snapshot")
 		return
 	}
 

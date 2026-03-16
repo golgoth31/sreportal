@@ -34,12 +34,11 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	"github.com/golgoth31/sreportal/internal/log"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -61,7 +60,12 @@ func TestAPIs(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
+	Expect(log.Init(log.Config{
+		Format: log.FormatRaw,
+		Level:  log.LevelDebugValue,
+		Output: GinkgoWriter,
+	})).To(Succeed())
+	ctrl.SetLogger(log.Default().ToLogr())
 
 	ctx, cancel = context.WithCancel(context.TODO())
 
@@ -153,7 +157,7 @@ func getFirstFoundEnvTestBinaryDir() string {
 	basePath := filepath.Join("..", "..", "..", "bin", "k8s")
 	entries, err := os.ReadDir(basePath)
 	if err != nil {
-		logf.Log.Error(err, "Failed to read directory", "path", basePath)
+		log.Default().Error(err, "Failed to read directory", "path", basePath)
 		return ""
 	}
 	for _, entry := range entries {

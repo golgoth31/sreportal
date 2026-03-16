@@ -30,6 +30,7 @@ import (
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/config"
+	"github.com/golgoth31/sreportal/internal/source"
 )
 
 var _ = Describe("DNS Controller", func() {
@@ -101,7 +102,7 @@ var _ = Describe("DNS Controller", func() {
 		})
 
 		It("should successfully reconcile and populate status with groups", func() {
-			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), config.DefaultConfig())
+			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), config.DefaultConfig(), source.DefaultBuilders())
 
 			By("Reconciling and checking the DNS status contains the groups")
 			Eventually(func(g Gomega) {
@@ -176,7 +177,7 @@ var _ = Describe("DNS Controller", func() {
 		})
 
 		It("should successfully reconcile with empty status", func() {
-			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), config.DefaultConfig())
+			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), config.DefaultConfig(), source.DefaultBuilders())
 
 			By("Reconciling and checking the DNS status is empty but has conditions")
 			Eventually(func(g Gomega) {
@@ -251,7 +252,7 @@ var _ = Describe("DNS Controller", func() {
 		})
 
 		It("should remove the FQDN from DNS status after reconciliation", func() {
-			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), config.DefaultConfig())
+			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), config.DefaultConfig(), source.DefaultBuilders())
 
 			By("reconciling to get both FQDNs in DNS status")
 			Eventually(func(g Gomega) {
@@ -355,7 +356,7 @@ var _ = Describe("DNS Controller", func() {
 		})
 
 		It("should produce empty DNS status groups", func() {
-			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), config.DefaultConfig())
+			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), config.DefaultConfig(), source.DefaultBuilders())
 
 			By("reconciling to populate initial status")
 			Eventually(func(g Gomega) {
@@ -391,7 +392,7 @@ var _ = Describe("DNS Controller", func() {
 	Context("When the DNS resource does not exist", func() {
 		It("should not return an error", func() {
 			ctx := context.Background()
-			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), config.DefaultConfig())
+			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), config.DefaultConfig(), source.DefaultBuilders())
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: types.NamespacedName{

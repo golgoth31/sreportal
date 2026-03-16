@@ -20,11 +20,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/golgoth31/sreportal/internal/log"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
@@ -32,7 +32,7 @@ import (
 
 // nolint:unused
 // log is for logging in this package.
-var dnslog = logf.Log.WithName("dns-resource")
+var dnslog = log.Default().WithName("dns-resource")
 
 // SetupDNSWebhookWithManager registers the webhook for DNS in the manager.
 func SetupDNSWebhookWithManager(mgr ctrl.Manager) error {

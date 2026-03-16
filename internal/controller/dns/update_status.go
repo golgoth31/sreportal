@@ -22,9 +22,9 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
@@ -45,7 +45,7 @@ func NewUpdateStatusHandler(c client.Client) *UpdateStatusHandler {
 
 // Handle implements reconciler.Handler
 func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.DNS]) error {
-	log := logf.FromContext(ctx).WithName("update-status")
+	logger := log.FromContext(ctx).WithName("update-status")
 	now := metav1.Now()
 
 	// Get aggregated groups
@@ -71,7 +71,7 @@ func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 	}
 	setCondition(&rc.Resource.Status.Conditions, readyCondition)
 
-	log.V(1).Info("updating status", "groupCount", len(groups))
+	logger.V(1).Info("updating status", "groupCount", len(groups))
 	if err := h.client.Status().Patch(ctx, rc.Resource, client.MergeFrom(base)); err != nil {
 		return fmt.Errorf("patch DNS status: %w", err)
 	}
