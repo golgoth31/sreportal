@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.13.0](https://github.com/golgoth31/sreportal/compare/v1.12.1...v1.13.0) (2026-03-16)
+
+
+### Features
+
+* source factory registry ([#122](https://github.com/golgoth31/sreportal/issues/122)) ([46fd16e](https://github.com/golgoth31/sreportal/commit/46fd16e601e048d0556a909a70d5071c347b1eeb))
+* support gateway api resources ([#114](https://github.com/golgoth31/sreportal/issues/114)) ([64e7d2f](https://github.com/golgoth31/sreportal/commit/64e7d2fdfba3c1f11a314562262a6de50048997b))
+
 ## [1.12.1](https://github.com/golgoth31/sreportal/compare/v1.12.0...v1.12.1) (2026-03-12)
 
 
