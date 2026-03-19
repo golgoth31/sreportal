@@ -74,7 +74,8 @@ func (h *AggregateDNSRecordsHandler) Handle(ctx context.Context, rc *reconciler.
 
 	// Group endpoints by source type for priority-based deduplication
 	endpointsBySource := make(map[string][]sreportalv1alpha1.EndpointStatus)
-	for _, rec := range dnsRecordList.Items {
+	for i := range dnsRecordList.Items {
+		rec := &dnsRecordList.Items[i]
 		logger.V(2).Info("processing DNSRecord",
 			"name", rec.Name,
 			"sourceType", rec.Spec.SourceType,

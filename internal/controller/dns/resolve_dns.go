@@ -77,24 +77,25 @@ func (h *ResolveDNSHandler) Handle(ctx context.Context, rc *reconciler.Reconcile
 
 	logger.V(1).Info("resolving FQDNs", "count", len(refs))
 
-	// Parallel resolution with semaphore.
-	sem := make(chan struct{}, maxConcurrentLookups)
+	// Worker pool: spawn at most maxConcurrentLookups goroutines instead of one per FQDN.
+	workers := min(maxConcurrentLookups, len(refs))
+	refsCh := make(chan fqdnRef, len(refs))
+	for _, r := range refs {
+		refsCh <- r
+	}
+	close(refsCh)
+
 	var wg sync.WaitGroup
-
-	for _, ref := range refs {
-		wg.Add(1)
-		go func(r fqdnRef) {
-			defer wg.Done()
-			sem <- struct{}{}
-			defer func() { <-sem }()
-
-			fqdn := &groups[r.groupIdx].FQDNs[r.fqdnIdx]
-			lookupCtx, cancel := context.WithTimeout(ctx, lookupTimeout)
-			defer cancel()
-
-			result := domaindns.CheckFQDN(lookupCtx, h.resolver, fqdn.FQDN, fqdn.RecordType, fqdn.Targets)
-			fqdn.SyncStatus = string(result.Status)
-		}(ref)
+	for range workers {
+		wg.Go(func() {
+			for r := range refsCh {
+				fqdn := &groups[r.groupIdx].FQDNs[r.fqdnIdx]
+				lookupCtx, cancel := context.WithTimeout(ctx, lookupTimeout)
+				result := domaindns.CheckFQDN(lookupCtx, h.resolver, fqdn.FQDN, fqdn.RecordType, fqdn.Targets)
+				fqdn.SyncStatus = string(result.Status)
+				cancel()
+			}
+		})
 	}
 
 	wg.Wait()

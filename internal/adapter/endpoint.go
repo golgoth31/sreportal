@@ -344,7 +344,11 @@ func ApplySourcePriority(endpointsBySource map[string][]sreportalv1alpha1.Endpoi
 
 	// Without priority, flatten all sources (caller handles deduplication via EndpointStatusToGroups)
 	if len(priority) == 0 {
-		var all []sreportalv1alpha1.EndpointStatus
+		total := 0
+		for _, eps := range endpointsBySource {
+			total += len(eps)
+		}
+		all := make([]sreportalv1alpha1.EndpointStatus, 0, total)
 		for _, eps := range endpointsBySource {
 			all = append(all, eps...)
 		}
@@ -442,6 +446,9 @@ func selectByPriority(endpointsBySource map[string][]sreportalv1alpha1.EndpointS
 // mergeTargets merges two target slices, deduplicating entries.
 // It always returns a new slice and never aliases the caller's backing array.
 func mergeTargets(existing, additional []string) []string {
+	if len(additional) == 0 {
+		return existing
+	}
 	set := make(map[string]struct{}, len(existing)+len(additional))
 	result := make([]string, 0, len(existing)+len(additional))
 	for _, t := range existing {
