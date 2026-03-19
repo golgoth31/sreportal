@@ -94,6 +94,15 @@ func (h *ResolveDNSHandler) Handle(ctx context.Context, rc *reconciler.Reconcile
 				result := domaindns.CheckFQDN(lookupCtx, h.resolver, fqdn.FQDN, fqdn.RecordType, fqdn.Targets)
 				fqdn.SyncStatus = string(result.Status)
 				cancel()
+
+				if result.Status != domaindns.SyncStatusSync {
+					logger.V(1).Info("FQDN check failed",
+						"fqdn", fqdn.FQDN,
+						"recordType", fqdn.RecordType,
+						"status", string(result.Status),
+						"group", groups[r.groupIdx].Name,
+						"error", result.Err)
+				}
 			}
 		})
 	}
