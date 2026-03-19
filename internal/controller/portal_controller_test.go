@@ -73,9 +73,9 @@ var _ = Describe("Portal Controller", func() {
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
 			controllerReconciler := &PortalReconciler{
-				Client:       k8sClient,
-				Scheme:       k8sClient.Scheme(),
-				RemoteClient: remoteclient.NewClient(),
+				Client:            k8sClient,
+				Scheme:            k8sClient.Scheme(),
+				remoteClientCache: remoteclient.NewCache(),
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{

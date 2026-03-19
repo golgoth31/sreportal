@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -69,7 +70,7 @@ func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 		Message:            "DNS resource reconciled successfully",
 		LastTransitionTime: now,
 	}
-	setCondition(&rc.Resource.Status.Conditions, readyCondition)
+	meta.SetStatusCondition(&rc.Resource.Status.Conditions, readyCondition)
 
 	logger.V(1).Info("updating status", "groupCount", len(groups))
 	if err := h.client.Status().Patch(ctx, rc.Resource, client.MergeFrom(base)); err != nil {
@@ -77,26 +78,4 @@ func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 	}
 
 	return nil
-}
-
-// setCondition sets or updates a condition in the conditions slice
-func setCondition(conditions *[]metav1.Condition, newCondition metav1.Condition) {
-	if conditions == nil {
-		return
-	}
-
-	for i, c := range *conditions {
-		if c.Type == newCondition.Type {
-			// Only update LastTransitionTime if status changed
-			if c.Status != newCondition.Status {
-				(*conditions)[i] = newCondition
-			} else {
-				newCondition.LastTransitionTime = c.LastTransitionTime
-				(*conditions)[i] = newCondition
-			}
-			return
-		}
-	}
-
-	*conditions = append(*conditions, newCondition)
 }

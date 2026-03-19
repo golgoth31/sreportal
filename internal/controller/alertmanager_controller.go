@@ -29,6 +29,7 @@ import (
 	domainalertmanager "github.com/golgoth31/sreportal/internal/domain/alertmanager"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/reconciler"
+	"github.com/golgoth31/sreportal/internal/remoteclient"
 )
 
 const (
@@ -46,14 +47,16 @@ type AlertmanagerReconciler struct {
 // localDataFetcher may be nil; then localFetcher is used for basic alerts only.
 // The K8s client is used by the FetchAlertsHandler to look up Portal CRs and read
 // TLS secrets when fetching alerts from remote portals.
+// The remoteClientCache is shared with PortalReconciler to reuse TLS connections.
 func NewAlertmanagerReconciler(
 	c client.Client,
 	scheme *runtime.Scheme,
 	localDataFetcher domainalertmanager.DataFetcher,
 	localFetcher domainalertmanager.Fetcher,
+	remoteClientCache *remoteclient.Cache,
 ) *AlertmanagerReconciler {
 	handlers := []reconciler.Handler[*sreportalv1alpha1.Alertmanager]{
-		alertmanagerchain.NewFetchAlertsHandler(localDataFetcher, localFetcher, c),
+		alertmanagerchain.NewFetchAlertsHandler(localDataFetcher, localFetcher, c, remoteClientCache),
 		alertmanagerchain.NewUpdateStatusHandler(c),
 	}
 

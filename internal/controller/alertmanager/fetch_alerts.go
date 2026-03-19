@@ -46,11 +46,12 @@ const (
 // or a remote SRE Portal, depending on the IsRemote flag on the resource spec.
 // For local, uses DataFetcher when available to get alerts with receivers and silences.
 // For remote portals, it looks up the Portal CR to obtain TLS configuration and
-// builds a TLS-aware remoteclient — the same approach as the Portal controller.
+// uses the shared remote client cache — the same approach as the Portal controller.
 type FetchAlertsHandler struct {
-	localDataFetcher domainalertmanager.DataFetcher
-	localFetcher     domainalertmanager.Fetcher
-	k8sReader        client.Reader
+	localDataFetcher  domainalertmanager.DataFetcher
+	localFetcher      domainalertmanager.Fetcher
+	k8sReader         client.Reader
+	remoteClientCache *remoteclient.Cache
 }
 
 // NewFetchAlertsHandler creates a new FetchAlertsHandler.
@@ -59,11 +60,13 @@ func NewFetchAlertsHandler(
 	localDataFetcher domainalertmanager.DataFetcher,
 	localFetcher domainalertmanager.Fetcher,
 	k8sReader client.Reader,
+	remoteClientCache *remoteclient.Cache,
 ) *FetchAlertsHandler {
 	return &FetchAlertsHandler{
-		localDataFetcher: localDataFetcher,
-		localFetcher:     localFetcher,
-		k8sReader:        k8sReader,
+		localDataFetcher:  localDataFetcher,
+		localFetcher:      localFetcher,
+		k8sReader:         k8sReader,
+		remoteClientCache: remoteClientCache,
 	}
 }
 
@@ -147,10 +150,20 @@ func (h *FetchAlertsHandler) handleRemote(ctx context.Context, rc *reconciler.Re
 	return nil
 }
 
-// remoteClientFor returns a remoteclient configured with TLS from the Portal spec.
+// remoteClientFor returns a cached remoteclient configured with TLS from the Portal spec.
 func (h *FetchAlertsHandler) remoteClientFor(ctx context.Context, portal *sreportalv1alpha1.Portal) (*remoteclient.Client, error) {
 	if portal.Spec.Remote.TLS == nil {
-		return remoteclient.NewClient(), nil
+		return h.remoteClientCache.Fallback(), nil
+	}
+
+	key := portal.Namespace + "/" + portal.Name
+	versions, err := tlsutil.SecretVersions(ctx, h.k8sReader, portal.Namespace, portal.Spec.Remote.TLS)
+	if err != nil {
+		return nil, fmt.Errorf("read TLS secret versions: %w", err)
+	}
+
+	if cached := h.remoteClientCache.Get(key, versions); cached != nil {
+		return cached, nil
 	}
 
 	tlsConfig, err := tlsutil.BuildTLSConfig(ctx, h.k8sReader, portal.Namespace, portal.Spec.Remote.TLS)
@@ -158,7 +171,10 @@ func (h *FetchAlertsHandler) remoteClientFor(ctx context.Context, portal *srepor
 		return nil, fmt.Errorf("build TLS config: %w", err)
 	}
 
-	return remoteclient.NewClient(remoteclient.WithTLSConfig(tlsConfig)), nil
+	c := remoteclient.NewClient(remoteclient.WithTLSConfig(tlsConfig))
+	h.remoteClientCache.Put(key, versions, c)
+
+	return c, nil
 }
 
 // toAlertsDomain converts CRD AlertStatus values to domain Alert objects.

@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -42,16 +43,16 @@ const DefaultRemoteSyncInterval = 5 * time.Minute
 // PortalReconciler reconciles a Portal object
 type PortalReconciler struct {
 	client.Client
-	Scheme       *runtime.Scheme
-	RemoteClient *remoteclient.Client
+	Scheme            *runtime.Scheme
+	remoteClientCache *remoteclient.Cache
 }
 
 // NewPortalReconciler creates a new PortalReconciler
-func NewPortalReconciler(c client.Client, scheme *runtime.Scheme) *PortalReconciler {
+func NewPortalReconciler(c client.Client, scheme *runtime.Scheme, cache *remoteclient.Cache) *PortalReconciler {
 	return &PortalReconciler{
-		Client:       c,
-		Scheme:       scheme,
-		RemoteClient: remoteclient.NewClient(),
+		Client:            c,
+		Scheme:            scheme,
+		remoteClientCache: cache,
 	}
 }
 
@@ -94,7 +95,7 @@ func (r *PortalReconciler) reconcileLocalPortal(ctx context.Context, portal *sre
 		Message:            "Portal is fully configured",
 		LastTransitionTime: metav1.Now(),
 	}
-	setPortalCondition(&portal.Status.Conditions, readyCondition)
+	meta.SetStatusCondition(&portal.Status.Conditions, readyCondition)
 
 	if err := r.Status().Patch(ctx, portal, client.MergeFrom(base)); err != nil {
 		return ctrl.Result{}, fmt.Errorf("patch Portal status: %w", err)
@@ -103,12 +104,22 @@ func (r *PortalReconciler) reconcileLocalPortal(ctx context.Context, portal *sre
 	return ctrl.Result{}, nil
 }
 
-// remoteClientFor returns the appropriate remote client for the given portal.
-// If TLS settings are configured, a new client with the built TLS config is created.
+// remoteClientFor returns a cached remote client for the given portal.
+// Clients are cached per portal and invalidated when referenced TLS secrets change.
 func (r *PortalReconciler) remoteClientFor(ctx context.Context, portal *sreportalv1alpha1.Portal) (*remoteclient.Client, error) {
 	remote := portal.Spec.Remote
 	if remote.TLS == nil {
-		return r.RemoteClient, nil
+		return r.remoteClientCache.Fallback(), nil
+	}
+
+	key := portal.Namespace + "/" + portal.Name
+	versions, err := tlsutil.SecretVersions(ctx, r.Client, portal.Namespace, remote.TLS)
+	if err != nil {
+		return nil, fmt.Errorf("read TLS secret versions: %w", err)
+	}
+
+	if cached := r.remoteClientCache.Get(key, versions); cached != nil {
+		return cached, nil
 	}
 
 	tlsConfig, err := tlsutil.BuildTLSConfig(ctx, r.Client, portal.Namespace, remote.TLS)
@@ -116,7 +127,10 @@ func (r *PortalReconciler) remoteClientFor(ctx context.Context, portal *sreporta
 		return nil, fmt.Errorf("build TLS config: %w", err)
 	}
 
-	return remoteclient.NewClient(remoteclient.WithTLSConfig(tlsConfig)), nil
+	c := remoteclient.NewClient(remoteclient.WithTLSConfig(tlsConfig))
+	r.remoteClientCache.Put(key, versions, c)
+
+	return c, nil
 }
 
 // reconcileRemotePortal handles reconciliation for remote portals (Remote specified).
@@ -137,7 +151,7 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 		}
 		portal.Status.RemoteSync.LastSyncError = err.Error()
 
-		setPortalCondition(&portal.Status.Conditions, metav1.Condition{
+		meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
 			Type:               "Ready",
 			Status:             metav1.ConditionFalse,
 			Reason:             "TLSConfigFailed",
@@ -174,7 +188,7 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 			Message:            "Failed to connect to remote portal: " + err.Error(),
 			LastTransitionTime: metav1.Now(),
 		}
-		setPortalCondition(&portal.Status.Conditions, readyCondition)
+		meta.SetStatusCondition(&portal.Status.Conditions, readyCondition)
 
 		if patchErr := r.Status().Patch(ctx, portal, client.MergeFrom(base)); patchErr != nil {
 			return ctrl.Result{}, fmt.Errorf("patch Portal status: %w", patchErr)
@@ -200,7 +214,7 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 			Message:            "Failed to fetch data from remote portal: " + err.Error(),
 			LastTransitionTime: metav1.Now(),
 		}
-		setPortalCondition(&portal.Status.Conditions, readyCondition)
+		meta.SetStatusCondition(&portal.Status.Conditions, readyCondition)
 
 		if patchErr := r.Status().Patch(ctx, portal, client.MergeFrom(base)); patchErr != nil {
 			return ctrl.Result{}, fmt.Errorf("patch Portal status: %w", patchErr)
@@ -223,7 +237,7 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 	// but we surface it as a separate DNSSynced condition so operators can act.
 	if err := r.reconcileRemoteDNS(ctx, portal, result); err != nil {
 		remoteLog.Warn("failed to reconcile DNS for remote portal", "name", portal.Name, "namespace", portal.Namespace, "error", err.Error())
-		setPortalCondition(&portal.Status.Conditions, metav1.Condition{
+		meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
 			Type:               "DNSSynced",
 			Status:             metav1.ConditionFalse,
 			Reason:             "DNSSyncFailed",
@@ -231,7 +245,7 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 			LastTransitionTime: metav1.Now(),
 		})
 	} else {
-		setPortalCondition(&portal.Status.Conditions, metav1.Condition{
+		meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
 			Type:               "DNSSynced",
 			Status:             metav1.ConditionTrue,
 			Reason:             "DNSSyncSuccess",
@@ -244,7 +258,7 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 	// controller can fetch alerts from the remote portal's API.
 	if err := r.reconcileRemoteAlertmanager(ctx, portal); err != nil {
 		remoteLog.Error(err, "failed to reconcile Alertmanager for remote portal")
-		setPortalCondition(&portal.Status.Conditions, metav1.Condition{
+		meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
 			Type:               "AlertsSynced",
 			Status:             metav1.ConditionFalse,
 			Reason:             "AlertsSyncFailed",
@@ -252,7 +266,7 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 			LastTransitionTime: metav1.Now(),
 		})
 	} else {
-		setPortalCondition(&portal.Status.Conditions, metav1.Condition{
+		meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
 			Type:               "AlertsSynced",
 			Status:             metav1.ConditionTrue,
 			Reason:             "AlertsSyncSuccess",
@@ -268,7 +282,7 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 		Message:            "Successfully synced with remote portal",
 		LastTransitionTime: metav1.Now(),
 	}
-	setPortalCondition(&portal.Status.Conditions, readyCondition)
+	meta.SetStatusCondition(&portal.Status.Conditions, readyCondition)
 
 	if err := r.Status().Patch(ctx, portal, client.MergeFrom(base)); err != nil {
 		return ctrl.Result{}, fmt.Errorf("patch Portal status: %w", err)
@@ -291,27 +305,6 @@ func (r *PortalReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&sreportalv1alpha1.Portal{}).
 		Named("portal").
 		Complete(r)
-}
-
-// setPortalCondition sets or updates a condition in the conditions slice.
-func setPortalCondition(conditions *[]metav1.Condition, newCondition metav1.Condition) {
-	if conditions == nil {
-		return
-	}
-
-	for i, c := range *conditions {
-		if c.Type == newCondition.Type {
-			if c.Status != newCondition.Status {
-				(*conditions)[i] = newCondition
-			} else {
-				newCondition.LastTransitionTime = c.LastTransitionTime
-				(*conditions)[i] = newCondition
-			}
-			return
-		}
-	}
-
-	*conditions = append(*conditions, newCondition)
 }
 
 // remoteAlertmanagerName returns the name of the local Alertmanager CR
@@ -538,7 +531,7 @@ func (r *PortalReconciler) reconcileRemoteDNS(ctx context.Context, portal *srepo
 		Message:            fmt.Sprintf("Successfully synced %d FQDNs from remote portal", result.FQDNCount),
 		LastTransitionTime: now,
 	}
-	setDNSCondition(&dns.Status.Conditions, readyCondition)
+	meta.SetStatusCondition(&dns.Status.Conditions, readyCondition)
 
 	if err := r.Status().Patch(ctx, dns, client.MergeFrom(dnsBase)); err != nil {
 		return fmt.Errorf("patch DNS status: %w", err)
@@ -551,25 +544,4 @@ func (r *PortalReconciler) reconcileRemoteDNS(ctx context.Context, portal *srepo
 		"groupCount", len(result.Groups))
 
 	return nil
-}
-
-// setDNSCondition sets or updates a condition in the DNS conditions slice.
-func setDNSCondition(conditions *[]metav1.Condition, newCondition metav1.Condition) {
-	if conditions == nil {
-		return
-	}
-
-	for i, c := range *conditions {
-		if c.Type == newCondition.Type {
-			if c.Status != newCondition.Status {
-				(*conditions)[i] = newCondition
-			} else {
-				newCondition.LastTransitionTime = c.LastTransitionTime
-				(*conditions)[i] = newCondition
-			}
-			return
-		}
-	}
-
-	*conditions = append(*conditions, newCondition)
 }

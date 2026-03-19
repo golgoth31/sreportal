@@ -24,6 +24,7 @@ import (
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -462,7 +463,7 @@ func (r *SourceReconciler) reconcileDNSRecord(
 
 		dnsRecord.Status.Endpoints = endpointStatus
 		dnsRecord.Status.LastReconcileTime = &now
-		setDNSRecordCondition(&dnsRecord.Status.Conditions, metav1.Condition{
+		meta.SetStatusCondition(&dnsRecord.Status.Conditions, metav1.Condition{
 			Type:               "Ready",
 			Status:             metav1.ConditionTrue,
 			Reason:             "EndpointsCollected",
@@ -557,27 +558,6 @@ func (r *SourceReconciler) deleteOrphanedDNSRecords(
 	}
 
 	return nil
-}
-
-// setDNSRecordCondition sets or updates a condition in the conditions slice.
-func setDNSRecordCondition(conditions *[]metav1.Condition, newCondition metav1.Condition) {
-	if conditions == nil {
-		return
-	}
-
-	for i, c := range *conditions {
-		if c.Type == newCondition.Type {
-			if c.Status != newCondition.Status {
-				(*conditions)[i] = newCondition
-			} else {
-				newCondition.LastTransitionTime = c.LastTransitionTime
-				(*conditions)[i] = newCondition
-			}
-			return
-		}
-	}
-
-	*conditions = append(*conditions, newCondition)
 }
 
 // resolveGVR returns a full GVR. If gvr.Version is empty, it uses discovery to resolve
@@ -696,7 +676,7 @@ func (r *SourceReconciler) markSourceDegraded(
 
 	base := rec.DeepCopy()
 	now := metav1.Now()
-	setDNSRecordCondition(&rec.Status.Conditions, metav1.Condition{
+	meta.SetStatusCondition(&rec.Status.Conditions, metav1.Condition{
 		Type:               "Ready",
 		Status:             metav1.ConditionFalse,
 		Reason:             "SourceUnavailable",

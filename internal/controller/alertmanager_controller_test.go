@@ -32,6 +32,7 @@ import (
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	domainalertmanager "github.com/golgoth31/sreportal/internal/domain/alertmanager"
+	"github.com/golgoth31/sreportal/internal/remoteclient"
 )
 
 type fakeFetcher struct {
@@ -112,6 +113,7 @@ var _ = Describe("Alertmanager Controller", func() {
 				directClient.Scheme(),
 				nil,
 				fetcher,
+				remoteclient.NewCache(),
 			)
 
 			result, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -137,6 +139,7 @@ var _ = Describe("Alertmanager Controller", func() {
 				directClient.Scheme(),
 				nil,
 				fetcher,
+				remoteclient.NewCache(),
 			)
 
 			result, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
