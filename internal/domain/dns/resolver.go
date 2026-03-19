@@ -44,6 +44,7 @@ type Resolver interface {
 type CheckResult struct {
 	Status          SyncStatus
 	ResolvedTargets []string
+	Err             error
 }
 
 // CheckFQDN verifies whether an FQDN resolves correctly in DNS.
@@ -64,7 +65,7 @@ func CheckFQDN(ctx context.Context, r Resolver, fqdn, recordType string, targets
 func checkHostRecord(ctx context.Context, r Resolver, fqdn string, expectedTargets []string) *CheckResult {
 	addrs, err := r.LookupHost(ctx, fqdn)
 	if err != nil {
-		return &CheckResult{Status: SyncStatusNotAvailable}
+		return &CheckResult{Status: SyncStatusNotAvailable, Err: err}
 	}
 
 	if targetsMatch(expectedTargets, addrs) {
@@ -77,7 +78,7 @@ func checkHostRecord(ctx context.Context, r Resolver, fqdn string, expectedTarge
 func checkCNAMERecord(ctx context.Context, r Resolver, fqdn string, expectedTargets []string) *CheckResult {
 	cname, err := r.LookupCNAME(ctx, fqdn)
 	if err != nil {
-		return &CheckResult{Status: SyncStatusNotAvailable}
+		return &CheckResult{Status: SyncStatusNotAvailable, Err: err}
 	}
 
 	// net.LookupCNAME always returns a fully-qualified name with a trailing dot
@@ -94,7 +95,7 @@ func checkCNAMERecord(ctx context.Context, r Resolver, fqdn string, expectedTarg
 func checkExistence(ctx context.Context, r Resolver, fqdn string) *CheckResult {
 	addrs, err := r.LookupHost(ctx, fqdn)
 	if err != nil || len(addrs) == 0 {
-		return &CheckResult{Status: SyncStatusNotAvailable}
+		return &CheckResult{Status: SyncStatusNotAvailable, Err: err}
 	}
 
 	return &CheckResult{Status: SyncStatusSync, ResolvedTargets: addrs}

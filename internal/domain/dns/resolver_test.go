@@ -88,6 +88,7 @@ func TestCheckFQDN(t *testing.T) {
 		targets    []string
 		setup      func(r *fakeResolver)
 		wantStatus dns.SyncStatus
+		wantErr    bool
 	}{
 		{
 			name:       "A record sync — targets match",
@@ -116,6 +117,7 @@ func TestCheckFQDN(t *testing.T) {
 			targets:    []string{"10.0.0.1"},
 			setup:      func(r *fakeResolver) {},
 			wantStatus: dns.SyncStatusNotAvailable,
+			wantErr:    true,
 		},
 		{
 			name:       "AAAA record sync — targets match",
@@ -166,6 +168,7 @@ func TestCheckFQDN(t *testing.T) {
 			targets:    []string{"real.example.com."},
 			setup:      func(r *fakeResolver) {},
 			wantStatus: dns.SyncStatusNotAvailable,
+			wantErr:    true,
 		},
 		{
 			name:       "manual entry — no recordType, no targets, host resolves",
@@ -184,6 +187,7 @@ func TestCheckFQDN(t *testing.T) {
 			targets:    nil,
 			setup:      func(r *fakeResolver) {},
 			wantStatus: dns.SyncStatusNotAvailable,
+			wantErr:    true,
 		},
 		{
 			name:       "A record sync — single target",
@@ -224,6 +228,36 @@ func TestCheckFQDN(t *testing.T) {
 				r.hostErr["err.example.com"] = errors.New("temporary DNS failure")
 			},
 			wantStatus: dns.SyncStatusNotAvailable,
+			wantErr:    true,
+		},
+		{
+			name:       "A record notavailable — NXDOMAIN has no error",
+			fqdn:       "gone.example.com",
+			recordType: "A",
+			targets:    []string{"10.0.0.1"},
+			setup:      func(r *fakeResolver) {},
+			wantStatus: dns.SyncStatusNotAvailable,
+			wantErr:    true,
+		},
+		{
+			name:       "CNAME notavailable — resolver error is preserved",
+			fqdn:       "alias.example.com",
+			recordType: "CNAME",
+			targets:    []string{"real.example.com."},
+			setup: func(r *fakeResolver) {
+				r.cnameErr["alias.example.com"] = errors.New("DNS timeout")
+			},
+			wantStatus: dns.SyncStatusNotAvailable,
+			wantErr:    true,
+		},
+		{
+			name:       "manual entry notavailable — error is preserved",
+			fqdn:       "manual-gone.example.com",
+			recordType: "",
+			targets:    nil,
+			setup:      func(r *fakeResolver) {},
+			wantStatus: dns.SyncStatusNotAvailable,
+			wantErr:    true,
 		},
 	}
 
@@ -236,6 +270,11 @@ func TestCheckFQDN(t *testing.T) {
 
 			require.NotNil(t, result)
 			assert.Equal(t, tc.wantStatus, result.Status, "unexpected SyncStatus")
+			if tc.wantErr {
+				assert.NotNil(t, result.Err, "expected Err to be set")
+			} else {
+				assert.Nil(t, result.Err, "expected Err to be nil")
+			}
 		})
 	}
 }

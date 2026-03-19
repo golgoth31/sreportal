@@ -45,11 +45,11 @@ func NewResolveDNSHandler(r domaindns.Resolver) *ResolveDNSHandler {
 }
 
 // Handle implements reconciler.Handler.
-func (h *ResolveDNSHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.DNS]) error {
+func (h *ResolveDNSHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.DNS, ChainData]) error {
 	logger := log.FromContext(ctx).WithName("resolve-dns")
 
-	groups, ok := rc.Data[DataKeyAggregatedGroups].([]sreportalv1alpha1.FQDNGroupStatus)
-	if !ok || len(groups) == 0 {
+	groups := rc.Data.AggregatedGroups
+	if len(groups) == 0 {
 		logger.V(1).Info("no aggregated groups to resolve")
 		return nil
 	}
@@ -77,29 +77,39 @@ func (h *ResolveDNSHandler) Handle(ctx context.Context, rc *reconciler.Reconcile
 
 	logger.V(1).Info("resolving FQDNs", "count", len(refs))
 
-	// Parallel resolution with semaphore.
-	sem := make(chan struct{}, maxConcurrentLookups)
+	// Worker pool: spawn at most maxConcurrentLookups goroutines instead of one per FQDN.
+	workers := min(maxConcurrentLookups, len(refs))
+	refsCh := make(chan fqdnRef, len(refs))
+	for _, r := range refs {
+		refsCh <- r
+	}
+	close(refsCh)
+
 	var wg sync.WaitGroup
+	for range workers {
+		wg.Go(func() {
+			for r := range refsCh {
+				fqdn := &groups[r.groupIdx].FQDNs[r.fqdnIdx]
+				lookupCtx, cancel := context.WithTimeout(ctx, lookupTimeout)
+				result := domaindns.CheckFQDN(lookupCtx, h.resolver, fqdn.FQDN, fqdn.RecordType, fqdn.Targets)
+				fqdn.SyncStatus = string(result.Status)
+				cancel()
 
-	for _, ref := range refs {
-		wg.Add(1)
-		go func(r fqdnRef) {
-			defer wg.Done()
-			sem <- struct{}{}
-			defer func() { <-sem }()
-
-			fqdn := &groups[r.groupIdx].FQDNs[r.fqdnIdx]
-			lookupCtx, cancel := context.WithTimeout(ctx, lookupTimeout)
-			defer cancel()
-
-			result := domaindns.CheckFQDN(lookupCtx, h.resolver, fqdn.FQDN, fqdn.RecordType, fqdn.Targets)
-			fqdn.SyncStatus = string(result.Status)
-		}(ref)
+				if result.Status != domaindns.SyncStatusSync {
+					logger.V(1).Info("FQDN check failed",
+						"fqdn", fqdn.FQDN,
+						"recordType", fqdn.RecordType,
+						"status", string(result.Status),
+						"group", groups[r.groupIdx].Name,
+						"error", result.Err)
+				}
+			}
+		})
 	}
 
 	wg.Wait()
 
-	rc.Data[DataKeyAggregatedGroups] = groups
+	rc.Data.AggregatedGroups = groups
 	logger.V(1).Info("DNS resolution completed", "count", len(refs))
 	return nil
 }

@@ -29,6 +29,7 @@ import (
 	domainalertmanager "github.com/golgoth31/sreportal/internal/domain/alertmanager"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/reconciler"
+	"github.com/golgoth31/sreportal/internal/remoteclient"
 )
 
 const (
@@ -39,21 +40,23 @@ const (
 type AlertmanagerReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
-	chain  *reconciler.Chain[*sreportalv1alpha1.Alertmanager]
+	chain  *reconciler.Chain[*sreportalv1alpha1.Alertmanager, alertmanagerchain.ChainData]
 }
 
 // NewAlertmanagerReconciler creates a new AlertmanagerReconciler with the handler chain.
 // localDataFetcher may be nil; then localFetcher is used for basic alerts only.
 // The K8s client is used by the FetchAlertsHandler to look up Portal CRs and read
 // TLS secrets when fetching alerts from remote portals.
+// The remoteClientCache is shared with PortalReconciler to reuse TLS connections.
 func NewAlertmanagerReconciler(
 	c client.Client,
 	scheme *runtime.Scheme,
 	localDataFetcher domainalertmanager.DataFetcher,
 	localFetcher domainalertmanager.Fetcher,
+	remoteClientCache *remoteclient.Cache,
 ) *AlertmanagerReconciler {
-	handlers := []reconciler.Handler[*sreportalv1alpha1.Alertmanager]{
-		alertmanagerchain.NewFetchAlertsHandler(localDataFetcher, localFetcher, c),
+	handlers := []reconciler.Handler[*sreportalv1alpha1.Alertmanager, alertmanagerchain.ChainData]{
+		alertmanagerchain.NewFetchAlertsHandler(localDataFetcher, localFetcher, c, remoteClientCache),
 		alertmanagerchain.NewUpdateStatusHandler(c),
 	}
 
@@ -79,9 +82,8 @@ func (r *AlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	logger.V(1).Info("reconciling Alertmanager", "name", resource.Name, "portalRef", resource.Spec.PortalRef, "isRemote", resource.Spec.IsRemote)
 
-	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager]{
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager, alertmanagerchain.ChainData]{
 		Resource: &resource,
-		Data:     make(map[string]any),
 	}
 
 	if err := r.chain.Execute(ctx, rc); err != nil {

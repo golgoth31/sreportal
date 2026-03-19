@@ -28,19 +28,23 @@ import (
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
+type testData struct {
+	Value string
+}
+
 func TestChain_Execute_StopsOnError(t *testing.T) {
 	var secondCalled bool
-	chain := reconciler.NewChain[*struct{}](
-		reconciler.HandlerFunc[*struct{}](func(_ context.Context, _ *reconciler.ReconcileContext[*struct{}]) error {
+	chain := reconciler.NewChain[*struct{}, testData](
+		reconciler.HandlerFunc[*struct{}, testData](func(_ context.Context, _ *reconciler.ReconcileContext[*struct{}, testData]) error {
 			return errors.New("first handler failed")
 		}),
-		reconciler.HandlerFunc[*struct{}](func(_ context.Context, _ *reconciler.ReconcileContext[*struct{}]) error {
+		reconciler.HandlerFunc[*struct{}, testData](func(_ context.Context, _ *reconciler.ReconcileContext[*struct{}, testData]) error {
 			secondCalled = true
 			return nil
 		}),
 	)
 
-	rc := &reconciler.ReconcileContext[*struct{}]{Data: make(map[string]any)}
+	rc := &reconciler.ReconcileContext[*struct{}, testData]{}
 	err := chain.Execute(context.Background(), rc)
 
 	require.Error(t, err)
@@ -49,18 +53,18 @@ func TestChain_Execute_StopsOnError(t *testing.T) {
 
 func TestChain_Execute_StopsOnRequeueAfter(t *testing.T) {
 	var secondCalled bool
-	chain := reconciler.NewChain[*struct{}](
-		reconciler.HandlerFunc[*struct{}](func(_ context.Context, rc *reconciler.ReconcileContext[*struct{}]) error {
+	chain := reconciler.NewChain[*struct{}, testData](
+		reconciler.HandlerFunc[*struct{}, testData](func(_ context.Context, rc *reconciler.ReconcileContext[*struct{}, testData]) error {
 			rc.Result.RequeueAfter = 5 * time.Second
 			return nil
 		}),
-		reconciler.HandlerFunc[*struct{}](func(_ context.Context, _ *reconciler.ReconcileContext[*struct{}]) error {
+		reconciler.HandlerFunc[*struct{}, testData](func(_ context.Context, _ *reconciler.ReconcileContext[*struct{}, testData]) error {
 			secondCalled = true
 			return nil
 		}),
 	)
 
-	rc := &reconciler.ReconcileContext[*struct{}]{Data: make(map[string]any)}
+	rc := &reconciler.ReconcileContext[*struct{}, testData]{}
 	err := chain.Execute(context.Background(), rc)
 
 	require.NoError(t, err)
@@ -69,20 +73,39 @@ func TestChain_Execute_StopsOnRequeueAfter(t *testing.T) {
 
 func TestChain_Execute_RunsAllHandlers_WhenNoShortCircuit(t *testing.T) {
 	var calls []int
-	chain := reconciler.NewChain[*struct{}](
-		reconciler.HandlerFunc[*struct{}](func(_ context.Context, _ *reconciler.ReconcileContext[*struct{}]) error {
+	chain := reconciler.NewChain[*struct{}, testData](
+		reconciler.HandlerFunc[*struct{}, testData](func(_ context.Context, _ *reconciler.ReconcileContext[*struct{}, testData]) error {
 			calls = append(calls, 1)
 			return nil
 		}),
-		reconciler.HandlerFunc[*struct{}](func(_ context.Context, _ *reconciler.ReconcileContext[*struct{}]) error {
+		reconciler.HandlerFunc[*struct{}, testData](func(_ context.Context, _ *reconciler.ReconcileContext[*struct{}, testData]) error {
 			calls = append(calls, 2)
 			return nil
 		}),
 	)
 
-	rc := &reconciler.ReconcileContext[*struct{}]{Data: make(map[string]any)}
+	rc := &reconciler.ReconcileContext[*struct{}, testData]{}
 	err := chain.Execute(context.Background(), rc)
 
 	require.NoError(t, err)
 	assert.Equal(t, []int{1, 2}, calls)
+}
+
+func TestChain_Execute_SharesTypedData(t *testing.T) {
+	chain := reconciler.NewChain[*struct{}, testData](
+		reconciler.HandlerFunc[*struct{}, testData](func(_ context.Context, rc *reconciler.ReconcileContext[*struct{}, testData]) error {
+			rc.Data.Value = "hello"
+			return nil
+		}),
+		reconciler.HandlerFunc[*struct{}, testData](func(_ context.Context, rc *reconciler.ReconcileContext[*struct{}, testData]) error {
+			rc.Data.Value += " world"
+			return nil
+		}),
+	)
+
+	rc := &reconciler.ReconcileContext[*struct{}, testData]{}
+	err := chain.Execute(context.Background(), rc)
+
+	require.NoError(t, err)
+	assert.Equal(t, "hello world", rc.Data.Value)
 }

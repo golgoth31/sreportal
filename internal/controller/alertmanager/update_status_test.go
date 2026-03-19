@@ -93,10 +93,10 @@ var _ = Describe("UpdateStatusHandler", func() {
 				},
 			}
 
-			rc := &reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager]{
+			rc := &reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager, alertmanagerctrl.ChainData]{
 				Resource: am,
-				Data: map[string]any{
-					alertmanagerctrl.DataKeyAlerts: alerts,
+				Data: alertmanagerctrl.ChainData{
+					Alerts: alerts,
 				},
 			}
 
@@ -126,9 +126,8 @@ var _ = Describe("UpdateStatusHandler", func() {
 			c := buildClient(am)
 			handler := alertmanagerctrl.NewUpdateStatusHandler(c)
 
-			rc := &reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager]{
+			rc := &reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager, alertmanagerctrl.ChainData]{
 				Resource: am,
-				Data:     make(map[string]any),
 			}
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
@@ -160,9 +159,8 @@ var _ = Describe("UpdateStatusHandler", func() {
 			c := buildClient(am)
 			handler := alertmanagerctrl.NewUpdateStatusHandler(c)
 
-			rc := &reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager]{
+			rc := &reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager, alertmanagerctrl.ChainData]{
 				Resource: am,
-				Data:     make(map[string]any),
 			}
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())

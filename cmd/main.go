@@ -51,6 +51,7 @@ import (
 	portalctrl "github.com/golgoth31/sreportal/internal/controller/portal"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/mcp"
+	"github.com/golgoth31/sreportal/internal/remoteclient"
 	"github.com/golgoth31/sreportal/internal/source"
 	"github.com/golgoth31/sreportal/internal/version"
 	webhookv1alpha1 "github.com/golgoth31/sreportal/internal/webhook/v1alpha1"
@@ -332,9 +333,11 @@ func main() {
 			os.Exit(1)
 		}
 	}
+	remoteCache := remoteclient.NewCache()
 	if err := controller.NewPortalReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),
+		remoteCache,
 	).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Portal")
 		os.Exit(1)
@@ -355,6 +358,7 @@ func main() {
 		mgr.GetScheme(),
 		amClient,
 		amClient,
+		remoteCache,
 	).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Alertmanager")
 		os.Exit(1)

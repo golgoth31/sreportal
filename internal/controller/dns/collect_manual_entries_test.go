@@ -30,17 +30,16 @@ import (
 var _ = Describe("CollectManualEntriesHandler", func() {
 	var (
 		handler *dnspkg.CollectManualEntriesHandler
-		rc      *reconciler.ReconcileContext[*sreportalv1alpha1.DNS]
+		rc      *reconciler.ReconcileContext[*sreportalv1alpha1.DNS, dnspkg.ChainData]
 	)
 
 	BeforeEach(func() {
 		handler = dnspkg.NewCollectManualEntriesHandler()
 	})
 
-	newRC := func(dns *sreportalv1alpha1.DNS) *reconciler.ReconcileContext[*sreportalv1alpha1.DNS] {
-		return &reconciler.ReconcileContext[*sreportalv1alpha1.DNS]{
+	newRC := func(dns *sreportalv1alpha1.DNS) *reconciler.ReconcileContext[*sreportalv1alpha1.DNS, dnspkg.ChainData] {
+		return &reconciler.ReconcileContext[*sreportalv1alpha1.DNS, dnspkg.ChainData]{
 			Resource: dns,
-			Data:     make(map[string]any),
 		}
 	}
 
@@ -50,11 +49,7 @@ var _ = Describe("CollectManualEntriesHandler", func() {
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
-			raw, ok := rc.Data[dnspkg.DataKeyManualGroups]
-			Expect(ok).To(BeTrue())
-			groups, ok := raw.([]sreportalv1alpha1.DNSGroup)
-			Expect(ok).To(BeTrue())
-			Expect(groups).To(BeNil())
+			Expect(rc.Data.ManualGroups).To(BeNil())
 		})
 	})
 
@@ -84,10 +79,7 @@ var _ = Describe("CollectManualEntriesHandler", func() {
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
-			raw, ok := rc.Data[dnspkg.DataKeyManualGroups]
-			Expect(ok).To(BeTrue())
-			groups, ok := raw.([]sreportalv1alpha1.DNSGroup)
-			Expect(ok).To(BeTrue())
+			groups := rc.Data.ManualGroups
 			Expect(groups).To(HaveLen(2))
 			Expect(groups[0].Name).To(Equal("Infra"))
 			Expect(groups[0].Description).To(Equal("Infrastructure services"))
@@ -110,7 +102,7 @@ var _ = Describe("CollectManualEntriesHandler", func() {
 			rc.Resource.Spec.Groups = []sreportalv1alpha1.DNSGroup{{Name: "Second"}}
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
-			groups := rc.Data[dnspkg.DataKeyManualGroups].([]sreportalv1alpha1.DNSGroup)
+			groups := rc.Data.ManualGroups
 			Expect(groups).To(HaveLen(1))
 			Expect(groups[0].Name).To(Equal("Second"))
 		})

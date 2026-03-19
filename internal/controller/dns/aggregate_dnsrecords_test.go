@@ -54,13 +54,12 @@ var _ = Describe("AggregateDNSRecordsHandler", func() {
 			Build()
 	}
 
-	newRC := func(portalRef string) *reconciler.ReconcileContext[*sreportalv1alpha1.DNS] {
-		return &reconciler.ReconcileContext[*sreportalv1alpha1.DNS]{
+	newRC := func(portalRef string) *reconciler.ReconcileContext[*sreportalv1alpha1.DNS, dnspkg.ChainData] {
+		return &reconciler.ReconcileContext[*sreportalv1alpha1.DNS, dnspkg.ChainData]{
 			Resource: &sreportalv1alpha1.DNS{
 				ObjectMeta: metav1.ObjectMeta{Name: "test-dns", Namespace: "default"},
 				Spec:       sreportalv1alpha1.DNSSpec{PortalRef: portalRef},
 			},
-			Data: make(map[string]any),
 		}
 	}
 
@@ -74,11 +73,7 @@ var _ = Describe("AggregateDNSRecordsHandler", func() {
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
-			raw, ok := rc.Data[dnspkg.DataKeyExternalGroups]
-			Expect(ok).To(BeTrue())
-			groups, ok := raw.([]sreportalv1alpha1.FQDNGroupStatus)
-			Expect(ok).To(BeTrue())
-			Expect(groups).To(BeEmpty())
+			Expect(rc.Data.ExternalGroups).To(BeEmpty())
 		})
 	})
 
@@ -111,7 +106,7 @@ var _ = Describe("AggregateDNSRecordsHandler", func() {
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
-			groups := rc.Data[dnspkg.DataKeyExternalGroups].([]sreportalv1alpha1.FQDNGroupStatus)
+			groups := rc.Data.ExternalGroups
 			Expect(groups).To(HaveLen(1)) // All go to "Services" (default group)
 			Expect(groups[0].Name).To(Equal("Services"))
 			Expect(groups[0].FQDNs).To(HaveLen(3))
@@ -150,7 +145,7 @@ var _ = Describe("AggregateDNSRecordsHandler", func() {
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
-			groups := rc.Data[dnspkg.DataKeyExternalGroups].([]sreportalv1alpha1.FQDNGroupStatus)
+			groups := rc.Data.ExternalGroups
 			Expect(groups).To(HaveLen(1))
 			Expect(groups[0].FQDNs).To(HaveLen(1))
 			Expect(groups[0].FQDNs[0].FQDN).To(Equal("main.example.com"))
@@ -185,7 +180,7 @@ var _ = Describe("AggregateDNSRecordsHandler", func() {
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
-			groups := rc.Data[dnspkg.DataKeyExternalGroups].([]sreportalv1alpha1.FQDNGroupStatus)
+			groups := rc.Data.ExternalGroups
 			Expect(groups).To(HaveLen(1))
 			Expect(groups[0].FQDNs).To(HaveLen(1))
 			Expect(groups[0].FQDNs[0].FQDN).To(Equal("api.example.com"))
@@ -219,7 +214,7 @@ var _ = Describe("AggregateDNSRecordsHandler", func() {
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
-			groups := rc.Data[dnspkg.DataKeyExternalGroups].([]sreportalv1alpha1.FQDNGroupStatus)
+			groups := rc.Data.ExternalGroups
 			Expect(groups).To(HaveLen(1))
 			Expect(groups[0].FQDNs).To(HaveLen(1))
 			Expect(groups[0].FQDNs[0].Targets).To(Equal([]string{"10.0.0.99"})) // ingress wins
@@ -252,7 +247,7 @@ var _ = Describe("AggregateDNSRecordsHandler", func() {
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
-			groups := rc.Data[dnspkg.DataKeyExternalGroups].([]sreportalv1alpha1.FQDNGroupStatus)
+			groups := rc.Data.ExternalGroups
 			Expect(groups).To(HaveLen(1))
 			Expect(groups[0].FQDNs).To(HaveLen(1))
 			// Both targets merged
@@ -274,8 +269,7 @@ var _ = Describe("AggregateDNSRecordsHandler", func() {
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
-			groups := rc.Data[dnspkg.DataKeyExternalGroups].([]sreportalv1alpha1.FQDNGroupStatus)
-			Expect(groups).To(BeEmpty())
+			Expect(rc.Data.ExternalGroups).To(BeEmpty())
 		})
 	})
 })

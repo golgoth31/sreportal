@@ -70,6 +70,35 @@ func BuildTLSConfig(ctx context.Context, reader client.Reader, namespace string,
 	return config, nil
 }
 
+// SecretVersions returns the resourceVersion of each Secret referenced by the TLS config.
+// This is used as a cache invalidation key — if any version changes, the TLS config
+// must be rebuilt. The reads go through the controller-runtime informer cache.
+func SecretVersions(ctx context.Context, reader client.Reader, namespace string, tlsCfg *sreportalv1alpha1.RemoteTLSConfig) (map[string]string, error) {
+	if tlsCfg == nil {
+		return nil, nil
+	}
+
+	versions := make(map[string]string, 2)
+
+	if tlsCfg.CASecretRef != nil {
+		secret, err := getSecret(ctx, reader, namespace, tlsCfg.CASecretRef.Name)
+		if err != nil {
+			return nil, err
+		}
+		versions[tlsCfg.CASecretRef.Name] = secret.ResourceVersion
+	}
+
+	if tlsCfg.CertSecretRef != nil {
+		secret, err := getSecret(ctx, reader, namespace, tlsCfg.CertSecretRef.Name)
+		if err != nil {
+			return nil, err
+		}
+		versions[tlsCfg.CertSecretRef.Name] = secret.ResourceVersion
+	}
+
+	return versions, nil
+}
+
 func getSecret(ctx context.Context, reader client.Reader, namespace, name string) (*corev1.Secret, error) {
 	secret := &corev1.Secret{}
 	if err := reader.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, secret); err != nil {

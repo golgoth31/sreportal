@@ -46,7 +46,7 @@ const (
 type DNSReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
-	chain  *reconciler.Chain[*sreportalv1alpha1.DNS]
+	chain  *reconciler.Chain[*sreportalv1alpha1.DNS, dns.ChainData]
 }
 
 // NewDNSReconciler creates a new DNSReconciler with the handler chain.
@@ -64,7 +64,7 @@ func NewDNSReconciler(c client.Client, scheme *runtime.Scheme, cfg *config.Opera
 		disableDNSCheck = cfg.Reconciliation.DisableDNSCheck
 	}
 
-	handlers := []reconciler.Handler[*sreportalv1alpha1.DNS]{
+	handlers := []reconciler.Handler[*sreportalv1alpha1.DNS, dns.ChainData]{
 		dns.NewAggregateDNSRecordsHandler(c, groupMappingConfig, sourcePriority),
 		dns.NewCollectManualEntriesHandler(),
 		dns.NewAggregateFQDNsHandler(),
@@ -111,9 +111,8 @@ func (r *DNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	logger.Info("reconciling DNS resource", "name", resource.Name, "namespace", resource.Namespace)
 
 	// Create reconcile context
-	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.DNS]{
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.DNS, dns.ChainData]{
 		Resource: &resource,
-		Data:     make(map[string]any),
 	}
 
 	// Execute handler chain

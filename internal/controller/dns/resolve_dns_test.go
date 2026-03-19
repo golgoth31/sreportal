@@ -73,18 +73,17 @@ var _ = Describe("ResolveDNSHandler", func() {
 		ctx      context.Context
 		resolver *fakeResolver
 		handler  *dnspkg.ResolveDNSHandler
-		rc       *reconciler.ReconcileContext[*sreportalv1alpha1.DNS]
+		rc       *reconciler.ReconcileContext[*sreportalv1alpha1.DNS, dnspkg.ChainData]
 	)
 
 	BeforeEach(func() {
 		ctx = context.Background()
 		resolver = newFakeResolver()
 		handler = dnspkg.NewResolveDNSHandler(resolver)
-		rc = &reconciler.ReconcileContext[*sreportalv1alpha1.DNS]{
+		rc = &reconciler.ReconcileContext[*sreportalv1alpha1.DNS, dnspkg.ChainData]{
 			Resource: &sreportalv1alpha1.DNS{
 				ObjectMeta: metav1.ObjectMeta{Name: "test-dns", Namespace: "default"},
 			},
-			Data: make(map[string]any),
 		}
 	})
 
@@ -92,7 +91,7 @@ var _ = Describe("ResolveDNSHandler", func() {
 		BeforeEach(func() {
 			resolver.hosts["app.example.com"] = []string{"10.0.0.1"}
 			resolver.hosts["api.example.com"] = []string{"10.0.0.2"}
-			rc.Data[dnspkg.DataKeyAggregatedGroups] = []sreportalv1alpha1.FQDNGroupStatus{
+			rc.Data.AggregatedGroups = []sreportalv1alpha1.FQDNGroupStatus{
 				{
 					Name:   "Services",
 					Source: "external-dns",
@@ -108,7 +107,7 @@ var _ = Describe("ResolveDNSHandler", func() {
 			err := handler.Handle(ctx, rc)
 			Expect(err).NotTo(HaveOccurred())
 
-			groups := rc.Data[dnspkg.DataKeyAggregatedGroups].([]sreportalv1alpha1.FQDNGroupStatus)
+			groups := rc.Data.AggregatedGroups
 			Expect(groups).To(HaveLen(1))
 			Expect(groups[0].FQDNs[0].SyncStatus).To(Equal("sync"))
 			Expect(groups[0].FQDNs[1].SyncStatus).To(Equal("sync"))
@@ -119,7 +118,7 @@ var _ = Describe("ResolveDNSHandler", func() {
 		BeforeEach(func() {
 			resolver.hosts["app.example.com"] = []string{"10.0.0.1"}
 			// gone.example.com is not in resolver — will return error
-			rc.Data[dnspkg.DataKeyAggregatedGroups] = []sreportalv1alpha1.FQDNGroupStatus{
+			rc.Data.AggregatedGroups = []sreportalv1alpha1.FQDNGroupStatus{
 				{
 					Name:   "Services",
 					Source: "external-dns",
@@ -135,7 +134,7 @@ var _ = Describe("ResolveDNSHandler", func() {
 			err := handler.Handle(ctx, rc)
 			Expect(err).NotTo(HaveOccurred())
 
-			groups := rc.Data[dnspkg.DataKeyAggregatedGroups].([]sreportalv1alpha1.FQDNGroupStatus)
+			groups := rc.Data.AggregatedGroups
 			Expect(groups[0].FQDNs[0].SyncStatus).To(Equal("sync"))
 			Expect(groups[0].FQDNs[1].SyncStatus).To(Equal("notavailable"))
 		})
@@ -144,7 +143,7 @@ var _ = Describe("ResolveDNSHandler", func() {
 	Context("when an FQDN has different targets", func() {
 		BeforeEach(func() {
 			resolver.hosts["drift.example.com"] = []string{"10.0.0.99"}
-			rc.Data[dnspkg.DataKeyAggregatedGroups] = []sreportalv1alpha1.FQDNGroupStatus{
+			rc.Data.AggregatedGroups = []sreportalv1alpha1.FQDNGroupStatus{
 				{
 					Name:   "Services",
 					Source: "external-dns",
@@ -159,7 +158,7 @@ var _ = Describe("ResolveDNSHandler", func() {
 			err := handler.Handle(ctx, rc)
 			Expect(err).NotTo(HaveOccurred())
 
-			groups := rc.Data[dnspkg.DataKeyAggregatedGroups].([]sreportalv1alpha1.FQDNGroupStatus)
+			groups := rc.Data.AggregatedGroups
 			Expect(groups[0].FQDNs[0].SyncStatus).To(Equal("notsync"))
 		})
 	})
@@ -167,7 +166,7 @@ var _ = Describe("ResolveDNSHandler", func() {
 	Context("when CNAME records are checked", func() {
 		BeforeEach(func() {
 			resolver.cnames["alias.example.com"] = "real.example.com."
-			rc.Data[dnspkg.DataKeyAggregatedGroups] = []sreportalv1alpha1.FQDNGroupStatus{
+			rc.Data.AggregatedGroups = []sreportalv1alpha1.FQDNGroupStatus{
 				{
 					Name:   "Aliases",
 					Source: "external-dns",
@@ -182,7 +181,7 @@ var _ = Describe("ResolveDNSHandler", func() {
 			err := handler.Handle(ctx, rc)
 			Expect(err).NotTo(HaveOccurred())
 
-			groups := rc.Data[dnspkg.DataKeyAggregatedGroups].([]sreportalv1alpha1.FQDNGroupStatus)
+			groups := rc.Data.AggregatedGroups
 			Expect(groups[0].FQDNs[0].SyncStatus).To(Equal("sync"))
 		})
 	})
@@ -191,7 +190,7 @@ var _ = Describe("ResolveDNSHandler", func() {
 		BeforeEach(func() {
 			resolver.hosts["manual-exists.example.com"] = []string{"10.0.0.1"}
 			// manual-gone.example.com not in resolver
-			rc.Data[dnspkg.DataKeyAggregatedGroups] = []sreportalv1alpha1.FQDNGroupStatus{
+			rc.Data.AggregatedGroups = []sreportalv1alpha1.FQDNGroupStatus{
 				{
 					Name:   "Manual",
 					Source: "manual",
@@ -207,7 +206,7 @@ var _ = Describe("ResolveDNSHandler", func() {
 			err := handler.Handle(ctx, rc)
 			Expect(err).NotTo(HaveOccurred())
 
-			groups := rc.Data[dnspkg.DataKeyAggregatedGroups].([]sreportalv1alpha1.FQDNGroupStatus)
+			groups := rc.Data.AggregatedGroups
 			Expect(groups[0].FQDNs[0].SyncStatus).To(Equal("sync"))
 			Expect(groups[0].FQDNs[1].SyncStatus).To(Equal("notavailable"))
 		})
@@ -216,7 +215,7 @@ var _ = Describe("ResolveDNSHandler", func() {
 	Context("when groups have source remote", func() {
 		BeforeEach(func() {
 			// Do NOT register any hosts in the resolver — if resolution is attempted it will return "notavailable".
-			rc.Data[dnspkg.DataKeyAggregatedGroups] = []sreportalv1alpha1.FQDNGroupStatus{
+			rc.Data.AggregatedGroups = []sreportalv1alpha1.FQDNGroupStatus{
 				{
 					Name:   "RemoteServices",
 					Source: "remote",
@@ -240,7 +239,7 @@ var _ = Describe("ResolveDNSHandler", func() {
 			err := handler.Handle(ctx, rc)
 			Expect(err).NotTo(HaveOccurred())
 
-			groups := rc.Data[dnspkg.DataKeyAggregatedGroups].([]sreportalv1alpha1.FQDNGroupStatus)
+			groups := rc.Data.AggregatedGroups
 			Expect(groups).To(HaveLen(2))
 
 			// Remote group: SyncStatus must remain untouched
@@ -267,7 +266,7 @@ var _ = Describe("ResolveDNSHandler", func() {
 			// Arrange: groups pre-populated as they would be after AggregateFQDNsHandler.
 			// resolver has a matching record — but we intentionally do NOT call handler.Handle.
 			resolver.hosts["api.example.com"] = []string{"10.0.0.1"}
-			rc.Data[dnspkg.DataKeyAggregatedGroups] = []sreportalv1alpha1.FQDNGroupStatus{
+			rc.Data.AggregatedGroups = []sreportalv1alpha1.FQDNGroupStatus{
 				{
 					Name:   "Services",
 					Source: "external-dns",
@@ -280,7 +279,7 @@ var _ = Describe("ResolveDNSHandler", func() {
 			// Act: handler is intentionally skipped (simulates disableDNSCheck: true).
 
 			// Assert: SyncStatus is the zero value.
-			groups := rc.Data[dnspkg.DataKeyAggregatedGroups].([]sreportalv1alpha1.FQDNGroupStatus)
+			groups := rc.Data.AggregatedGroups
 			Expect(groups[0].FQDNs[0].SyncStatus).To(BeEmpty())
 		})
 	})
@@ -290,7 +289,7 @@ var _ = Describe("ResolveDNSHandler", func() {
 			resolver.hosts["a.example.com"] = []string{"10.0.0.1"}
 			resolver.cnames["c.example.com"] = "target.example.com."
 			resolver.hosts["manual.example.com"] = []string{"1.2.3.4"}
-			rc.Data[dnspkg.DataKeyAggregatedGroups] = []sreportalv1alpha1.FQDNGroupStatus{
+			rc.Data.AggregatedGroups = []sreportalv1alpha1.FQDNGroupStatus{
 				{
 					Name:   "Mixed",
 					Source: "external-dns",
@@ -313,7 +312,7 @@ var _ = Describe("ResolveDNSHandler", func() {
 			err := handler.Handle(ctx, rc)
 			Expect(err).NotTo(HaveOccurred())
 
-			groups := rc.Data[dnspkg.DataKeyAggregatedGroups].([]sreportalv1alpha1.FQDNGroupStatus)
+			groups := rc.Data.AggregatedGroups
 			Expect(groups[0].FQDNs[0].SyncStatus).To(Equal("sync"))
 			Expect(groups[0].FQDNs[1].SyncStatus).To(Equal("sync"))
 			Expect(groups[1].FQDNs[0].SyncStatus).To(Equal("sync"))
