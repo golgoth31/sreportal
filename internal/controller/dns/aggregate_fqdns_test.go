@@ -34,17 +34,13 @@ var _ = Describe("AggregateFQDNsHandler", func() {
 		handler = dnspkg.NewAggregateFQDNsHandler()
 	})
 
-	newRC := func(external []sreportalv1alpha1.FQDNGroupStatus, manual []sreportalv1alpha1.DNSGroup) *reconciler.ReconcileContext[*sreportalv1alpha1.DNS] {
-		data := make(map[string]any)
-		if external != nil {
-			data[dnspkg.DataKeyExternalGroups] = external
-		}
-		if manual != nil {
-			data[dnspkg.DataKeyManualGroups] = manual
-		}
-		return &reconciler.ReconcileContext[*sreportalv1alpha1.DNS]{
+	newRC := func(external []sreportalv1alpha1.FQDNGroupStatus, manual []sreportalv1alpha1.DNSGroup) *reconciler.ReconcileContext[*sreportalv1alpha1.DNS, dnspkg.ChainData] {
+		return &reconciler.ReconcileContext[*sreportalv1alpha1.DNS, dnspkg.ChainData]{
 			Resource: &sreportalv1alpha1.DNS{},
-			Data:     data,
+			Data: dnspkg.ChainData{
+				ExternalGroups: external,
+				ManualGroups:   manual,
+			},
 		}
 	}
 
@@ -61,7 +57,7 @@ var _ = Describe("AggregateFQDNsHandler", func() {
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
-			groups := rc.Data[dnspkg.DataKeyAggregatedGroups].([]sreportalv1alpha1.FQDNGroupStatus)
+			groups := rc.Data.AggregatedGroups
 			Expect(groups).To(HaveLen(1))
 			Expect(groups[0].Name).To(Equal("APIs"))
 			Expect(groups[0].Source).To(Equal(dnspkg.SourceExternalDNS))
@@ -84,7 +80,7 @@ var _ = Describe("AggregateFQDNsHandler", func() {
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
-			groups := rc.Data[dnspkg.DataKeyAggregatedGroups].([]sreportalv1alpha1.FQDNGroupStatus)
+			groups := rc.Data.AggregatedGroups
 			Expect(groups).To(HaveLen(1))
 			Expect(groups[0].Name).To(Equal("Internal"))
 			Expect(groups[0].Description).To(Equal("Internal services"))
@@ -109,7 +105,7 @@ var _ = Describe("AggregateFQDNsHandler", func() {
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
-			groups := rc.Data[dnspkg.DataKeyAggregatedGroups].([]sreportalv1alpha1.FQDNGroupStatus)
+			groups := rc.Data.AggregatedGroups
 			Expect(groups).To(HaveLen(2))
 			Expect(groups[0].Name).To(Equal("Infra"))
 			Expect(groups[0].Source).To(Equal(dnspkg.SourceManual))
@@ -138,7 +134,7 @@ var _ = Describe("AggregateFQDNsHandler", func() {
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
-			groups := rc.Data[dnspkg.DataKeyAggregatedGroups].([]sreportalv1alpha1.FQDNGroupStatus)
+			groups := rc.Data.AggregatedGroups
 			Expect(groups).To(HaveLen(1))
 			Expect(groups[0].Name).To(Equal("Services"))
 			// Source stays external-dns (manual description is applied)
@@ -154,15 +150,13 @@ var _ = Describe("AggregateFQDNsHandler", func() {
 
 	Context("when no Data keys are present", func() {
 		It("should produce an empty aggregated groups slice", func() {
-			rc := &reconciler.ReconcileContext[*sreportalv1alpha1.DNS]{
+			rc := &reconciler.ReconcileContext[*sreportalv1alpha1.DNS, dnspkg.ChainData]{
 				Resource: &sreportalv1alpha1.DNS{},
-				Data:     make(map[string]any),
 			}
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
-			groups := rc.Data[dnspkg.DataKeyAggregatedGroups].([]sreportalv1alpha1.FQDNGroupStatus)
-			Expect(groups).To(BeEmpty())
+			Expect(rc.Data.AggregatedGroups).To(BeEmpty())
 		})
 	})
 
@@ -177,7 +171,7 @@ var _ = Describe("AggregateFQDNsHandler", func() {
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
-			groups := rc.Data[dnspkg.DataKeyAggregatedGroups].([]sreportalv1alpha1.FQDNGroupStatus)
+			groups := rc.Data.AggregatedGroups
 			Expect(groups).To(HaveLen(3))
 			Expect(groups[0].Name).To(Equal("Alpha"))
 			Expect(groups[1].Name).To(Equal("Mango"))

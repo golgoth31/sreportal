@@ -32,12 +32,6 @@ import (
 )
 
 const (
-	// DataKeyAlerts is the key for storing fetched alerts in ReconcileContext.Data.
-	DataKeyAlerts = "alerts"
-
-	// DataKeySilences is the key for storing fetched silences in ReconcileContext.Data.
-	DataKeySilences = "silences"
-
 	// LabelRemoteAlertmanagerName is the label key for identifying the remote alertmanager name.
 	LabelRemoteAlertmanagerName = "sreportal.io/remote-alertmanager-name"
 )
@@ -71,7 +65,7 @@ func NewFetchAlertsHandler(
 }
 
 // Handle implements reconciler.Handler.
-func (h *FetchAlertsHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager]) error {
+func (h *FetchAlertsHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager, ChainData]) error {
 	logger := log.FromContext(ctx).WithName("fetch-alerts")
 
 	if rc.Resource.Spec.IsRemote {
@@ -81,7 +75,7 @@ func (h *FetchAlertsHandler) Handle(ctx context.Context, rc *reconciler.Reconcil
 	return h.handleLocal(ctx, rc, logger)
 }
 
-func (h *FetchAlertsHandler) handleLocal(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager], logger *log.Logger) error {
+func (h *FetchAlertsHandler) handleLocal(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager, ChainData], logger *log.Logger) error {
 	localURL := rc.Resource.Spec.URL.Local
 
 	if h.localDataFetcher != nil {
@@ -91,8 +85,8 @@ func (h *FetchAlertsHandler) handleLocal(ctx context.Context, rc *reconciler.Rec
 			return fmt.Errorf("fetch alertmanager data from %s: %w", localURL, err)
 		}
 		logger.V(1).Info("fetched alertmanager data", "alerts", len(data.Alerts), "silences", len(data.Silences))
-		rc.Data[DataKeyAlerts] = data.Alerts
-		rc.Data[DataKeySilences] = data.Silences
+		rc.Data.Alerts = data.Alerts
+		rc.Data.Silences = data.Silences
 		return nil
 	}
 
@@ -102,11 +96,11 @@ func (h *FetchAlertsHandler) handleLocal(ctx context.Context, rc *reconciler.Rec
 		return fmt.Errorf("fetch alerts from %s: %w", localURL, err)
 	}
 	logger.V(1).Info("fetched alerts", "count", len(alerts))
-	rc.Data[DataKeyAlerts] = alerts
+	rc.Data.Alerts = alerts
 	return nil
 }
 
-func (h *FetchAlertsHandler) handleRemote(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager], logger *log.Logger) error {
+func (h *FetchAlertsHandler) handleRemote(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager, ChainData], logger *log.Logger) error {
 	// Look up the Portal CR to get the remote URL and TLS configuration.
 	portal := &sreportalv1alpha1.Portal{}
 	portalKey := types.NamespacedName{
@@ -144,8 +138,8 @@ func (h *FetchAlertsHandler) handleRemote(ctx context.Context, rc *reconciler.Re
 	alerts := toAlertsDomain(result.Alerts)
 	silences := toSilencesDomain(result.Silences)
 	logger.V(1).Info("fetched remote alerts", "alerts", len(alerts), "silences", len(silences))
-	rc.Data[DataKeyAlerts] = alerts
-	rc.Data[DataKeySilences] = silences
+	rc.Data.Alerts = alerts
+	rc.Data.Silences = silences
 
 	return nil
 }

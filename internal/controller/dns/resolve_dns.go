@@ -45,11 +45,11 @@ func NewResolveDNSHandler(r domaindns.Resolver) *ResolveDNSHandler {
 }
 
 // Handle implements reconciler.Handler.
-func (h *ResolveDNSHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.DNS]) error {
+func (h *ResolveDNSHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.DNS, ChainData]) error {
 	logger := log.FromContext(ctx).WithName("resolve-dns")
 
-	groups, ok := rc.Data[DataKeyAggregatedGroups].([]sreportalv1alpha1.FQDNGroupStatus)
-	if !ok || len(groups) == 0 {
+	groups := rc.Data.AggregatedGroups
+	if len(groups) == 0 {
 		logger.V(1).Info("no aggregated groups to resolve")
 		return nil
 	}
@@ -100,7 +100,7 @@ func (h *ResolveDNSHandler) Handle(ctx context.Context, rc *reconciler.Reconcile
 
 	wg.Wait()
 
-	rc.Data[DataKeyAggregatedGroups] = groups
+	rc.Data.AggregatedGroups = groups
 	logger.V(1).Info("DNS resolution completed", "count", len(refs))
 	return nil
 }

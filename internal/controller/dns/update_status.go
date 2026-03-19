@@ -45,15 +45,12 @@ func NewUpdateStatusHandler(c client.Client) *UpdateStatusHandler {
 }
 
 // Handle implements reconciler.Handler
-func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.DNS]) error {
+func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.DNS, ChainData]) error {
 	logger := log.FromContext(ctx).WithName("update-status")
 	now := metav1.Now()
 
 	// Get aggregated groups
-	var groups []sreportalv1alpha1.FQDNGroupStatus
-	if data, ok := rc.Data[DataKeyAggregatedGroups].([]sreportalv1alpha1.FQDNGroupStatus); ok {
-		groups = data
-	}
+	groups := rc.Data.AggregatedGroups
 
 	// Capture base before modifications for merge patch
 	base := rc.Resource.DeepCopy()

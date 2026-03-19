@@ -29,9 +29,6 @@ import (
 )
 
 const (
-	// DataKeyExternalGroups is the key for storing external-dns groups in context
-	DataKeyExternalGroups = "externalGroups"
-
 	// IndexFieldPortalRef is the index field name for looking up DNSRecords by portal
 	IndexFieldPortalRef = "spec.portalRef"
 )
@@ -57,7 +54,7 @@ func NewAggregateDNSRecordsHandler(c client.Client, cfg *config.GroupMappingConf
 }
 
 // Handle implements reconciler.Handler
-func (h *AggregateDNSRecordsHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.DNS]) error {
+func (h *AggregateDNSRecordsHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.DNS, ChainData]) error {
 	logger := log.FromContext(ctx).WithName("aggregate-dnsrecords")
 
 	// List DNSRecords belonging to the same portal as this DNS resource
@@ -94,7 +91,7 @@ func (h *AggregateDNSRecordsHandler) Handle(ctx context.Context, rc *reconciler.
 	logger.V(1).Info("converted to groups", "groupCount", len(groups))
 
 	// Store in context for downstream handlers
-	rc.Data[DataKeyExternalGroups] = groups
+	rc.Data.ExternalGroups = groups
 
 	return nil
 }

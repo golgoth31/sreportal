@@ -40,7 +40,7 @@ const (
 type AlertmanagerReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
-	chain  *reconciler.Chain[*sreportalv1alpha1.Alertmanager]
+	chain  *reconciler.Chain[*sreportalv1alpha1.Alertmanager, alertmanagerchain.ChainData]
 }
 
 // NewAlertmanagerReconciler creates a new AlertmanagerReconciler with the handler chain.
@@ -55,7 +55,7 @@ func NewAlertmanagerReconciler(
 	localFetcher domainalertmanager.Fetcher,
 	remoteClientCache *remoteclient.Cache,
 ) *AlertmanagerReconciler {
-	handlers := []reconciler.Handler[*sreportalv1alpha1.Alertmanager]{
+	handlers := []reconciler.Handler[*sreportalv1alpha1.Alertmanager, alertmanagerchain.ChainData]{
 		alertmanagerchain.NewFetchAlertsHandler(localDataFetcher, localFetcher, c, remoteClientCache),
 		alertmanagerchain.NewUpdateStatusHandler(c),
 	}
@@ -82,9 +82,8 @@ func (r *AlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	logger.V(1).Info("reconciling Alertmanager", "name", resource.Name, "portalRef", resource.Spec.PortalRef, "isRemote", resource.Spec.IsRemote)
 
-	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager]{
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager, alertmanagerchain.ChainData]{
 		Resource: &resource,
-		Data:     make(map[string]any),
 	}
 
 	if err := r.chain.Execute(ctx, rc); err != nil {

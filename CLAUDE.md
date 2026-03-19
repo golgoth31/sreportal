@@ -304,17 +304,17 @@ Controller fetches alerts from `spec.url.local` (Alertmanager API v2) at each re
 All controllers use a generic Chain-of-Responsibility framework defined in `internal/reconciler/handler.go`:
 
 ```go
-type ReconcileContext[T any] struct {
+type ReconcileContext[T any, D any] struct {
     Resource T
     Result   ctrl.Result
-    Data     map[string]any  // Shared data between steps
+    Data     D  // Typed shared data between steps (e.g. dns.ChainData, alertmanager.ChainData)
 }
 
-type Handler[T any] interface {
-    Handle(ctx context.Context, rc *ReconcileContext[T]) error
+type Handler[T any, D any] interface {
+    Handle(ctx context.Context, rc *ReconcileContext[T, D]) error
 }
 
-type Chain[T any] struct { handlers []Handler[T] }
+type Chain[T any, D any] struct { handlers []Handler[T, D] }
 // Execute runs handlers sequentially; short-circuits on requeue or error
 ```
 

@@ -50,8 +50,8 @@ func newScheme() *runtime.Scheme {
 }
 
 var _ = Describe("FetchAlertsHandler", func() {
-	newRC := func(isRemote bool) *reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager] {
-		return &reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager]{
+	newRC := func(isRemote bool) *reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager, alertmanagerctrl.ChainData] {
+		return &reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager, alertmanagerctrl.ChainData]{
 			Resource: &sreportalv1alpha1.Alertmanager{
 				ObjectMeta: metav1.ObjectMeta{Name: "test-am", Namespace: "default"},
 				Spec: sreportalv1alpha1.AlertmanagerSpec{
@@ -62,7 +62,6 @@ var _ = Describe("FetchAlertsHandler", func() {
 					IsRemote: isRemote,
 				},
 			},
-			Data: make(map[string]any),
 		}
 	}
 
@@ -79,11 +78,9 @@ var _ = Describe("FetchAlertsHandler", func() {
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
-			stored, ok := rc.Data[alertmanagerctrl.DataKeyAlerts].([]domainalertmanager.Alert)
-			Expect(ok).To(BeTrue())
-			Expect(stored).To(HaveLen(2))
-			Expect(stored[0].Fingerprint).To(Equal("aaa"))
-			Expect(stored[1].Fingerprint).To(Equal("bbb"))
+			Expect(rc.Data.Alerts).To(HaveLen(2))
+			Expect(rc.Data.Alerts[0].Fingerprint).To(Equal("aaa"))
+			Expect(rc.Data.Alerts[1].Fingerprint).To(Equal("bbb"))
 		})
 	})
 
@@ -96,9 +93,7 @@ var _ = Describe("FetchAlertsHandler", func() {
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
-			stored, ok := rc.Data[alertmanagerctrl.DataKeyAlerts].([]domainalertmanager.Alert)
-			Expect(ok).To(BeTrue())
-			Expect(stored).To(BeEmpty())
+			Expect(rc.Data.Alerts).To(BeEmpty())
 		})
 	})
 

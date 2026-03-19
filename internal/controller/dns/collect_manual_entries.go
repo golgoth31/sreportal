@@ -24,11 +24,6 @@ import (
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
-const (
-	// DataKeyManualGroups is the key for storing manual groups in context
-	DataKeyManualGroups = "manualGroups"
-)
-
 // CollectManualEntriesHandler collects manual DNS groups from the spec
 type CollectManualEntriesHandler struct{}
 
@@ -38,12 +33,12 @@ func NewCollectManualEntriesHandler() *CollectManualEntriesHandler {
 }
 
 // Handle implements reconciler.Handler
-func (h *CollectManualEntriesHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.DNS]) error {
+func (h *CollectManualEntriesHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.DNS, ChainData]) error {
 	logger := log.FromContext(ctx).WithName("collect-manual-entries")
 
 	groups := rc.Resource.Spec.Groups
 	logger.V(1).Info("collected manual groups", "count", len(groups))
 
-	rc.Data[DataKeyManualGroups] = groups
+	rc.Data.ManualGroups = groups
 	return nil
 }

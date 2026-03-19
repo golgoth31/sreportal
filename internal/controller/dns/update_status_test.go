@@ -77,10 +77,10 @@ var _ = Describe("UpdateStatusHandler", func() {
 				},
 			}
 
-			rc := &reconciler.ReconcileContext[*sreportalv1alpha1.DNS]{
+			rc := &reconciler.ReconcileContext[*sreportalv1alpha1.DNS, dnspkg.ChainData]{
 				Resource: dns,
-				Data: map[string]any{
-					dnspkg.DataKeyAggregatedGroups: groups,
+				Data: dnspkg.ChainData{
+					AggregatedGroups: groups,
 				},
 			}
 
@@ -109,9 +109,8 @@ var _ = Describe("UpdateStatusHandler", func() {
 			c := buildClient(dns)
 			handler := dnspkg.NewUpdateStatusHandler(c)
 
-			rc := &reconciler.ReconcileContext[*sreportalv1alpha1.DNS]{
+			rc := &reconciler.ReconcileContext[*sreportalv1alpha1.DNS, dnspkg.ChainData]{
 				Resource: dns,
-				Data:     make(map[string]any),
 			}
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
@@ -145,9 +144,8 @@ var _ = Describe("UpdateStatusHandler", func() {
 			c := buildClient(dns)
 			handler := dnspkg.NewUpdateStatusHandler(c)
 
-			rc := &reconciler.ReconcileContext[*sreportalv1alpha1.DNS]{
+			rc := &reconciler.ReconcileContext[*sreportalv1alpha1.DNS, dnspkg.ChainData]{
 				Resource: dns,
-				Data:     make(map[string]any),
 			}
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())

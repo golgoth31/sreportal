@@ -22,38 +22,39 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-// ReconcileContext holds shared state between handlers during reconciliation
-type ReconcileContext[T any] struct {
+// ReconcileContext holds shared state between handlers during reconciliation.
+// T is the Kubernetes resource type, D is the typed chain data shared between handlers.
+type ReconcileContext[T any, D any] struct {
 	// Resource is the Kubernetes resource being reconciled
 	Resource T
 
 	// Result is the reconciliation result that can be modified by handlers
 	Result ctrl.Result
 
-	// Data is shared data between handlers in the chain
-	Data map[string]any
+	// Data is typed shared data between handlers in the chain
+	Data D
 }
 
 // Handler processes a single step in the reconciliation chain
-type Handler[T any] interface {
+type Handler[T any, D any] interface {
 	// Handle processes the reconciliation step.
 	// If an error is returned, the chain stops and the error is propagated.
 	// If Result.RequeueAfter is set, the chain stops and the result is propagated.
-	Handle(ctx context.Context, rc *ReconcileContext[T]) error
+	Handle(ctx context.Context, rc *ReconcileContext[T, D]) error
 }
 
 // Chain executes handlers in sequence
-type Chain[T any] struct {
-	handlers []Handler[T]
+type Chain[T any, D any] struct {
+	handlers []Handler[T, D]
 }
 
 // NewChain creates a new handler chain with the given handlers
-func NewChain[T any](handlers ...Handler[T]) *Chain[T] {
-	return &Chain[T]{handlers: handlers}
+func NewChain[T any, D any](handlers ...Handler[T, D]) *Chain[T, D] {
+	return &Chain[T, D]{handlers: handlers}
 }
 
 // Execute runs all handlers in sequence until one errors or requests requeue
-func (c *Chain[T]) Execute(ctx context.Context, rc *ReconcileContext[T]) error {
+func (c *Chain[T, D]) Execute(ctx context.Context, rc *ReconcileContext[T, D]) error {
 	for _, h := range c.handlers {
 		if err := h.Handle(ctx, rc); err != nil {
 			return err
@@ -67,9 +68,9 @@ func (c *Chain[T]) Execute(ctx context.Context, rc *ReconcileContext[T]) error {
 }
 
 // HandlerFunc is a function adapter for Handler interface
-type HandlerFunc[T any] func(ctx context.Context, rc *ReconcileContext[T]) error
+type HandlerFunc[T any, D any] func(ctx context.Context, rc *ReconcileContext[T, D]) error
 
 // Handle implements Handler interface
-func (f HandlerFunc[T]) Handle(ctx context.Context, rc *ReconcileContext[T]) error {
+func (f HandlerFunc[T, D]) Handle(ctx context.Context, rc *ReconcileContext[T, D]) error {
 	return f(ctx, rc)
 }

@@ -45,19 +45,12 @@ func NewUpdateStatusHandler(c client.Client) *UpdateStatusHandler {
 }
 
 // Handle implements reconciler.Handler.
-func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager]) error {
+func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager, ChainData]) error {
 	logger := log.FromContext(ctx).WithName("update-status")
 	now := metav1.Now()
 
-	var domainAlerts []domainalertmanager.Alert
-	if data, ok := rc.Data[DataKeyAlerts].([]domainalertmanager.Alert); ok {
-		domainAlerts = data
-	}
-
-	var domainSilences []domainalertmanager.Silence
-	if data, ok := rc.Data[DataKeySilences].([]domainalertmanager.Silence); ok {
-		domainSilences = data
-	}
+	domainAlerts := rc.Data.Alerts
+	domainSilences := rc.Data.Silences
 
 	base := rc.Resource.DeepCopy()
 
