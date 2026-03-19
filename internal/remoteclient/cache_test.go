@@ -72,7 +72,9 @@ func TestCache_Fallback_ReturnsSameInstance(t *testing.T) {
 	if cache.Fallback() == nil {
 		t.Fatal("expected non-nil fallback client")
 	}
-	if cache.Fallback() != cache.Fallback() {
+	fb1 := cache.Fallback()
+	fb2 := cache.Fallback()
+	if fb1 != fb2 {
 		t.Fatal("expected same fallback client instance")
 	}
 }
