@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.1](https://github.com/golgoth31/sreportal/compare/v1.13.0...v1.13.1) (2026-03-19)
+
+
+### Bug Fixes
+
+* controller memory optimisations ([#125](https://github.com/golgoth31/sreportal/issues/125)) ([1b2f325](https://github.com/golgoth31/sreportal/commit/1b2f3257d530855300d265fab586dea74ef9a1ac))
+
 ## [1.13.0](https://github.com/golgoth31/sreportal/compare/v1.12.1...v1.13.0) (2026-03-16)
 
 
