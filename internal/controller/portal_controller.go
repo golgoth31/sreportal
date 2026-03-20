@@ -79,11 +79,26 @@ func (r *PortalReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	// Check if this is a remote portal
 	if portal.Spec.Remote != nil {
-		metrics.PortalsTotal.WithLabelValues("remote").Set(1) // will be refined below
 		result, reconcileErr = r.reconcileRemotePortal(ctx, &portal)
 	} else {
-		metrics.PortalsTotal.WithLabelValues("local").Set(1) // will be refined below
 		reconcileErr = r.reconcileLocalPortal(ctx, &portal)
+	}
+
+	// Recount all portals by type only from the main portal reconciliation
+	if portal.Spec.Main {
+		var allPortals sreportalv1alpha1.PortalList
+		if listErr := r.List(ctx, &allPortals); listErr == nil {
+			var local, remote float64
+			for i := range allPortals.Items {
+				if allPortals.Items[i].Spec.Remote != nil {
+					remote++
+				} else {
+					local++
+				}
+			}
+			metrics.PortalsTotal.WithLabelValues("local").Set(local)
+			metrics.PortalsTotal.WithLabelValues("remote").Set(remote)
+		}
 	}
 
 	if reconcileErr != nil {

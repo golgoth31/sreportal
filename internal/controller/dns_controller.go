@@ -132,8 +132,12 @@ func (r *DNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 
 	// Update FQDN and group gauges
 	portal := resource.Spec.PortalRef
+	fqdnsBySource := make(map[string]int)
 	for _, g := range resource.Status.Groups {
-		metrics.DNSFQDNsTotal.WithLabelValues(portal, g.Source).Set(float64(len(g.FQDNs)))
+		fqdnsBySource[g.Source] += len(g.FQDNs)
+	}
+	for source, count := range fqdnsBySource {
+		metrics.DNSFQDNsTotal.WithLabelValues(portal, source).Set(float64(count))
 	}
 	metrics.DNSGroupsTotal.WithLabelValues(portal).Set(float64(len(resource.Status.Groups)))
 
