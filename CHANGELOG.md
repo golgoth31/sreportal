@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.1](https://github.com/golgoth31/sreportal/compare/v1.14.0...v1.14.1) (2026-03-20)
+
+
+### Bug Fixes
+
+* **metrics:** correct DNS FQDN and portal gauge calculations ([63a1e64](https://github.com/golgoth31/sreportal/commit/63a1e6413dc25fa9c44691bdc148886ba3b6de33))
+
 ## [1.14.0](https://github.com/golgoth31/sreportal/compare/v1.13.1...v1.14.0) (2026-03-20)
 
 
