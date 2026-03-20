@@ -136,8 +136,8 @@ func (r *DNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	for _, g := range resource.Status.Groups {
 		fqdnsBySource[g.Source] += len(g.FQDNs)
 	}
-	for source, count := range fqdnsBySource {
-		metrics.DNSFQDNsTotal.WithLabelValues(portal, source).Set(float64(count))
+	for src, count := range fqdnsBySource {
+		metrics.DNSFQDNsTotal.WithLabelValues(portal, src).Set(float64(count))
 	}
 	metrics.DNSGroupsTotal.WithLabelValues(portal).Set(float64(len(resource.Status.Groups)))
 
