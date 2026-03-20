@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.0](https://github.com/golgoth31/sreportal/compare/v1.13.1...v1.14.0) (2026-03-20)
+
+
+### Features
+
+* add custom prometheus metrics and grafana dashboard ([2351c2c](https://github.com/golgoth31/sreportal/commit/2351c2c0766b33f68e1992a930e4c0efe48f8605))
+
 ## [1.13.1](https://github.com/golgoth31/sreportal/compare/v1.13.0...v1.13.1) (2026-03-19)
 
 
