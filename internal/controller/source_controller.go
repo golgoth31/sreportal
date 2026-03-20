@@ -38,6 +38,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/golgoth31/sreportal/internal/log"
+	"github.com/golgoth31/sreportal/internal/metrics"
 	"sigs.k8s.io/external-dns/endpoint"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
@@ -284,6 +285,7 @@ func (r *SourceReconciler) collectByPortalSource(
 			count := r.sourceFailures[ts.Type]
 			logger.Error(err, "failed to get endpoints from source",
 				"sourceType", ts.Type, "consecutiveFailures", count)
+			metrics.SourceErrorsTotal.WithLabelValues(string(ts.Type)).Inc()
 			if count >= maxSourceConsecutiveFailures {
 				r.markSourceDegraded(ctx, idx.main, ts.Type, err, count)
 			}
@@ -296,6 +298,7 @@ func (r *SourceReconciler) collectByPortalSource(
 			r.sourceFailures[ts.Type] = 0
 		}
 
+		metrics.SourceEndpointsCollected.WithLabelValues(string(ts.Type)).Set(float64(len(endpoints)))
 		logger.V(1).Info("collected endpoints from source", "sourceType", ts.Type, "count", len(endpoints))
 
 		r.enrichEndpoints(ctx, ts.Type, endpoints)

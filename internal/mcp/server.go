@@ -19,9 +19,11 @@ package mcp
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/golgoth31/sreportal/internal/config"
 	"github.com/golgoth31/sreportal/internal/log"
+	"github.com/golgoth31/sreportal/internal/metrics"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -46,10 +48,12 @@ func NewDNSServer(k8sClient client.Client, groupMapping *config.GroupMappingConf
 	hooks.AddOnRegisterSession(func(ctx context.Context, session server.ClientSession) {
 		logger := log.FromContext(ctx).WithName("mcp-dns")
 		logger.Info("client session registered", "sessionID", session.SessionID())
+		metrics.MCPSessionsActive.WithLabelValues("dns").Inc()
 	})
 	hooks.AddOnUnregisterSession(func(ctx context.Context, session server.ClientSession) {
 		logger := log.FromContext(ctx).WithName("mcp-dns")
 		logger.Info("client session unregistered", "sessionID", session.SessionID())
+		metrics.MCPSessionsActive.WithLabelValues("dns").Dec()
 	})
 	hooks.AddAfterInitialize(func(ctx context.Context, _ any, message *mcp.InitializeRequest, _ *mcp.InitializeResult) {
 		logger := log.FromContext(ctx).WithName("mcp-dns")
@@ -95,7 +99,7 @@ func (s *DNSServer) registerDNSTools() {
 				mcp.Description("Filter by Kubernetes namespace"),
 			),
 		),
-		s.handleSearchFQDNs,
+		withToolMetrics("dns", "search_fqdns", s.handleSearchFQDNs),
 	)
 
 	// Register list_portals tool
@@ -104,7 +108,7 @@ func (s *DNSServer) registerDNSTools() {
 			mcp.WithDescription("List all available portals in the SRE Portal. "+
 				"Portals are entry points that group DNS entries together."),
 		),
-		s.handleListPortals,
+		withToolMetrics("dns", "list_portals", s.handleListPortals),
 	)
 
 	// Register get_fqdn_details tool
@@ -117,8 +121,25 @@ func (s *DNSServer) registerDNSTools() {
 				mcp.Description("The exact FQDN to look up (e.g., 'api.example.com')"),
 			),
 		),
-		s.handleGetFQDNDetails,
+		withToolMetrics("dns", "get_fqdn_details", s.handleGetFQDNDetails),
 	)
+}
+
+// withToolMetrics wraps an MCP tool handler with Prometheus instrumentation.
+func withToolMetrics(serverName, toolName string, handler server.ToolHandlerFunc) server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		start := time.Now()
+		metrics.MCPToolCallsTotal.WithLabelValues(serverName, toolName).Inc()
+
+		result, err := handler(ctx, request)
+
+		metrics.MCPToolCallDuration.WithLabelValues(serverName, toolName).Observe(time.Since(start).Seconds())
+		if err != nil || (result != nil && result.IsError) {
+			metrics.MCPToolCallErrorsTotal.WithLabelValues(serverName, toolName).Inc()
+		}
+
+		return result, err
+	}
 }
 
 // ServeStdio starts the MCP server using stdio transport.

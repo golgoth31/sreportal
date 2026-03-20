@@ -33,6 +33,7 @@ import (
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	alertmanagerctrl "github.com/golgoth31/sreportal/internal/controller/alertmanager"
 	"github.com/golgoth31/sreportal/internal/log"
+	"github.com/golgoth31/sreportal/internal/metrics"
 	"github.com/golgoth31/sreportal/internal/remoteclient"
 	"github.com/golgoth31/sreportal/internal/tlsutil"
 )
@@ -63,6 +64,7 @@ func NewPortalReconciler(c client.Client, scheme *runtime.Scheme, cache *remotec
 
 // Reconcile updates the Portal status conditions.
 func (r *PortalReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	start := time.Now()
 	logger := log.FromContext(ctx)
 
 	var portal sreportalv1alpha1.Portal
@@ -72,16 +74,30 @@ func (r *PortalReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	logger.Info("reconciling Portal", "name", portal.Name, "namespace", portal.Namespace)
 
+	var result ctrl.Result
+	var reconcileErr error
+
 	// Check if this is a remote portal
 	if portal.Spec.Remote != nil {
-		return r.reconcileRemotePortal(ctx, &portal)
+		metrics.PortalsTotal.WithLabelValues("remote").Set(1) // will be refined below
+		result, reconcileErr = r.reconcileRemotePortal(ctx, &portal)
+	} else {
+		metrics.PortalsTotal.WithLabelValues("local").Set(1) // will be refined below
+		reconcileErr = r.reconcileLocalPortal(ctx, &portal)
 	}
 
-	return r.reconcileLocalPortal(ctx, &portal)
+	if reconcileErr != nil {
+		metrics.ReconcileTotal.WithLabelValues("portal", "error").Inc()
+	} else {
+		metrics.ReconcileTotal.WithLabelValues("portal", "success").Inc()
+	}
+	metrics.ReconcileDuration.WithLabelValues("portal").Observe(time.Since(start).Seconds())
+
+	return result, reconcileErr
 }
 
 // reconcileLocalPortal handles reconciliation for local portals (no URL specified).
-func (r *PortalReconciler) reconcileLocalPortal(ctx context.Context, portal *sreportalv1alpha1.Portal) (ctrl.Result, error) {
+func (r *PortalReconciler) reconcileLocalPortal(ctx context.Context, portal *sreportalv1alpha1.Portal) error {
 	base := portal.DeepCopy()
 
 	// Update status for local portal
@@ -98,10 +114,10 @@ func (r *PortalReconciler) reconcileLocalPortal(ctx context.Context, portal *sre
 	meta.SetStatusCondition(&portal.Status.Conditions, readyCondition)
 
 	if err := r.Status().Patch(ctx, portal, client.MergeFrom(base)); err != nil {
-		return ctrl.Result{}, fmt.Errorf("patch Portal status: %w", err)
+		return fmt.Errorf("patch Portal status: %w", err)
 	}
 
-	return ctrl.Result{}, nil
+	return nil
 }
 
 // remoteClientFor returns a cached remote client for the given portal.
@@ -175,6 +191,7 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 	remoteLog := log.Default().WithName("portal").WithName("remote")
 	err = remoteClient.HealthCheck(ctx, remote.URL)
 	if err != nil {
+		metrics.PortalRemoteSyncErrorsTotal.WithLabelValues(portal.Name).Inc()
 		remoteLog.Error(err, "remote portal health check failed", "name", portal.Name, "namespace", portal.Namespace, "url", remote.URL, "error", err.Error())
 
 		base := portal.DeepCopy()
@@ -201,6 +218,7 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 	// Fetch remote portal info
 	result, err := remoteClient.FetchFQDNs(ctx, remote.URL, remote.Portal)
 	if err != nil {
+		metrics.PortalRemoteSyncErrorsTotal.WithLabelValues(portal.Name).Inc()
 		remoteLog.Warn("failed to fetch FQDNs from remote portal", "name", portal.Name, "namespace", portal.Namespace, "url", remote.URL, "remotePortal", remote.Portal, "error", err.Error())
 
 		base := portal.DeepCopy()
@@ -287,6 +305,8 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 	if err := r.Status().Patch(ctx, portal, client.MergeFrom(base)); err != nil {
 		return ctrl.Result{}, fmt.Errorf("patch Portal status: %w", err)
 	}
+
+	metrics.PortalRemoteFQDNsSynced.WithLabelValues(portal.Name).Set(float64(result.FQDNCount))
 
 	remoteLog.Info("remote portal sync successful",
 		"url", remote.URL,

@@ -38,6 +38,7 @@ SRE Portal is a Kubernetes operator with a web dashboard for managing service st
 - **External DNS**: sigs.k8s.io/external-dns v0.20
 - **Testing**: Ginkgo v2 + Gomega with envtest
 - **MCP**: Model Context Protocol (mark3labs/mcp-go): DNS server on `/mcp` and `/mcp/dns`, Alerts server on `/mcp/alerts`
+- **Metrics**: Custom Prometheus metrics (prometheus/client_golang) registered on controller-runtime registry (`/metrics`)
 - **Deployment**: Single container (controller + gRPC + web UI + MCP)
 
 ## Common Commands
@@ -118,11 +119,13 @@ internal/
     search_fqdns.go                  # search_fqdns tool handler
     list_portals.go                  # list_portals tool handler
     get_fqdn_details.go              # get_fqdn_details tool handler
+  metrics/
+    metrics.go                       # All custom Prometheus metrics (registered on controller-runtime registry)
   source/                            # external-dns source factory
   webhook/v1alpha1/
     dns_webhook.go                   # DNS validation (portalRef exists)
   webserver/
-    server.go                        # Echo v5 server (static files + Connect handlers + MCP)
+    server.go                        # Echo v5 server (static files + Connect handlers + MCP + metrics middleware)
 proto/sreportal/v1/
   dns.proto                          # DNSService (ListFQDNs, StreamFQDNs)
   portal.proto                       # PortalService (ListPortals)
@@ -167,6 +170,8 @@ web/src/
 config/
   crd/bases/                         # Auto-generated CRD YAML - DO NOT EDIT
   rbac/                              # Auto-generated RBAC - DO NOT EDIT role.yaml
+  grafana/
+    sreportal-dashboard.json         # Grafana dashboard (import via UI or provisioning)
   samples/                           # Example manifests
 ```
 
@@ -384,6 +389,99 @@ type GroupMappingConfig struct {
     ByNamespace  map[string]string  // Namespace -> group mapping
 }
 ```
+
+## Observability (Metrics)
+
+All custom metrics are defined in `internal/metrics/metrics.go` and registered on the
+controller-runtime Prometheus registry. They are served on the standard `/metrics` endpoint
+(bind address controlled by `--metrics-bind-address`, default `0` = disabled).
+
+### Custom Metrics Reference
+
+#### Controller metrics (`sreportal_controller_*`)
+
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `sreportal_controller_reconcile_total` | Counter | `controller`, `result` | Reconciliation count (success / error) |
+| `sreportal_controller_reconcile_duration_seconds` | Histogram | `controller` | Reconciliation latency |
+
+#### DNS metrics (`sreportal_dns_*`)
+
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `sreportal_dns_fqdns_total` | Gauge | `portal`, `source` | Number of FQDNs per portal and source |
+| `sreportal_dns_groups_total` | Gauge | `portal` | Number of DNS groups per portal |
+
+#### Source metrics (`sreportal_source_*`)
+
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `sreportal_source_endpoints_collected` | Gauge | `source_type` | Endpoints collected per source type |
+| `sreportal_source_errors_total` | Counter | `source_type` | Source collection errors |
+
+#### Alertmanager metrics (`sreportal_alertmanager_*`)
+
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `sreportal_alertmanager_alerts_active` | Gauge | `portal`, `alertmanager` | Active alerts per resource |
+| `sreportal_alertmanager_fetch_errors_total` | Counter | `alertmanager` | Alert fetch errors |
+
+#### Portal metrics (`sreportal_portal_*`)
+
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `sreportal_portal_total` | Gauge | `type` | Portals by type (local / remote) |
+| `sreportal_portal_remote_sync_errors_total` | Counter | `portal` | Remote sync errors |
+| `sreportal_portal_remote_fqdns_synced` | Gauge | `portal` | FQDNs synced from remote |
+
+#### HTTP server metrics (`sreportal_http_*`)
+
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `sreportal_http_requests_total` | Counter | `method`, `handler`, `code` | HTTP requests (handler: `connect`, `mcp`, `api`, `static`) |
+| `sreportal_http_request_duration_seconds` | Histogram | `method`, `handler` | HTTP request latency |
+| `sreportal_http_requests_in_flight` | Gauge | — | In-flight HTTP requests |
+
+#### MCP server metrics (`sreportal_mcp_*`)
+
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `sreportal_mcp_tool_calls_total` | Counter | `server`, `tool` | MCP tool invocations |
+| `sreportal_mcp_tool_call_duration_seconds` | Histogram | `server`, `tool` | MCP tool call latency |
+| `sreportal_mcp_tool_call_errors_total` | Counter | `server`, `tool` | MCP tool call errors |
+| `sreportal_mcp_sessions_active` | Gauge | `server` | Active MCP sessions (dns / alerts) |
+
+### Grafana Dashboard
+
+A pre-built Grafana dashboard is available at `config/grafana/sreportal-dashboard.json`.
+
+**Import**: Grafana > Dashboards > Import > Upload JSON file.
+
+**Variables**:
+- `datasource` — Prometheus datasource picker (type: `datasource`, query: `prometheus`)
+- `job` — Prometheus job filter, multi-select with "All" (auto-discovered from `sreportal_controller_reconcile_total`)
+
+**Row 1 — Application Metrics**:
+- Reconciliations / sec (by controller and result)
+- Reconciliation duration (p50 / p95 / p99)
+- FQDNs total and DNS groups (stat panels)
+- Active alerts and remote FQDNs synced (stat panels with thresholds)
+- HTTP requests / sec (stacked by handler and status code)
+- HTTP latency (p50 / p95 / p99)
+- HTTP in-flight and MCP active sessions
+- MCP tool calls / sec (bar chart by server/tool)
+- Source endpoints collected
+- Errors / sec (source + alertmanager + remote sync + MCP combined)
+- Portals gauge (local / remote)
+
+**Row 2 — System Metrics (sreportal process)**:
+- CPU usage (`process_cpu_seconds_total`)
+- Memory (RSS, heap alloc, heap in-use, stack in-use)
+- Goroutines (`go_goroutines`)
+- Open file descriptors (open vs max)
+- GC duration (p50 / p75 / p100)
+- K8s REST client requests / sec (`rest_client_requests_total` stacked)
+- Workqueue depth per controller
 
 ## cmd/main.go Setup
 

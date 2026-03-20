@@ -1,0 +1,854 @@
+{
+  "__inputs": [],
+  "__requires": [
+    {
+      "type": "datasource",
+      "id": "prometheus",
+      "name": "Prometheus",
+      "version": "1.0.0"
+    },
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "11.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "Time series",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "stat",
+      "name": "Stat",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "gauge",
+      "name": "Gauge",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "table",
+      "name": "Table",
+      "version": ""
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "Application Metrics",
+      "type": "row"
+    },
+    {
+      "title": "Reconciliations / sec",
+      "description": "Rate of controller reconciliations per second by controller and result.",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 1 },
+      "id": 1,
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 15,
+            "spanNulls": false,
+            "stacking": { "mode": "none" }
+          },
+          "unit": "ops"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byRegexp", "options": "error" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "lastNotNull"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(sreportal_controller_reconcile_total{job=~\"$job\"}[$__rate_interval])) by (controller, result)",
+          "legendFormat": "{{controller}} — {{result}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Reconciliation Duration (p50 / p95 / p99)",
+      "description": "Reconciliation latency percentiles by controller.",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 1 },
+      "id": 2,
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 10,
+            "spanNulls": false
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(sreportal_controller_reconcile_duration_seconds_bucket{job=~\"$job\"}[$__rate_interval])) by (controller, le))",
+          "legendFormat": "{{controller}} p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(sreportal_controller_reconcile_duration_seconds_bucket{job=~\"$job\"}[$__rate_interval])) by (controller, le))",
+          "legendFormat": "{{controller}} p95",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(sreportal_controller_reconcile_duration_seconds_bucket{job=~\"$job\"}[$__rate_interval])) by (controller, le))",
+          "legendFormat": "{{controller}} p99",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "title": "FQDNs Total",
+      "description": "Total number of FQDNs tracked per portal and source.",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 1 },
+      "id": 3,
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 100 },
+              { "color": "red", "value": 500 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "targets": [
+        {
+          "expr": "sum(sreportal_dns_fqdns_total{job=~\"$job\"}) by (portal)",
+          "legendFormat": "{{portal}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "DNS Groups",
+      "description": "Number of DNS groups per portal.",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 1 },
+      "id": 4,
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "blue", "value": null }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "expr": "sum(sreportal_dns_groups_total{job=~\"$job\"}) by (portal)",
+          "legendFormat": "{{portal}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Active Alerts",
+      "description": "Active alerts per portal and alertmanager resource.",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 5 },
+      "id": 5,
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 1 },
+              { "color": "red", "value": 10 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "targets": [
+        {
+          "expr": "sum(sreportal_alertmanager_alerts_active{job=~\"$job\"}) by (portal, alertmanager)",
+          "legendFormat": "{{portal}} / {{alertmanager}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Remote FQDNs Synced",
+      "description": "Number of FQDNs synced from remote portals.",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 5 },
+      "id": 6,
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "purple", "value": null }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "targets": [
+        {
+          "expr": "sum(sreportal_portal_remote_fqdns_synced{job=~\"$job\"}) by (portal)",
+          "legendFormat": "{{portal}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "HTTP Requests / sec",
+      "description": "Rate of HTTP requests per second by handler and status code.",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 9 },
+      "id": 7,
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 15,
+            "spanNulls": false,
+            "stacking": { "mode": "normal" }
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "lastNotNull"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(sreportal_http_requests_total{job=~\"$job\"}[$__rate_interval])) by (handler, code)",
+          "legendFormat": "{{handler}} [{{code}}]",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "HTTP Latency (p50 / p95 / p99)",
+      "description": "HTTP request latency percentiles by handler.",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 9 },
+      "id": 8,
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 10,
+            "spanNulls": false
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(sreportal_http_request_duration_seconds_bucket{job=~\"$job\"}[$__rate_interval])) by (handler, le))",
+          "legendFormat": "{{handler}} p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(sreportal_http_request_duration_seconds_bucket{job=~\"$job\"}[$__rate_interval])) by (handler, le))",
+          "legendFormat": "{{handler}} p95",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(sreportal_http_request_duration_seconds_bucket{job=~\"$job\"}[$__rate_interval])) by (handler, le))",
+          "legendFormat": "{{handler}} p99",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "title": "HTTP In-Flight / MCP Sessions",
+      "description": "Current in-flight HTTP requests and active MCP sessions.",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 4, "x": 16, "y": 9 },
+      "id": 9,
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 20,
+            "spanNulls": false
+          },
+          "unit": "short",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "sreportal_http_requests_in_flight{job=~\"$job\"}",
+          "legendFormat": "HTTP in-flight",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(sreportal_mcp_sessions_active{job=~\"$job\"}) by (server)",
+          "legendFormat": "MCP {{server}}",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "title": "MCP Tool Calls / sec",
+      "description": "Rate of MCP tool calls per second by server and tool name.",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 4, "x": 20, "y": 9 },
+      "id": 10,
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 50,
+            "spanNulls": false,
+            "stacking": { "mode": "normal" }
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(sreportal_mcp_tool_calls_total{job=~\"$job\"}[$__rate_interval])) by (server, tool)",
+          "legendFormat": "{{server}}/{{tool}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Source Endpoints Collected",
+      "description": "Number of endpoints collected per external-dns source type.",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 17 },
+      "id": 11,
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 15,
+            "spanNulls": false
+          },
+          "unit": "short",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "sreportal_source_endpoints_collected{job=~\"$job\"}",
+          "legendFormat": "{{source_type}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Errors / sec (Source + Alertmanager + Remote Sync)",
+      "description": "Rate of errors across source collection, alertmanager fetches, and remote portal syncs.",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 17 },
+      "id": 12,
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 10,
+            "spanNulls": false
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["sum"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(sreportal_source_errors_total{job=~\"$job\"}[$__rate_interval])) by (source_type)",
+          "legendFormat": "source/{{source_type}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(sreportal_alertmanager_fetch_errors_total{job=~\"$job\"}[$__rate_interval])) by (alertmanager)",
+          "legendFormat": "alertmanager/{{alertmanager}}",
+          "refId": "B"
+        },
+        {
+          "expr": "sum(rate(sreportal_portal_remote_sync_errors_total{job=~\"$job\"}[$__rate_interval])) by (portal)",
+          "legendFormat": "remote-sync/{{portal}}",
+          "refId": "C"
+        },
+        {
+          "expr": "sum(rate(sreportal_mcp_tool_call_errors_total{job=~\"$job\"}[$__rate_interval])) by (server, tool)",
+          "legendFormat": "mcp/{{server}}/{{tool}}",
+          "refId": "D"
+        }
+      ]
+    },
+    {
+      "title": "Portals",
+      "description": "Total number of portals by type (local / remote).",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 17 },
+      "id": 13,
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          },
+          "min": 0,
+          "max": 20
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "expr": "sum(sreportal_portal_total{job=~\"$job\"}) by (type)",
+          "legendFormat": "{{type}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 25 },
+      "id": 200,
+      "title": "System Metrics (sreportal process)",
+      "type": "row"
+    },
+    {
+      "title": "CPU Usage",
+      "description": "CPU time consumed by the sreportal process.",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 26 },
+      "id": 21,
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 20,
+            "spanNulls": false
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "rate(process_cpu_seconds_total{job=~\"$job\"}[$__rate_interval])",
+          "legendFormat": "CPU cores",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Memory Usage",
+      "description": "Resident (RSS) and heap memory usage of the sreportal process.",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 26 },
+      "id": 22,
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 20,
+            "spanNulls": false
+          },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "process_resident_memory_bytes{job=~\"$job\"}",
+          "legendFormat": "RSS",
+          "refId": "A"
+        },
+        {
+          "expr": "go_memstats_heap_alloc_bytes{job=~\"$job\"}",
+          "legendFormat": "Heap Alloc",
+          "refId": "B"
+        },
+        {
+          "expr": "go_memstats_heap_inuse_bytes{job=~\"$job\"}",
+          "legendFormat": "Heap In-Use",
+          "refId": "C"
+        },
+        {
+          "expr": "go_memstats_stack_inuse_bytes{job=~\"$job\"}",
+          "legendFormat": "Stack In-Use",
+          "refId": "D"
+        }
+      ]
+    },
+    {
+      "title": "Goroutines",
+      "description": "Number of active goroutines in the sreportal process.",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 4, "x": 16, "y": 26 },
+      "id": 23,
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "semi-dark-orange", "mode": "fixed" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 20,
+            "spanNulls": false
+          },
+          "unit": "short",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "expr": "go_goroutines{job=~\"$job\"}",
+          "legendFormat": "goroutines",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Open File Descriptors",
+      "description": "Open vs max file descriptors for the process.",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 4, "x": 20, "y": 26 },
+      "id": 24,
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 15,
+            "spanNulls": false
+          },
+          "unit": "short",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "process_open_fds{job=~\"$job\"}",
+          "legendFormat": "open",
+          "refId": "A"
+        },
+        {
+          "expr": "process_max_fds{job=~\"$job\"}",
+          "legendFormat": "max",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "title": "GC Duration (p50 / p95)",
+      "description": "Go garbage collection pause duration quantiles.",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 34 },
+      "id": 25,
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 10,
+            "spanNulls": false
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "go_gc_duration_seconds{job=~\"$job\", quantile=\"0.5\"}",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "expr": "go_gc_duration_seconds{job=~\"$job\", quantile=\"0.75\"}",
+          "legendFormat": "p75",
+          "refId": "B"
+        },
+        {
+          "expr": "go_gc_duration_seconds{job=~\"$job\", quantile=\"1\"}",
+          "legendFormat": "p100 (max)",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "title": "K8s REST Client Requests / sec",
+      "description": "Rate of requests from the controller-runtime REST client to the Kubernetes API.",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 34 },
+      "id": 26,
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 15,
+            "spanNulls": false,
+            "stacking": { "mode": "normal" }
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(rest_client_requests_total{job=~\"$job\"}[$__rate_interval])) by (method, code)",
+          "legendFormat": "{{method}} [{{code}}]",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Workqueue Depth",
+      "description": "Controller-runtime workqueue depth per queue (controller).",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 34 },
+      "id": 27,
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "stepAfter",
+            "fillOpacity": 20,
+            "spanNulls": false
+          },
+          "unit": "short",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "workqueue_depth{job=~\"$job\"}",
+          "legendFormat": "{{name}}",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["sreportal", "kubernetes", "operator"],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "description": "Prometheus data source",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Data Source",
+        "multi": false,
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "queryValue": "",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      },
+      {
+        "current": {},
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "description": "Prometheus job name for sreportal",
+        "definition": "label_values(sreportal_controller_reconcile_total, job)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Job",
+        "multi": true,
+        "name": "job",
+        "query": "label_values(sreportal_controller_reconcile_total, job)",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "SRE Portal",
+  "uid": "sreportal-overview",
+  "version": 1
+}

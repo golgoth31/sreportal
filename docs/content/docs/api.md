@@ -288,7 +288,7 @@ _Appears in:_
 
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
-| `sourceType` _string_ | sourceType indicates the external-dns source type that provides this record |   | Enum: [service ingress dnsendpoint istio-gateway istio-virtualservice] |
+| `sourceType` _string_ | sourceType indicates the external-dns source type that provides this record |   | Enum: [service ingress dnsendpoint istio-gateway istio-virtualservice gateway-httproute gateway-grpcroute gateway-tlsroute gateway-tcproute gateway-udproute] |
 | `portalRef` _string_ | portalRef is the name of the Portal this record belongs to |   |   |
 
 

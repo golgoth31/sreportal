@@ -28,6 +28,7 @@ import (
 	alertmanagerchain "github.com/golgoth31/sreportal/internal/controller/alertmanager"
 	domainalertmanager "github.com/golgoth31/sreportal/internal/domain/alertmanager"
 	"github.com/golgoth31/sreportal/internal/log"
+	"github.com/golgoth31/sreportal/internal/metrics"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 	"github.com/golgoth31/sreportal/internal/remoteclient"
 )
@@ -73,6 +74,7 @@ func NewAlertmanagerReconciler(
 
 // Reconcile fetches active alerts from Alertmanager and updates the resource status.
 func (r *AlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	start := time.Now()
 	logger := log.FromContext(ctx)
 
 	var resource sreportalv1alpha1.Alertmanager
@@ -88,8 +90,16 @@ func (r *AlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	if err := r.chain.Execute(ctx, rc); err != nil {
 		logger.Error(err, "reconciliation chain failed")
+		metrics.ReconcileTotal.WithLabelValues("alertmanager", "error").Inc()
+		metrics.ReconcileDuration.WithLabelValues("alertmanager").Observe(time.Since(start).Seconds())
+		metrics.AlertsFetchErrorsTotal.WithLabelValues(resource.Name).Inc()
 		return ctrl.Result{RequeueAfter: alertmanagerRequeueAfter}, nil
 	}
+
+	// Update active alerts gauge
+	metrics.AlertsActive.WithLabelValues(resource.Spec.PortalRef, resource.Name).Set(float64(len(resource.Status.ActiveAlerts)))
+	metrics.ReconcileTotal.WithLabelValues("alertmanager", "success").Inc()
+	metrics.ReconcileDuration.WithLabelValues("alertmanager").Observe(time.Since(start).Seconds())
 
 	if rc.Result.RequeueAfter > 0 {
 		return rc.Result, nil

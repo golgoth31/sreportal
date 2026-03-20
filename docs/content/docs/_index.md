@@ -12,6 +12,7 @@ SRE Portal is a Kubernetes operator that discovers DNS records from your cluster
   {{< card link="architecture" title="Architecture" subtitle="CRD relationships, controller patterns, and data flow." icon="cube" >}}
   {{< card link="configuration" title="Configuration" subtitle="Operator ConfigMap reference for sources, grouping, and timing." icon="adjustments" >}}
   {{< card link="annotations" title="Annotations" subtitle="Route endpoints to portals and assign groups with annotations." icon="tag" >}}
+  {{< card link="observability" title="Observability" subtitle="Custom Prometheus metrics, Grafana dashboard, and scrape configuration." icon="chart-bar" >}}
   {{< card link="web-ui" title="Web UI" subtitle="Dashboard routes, filters, and portal navigation." icon="desktop-computer" >}}
   {{< card link="mcp" title="MCP Server" subtitle="AI assistant integration with Claude Desktop, Claude Code, and Cursor." icon="chip" >}}
   {{< card link="api" title="API Reference" subtitle="Auto-generated CRD field reference." icon="code" >}}

@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/golgoth31/sreportal/internal/log"
+	"github.com/golgoth31/sreportal/internal/metrics"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/config"
@@ -91,6 +92,7 @@ func NewDNSReconciler(c client.Client, scheme *runtime.Scheme, cfg *config.Opera
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 func (r *DNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	start := time.Now()
 	logger := log.FromContext(ctx)
 
 	// Fetch the DNS resource
@@ -118,6 +120,8 @@ func (r *DNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	// Execute handler chain
 	if err := r.chain.Execute(ctx, rc); err != nil {
 		logger.Error(err, "reconciliation failed")
+		metrics.ReconcileTotal.WithLabelValues("dns", "error").Inc()
+		metrics.ReconcileDuration.WithLabelValues("dns").Observe(time.Since(start).Seconds())
 		return ctrl.Result{}, err
 	}
 
@@ -125,6 +129,16 @@ func (r *DNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	if rc.Result.RequeueAfter == 0 {
 		rc.Result.RequeueAfter = DefaultRequeueAfter
 	}
+
+	// Update FQDN and group gauges
+	portal := resource.Spec.PortalRef
+	for _, g := range resource.Status.Groups {
+		metrics.DNSFQDNsTotal.WithLabelValues(portal, g.Source).Set(float64(len(g.FQDNs)))
+	}
+	metrics.DNSGroupsTotal.WithLabelValues(portal).Set(float64(len(resource.Status.Groups)))
+
+	metrics.ReconcileTotal.WithLabelValues("dns", "success").Inc()
+	metrics.ReconcileDuration.WithLabelValues("dns").Observe(time.Since(start).Seconds())
 
 	logger.Info("reconciliation completed", "requeueAfter", rc.Result.RequeueAfter)
 	return rc.Result, nil

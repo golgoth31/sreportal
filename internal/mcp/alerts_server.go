@@ -25,6 +25,7 @@ import (
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/log"
+	"github.com/golgoth31/sreportal/internal/metrics"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -45,10 +46,12 @@ func NewAlertsServer(k8sClient client.Client) *AlertsServer {
 	hooks.AddOnRegisterSession(func(ctx context.Context, session server.ClientSession) {
 		logger := log.FromContext(ctx).WithName("mcp-alerts")
 		logger.Info("client session registered", "sessionID", session.SessionID())
+		metrics.MCPSessionsActive.WithLabelValues("alerts").Inc()
 	})
 	hooks.AddOnUnregisterSession(func(ctx context.Context, session server.ClientSession) {
 		logger := log.FromContext(ctx).WithName("mcp-alerts")
 		logger.Info("client session unregistered", "sessionID", session.SessionID())
+		metrics.MCPSessionsActive.WithLabelValues("alerts").Dec()
 	})
 	hooks.AddAfterInitialize(func(ctx context.Context, _ any, message *mcp.InitializeRequest, _ *mcp.InitializeResult) {
 		logger := log.FromContext(ctx).WithName("mcp-alerts")
@@ -90,7 +93,7 @@ func (s *AlertsServer) registerAlertTools() {
 				mcp.Description("Filter by alert state: active, suppressed, or unprocessed"),
 			),
 		),
-		s.handleListAlerts,
+		withToolMetrics("alerts", "list_alerts", s.handleListAlerts),
 	)
 }
 

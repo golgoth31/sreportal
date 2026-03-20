@@ -21,7 +21,9 @@ import (
 	"io/fs"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
@@ -33,6 +35,7 @@ import (
 	"github.com/golgoth31/sreportal/internal/config"
 	"github.com/golgoth31/sreportal/internal/grpc"
 	"github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1/sreportalv1connect"
+	"github.com/golgoth31/sreportal/internal/metrics"
 )
 
 // Config holds the web server configuration
@@ -95,6 +98,7 @@ func New(cfg Config, c client.Client, operatorConfig *config.OperatorConfig, all
 		},
 	}))
 	e.Use(middleware.Recover())
+	e.Use(metricsMiddleware)
 	if len(allowedOrigins) > 0 {
 		e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 			AllowOrigins: allowedOrigins,
@@ -233,6 +237,58 @@ func (s *Server) Shutdown(ctx context.Context) error {
 // This is useful for mounting additional services (e.g. MCP) on the same port.
 func (s *Server) MountHandler(path string, handler http.Handler) {
 	s.echo.Any(path, echo.WrapHandler(handler))
+}
+
+// statusCaptureWriter wraps http.ResponseWriter to capture the status code.
+type statusCaptureWriter struct {
+	http.ResponseWriter
+	code int
+}
+
+func (w *statusCaptureWriter) WriteHeader(code int) {
+	w.code = code
+	w.ResponseWriter.WriteHeader(code)
+}
+
+// metricsMiddleware records Prometheus metrics for every HTTP request.
+func metricsMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c *echo.Context) error {
+		metrics.HTTPRequestsInFlight.Inc()
+		start := time.Now()
+
+		// Wrap the response writer to capture the status code
+		sw := &statusCaptureWriter{ResponseWriter: c.Response(), code: http.StatusOK}
+		c.SetResponse(sw)
+
+		err := next(c)
+
+		metrics.HTTPRequestsInFlight.Dec()
+		duration := time.Since(start).Seconds()
+
+		handler := routeHandler(c)
+		method := c.Request().Method
+		code := strconv.Itoa(sw.code)
+
+		metrics.HTTPRequestDuration.WithLabelValues(method, handler).Observe(duration)
+		metrics.HTTPRequestsTotal.WithLabelValues(method, handler, code).Inc()
+
+		return err
+	}
+}
+
+// routeHandler returns a low-cardinality handler label for the request.
+func routeHandler(c *echo.Context) string {
+	path := c.Request().URL.Path
+	switch {
+	case strings.HasPrefix(path, "/sreportal."):
+		return "connect"
+	case strings.HasPrefix(path, "/mcp"):
+		return "mcp"
+	case strings.HasPrefix(path, "/api/"):
+		return "api"
+	default:
+		return "static"
+	}
 }
 
 // Handler returns the HTTP handler for the server
