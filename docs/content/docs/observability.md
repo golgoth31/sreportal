@@ -28,7 +28,7 @@ All custom metrics use the `sreportal_` prefix and are defined in `internal/metr
 
 ### Controller Metrics
 
-Reconciliation performance and error tracking across all controllers (dns, portal, alertmanager).
+Reconciliation performance and error tracking across all controllers (dns, portal, alertmanager, release).
 
 | Metric | Type | Labels | Description |
 |--------|------|--------|-------------|
@@ -82,7 +82,7 @@ Request-level metrics for the web server (Connect API, MCP, static files).
 | `sreportal_http_request_duration_seconds` | Histogram | `method`, `handler` | HTTP request latency distribution |
 | `sreportal_http_requests_in_flight` | Gauge | — | Number of HTTP requests currently being processed |
 
-The `handler` label uses low-cardinality values: `connect` (gRPC/Connect API), `mcp` (MCP servers), `api` (health endpoints), `static` (web UI files).
+The `handler` label uses low-cardinality values: `connect` (gRPC/Connect API), `mcp` (MCP servers), `api` (health endpoints), `swagger` (Swagger UI), `static` (web UI files).
 
 ### MCP Server Metrics
 
@@ -93,7 +93,7 @@ Track MCP tool usage and session activity.
 | `sreportal_mcp_tool_calls_total` | Counter | `server`, `tool` | MCP tool invocations |
 | `sreportal_mcp_tool_call_duration_seconds` | Histogram | `server`, `tool` | MCP tool call latency |
 | `sreportal_mcp_tool_call_errors_total` | Counter | `server`, `tool` | MCP tool call errors |
-| `sreportal_mcp_sessions_active` | Gauge | `server` | Active MCP sessions (`dns`, `alerts`) |
+| `sreportal_mcp_sessions_active` | Gauge | `server` | Active MCP sessions (`dns`, `alerts`, `metrics`, `releases`) |
 
 ## Built-in Metrics
 

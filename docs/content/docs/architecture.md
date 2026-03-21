@@ -16,7 +16,7 @@ graph TB
         Controllers["Controllers\n(controller-runtime)"]
         API["Connect gRPC API\n(h2c)"]
         WebUI["Web UI\n(React SPA / Echo v5)"]
-        MCP["MCP Servers\n(/mcp, /mcp/dns, /mcp/alerts)"]
+        MCP["MCP Servers\n(/mcp, /mcp/dns, /mcp/alerts,\n/mcp/metrics, /mcp/releases)"]
     end
 
     WebUI --> API
@@ -30,11 +30,11 @@ The four components share the same process:
 - **Controllers** reconcile CRDs using controller-runtime
 - **Connect API** serves gRPC-compatible endpoints over HTTP/2 (h2c)
 - **Web UI** serves the React SPA as static files via Echo v5
-- **MCP Servers** expose [Model Context Protocol](https://modelcontextprotocol.io/) at `/mcp` and `/mcp/dns` (DNS/portals) and `/mcp/alerts` (alerts) for AI assistant integration
+- **MCP Servers** expose [Model Context Protocol](https://modelcontextprotocol.io/) at `/mcp` and `/mcp/dns` (DNS/portals), `/mcp/alerts` (alerts), `/mcp/metrics` (Prometheus metrics), and `/mcp/releases` (release tracking) for AI assistant integration
 
 ## Custom Resource Definitions
 
-SRE Portal defines four CRDs that work together:
+SRE Portal defines five CRDs that work together:
 
 ```mermaid
 graph TD
@@ -44,6 +44,8 @@ graph TD
     (auto-discovered)"]
     Portal -->|portalRef| Alertmanager["Alertmanager
     (alert source)"]
+    Release["Release
+    (release events per day)"]
 ```
 
 ### Portal
@@ -63,6 +65,12 @@ Created and managed automatically by the source controller. Each DNSRecord repre
 ### Alertmanager
 
 Links an Alertmanager instance to a portal via `spec.portalRef`. The spec defines `url.local` (used by the controller to fetch active alerts from the Alertmanager API) and optional `url.remote` (for dashboard links). The Alertmanager controller periodically fetches alerts and stores them in `status.activeAlerts`.
+
+### Release
+
+Stores release events (deployments, rollbacks, hotfixes, feature flags, etc.) organized by day. Each Release CR is named `release-YYYY-MM-DD` and holds an array of entries with type, version, origin, date, and optional author, message, and link fields. Release CRs are not linked to a portal — they are global and shown on the main portal's Releases page.
+
+The Release controller automatically deletes CRs older than the configured TTL (default: 30 days).
 
 ## Design Principles
 
@@ -111,6 +119,18 @@ A simple controller that sets `status.ready = true` with a `Ready` condition. It
 
 Uses the same Chain-of-Responsibility pattern as the DNS controller. The chain has two steps: **FetchAlerts** (HTTP GET to `spec.url.local`, Alertmanager API v2) and **UpdateStatus** (write `activeAlerts`, conditions, `lastReconcileTime` to status). Reconciles periodically (default ~2 minutes).
 
+### Release Controller (Cache Invalidation + TTL Cleanup)
+
+The Release controller watches Release CRs and performs two duties:
+
+1. **Cache invalidation**: invalidates the in-memory cache in the Release service whenever a CR is created, updated, or deleted. This ensures that all reads (via gRPC or MCP) are served from the cache and that external modifications (e.g. `kubectl edit`, CI pipelines) are detected immediately.
+
+2. **TTL cleanup**: checks whether the CR's day is older than the configured TTL (default: 30 days). Expired CRs are automatically deleted. Each CR is re-checked every 12 hours via `RequeueAfter`.
+
+The release service maintains two caches:
+- **Entries cache**: per-day release entries (invalidated per day)
+- **Days cache**: sorted list of all days that have Release CRs (invalidated on any CR change)
+
 ## Connect API
 
 The API uses the [Connect protocol](https://connectrpc.com) (gRPC-compatible over HTTP/1.1 and HTTP/2) with protobuf definitions in `proto/sreportal/v1/`.
@@ -134,9 +154,22 @@ The API uses the [Connect protocol](https://connectrpc.com) (gRPC-compatible ove
 |-----|-------------|
 | `ListAlerts` | Lists Alertmanager resources with active alerts (filters: portal, namespace, search, state) |
 
+### ReleaseService
+
+| RPC | Description |
+|-----|-------------|
+| `AddRelease` | Add a release entry for a given day |
+| `ListReleases` | List release entries for a day (with previous/next day navigation) |
+
+### MetricsService
+
+| RPC | Description |
+|-----|-------------|
+| `ListMetrics` | List Prometheus metrics from the operator's metrics registry |
+
 ## MCP Servers
 
-The operator includes two built-in [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) servers on the web server port, using Streamable HTTP transport:
+The operator includes four built-in [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) servers on the web server port, using Streamable HTTP transport:
 
 **DNS / Portals** (mounted at `/mcp` and `/mcp/dns`; `/mcp` is kept for backward compatibility):
 
@@ -151,6 +184,19 @@ The operator includes two built-in [Model Context Protocol](https://modelcontext
 | Tool | Description |
 |------|-------------|
 | `list_alerts` | List Alertmanager resources and their active alerts (optional filters: portal, search, state) |
+
+**Metrics** (mounted at `/mcp/metrics`):
+
+| Tool | Description |
+|------|-------------|
+| `list_metrics` | List Prometheus metrics from the operator's metrics registry |
+
+**Releases** (mounted at `/mcp/releases`):
+
+| Tool | Description |
+|------|-------------|
+| `add_release` | Add a release entry (type, version, origin, date, and optional author, message, link) |
+| `list_releases` | List release entries for a day (with previous/next day navigation) |
 
 ## Data Flow
 

@@ -38,8 +38,8 @@ resources:
   domain: sreportal.io
   kind: Portal
   path: github.com/golgoth31/sreportal/api/v1alpha1
-  version: v1alpha1
   plural: portals
+  version: v1alpha1
   webhooks:
     defaulting: true
     validation: true
@@ -50,6 +50,13 @@ resources:
   controller: true
   domain: sreportal.io
   kind: Alertmanager
+  path: github.com/golgoth31/sreportal/api/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: sreportal.io
+  kind: Release
   path: github.com/golgoth31/sreportal/api/v1alpha1
   version: v1alpha1
 version: "3"

@@ -151,6 +151,51 @@ var (
 	)
 )
 
+// --- Release metrics ---
+
+var (
+	// ReleaseEntriesTotal tracks the total number of release entries per day CR.
+	ReleaseEntriesTotal = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: "release",
+			Name:      "entries_total",
+			Help:      "Total number of release entries per day CR.",
+		},
+		[]string{"day"},
+	)
+
+	// ReleaseAddTotal counts AddRelease operations.
+	ReleaseAddTotal = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: "release",
+			Name:      "add_total",
+			Help:      "Total number of AddRelease operations.",
+		},
+	)
+
+	// ReleaseAddErrorsTotal counts AddRelease errors.
+	ReleaseAddErrorsTotal = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: "release",
+			Name:      "add_errors_total",
+			Help:      "Total number of AddRelease errors.",
+		},
+	)
+
+	// ReleaseCleanupDeletedTotal counts Release CRs deleted by TTL cleanup.
+	ReleaseCleanupDeletedTotal = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: "release",
+			Name:      "cleanup_deleted_total",
+			Help:      "Total number of Release CRs deleted by TTL cleanup.",
+		},
+	)
+)
+
 // --- HTTP server metrics ---
 
 var (
@@ -257,6 +302,11 @@ func init() {
 		PortalsTotal,
 		PortalRemoteSyncErrorsTotal,
 		PortalRemoteFQDNsSynced,
+		// Release
+		ReleaseEntriesTotal,
+		ReleaseAddTotal,
+		ReleaseAddErrorsTotal,
+		ReleaseCleanupDeletedTotal,
 		// HTTP
 		HTTPRequestsTotal,
 		HTTPRequestDuration,

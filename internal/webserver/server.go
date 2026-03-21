@@ -37,6 +37,8 @@ import (
 	"github.com/golgoth31/sreportal/internal/grpc"
 	"github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1/sreportalv1connect"
 	"github.com/golgoth31/sreportal/internal/metrics"
+	"github.com/golgoth31/sreportal/internal/openapi"
+	releaseservice "github.com/golgoth31/sreportal/internal/release"
 )
 
 // Config holds the web server configuration
@@ -52,6 +54,9 @@ type Config struct {
 
 	// Gatherer is the Prometheus metrics gatherer for the MetricsService
 	Gatherer prometheus.Gatherer
+
+	// ReleaseService is the shared release service for the ReleaseService gRPC handler
+	ReleaseService *releaseservice.Service
 }
 
 // Server is the web server for the SRE Portal
@@ -151,6 +156,20 @@ func (s *Server) setupRoutes() {
 		s.echo.Any(metricsPath+"*", echo.WrapHandler(metricsHandler))
 	}
 
+	if s.config.ReleaseService != nil {
+		releaseGRPC := grpc.NewReleaseService(s.config.ReleaseService)
+		releasePath, releaseHandler := sreportalv1connect.NewReleaseServiceHandler(releaseGRPC)
+		s.echo.Any(releasePath+"*", echo.WrapHandler(releaseHandler))
+	}
+
+	// Swagger UI — serve embedded OpenAPI files at /swagger
+	swaggerFS, _ := fs.Sub(openapi.Swagger, "swagger")
+	swaggerHandler := http.StripPrefix("/swagger", http.FileServer(http.FS(swaggerFS)))
+	s.echo.GET("/swagger/*", echo.WrapHandler(swaggerHandler))
+	s.echo.GET("/swagger", func(c *echo.Context) error {
+		return c.Redirect(http.StatusMovedPermanently, "/swagger/index.html")
+	})
+
 	// API health check
 	s.echo.GET("/api/health", s.healthHandler)
 
@@ -174,8 +193,8 @@ func (s *Server) spaHandler(fileSystem http.FileSystem) echo.HandlerFunc {
 	return func(c *echo.Context) error {
 		path := c.Request().URL.Path
 
-		// Skip API and Connect paths
-		if strings.HasPrefix(path, "/api/") || strings.HasPrefix(path, "/sreportal.") {
+		// Skip API, Connect, and Swagger paths
+		if strings.HasPrefix(path, "/api/") || strings.HasPrefix(path, "/sreportal.") || strings.HasPrefix(path, "/swagger") {
 			return echo.ErrNotFound
 		}
 
@@ -294,6 +313,8 @@ func routeHandler(c *echo.Context) string {
 		return "connect"
 	case strings.HasPrefix(path, "/mcp"):
 		return "mcp"
+	case strings.HasPrefix(path, "/swagger"):
+		return "swagger"
 	case strings.HasPrefix(path, "/api/"):
 		return "api"
 	default:

@@ -9,13 +9,13 @@ SRE Portal includes a React single-page application served directly by the opera
 
 ## Accessing the Dashboard
 
-The web UI is served on port 8082 by default. Forward the port to access it locally:
+The web UI is served on port 8090 by default. Forward the port to access it locally:
 
 ```bash
-kubectl port-forward -n sreportal-system svc/sreportal-controller-manager 8082:8082
+kubectl port-forward -n sreportal-system svc/sreportal-controller-manager 8090:8090
 ```
 
-Then open [http://localhost:8082](http://localhost:8082) in your browser.
+Then open [http://localhost:8090](http://localhost:8090) in your browser.
 
 ## Routes
 
@@ -24,6 +24,7 @@ Then open [http://localhost:8082](http://localhost:8082) in your browser.
 | `/` | Redirects to `/main/links` |
 | `/:portalName/links` | Displays FQDNs for the specified portal |
 | `/:portalName/alerts` | Displays Alertmanager resources and active alerts for the portal |
+| `/:portalName/releases` | Displays release events for a given day (main portal only) |
 | `/help` | MCP setup instructions (DNS and Alerts endpoints) and available tools |
 
 The root URL redirects to the `main` portal's links page. Each portal has its own Links and (when it has Alertmanager resources) Alerts routes.
@@ -34,6 +35,7 @@ When viewing a portal, a left sidebar shows:
 
 - **Links** — navigates to `/:portalName/links`
 - **Alerts** — shown only if the portal has at least one Alertmanager resource; navigates to `/:portalName/alerts`
+- **Releases** — shown only on the main portal when at least one Release CR exists; navigates to `/:portalName/releases`
 
 ## Features
 
@@ -58,6 +60,15 @@ The links page provides:
 
 For portals that have Alertmanager resources, the Alerts page lists each Alertmanager CR with its active alerts. You can filter by search text and alert state (e.g. active, suppressed). Each resource is shown in a collapsible card with labels, annotations, and timestamps.
 
+### Releases Page
+
+The Releases page is visible only on the main portal when at least one Release CR exists. It displays all release events for a given day in a compact list, sorted by date (most recent first).
+
+Features:
+- **Date picker**: select any day using a calendar popover
+- **Keyword search**: filter releases by type, version, origin, author, or message
+- **Compact layout**: each release is a single row showing time, type badge, version, origin, message, author, and an external link icon
+
 ### Portal Navigation
 
 When multiple portals exist, the navigation bar allows switching between portals. Each portal shows only the FQDNs (and alerts) routed to it.
@@ -66,11 +77,15 @@ When multiple portals exist, the navigation bar allows switching between portals
 
 The toolbar includes a theme toggle button that cycles between light, dark, and system modes. The selected theme is persisted in `localStorage` and applied via CSS class on the `<html>` element using Tailwind's dark mode class strategy.
 
+### Dashboard Page
+
+The Dashboard page displays key metrics from the operator's Prometheus registry in visual charts, providing an at-a-glance overview of reconciliation rates, FQDN counts, active alerts, and HTTP request rates.
+
 ### Help / MCP Page
 
 The Help page (`/help`) provides:
-- Two MCP endpoints: DNS/portals (`/mcp` or `/mcp/dns`) and Alerts (`/mcp/alerts`), each with its tools table
-- Tools: `search_fqdns`, `list_portals`, `get_fqdn_details` (DNS); `list_alerts` (Alerts)
+- Four MCP endpoints: DNS/portals (`/mcp` or `/mcp/dns`), Alerts (`/mcp/alerts`), Metrics (`/mcp/metrics`), and Releases (`/mcp/releases`), each with its tools table
+- Tools: `search_fqdns`, `list_portals`, `get_fqdn_details` (DNS); `list_alerts` (Alerts); `list_metrics` (Metrics); `add_release`, `list_releases` (Releases)
 - Setup instructions for Claude Desktop, Claude Code, and Cursor with copy-to-clipboard config snippets
 - Example queries to try with an AI assistant
 

@@ -123,6 +123,9 @@ make proto
 This generates:
 - Go code in `internal/grpc/gen/`
 - TypeScript code in `web/src/gen/`
+- OpenAPI v2 (Swagger) spec in `api/openapi/`
+
+The Swagger UI is served at `/swagger` by the web server.
 
 ## Critical Rules
 

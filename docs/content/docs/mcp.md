@@ -7,15 +7,17 @@ SRE Portal includes built-in [Model Context Protocol](https://modelcontextprotoc
 
 ## Endpoints
 
-Two MCP servers are mounted on the same port as the web UI (8082 by default). Both use **Streamable HTTP** transport.
+Four MCP servers are mounted on the same port as the web UI (8090 by default). All use **Streamable HTTP** transport.
 
 | Endpoint | Description |
 |----------|-------------|
 | `/mcp` | DNS and portal tools (same as `/mcp/dns`; kept for backward compatibility) |
 | `/mcp/dns` | DNS and portal tools |
 | `/mcp/alerts` | Alertmanager alerts tools |
+| `/mcp/metrics` | Prometheus metrics tools |
+| `/mcp/releases` | Release tracking tools |
 
-Base URL: `http://<sreportal-host>:8082`.
+Base URL: `http://<sreportal-host>:8090`.
 
 ## Available Tools
 
@@ -33,18 +35,41 @@ Base URL: `http://<sreportal-host>:8082`.
 |------|-------------|------------|
 | `list_alerts` | List Alertmanager resources and their active alerts (optionally filtered by portal, search, state) | `portal`, `search`, `state` (optional) |
 
+### Metrics (at `/mcp/metrics`)
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `list_metrics` | List Prometheus metrics from the operator's metrics registry | _(none)_ |
+
+### Releases (at `/mcp/releases`)
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `add_release` | Add a release entry | `type` (required), `version` (required), `origin` (required), `date` (required, ISO 8601), `author`, `message`, `link` (optional) |
+| `list_releases` | List release entries for a day | `day` (optional, YYYY-MM-DD; defaults to today) |
+
 ## Setup
 
 ### Claude Code
 
 **DNS and portals:**
 ```bash
-claude mcp add sreportal --transport http http://localhost:8082/mcp
+claude mcp add sreportal --transport http http://localhost:8090/mcp
 ```
 
 **Alerts:**
 ```bash
-claude mcp add sreportal-alerts --transport http http://localhost:8082/mcp/alerts
+claude mcp add sreportal-alerts --transport http http://localhost:8090/mcp/alerts
+```
+
+**Metrics:**
+```bash
+claude mcp add sreportal-metrics --transport http http://localhost:8090/mcp/metrics
+```
+
+**Releases:**
+```bash
+claude mcp add sreportal-releases --transport http http://localhost:8090/mcp/releases
 ```
 
 ### Claude Desktop
@@ -56,11 +81,19 @@ Add to your `claude_desktop_config.json`:
   "mcpServers": {
     "sreportal": {
       "transport": "http",
-      "url": "http://localhost:8082/mcp"
+      "url": "http://localhost:8090/mcp"
     },
     "sreportal-alerts": {
       "transport": "http",
-      "url": "http://localhost:8082/mcp/alerts"
+      "url": "http://localhost:8090/mcp/alerts"
+    },
+    "sreportal-metrics": {
+      "transport": "http",
+      "url": "http://localhost:8090/mcp/metrics"
+    },
+    "sreportal-releases": {
+      "transport": "http",
+      "url": "http://localhost:8090/mcp/releases"
     }
   }
 }
@@ -68,10 +101,12 @@ Add to your `claude_desktop_config.json`:
 
 ### Cursor
 
-Add two MCP servers:
+Add MCP servers:
 
-- **DNS/portals**: Type URL, URL: `http://localhost:8082/mcp` (or `http://localhost:8082/mcp/dns`)
-- **Alerts**: Type URL, URL: `http://localhost:8082/mcp/alerts`
+- **DNS/portals**: Type URL, URL: `http://localhost:8090/mcp` (or `http://localhost:8090/mcp/dns`)
+- **Alerts**: Type URL, URL: `http://localhost:8090/mcp/alerts`
+- **Metrics**: Type URL, URL: `http://localhost:8090/mcp/metrics`
+- **Releases**: Type URL, URL: `http://localhost:8090/mcp/releases`
 
 ## Example Queries
 
@@ -89,6 +124,17 @@ With the alerts server:
 - "Show firing alerts"
 - "List alerts containing 'disk'"
 
+With the metrics server:
+
+- "Show me all SRE Portal metrics"
+- "What's the current reconciliation rate?"
+
+With the releases server:
+
+- "List today's releases"
+- "Add a deployment release for v2.1.0 from CI/CD"
+- "Show releases for 2026-03-19"
+
 ## In-App Help
 
-The web UI includes a Help page at `/help` with the same setup instructions and a live display of both MCP endpoint URLs and their tools.
+The web UI includes a Help page at `/help` with the same setup instructions and a live display of all MCP endpoint URLs and their tools.

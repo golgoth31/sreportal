@@ -11,6 +11,7 @@
 - [sreportal.io/v1alpha1.DNS](#sreportaliov1alpha1dns)
 - [sreportal.io/v1alpha1.DNSRecord](#sreportaliov1alpha1dnsrecord)
 - [sreportal.io/v1alpha1.Portal](#sreportaliov1alpha1portal)
+- [sreportal.io/v1alpha1.Release](#sreportaliov1alpha1release)
 
 
 #### sreportal.io/v1alpha1.Alertmanager
@@ -66,6 +67,20 @@ Portal is the Schema for the portals API
 | `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#objectmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |   |   |
 | `spec` _[sreportal.io/v1alpha1.PortalSpec](#sreportaliov1alpha1portalspec)_ | spec defines the desired state of Portal |   |   |
 | `status` _[sreportal.io/v1alpha1.PortalStatus](#sreportaliov1alpha1portalstatus)_ | status defines the observed state of Portal |   |   |
+
+
+
+#### sreportal.io/v1alpha1.Release
+
+Release is the Schema for the releases API
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `apiVersion` _string_ | `sreportal.io/v1alpha1` |   |   |
+| `kind` _string_ | `Release` |   |   |
+| `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#objectmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |   |   |
+| `spec` _[sreportal.io/v1alpha1.ReleaseSpec](#sreportaliov1alpha1releasespec)_ | spec defines the desired state of Release |   |   |
+| `status` _[sreportal.io/v1alpha1.ReleaseStatus](#sreportaliov1alpha1releasestatus)_ | status defines the observed state of Release |   |   |
 
 
 
@@ -416,6 +431,53 @@ _Appears in:_
 | `lastSyncError` _string_ | lastSyncError contains the error message from the last failed synchronization attempt. Empty if the last sync was successful. |   |   |
 | `remoteTitle` _string_ | remoteTitle is the title of the remote portal as fetched from the remote server. |   |   |
 | `fqdnCount` _integer_ | fqdnCount is the number of FQDNs fetched from the remote portal. |   |   |
+
+
+
+#### sreportal.io/v1alpha1.ReleaseSpec
+
+ReleaseSpec defines the desired state of Release
+
+_Appears in:_
+- [sreportal.io/v1alpha1.Release](#sreportaliov1alpha1release)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `entries` _[sreportal.io/v1alpha1.ReleaseEntry](#sreportaliov1alpha1releaseentry) array_ | entries is the list of release events for this day |   |   |
+
+
+
+#### sreportal.io/v1alpha1.ReleaseEntry
+
+ReleaseEntry represents a single release event
+
+_Appears in:_
+- [sreportal.io/v1alpha1.ReleaseSpec](#sreportaliov1alpha1releasespec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `type` _string_ | type is the kind of release (e.g., "deployment", "rollback", "hotfix") |   |   |
+| `version` _string_ | version is the version string of the release |   |   |
+| `origin` _string_ | origin identifies where the release came from (e.g., "ci/cd", "manual", service name) |   |   |
+| `date` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | date is the timestamp of the release |   |   |
+| `author` _string_ | author is the author of the release |   |   |
+| `message` _string_ | message is the message of the release |   |   |
+| `link` _string_ | link is the link to the release |   |   |
+
+
+
+#### sreportal.io/v1alpha1.ReleaseStatus
+
+ReleaseStatus defines the observed state of Release.
+link is the link to the release
+
+_Appears in:_
+- [sreportal.io/v1alpha1.Release](#sreportaliov1alpha1release)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `entryCount` _integer_ | entryCount is the number of release entries in this CR |   |   |
+| `conditions` _[Condition](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#condition-v1-meta) array_ | conditions represent the current state of the Release resource. |   |   |
 
 
 

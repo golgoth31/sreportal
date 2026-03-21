@@ -1,4 +1,4 @@
-import { AlertTriangleIcon, BarChart3Icon, LinkIcon } from "lucide-react";
+import { AlertTriangleIcon, BarChart3Icon, LinkIcon, RocketIcon } from "lucide-react";
 import { NavLink } from "react-router";
 
 import { Badge } from "@/components/ui/badge";
@@ -10,12 +10,14 @@ interface PortalSidebarProps {
   portalName: string;
   portals: Portal[];
   portalNamesWithAlerts: ReadonlySet<string>;
+  hasReleases: boolean;
 }
 
 export function PortalSidebar({
   portalName,
   portals,
   portalNamesWithAlerts,
+  hasReleases,
 }: PortalSidebarProps) {
   const currentPortal = portals.find(
     (p) => (p.subPath || p.name) === portalName
@@ -25,6 +27,7 @@ export function PortalSidebar({
     : `/${portalName}`;
   const showAlerts =
     currentPortal != null && portalNamesWithAlerts.has(currentPortal.name);
+  const showReleases = currentPortal?.main === true && hasReleases;
 
   return (
     <aside
@@ -62,6 +65,22 @@ export function PortalSidebar({
           <span>Dashboard</span>
           <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0">beta</Badge>
         </NavLink>
+        {showReleases && (
+          <NavLink
+            to={`${basePath}/releases`}
+            className={({ isActive }) =>
+              cn(
+                "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                isActive
+                  ? "bg-accent text-accent-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )
+            }
+          >
+            <RocketIcon className="size-4 shrink-0" aria-hidden="true" />
+            <span>Releases</span>
+          </NavLink>
+        )}
         {showAlerts && (
           <NavLink
             to={`${basePath}/alerts`}

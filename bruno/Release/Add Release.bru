@@ -1,0 +1,29 @@
+meta {
+  name: Add Release
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/sreportal.v1.ReleaseService/AddRelease
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "entry": {
+      "type": "feature flag",
+      "version": "asdkjasldkjasldkj",
+      "origin": "backstage",
+      "date": "2026-03-19T11:00:00Z",
+      "author": "alice",
+      "message": "fix login bug",
+      "link": "https://github.com/example/repo/pull/42"
+    }
+  }
+}

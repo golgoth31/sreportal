@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package sreportal.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// ReleaseService provides access to release tracking data
+service ReleaseService {
+  // AddRelease appends a release entry to the day's Release CR
+  rpc AddRelease(AddReleaseRequest) returns (AddReleaseResponse);
+
+  // ListReleases returns release entries paginated by day
+  rpc ListReleases(ListReleasesRequest) returns (ListReleasesResponse);
+}
+
+// ReleaseEntry represents a single release event
+message ReleaseEntry {
+  // type is the kind of release (e.g., "deployment", "rollback", "hotfix")
+  string type = 1;
+
+  // version is the version string of the release
+  string version = 2;
+
+  // origin identifies where the release came from (e.g., "ci/cd", "manual", service name)
+  string origin = 3;
+
+  // date is the timestamp of the release
+  google.protobuf.Timestamp date = 4;
+
+  // author is the person or system that performed the release
+  string author = 5;
+
+  // message is the release description or commit message
+  string message = 6;
+
+  // link is a URL to the release (e.g., PR, pipeline, changelog)
+  string link = 7;
+}
+
+// AddReleaseRequest is the request for adding a release entry
+message AddReleaseRequest {
+  // entry is the release entry to add
+  ReleaseEntry entry = 1;
+}
+
+// AddReleaseResponse is the response after adding a release entry
+message AddReleaseResponse {
+  // day is the YYYY-MM-DD of the CR the entry was added to
+  string day = 1;
+
+  // entry_count is the total number of entries in the day's CR after the add
+  int32 entry_count = 2;
+}
+
+// ListReleasesRequest is the request for listing releases
+message ListReleasesRequest {
+  // day filters to a specific day (YYYY-MM-DD). Empty returns the latest day.
+  string day = 1;
+
+  // page_size is the max entries per response (0 = all entries for the day)
+  int32 page_size = 2;
+
+  // page_token is the opaque cursor for pagination within a day
+  string page_token = 3;
+}
+
+// ListReleasesResponse contains the list of release entries for a day
+message ListReleasesResponse {
+  // day is the YYYY-MM-DD of the returned entries
+  string day = 1;
+
+  // entries is the list of release entries for the day
+  repeated ReleaseEntry entries = 2;
+
+  // next_page_token is the cursor for the next page within the same day
+  string next_page_token = 3;
+
+  // previous_day is the YYYY-MM-DD of the previous day with releases (empty if none)
+  string previous_day = 4;
+
+  // next_day is the YYYY-MM-DD of the next day with releases (empty if none)
+  string next_day = 5;
+}

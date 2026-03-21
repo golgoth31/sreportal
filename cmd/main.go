@@ -52,6 +52,7 @@ import (
 	portalctrl "github.com/golgoth31/sreportal/internal/controller/portal"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/mcp"
+	releaseservice "github.com/golgoth31/sreportal/internal/release"
 	"github.com/golgoth31/sreportal/internal/remoteclient"
 	"github.com/golgoth31/sreportal/internal/source"
 	"github.com/golgoth31/sreportal/internal/version"
@@ -381,10 +382,32 @@ func main() {
 	ctx, cancel := context.WithCancel(signalCtx)
 	defer cancel()
 
+	// Create Release service
+	releaseNamespace := operatorConfig.Release.Namespace
+	if releaseNamespace == "" {
+		releaseNamespace = portalNamespace
+	}
+	releaseTTL := operatorConfig.Release.TTL.Duration()
+	if releaseTTL == 0 {
+		releaseTTL = 30 * 24 * 60 * 60 * 1e9 // 30 days in nanoseconds
+	}
+	releaseSvc := releaseservice.NewService(mgr.GetClient(), releaseNamespace)
+
+	// Release controller: watches Release CRs, invalidates cache, and deletes expired CRs
+	if err := controller.NewReleaseReconciler(
+		mgr.GetClient(),
+		releaseSvc,
+		releaseTTL,
+	).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Release")
+		os.Exit(1)
+	}
+
 	// Start the web server in a goroutine
 	webCfg := webserver.Config{
-		Address:  webAddr,
-		Gatherer: ctrlmetrics.Registry,
+		Address:        webAddr,
+		Gatherer:       ctrlmetrics.Registry,
+		ReleaseService: releaseSvc,
 	}
 	if devMode {
 		setupLog.Info("dev mode enabled: serving web UI from filesystem", "web-root", webRoot)
@@ -425,6 +448,7 @@ func main() {
 		dnsMcpServer := mcp.NewDNSServer(mgr.GetClient(), &operatorConfig.GroupMapping)
 		alertsMcpServer := mcp.NewAlertsServer(mgr.GetClient())
 		metricsMcpServer := mcp.NewMetricsServer(ctrlmetrics.Registry)
+		releasesMcpServer := mcp.NewReleasesServer(releaseSvc)
 
 		switch mcpTransport {
 		case "stdio":
@@ -440,11 +464,13 @@ func main() {
 				"dns", []string{"/mcp", "/mcp/dns"},
 				"alerts", "/mcp/alerts",
 				"metrics", "/mcp/metrics",
+				"releases", "/mcp/releases",
 			)
 			webServer.MountHandler("/mcp", dnsMcpServer.Handler())
 			webServer.MountHandler("/mcp/dns", dnsMcpServer.Handler())
 			webServer.MountHandler("/mcp/alerts", alertsMcpServer.Handler())
 			webServer.MountHandler("/mcp/metrics", metricsMcpServer.Handler())
+			webServer.MountHandler("/mcp/releases", releasesMcpServer.Handler())
 		default:
 			setupLog.Error(nil, "unknown MCP transport", "transport", mcpTransport)
 			os.Exit(1)

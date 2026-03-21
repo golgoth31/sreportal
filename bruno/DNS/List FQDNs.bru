@@ -1,0 +1,19 @@
+meta {
+  name: List FQDNs
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/sreportal.v1.DNSService/ListFQDNs
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {}
+}

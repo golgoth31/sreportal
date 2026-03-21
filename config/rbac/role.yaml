@@ -95,3 +95,12 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - sreportal.io
+  resources:
+  - releases
+  verbs:
+  - delete
+  - get
+  - list
+  - watch

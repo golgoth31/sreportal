@@ -25,3 +25,10 @@ plugins:
     out: ../web/src/gen
     opt:
       - target=ts
+  # OpenAPI v2 (Swagger) documentation
+  - remote: buf.build/grpc-ecosystem/openapiv2
+    out: ../internal/openapi/swagger
+    opt:
+      - allow_merge=true
+      - merge_file_name=sreportal
+      - generate_unbound_methods=true

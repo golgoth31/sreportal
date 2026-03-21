@@ -1,0 +1,1046 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "sreportal/v1/alertmanager.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "AlertmanagerService"
+    },
+    {
+      "name": "DNSService"
+    },
+    {
+      "name": "MetricsService"
+    },
+    {
+      "name": "PortalService"
+    },
+    {
+      "name": "ReleaseService"
+    },
+    {
+      "name": "VersionService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/sreportal.v1.AlertmanagerService/ListAlerts": {
+      "post": {
+        "summary": "ListAlerts returns all active alerts from Alertmanager resources",
+        "operationId": "AlertmanagerService_ListAlerts",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListAlertsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1ListAlertsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "AlertmanagerService"
+        ]
+      }
+    },
+    "/sreportal.v1.DNSService/ListFQDNs": {
+      "post": {
+        "summary": "ListFQDNs returns all aggregated FQDNs from DNS resources",
+        "operationId": "DNSService_ListFQDNs",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListFQDNsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1ListFQDNsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "DNSService"
+        ]
+      }
+    },
+    "/sreportal.v1.DNSService/StreamFQDNs": {
+      "post": {
+        "summary": "StreamFQDNs streams FQDN updates in real-time",
+        "operationId": "DNSService_StreamFQDNs",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "result": {
+                  "$ref": "#/definitions/v1StreamFQDNsResponse"
+                },
+                "error": {
+                  "$ref": "#/definitions/rpcStatus"
+                }
+              },
+              "title": "Stream result of v1StreamFQDNsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1StreamFQDNsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "DNSService"
+        ]
+      }
+    },
+    "/sreportal.v1.MetricsService/ListMetrics": {
+      "post": {
+        "summary": "ListMetrics returns current values of sreportal custom metrics",
+        "operationId": "MetricsService_ListMetrics",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListMetricsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1ListMetricsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "MetricsService"
+        ]
+      }
+    },
+    "/sreportal.v1.PortalService/ListPortals": {
+      "post": {
+        "summary": "ListPortals returns all available portals",
+        "operationId": "PortalService_ListPortals",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListPortalsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1ListPortalsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "PortalService"
+        ]
+      }
+    },
+    "/sreportal.v1.ReleaseService/AddRelease": {
+      "post": {
+        "summary": "AddRelease appends a release entry to the day's Release CR",
+        "operationId": "ReleaseService_AddRelease",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1AddReleaseResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1AddReleaseRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ReleaseService"
+        ]
+      }
+    },
+    "/sreportal.v1.ReleaseService/ListReleases": {
+      "post": {
+        "summary": "ListReleases returns release entries paginated by day",
+        "operationId": "ReleaseService_ListReleases",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListReleasesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1ListReleasesRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ReleaseService"
+        ]
+      }
+    },
+    "/sreportal.v1.VersionService/GetVersion": {
+      "post": {
+        "summary": "GetVersion returns the current build version",
+        "operationId": "VersionService_GetVersion",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetVersionResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1GetVersionRequest"
+            }
+          }
+        ],
+        "tags": [
+          "VersionService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1AddReleaseRequest": {
+      "type": "object",
+      "properties": {
+        "entry": {
+          "$ref": "#/definitions/v1ReleaseEntry",
+          "title": "entry is the release entry to add"
+        }
+      },
+      "title": "AddReleaseRequest is the request for adding a release entry"
+    },
+    "v1AddReleaseResponse": {
+      "type": "object",
+      "properties": {
+        "day": {
+          "type": "string",
+          "title": "day is the YYYY-MM-DD of the CR the entry was added to"
+        },
+        "entryCount": {
+          "type": "integer",
+          "format": "int32",
+          "title": "entry_count is the total number of entries in the day's CR after the add"
+        }
+      },
+      "title": "AddReleaseResponse is the response after adding a release entry"
+    },
+    "v1Alert": {
+      "type": "object",
+      "properties": {
+        "fingerprint": {
+          "type": "string",
+          "title": "fingerprint is the unique identifier of the alert"
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "labels are the identifying key-value pairs"
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "annotations are additional informational key-value pairs"
+        },
+        "state": {
+          "type": "string",
+          "title": "state is the alert state (active, suppressed, unprocessed)"
+        },
+        "startsAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "starts_at is when the alert started firing"
+        },
+        "endsAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "ends_at is when the alert is expected to resolve"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "updated_at is the last time the alert was updated"
+        },
+        "receivers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "receivers are the notification integrations this alert is routed to"
+        },
+        "silencedBy": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "silenced_by contains the IDs of silences that suppress this alert"
+        }
+      },
+      "title": "Alert represents a single active alert from Alertmanager"
+    },
+    "v1AlertmanagerResource": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "name is the Alertmanager resource name"
+        },
+        "namespace": {
+          "type": "string",
+          "title": "namespace is the Alertmanager resource namespace"
+        },
+        "portalRef": {
+          "type": "string",
+          "title": "portal_ref is the portal this Alertmanager is linked to"
+        },
+        "localUrl": {
+          "type": "string",
+          "title": "local_url is the local Alertmanager API URL used by the controller"
+        },
+        "remoteUrl": {
+          "type": "string",
+          "title": "remote_url is the externally-reachable Alertmanager URL for dashboard links"
+        },
+        "alerts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Alert"
+          },
+          "title": "alerts is the list of active alerts"
+        },
+        "lastReconcileTime": {
+          "type": "string",
+          "format": "date-time",
+          "title": "last_reconcile_time is when the alerts were last fetched"
+        },
+        "ready": {
+          "type": "boolean",
+          "title": "ready indicates whether the last reconciliation succeeded"
+        },
+        "silences": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Silence"
+          },
+          "title": "silences are active silences for identifying silenced alerts"
+        }
+      },
+      "title": "AlertmanagerResource represents an Alertmanager CR with its metadata and alerts"
+    },
+    "v1FQDN": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "name is the fully qualified domain name"
+        },
+        "source": {
+          "type": "string",
+          "title": "source indicates where this FQDN came from (manual or external-dns)"
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "groups is the list of groups this FQDN belongs to"
+        },
+        "description": {
+          "type": "string",
+          "title": "description is an optional human-readable description"
+        },
+        "recordType": {
+          "type": "string",
+          "title": "record_type is the DNS record type (A, AAAA, CNAME, etc.)"
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "targets is the list of target addresses for this FQDN"
+        },
+        "lastSeen": {
+          "type": "string",
+          "format": "date-time",
+          "title": "last_seen is the timestamp when this FQDN was last observed"
+        },
+        "dnsResourceName": {
+          "type": "string",
+          "title": "dns_resource_name is the name of the DNS resource this FQDN belongs to"
+        },
+        "dnsResourceNamespace": {
+          "type": "string",
+          "title": "dns_resource_namespace is the namespace of the DNS resource"
+        },
+        "originRef": {
+          "$ref": "#/definitions/v1OriginResourceRef",
+          "description": "origin_ref identifies the Kubernetes resource (Service, Ingress, DNSEndpoint)\nthat produced this FQDN via external-dns. Not set for manual entries."
+        },
+        "syncStatus": {
+          "type": "string",
+          "description": "sync_status indicates whether the FQDN is correctly resolved in DNS.\nValues: \"sync\", \"notavailable\", \"notsync\", or empty."
+        }
+      },
+      "title": "FQDN represents a fully qualified domain name with metadata"
+    },
+    "v1GetVersionRequest": {
+      "type": "object",
+      "title": "GetVersionRequest is the request for getting the version"
+    },
+    "v1GetVersionResponse": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "title": "version is the semantic version (e.g. v1.2.3)"
+        },
+        "commit": {
+          "type": "string",
+          "title": "commit is the git commit hash"
+        },
+        "date": {
+          "type": "string",
+          "title": "date is the build date"
+        }
+      },
+      "title": "GetVersionResponse contains the build version information"
+    },
+    "v1HistogramBucket": {
+      "type": "object",
+      "properties": {
+        "cumulativeCount": {
+          "type": "string",
+          "format": "uint64",
+          "title": "cumulative_count is the number of observations in this bucket and all lower buckets"
+        },
+        "upperBound": {
+          "type": "number",
+          "format": "double",
+          "title": "upper_bound is the upper bound of this bucket"
+        }
+      },
+      "title": "HistogramBucket represents a single histogram bucket"
+    },
+    "v1HistogramValue": {
+      "type": "object",
+      "properties": {
+        "sampleCount": {
+          "type": "string",
+          "format": "uint64",
+          "title": "sample_count is the total number of observations"
+        },
+        "sampleSum": {
+          "type": "number",
+          "format": "double",
+          "title": "sample_sum is the sum of all observed values"
+        },
+        "buckets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1HistogramBucket"
+          },
+          "title": "buckets is the list of histogram buckets"
+        }
+      },
+      "title": "HistogramValue holds histogram-specific data"
+    },
+    "v1ListAlertsRequest": {
+      "type": "object",
+      "properties": {
+        "portal": {
+          "type": "string",
+          "title": "portal filters alerts by portal name (empty for all portals)"
+        },
+        "namespace": {
+          "type": "string",
+          "title": "namespace filters alerts by namespace (empty for all namespaces)"
+        },
+        "search": {
+          "type": "string",
+          "title": "search filters alerts by label value substring"
+        },
+        "state": {
+          "type": "string",
+          "title": "state filters alerts by state (empty for all states)"
+        }
+      },
+      "title": "ListAlertsRequest is the request for listing alerts"
+    },
+    "v1ListAlertsResponse": {
+      "type": "object",
+      "properties": {
+        "alertmanagers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1AlertmanagerResource"
+          },
+          "title": "alertmanagers is the list of Alertmanager resources with their alerts"
+        }
+      },
+      "title": "ListAlertsResponse contains the list of alerts"
+    },
+    "v1ListFQDNsRequest": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "title": "namespace filters FQDNs by namespace (empty for all namespaces)"
+        },
+        "source": {
+          "type": "string",
+          "title": "source filters FQDNs by source (empty for all sources)"
+        },
+        "search": {
+          "type": "string",
+          "title": "search filters FQDNs by name substring"
+        },
+        "portal": {
+          "type": "string",
+          "title": "portal filters FQDNs by portal name (empty for all portals)"
+        },
+        "pageSize": {
+          "type": "integer",
+          "format": "int32",
+          "description": "page_size limits the number of FQDNs returned. 0 means return all (default, backward-compatible)."
+        },
+        "pageToken": {
+          "type": "string",
+          "description": "page_token is an opaque cursor returned by a previous ListFQDNs call.\nEmpty string means start from the beginning."
+        }
+      },
+      "title": "ListFQDNsRequest is the request for listing FQDNs"
+    },
+    "v1ListFQDNsResponse": {
+      "type": "object",
+      "properties": {
+        "fqdns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1FQDN"
+          },
+          "title": "fqdns is the list of aggregated FQDNs"
+        },
+        "nextPageToken": {
+          "type": "string",
+          "description": "next_page_token is the cursor to use in the next ListFQDNs call to retrieve the next page.\nEmpty when there are no more results."
+        },
+        "totalSize": {
+          "type": "integer",
+          "format": "int32",
+          "description": "total_size is the total number of FQDNs matching the request filters, before pagination."
+        }
+      },
+      "title": "ListFQDNsResponse contains the list of FQDNs"
+    },
+    "v1ListMetricsRequest": {
+      "type": "object",
+      "properties": {
+        "subsystem": {
+          "type": "string",
+          "title": "subsystem filters metrics by subsystem (e.g., controller, dns, source, alertmanager, portal, http, mcp)"
+        },
+        "search": {
+          "type": "string",
+          "title": "search filters metrics by name substring match"
+        }
+      },
+      "title": "ListMetricsRequest is the request for listing metrics"
+    },
+    "v1ListMetricsResponse": {
+      "type": "object",
+      "properties": {
+        "families": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1MetricFamily"
+          },
+          "title": "families is the list of matching metric families"
+        }
+      },
+      "title": "ListMetricsResponse contains the list of metric families"
+    },
+    "v1ListPortalsRequest": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "title": "namespace filters portals by namespace (empty for all namespaces)"
+        }
+      },
+      "title": "ListPortalsRequest is the request for listing portals"
+    },
+    "v1ListPortalsResponse": {
+      "type": "object",
+      "properties": {
+        "portals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Portal"
+          },
+          "title": "portals is the list of available portals"
+        }
+      },
+      "title": "ListPortalsResponse contains the list of portals"
+    },
+    "v1ListReleasesRequest": {
+      "type": "object",
+      "properties": {
+        "day": {
+          "type": "string",
+          "description": "day filters to a specific day (YYYY-MM-DD). Empty returns the latest day."
+        },
+        "pageSize": {
+          "type": "integer",
+          "format": "int32",
+          "title": "page_size is the max entries per response (0 = all entries for the day)"
+        },
+        "pageToken": {
+          "type": "string",
+          "title": "page_token is the opaque cursor for pagination within a day"
+        }
+      },
+      "title": "ListReleasesRequest is the request for listing releases"
+    },
+    "v1ListReleasesResponse": {
+      "type": "object",
+      "properties": {
+        "day": {
+          "type": "string",
+          "title": "day is the YYYY-MM-DD of the returned entries"
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1ReleaseEntry"
+          },
+          "title": "entries is the list of release entries for the day"
+        },
+        "nextPageToken": {
+          "type": "string",
+          "title": "next_page_token is the cursor for the next page within the same day"
+        },
+        "previousDay": {
+          "type": "string",
+          "title": "previous_day is the YYYY-MM-DD of the previous day with releases (empty if none)"
+        },
+        "nextDay": {
+          "type": "string",
+          "title": "next_day is the YYYY-MM-DD of the next day with releases (empty if none)"
+        }
+      },
+      "title": "ListReleasesResponse contains the list of release entries for a day"
+    },
+    "v1Matcher": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "isRegex": {
+          "type": "boolean"
+        }
+      },
+      "title": "Matcher is a label matcher within a silence"
+    },
+    "v1Metric": {
+      "type": "object",
+      "properties": {
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "labels contains the label key-value pairs for this metric"
+        },
+        "value": {
+          "type": "number",
+          "format": "double",
+          "title": "value is the current metric value (gauge or counter)"
+        },
+        "histogram": {
+          "$ref": "#/definitions/v1HistogramValue",
+          "title": "histogram contains histogram-specific data (only for HISTOGRAM type)"
+        }
+      },
+      "title": "Metric represents a single metric with its labels and value"
+    },
+    "v1MetricFamily": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "name is the fully qualified metric name (e.g., sreportal_dns_fqdns_total)"
+        },
+        "help": {
+          "type": "string",
+          "title": "help is the metric description"
+        },
+        "type": {
+          "type": "string",
+          "title": "type is the metric type: COUNTER, GAUGE, HISTOGRAM"
+        },
+        "metrics": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Metric"
+          },
+          "title": "metrics is the list of individual metric values with their labels"
+        }
+      },
+      "title": "MetricFamily represents a group of metrics sharing a name, help text, and type"
+    },
+    "v1OriginResourceRef": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "title": "kind is the Kubernetes resource kind (e.g. Service, Ingress, DNSEndpoint)"
+        },
+        "namespace": {
+          "type": "string",
+          "title": "namespace is the Kubernetes namespace of the origin resource"
+        },
+        "name": {
+          "type": "string",
+          "title": "name is the name of the origin Kubernetes resource"
+        }
+      },
+      "description": "OriginResourceRef identifies the Kubernetes resource that produced an FQDN.\nOnly populated for FQDNs discovered via external-dns sources."
+    },
+    "v1Portal": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "name is the portal resource name"
+        },
+        "title": {
+          "type": "string",
+          "title": "title is the display title"
+        },
+        "main": {
+          "type": "boolean",
+          "title": "main indicates if this is the default portal"
+        },
+        "subPath": {
+          "type": "string",
+          "title": "sub_path is the URL subpath for this portal"
+        },
+        "namespace": {
+          "type": "string",
+          "title": "namespace is the portal resource namespace"
+        },
+        "ready": {
+          "type": "boolean",
+          "title": "ready indicates if the portal is fully configured"
+        },
+        "url": {
+          "type": "string",
+          "title": "url is the URL of a remote portal (empty for local portals)"
+        },
+        "isRemote": {
+          "type": "boolean",
+          "title": "is_remote indicates if this portal fetches data from a remote source"
+        },
+        "remoteSync": {
+          "$ref": "#/definitions/v1RemoteSyncStatus",
+          "title": "remote_sync contains status information for remote portals"
+        }
+      },
+      "title": "Portal represents a portal with its metadata"
+    },
+    "v1ReleaseEntry": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "title": "type is the kind of release (e.g., \"deployment\", \"rollback\", \"hotfix\")"
+        },
+        "version": {
+          "type": "string",
+          "title": "version is the version string of the release"
+        },
+        "origin": {
+          "type": "string",
+          "title": "origin identifies where the release came from (e.g., \"ci/cd\", \"manual\", service name)"
+        },
+        "date": {
+          "type": "string",
+          "format": "date-time",
+          "title": "date is the timestamp of the release"
+        },
+        "author": {
+          "type": "string",
+          "title": "author is the person or system that performed the release"
+        },
+        "message": {
+          "type": "string",
+          "title": "message is the release description or commit message"
+        },
+        "link": {
+          "type": "string",
+          "title": "link is a URL to the release (e.g., PR, pipeline, changelog)"
+        }
+      },
+      "title": "ReleaseEntry represents a single release event"
+    },
+    "v1RemoteSyncStatus": {
+      "type": "object",
+      "properties": {
+        "lastSyncTime": {
+          "type": "string",
+          "title": "last_sync_time is the timestamp of the last successful sync (RFC3339 format)"
+        },
+        "lastSyncError": {
+          "type": "string",
+          "title": "last_sync_error contains the error from the last failed sync attempt"
+        },
+        "remoteTitle": {
+          "type": "string",
+          "title": "remote_title is the title of the remote portal"
+        },
+        "fqdnCount": {
+          "type": "integer",
+          "format": "int32",
+          "title": "fqdn_count is the number of FQDNs fetched from the remote portal"
+        }
+      },
+      "title": "RemoteSyncStatus contains status information about remote portal synchronization"
+    },
+    "v1Silence": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "matchers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Matcher"
+          }
+        },
+        "startsAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "endsAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string"
+        },
+        "createdBy": {
+          "type": "string"
+        },
+        "comment": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "title": "Silence represents a mute rule in Alertmanager"
+    },
+    "v1StreamFQDNsRequest": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "title": "namespace filters updates by namespace (empty for all namespaces)"
+        },
+        "portal": {
+          "type": "string",
+          "title": "portal filters updates by portal name (empty for all portals)"
+        },
+        "source": {
+          "type": "string",
+          "title": "source filters updates by source (empty for all sources)"
+        },
+        "search": {
+          "type": "string",
+          "title": "search filters updates by FQDN name substring (empty for all)"
+        }
+      },
+      "title": "StreamFQDNsRequest is the request for streaming FQDN updates"
+    },
+    "v1StreamFQDNsResponse": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/v1UpdateType",
+          "title": "type is the type of update"
+        },
+        "fqdn": {
+          "$ref": "#/definitions/v1FQDN",
+          "title": "fqdn is the FQDN that was updated"
+        }
+      },
+      "title": "StreamFQDNsResponse represents an update to an FQDN"
+    },
+    "v1UpdateType": {
+      "type": "string",
+      "enum": [
+        "UPDATE_TYPE_UNSPECIFIED",
+        "UPDATE_TYPE_ADDED",
+        "UPDATE_TYPE_MODIFIED",
+        "UPDATE_TYPE_DELETED"
+      ],
+      "default": "UPDATE_TYPE_UNSPECIFIED",
+      "title": "UpdateType represents the type of update"
+    }
+  }
+}

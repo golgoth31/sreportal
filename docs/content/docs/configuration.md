@@ -285,6 +285,23 @@ Set to `true` to skip the resolution step entirely. This is useful when:
 
 When disabled, `syncStatus` will be empty on all FQDNs.
 
+## Release
+
+Controls the Release CRD feature for tracking deployments, rollbacks, and other release events.
+
+```yaml
+release:
+  ttl: 720h                 # How long Release CRs are kept (default: 720h = 30 days)
+  namespace: ""             # Namespace for Release CRs (defaults to operator namespace)
+```
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `ttl` | `720h` (30 days) | Release CRs older than this are automatically deleted by the Release controller |
+| `namespace` | _(operator namespace)_ | Namespace where Release CRs are stored |
+
+The Release controller re-checks each CR every 12 hours. When a CR's day is older than the TTL, the controller deletes it automatically.
+
 ## Full Example
 
 ```yaml
@@ -358,4 +375,7 @@ data:
       interval: 30s
       retryOnError: 10s
       disableDNSCheck: false
+    release:
+      ttl: 720h
+      namespace: ""
 ```

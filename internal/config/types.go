@@ -60,6 +60,16 @@ type OperatorConfig struct {
 	Sources        SourcesConfig        `json:"sources" yaml:"sources"`
 	GroupMapping   GroupMappingConfig   `json:"groupMapping" yaml:"groupMapping"`
 	Reconciliation ReconciliationConfig `json:"reconciliation" yaml:"reconciliation"`
+	Release        ReleaseConfig        `json:"release,omitempty" yaml:"release,omitempty"`
+}
+
+// ReleaseConfig configures the Release CRD feature.
+type ReleaseConfig struct {
+	// TTL is how long Release CRs are kept before cleanup (default: 720h = 30 days).
+	// The release controller checks expired CRs every 12 hours.
+	TTL Duration `json:"ttl,omitempty" yaml:"ttl,omitempty"`
+	// Namespace is the namespace for Release CRs (defaults to operator namespace).
+	Namespace string `json:"namespace,omitempty" yaml:"namespace,omitempty"`
 }
 
 // SourcesConfig enables and configures each source type.
@@ -233,6 +243,9 @@ func DefaultConfig() *OperatorConfig {
 		Reconciliation: ReconciliationConfig{
 			Interval:     Duration(5 * time.Minute),
 			RetryOnError: Duration(30 * time.Second),
+		},
+		Release: ReleaseConfig{
+			TTL: Duration(30 * 24 * time.Hour),
 		},
 	}
 }
