@@ -32,9 +32,17 @@ export default defineConfig({
           if (id.includes("/@bufbuild/") || id.includes("/@connectrpc/")) {
             return "connect-vendor";
           }
-          // React core + all React-dependent UI libs (radix, lucide, etc.) in one
-          // chunk to avoid circular chunk dependencies (ui-vendor ↔ react-vendor).
-          // Combined size ~430 kB — safely under the 500 kB threshold.
+          // React core — split from UI libs to keep each chunk under Rollup's 500 kB warning
+          if (
+            id.includes("/node_modules/react/") ||
+            id.includes("/node_modules/react-dom/") ||
+            id.includes("/node_modules/scheduler/")
+          ) {
+            return "react-vendor";
+          }
+          // Heavy leaf deps (would otherwise inflate the catch-all vendor chunk ~845 kB)
+          if (id.includes("/recharts")) return "recharts-vendor";
+          if (id.includes("/lucide-react")) return "lucide-vendor";
           return "vendor";
         },
       },

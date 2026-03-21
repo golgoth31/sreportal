@@ -27,6 +27,7 @@ import (
 
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
+	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -48,6 +49,9 @@ type Config struct {
 
 	// WebFS is an optional embedded filesystem for the web UI
 	WebFS fs.FS
+
+	// Gatherer is the Prometheus metrics gatherer for the MetricsService
+	Gatherer prometheus.Gatherer
 }
 
 // Server is the web server for the SRE Portal
@@ -140,6 +144,12 @@ func (s *Server) setupRoutes() {
 	versionService := grpc.NewVersionService()
 	versionPath, versionHandler := sreportalv1connect.NewVersionServiceHandler(versionService)
 	s.echo.Any(versionPath+"*", echo.WrapHandler(versionHandler))
+
+	if s.config.Gatherer != nil {
+		metricsService := grpc.NewMetricsService(s.config.Gatherer)
+		metricsPath, metricsHandler := sreportalv1connect.NewMetricsServiceHandler(metricsService)
+		s.echo.Any(metricsPath+"*", echo.WrapHandler(metricsHandler))
+	}
 
 	// API health check
 	s.echo.GET("/api/health", s.healthHandler)

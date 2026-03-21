@@ -34,6 +34,9 @@ const LinksPage = lazy(() =>
 const AlertsPage = lazy(() =>
   import("@/pages/AlertsPage").then((m) => ({ default: m.AlertsPage }))
 );
+const DashboardPage = lazy(() =>
+  import("@/pages/DashboardPage").then((m) => ({ default: m.DashboardPage }))
+);
 const McpPage = lazy(() =>
   import("@/features/mcp/ui/McpPage").then((m) => ({ default: m.McpPage }))
 );
@@ -54,6 +57,15 @@ export const router = createBrowserRouter([
         element: (
           <Suspense fallback={<PageSkeleton />}>
             <LinksPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: ":portalName/dashboard",
+        errorElement: <ErrorPage />,
+        element: (
+          <Suspense fallback={<PageSkeleton />}>
+            <DashboardPage />
           </Suspense>
         ),
       },

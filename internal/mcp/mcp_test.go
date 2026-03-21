@@ -27,6 +27,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/prometheus/client_golang/prometheus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -35,6 +36,7 @@ import (
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/config"
+	domainmetrics "github.com/golgoth31/sreportal/internal/domain/metrics"
 )
 
 func TestMCP(t *testing.T) {
@@ -1189,6 +1191,120 @@ var _ = Describe("MCP Server", func() {
 				Expect(isErrorResult(result)).To(BeTrue())
 				text := extractTextContent(result)
 				Expect(text).To(ContainSubstring("failed to list DNSRecord resources"))
+			})
+		})
+	})
+
+	Describe("MetricsServer", func() {
+		Describe("creation", func() {
+			It("should create server with list_metrics tool registered", func() {
+				reg := prometheus.NewRegistry()
+				server := NewMetricsServer(reg)
+				Expect(server).NotTo(BeNil())
+				Expect(server.mcpServer).NotTo(BeNil())
+				Expect(server.gatherer).NotTo(BeNil())
+			})
+		})
+
+		Describe("handleListMetrics", func() {
+			It("should return all sreportal metrics", func() {
+				reg := prometheus.NewRegistry()
+				gauge := prometheus.NewGauge(prometheus.GaugeOpts{
+					Namespace: "sreportal",
+					Subsystem: "dns",
+					Name:      "fqdns_total",
+					Help:      "Total FQDNs",
+				})
+				reg.MustRegister(gauge)
+				gauge.Set(42)
+
+				server := NewMetricsServer(reg)
+				request := newCallToolRequest("list_metrics", map[string]any{})
+
+				result, err := server.handleListMetrics(ctx, request)
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(isErrorResult(result)).To(BeFalse())
+				text := extractTextContent(result)
+				Expect(text).To(ContainSubstring("1 metric family"))
+
+				var families []domainmetrics.MetricFamily
+				jsonStr := text[strings.Index(text, "["):]
+				Expect(json.Unmarshal([]byte(jsonStr), &families)).To(Succeed())
+				Expect(families).To(HaveLen(1))
+				Expect(families[0].Name).To(Equal("sreportal_dns_fqdns_total"))
+				Expect(families[0].Metrics[0].Value).To(Equal(42.0))
+			})
+
+			It("should filter by subsystem", func() {
+				reg := prometheus.NewRegistry()
+				dnsGauge := prometheus.NewGauge(prometheus.GaugeOpts{
+					Namespace: "sreportal",
+					Subsystem: "dns",
+					Name:      "fqdns_total",
+					Help:      "Total FQDNs",
+				})
+				httpCounter := prometheus.NewCounter(prometheus.CounterOpts{
+					Namespace: "sreportal",
+					Subsystem: "http",
+					Name:      "requests_total",
+					Help:      "Total HTTP requests",
+				})
+				reg.MustRegister(dnsGauge, httpCounter)
+
+				server := NewMetricsServer(reg)
+				request := newCallToolRequest("list_metrics", map[string]any{
+					"subsystem": "dns",
+				})
+
+				result, err := server.handleListMetrics(ctx, request)
+
+				Expect(err).NotTo(HaveOccurred())
+				text := extractTextContent(result)
+				Expect(text).To(ContainSubstring("sreportal_dns_fqdns_total"))
+				Expect(text).NotTo(ContainSubstring("sreportal_http_requests_total"))
+			})
+
+			It("should filter by search", func() {
+				reg := prometheus.NewRegistry()
+				fqdnGauge := prometheus.NewGauge(prometheus.GaugeOpts{
+					Namespace: "sreportal",
+					Subsystem: "dns",
+					Name:      "fqdns_total",
+					Help:      "Total FQDNs",
+				})
+				groupGauge := prometheus.NewGauge(prometheus.GaugeOpts{
+					Namespace: "sreportal",
+					Subsystem: "dns",
+					Name:      "groups_total",
+					Help:      "Total groups",
+				})
+				reg.MustRegister(fqdnGauge, groupGauge)
+
+				server := NewMetricsServer(reg)
+				request := newCallToolRequest("list_metrics", map[string]any{
+					"search": "fqdn",
+				})
+
+				result, err := server.handleListMetrics(ctx, request)
+
+				Expect(err).NotTo(HaveOccurred())
+				text := extractTextContent(result)
+				Expect(text).To(ContainSubstring("sreportal_dns_fqdns_total"))
+				Expect(text).NotTo(ContainSubstring("sreportal_dns_groups_total"))
+			})
+
+			It("should return message when no metrics match", func() {
+				reg := prometheus.NewRegistry()
+				server := NewMetricsServer(reg)
+				request := newCallToolRequest("list_metrics", map[string]any{})
+
+				result, err := server.handleListMetrics(ctx, request)
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(isErrorResult(result)).To(BeFalse())
+				text := extractTextContent(result)
+				Expect(text).To(ContainSubstring("No metrics found"))
 			})
 		})
 	})

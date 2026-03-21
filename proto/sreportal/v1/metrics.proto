@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package sreportal.v1;
+
+// MetricsService provides access to Prometheus metrics
+service MetricsService {
+  // ListMetrics returns current values of sreportal custom metrics
+  rpc ListMetrics(ListMetricsRequest) returns (ListMetricsResponse);
+}
+
+// ListMetricsRequest is the request for listing metrics
+message ListMetricsRequest {
+  // subsystem filters metrics by subsystem (e.g., controller, dns, source, alertmanager, portal, http, mcp)
+  string subsystem = 1;
+
+  // search filters metrics by name substring match
+  string search = 2;
+}
+
+// ListMetricsResponse contains the list of metric families
+message ListMetricsResponse {
+  // families is the list of matching metric families
+  repeated MetricFamily families = 1;
+}
+
+// MetricFamily represents a group of metrics sharing a name, help text, and type
+message MetricFamily {
+  // name is the fully qualified metric name (e.g., sreportal_dns_fqdns_total)
+  string name = 1;
+
+  // help is the metric description
+  string help = 2;
+
+  // type is the metric type: COUNTER, GAUGE, HISTOGRAM
+  string type = 3;
+
+  // metrics is the list of individual metric values with their labels
+  repeated Metric metrics = 4;
+}
+
+// Metric represents a single metric with its labels and value
+message Metric {
+  // labels contains the label key-value pairs for this metric
+  map<string, string> labels = 1;
+
+  // value is the current metric value (gauge or counter)
+  double value = 2;
+
+  // histogram contains histogram-specific data (only for HISTOGRAM type)
+  HistogramValue histogram = 3;
+}
+
+// HistogramValue holds histogram-specific data
+message HistogramValue {
+  // sample_count is the total number of observations
+  uint64 sample_count = 1;
+
+  // sample_sum is the sum of all observed values
+  double sample_sum = 2;
+
+  // buckets is the list of histogram buckets
+  repeated HistogramBucket buckets = 3;
+}
+
+// HistogramBucket represents a single histogram bucket
+message HistogramBucket {
+  // cumulative_count is the number of observations in this bucket and all lower buckets
+  uint64 cumulative_count = 1;
+
+  // upper_bound is the upper bound of this bucket
+  double upper_bound = 2;
+}

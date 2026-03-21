@@ -36,6 +36,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	ctrlmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -382,7 +383,8 @@ func main() {
 
 	// Start the web server in a goroutine
 	webCfg := webserver.Config{
-		Address: webAddr,
+		Address:  webAddr,
+		Gatherer: ctrlmetrics.Registry,
 	}
 	if devMode {
 		setupLog.Info("dev mode enabled: serving web UI from filesystem", "web-root", webRoot)
@@ -422,6 +424,7 @@ func main() {
 	if enableMCP {
 		dnsMcpServer := mcp.NewDNSServer(mgr.GetClient(), &operatorConfig.GroupMapping)
 		alertsMcpServer := mcp.NewAlertsServer(mgr.GetClient())
+		metricsMcpServer := mcp.NewMetricsServer(ctrlmetrics.Registry)
 
 		switch mcpTransport {
 		case "stdio":
@@ -433,10 +436,15 @@ func main() {
 				}
 			}()
 		case "streamable-http":
-			setupLog.Info("mounting MCP servers on web server", "dns", []string{"/mcp", "/mcp/dns"}, "alerts", "/mcp/alerts")
+			setupLog.Info("mounting MCP servers on web server",
+				"dns", []string{"/mcp", "/mcp/dns"},
+				"alerts", "/mcp/alerts",
+				"metrics", "/mcp/metrics",
+			)
 			webServer.MountHandler("/mcp", dnsMcpServer.Handler())
 			webServer.MountHandler("/mcp/dns", dnsMcpServer.Handler())
 			webServer.MountHandler("/mcp/alerts", alertsMcpServer.Handler())
+			webServer.MountHandler("/mcp/metrics", metricsMcpServer.Handler())
 		default:
 			setupLog.Error(nil, "unknown MCP transport", "transport", mcpTransport)
 			os.Exit(1)

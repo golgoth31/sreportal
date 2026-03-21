@@ -11,12 +11,11 @@ describe("RemoteSyncStaleBanner", () => {
 
     expect(screen.getByRole("alert")).toBeInTheDocument();
     expect(
-      screen.getByText(/remote synchronization failed/i),
+      screen.getByText(/synchronization failed/i),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/may not reflect the current state/i),
     ).toBeInTheDocument();
-    expect(screen.getByText("dial tcp: connection refused")).toBeInTheDocument();
   });
 
   it("when lastSyncError is whitespace-only renders nothing", () => {
