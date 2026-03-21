@@ -4,13 +4,14 @@ go 1.26
 
 require (
 	connectrpc.com/connect v1.19.1
-	github.com/cloudfoundry-community/go-cfclient v0.0.0-20190201205600-f136f9222381
+	github.com/cloudfoundry-community/go-cfclient v0.0.0-20220930021109-9c4e6c59ccf1
 	github.com/go-logr/logr v1.4.3
 	github.com/labstack/echo/v5 v5.0.4
 	github.com/mark3labs/mcp-go v0.45.0
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
 	github.com/openshift/client-go v0.0.0-20251015124057-db0dee36e235
+	github.com/prometheus/client_golang v1.23.2
 	github.com/stretchr/testify v1.11.1
 	go.elastic.co/ecszap v1.0.3
 	go.uber.org/zap v1.27.0
@@ -85,7 +86,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/projectcontour/contour v1.33.0 // indirect
-	github.com/prometheus/client_golang v1.23.2 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.67.2 // indirect
 	github.com/prometheus/procfs v0.17.0 // indirect
@@ -127,6 +127,7 @@ require (
 	google.golang.org/grpc v1.77.0 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	istio.io/api v1.29.0-rc.1.0.20260209142455-7fea5efd57ca // indirect
 	k8s.io/apiextensions-apiserver v0.35.0 // indirect
