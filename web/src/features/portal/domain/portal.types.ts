@@ -16,3 +16,9 @@ export interface Portal {
   readonly isRemote: boolean;
   readonly remoteSync?: RemoteSyncStatus;
 }
+
+/** True when the controller reported a non-empty last sync error (stale remote data). */
+export function hasRemoteSyncError(portal: Portal | undefined): boolean {
+  const err = portal?.remoteSync?.lastSyncError?.trim();
+  return Boolean(err);
+}

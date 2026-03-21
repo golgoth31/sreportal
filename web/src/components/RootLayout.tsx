@@ -4,7 +4,9 @@ import { NavLink, Outlet, useParams } from "react-router";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { usePortalsWithAlerts } from "@/features/alertmanager/hooks/usePortalsWithAlerts";
+import { hasRemoteSyncError } from "@/features/portal/domain/portal.types";
 import { usePortals } from "@/features/portal/hooks/usePortals";
+import { RemoteSyncStaleBanner } from "@/features/portal/ui/RemoteSyncStaleBanner";
 import { useVersion } from "@/features/version/hooks/useVersion";
 import { cn } from "@/lib/utils";
 import { PortalNav } from "./PortalNav";
@@ -19,6 +21,12 @@ export function RootLayout() {
 
   const { portalName } = useParams<{ portalName?: string }>();
   const showSidebar = portalName != null;
+  const currentPortal =
+    portalName != null
+      ? portals.find((p) => (p.subPath || p.name) === portalName)
+      : undefined;
+  const showRemoteSyncWarning =
+    currentPortal != null && hasRemoteSyncError(currentPortal);
 
   return (
     <TooltipProvider>
@@ -65,8 +73,15 @@ export function RootLayout() {
               portalNamesWithAlerts={portalNamesWithAlerts}
             />
           )}
-          <main className="flex-1 min-w-0 overflow-auto">
-            <Outlet />
+          <main className="flex-1 min-w-0 overflow-auto flex flex-col">
+            {showRemoteSyncWarning && currentPortal?.remoteSync && (
+              <RemoteSyncStaleBanner
+                lastSyncError={currentPortal.remoteSync.lastSyncError}
+              />
+            )}
+            <div className="flex-1 min-h-0">
+              <Outlet />
+            </div>
           </main>
         </div>
 

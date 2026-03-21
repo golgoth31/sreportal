@@ -20,21 +20,31 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 )
 
+// RemoteSyncResult mirrors Portal status.remoteSync for MCP JSON (aligned with Connect ListPortals).
+type RemoteSyncResult struct {
+	LastSyncTime  string `json:"lastSyncTime,omitempty"`
+	LastSyncError string `json:"lastSyncError,omitempty"`
+	RemoteTitle   string `json:"remoteTitle,omitempty"`
+	FQDNCount     int    `json:"fqdnCount,omitempty"`
+}
+
 // PortalResult represents a portal in the list results
 type PortalResult struct {
-	Name      string `json:"name"`
-	Namespace string `json:"namespace"`
-	Title     string `json:"title"`
-	Main      bool   `json:"main"`
-	SubPath   string `json:"subPath,omitempty"`
-	RemoteURL string `json:"remoteUrl,omitempty"`
-	Ready     bool   `json:"ready"`
+	Name       string            `json:"name"`
+	Namespace  string            `json:"namespace"`
+	Title      string            `json:"title"`
+	Main       bool              `json:"main"`
+	SubPath    string            `json:"subPath,omitempty"`
+	RemoteURL  string            `json:"remoteUrl,omitempty"`
+	Ready      bool              `json:"ready"`
+	RemoteSync *RemoteSyncResult `json:"remoteSync,omitempty"`
 }
 
 // handleListPortals handles the list_portals tool call
@@ -62,6 +72,17 @@ func (s *DNSServer) handleListPortals(ctx context.Context, request mcp.CallToolR
 		}
 		if portal.Spec.Remote != nil {
 			result.RemoteURL = portal.Spec.Remote.URL
+		}
+		if portal.Status.RemoteSync != nil {
+			rs := &RemoteSyncResult{
+				LastSyncError: portal.Status.RemoteSync.LastSyncError,
+				RemoteTitle:   portal.Status.RemoteSync.RemoteTitle,
+				FQDNCount:     portal.Status.RemoteSync.FQDNCount,
+			}
+			if portal.Status.RemoteSync.LastSyncTime != nil {
+				rs.LastSyncTime = portal.Status.RemoteSync.LastSyncTime.Format(time.RFC3339)
+			}
+			result.RemoteSync = rs
 		}
 		results = append(results, result)
 	}

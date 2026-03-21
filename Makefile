@@ -140,7 +140,7 @@ generate-all: manifests generate proto ## Generate all code (CRDs, DeepCopy, pro
 
 .PHONY: run
 run: manifests generate fmt vet generate-certs ## Run a controller from your host (dev mode: UI served from filesystem).
-	go run ./cmd/main.go --log-level=debug --enable-mcp --mcp-transport streamable-http --webhook-cert-path=$(CERTSDIR) --config=./config/samples/test_config.yaml
+	go run ./cmd/main.go --log-level=debug --dev-mode --enable-mcp --mcp-transport streamable-http --webhook-cert-path=$(CERTSDIR) --config=./config/samples/test_config.yaml
 
 .PHONY: run2
 run2: manifests generate fmt vet generate-certs2 ## Run a second controller from your host (dev mode: UI served from filesystem).

@@ -593,6 +593,45 @@ var _ = Describe("MCP Server", func() {
 				text := extractTextContent(result)
 				Expect(text).To(ContainSubstring("https://remote.example.com"))
 			})
+
+			It("should include remoteSync with lastSyncError when remote sync failed", func() {
+				portal := &sreportalv1alpha1.Portal{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "remote",
+						Namespace: "sreportal-system",
+					},
+					Spec: sreportalv1alpha1.PortalSpec{
+						Title: "Remote Portal",
+						Remote: &sreportalv1alpha1.RemotePortalSpec{
+							URL: "https://remote.example.com",
+						},
+					},
+					Status: sreportalv1alpha1.PortalStatus{
+						Ready: true,
+						RemoteSync: &sreportalv1alpha1.RemoteSyncStatus{
+							LastSyncError: "remote unreachable: dial tcp: connection refused",
+							RemoteTitle:   "",
+							FQDNCount:     0,
+						},
+					},
+				}
+
+				k8sClient := fake.NewClientBuilder().
+					WithScheme(scheme).
+					WithObjects(portal).
+					WithStatusSubresource(portal).
+					Build()
+
+				server := NewDNSServer(k8sClient, groupMapping)
+				request := newCallToolRequest("list_portals", map[string]any{})
+
+				result, err := server.handleListPortals(ctx, request)
+
+				Expect(err).NotTo(HaveOccurred())
+				text := extractTextContent(result)
+				Expect(text).To(ContainSubstring(`"lastSyncError": "remote unreachable: dial tcp: connection refused"`))
+				Expect(text).To(ContainSubstring(`"remoteSync"`))
+			})
 		})
 
 		Context("with no portals", func() {

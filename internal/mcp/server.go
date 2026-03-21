@@ -106,7 +106,8 @@ func (s *DNSServer) registerDNSTools() {
 	s.mcpServer.AddTool(
 		mcp.NewTool("list_portals",
 			mcp.WithDescription("List all available portals in the SRE Portal. "+
-				"Portals are entry points that group DNS entries together."),
+				"Portals are entry points that group DNS entries together. "+
+				"For remote portals, includes remoteSync (lastSyncTime, lastSyncError, remoteTitle, fqdnCount) when status is available."),
 		),
 		withToolMetrics("dns", "list_portals", s.handleListPortals),
 	)
