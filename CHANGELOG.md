@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.15.0](https://github.com/golgoth31/sreportal/compare/v1.14.1...v1.15.0) (2026-03-22)
+
+
+### Features
+
+* **metrics:** add metrics dashboard with gRPC API, MCP server, and web UI ([581e803](https://github.com/golgoth31/sreportal/commit/581e803f7d8edd20d52c2ce727bebebd627d2de1))
+* **portal:** surface remote sync errors in MCP and web UI ([24acbfb](https://github.com/golgoth31/sreportal/commit/24acbfbcc7b462636b485a247aaef16d9237e88c))
+* **release:** add date picker constraints, table UI, and type enforcement ([#139](https://github.com/golgoth31/sreportal/issues/139)) ([b2c23c6](https://github.com/golgoth31/sreportal/commit/b2c23c6c6ef66b117c6d860c5089e579135bed19))
+* **release:** add release tracking CRD, API, MCP server, and web UI ([dec1857](https://github.com/golgoth31/sreportal/commit/dec18578a3739be8a1b06bd8666e65858a6bbb80))
+
 ## [1.14.1](https://github.com/golgoth31/sreportal/compare/v1.14.0...v1.14.1) (2026-03-20)
 
 
