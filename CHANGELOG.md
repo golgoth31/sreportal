@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.17.0](https://github.com/golgoth31/sreportal/compare/v1.16.1...v1.17.0) (2026-03-22)
+
+
+### Features
+
+* **source:** add Crossplane Scaleway DNS Record source ([#98](https://github.com/golgoth31/sreportal/issues/98)) ([c58777a](https://github.com/golgoth31/sreportal/commit/c58777a1c11027d8c9403c30d78e0865edfdceb8))
+
 ## [1.16.1](https://github.com/golgoth31/sreportal/compare/v1.16.0...v1.16.1) (2026-03-22)
 
 
