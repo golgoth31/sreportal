@@ -31,7 +31,7 @@ SRE Portal is a Kubernetes operator with a web dashboard for managing service st
 
 ## Key Technologies
 
-- **Operator**: Go 1.25, Kubebuilder, controller-runtime v0.23
+- **Operator**: Go 1.26, Kubebuilder, controller-runtime v0.23
 - **API**: Connect protocol (connectrpc.com/connect v1.19), Buf for codegen
 - **Web server**: Echo v5 with h2c (HTTP/2 without TLS)
 - **Web UI**: React 19, Vite, Tailwind CSS v4, shadcn/ui, TanStack Query v5, React Router v7
@@ -40,38 +40,6 @@ SRE Portal is a Kubernetes operator with a web dashboard for managing service st
 - **MCP**: Model Context Protocol (mark3labs/mcp-go)
 - **Metrics**: Custom Prometheus metrics (prometheus/client_golang) registered on controller-runtime registry
 - **Deployment**: Single container (controller + gRPC + web UI + MCP)
-
-## Common Commands
-
-```bash
-# Development
-make build              # Build manager binary to bin/manager
-make run                # Run controller locally (uses current kubeconfig)
-make manifests          # Generate CRDs/RBAC from kubebuilder markers
-make generate           # Generate DeepCopy methods
-make proto              # Generate Go + TypeScript from proto (buf)
-make proto-lint         # Lint proto files with buf
-
-# Testing
-make test               # Unit tests with envtest (K8s API + etcd in-memory)
-make test-e2e           # E2E tests on isolated Kind cluster
-go test ./path/to/package -run TestName -v  # Run single test
-
-# Linting
-make lint               # Run golangci-lint
-make lint-fix           # Auto-fix lint issues
-
-# Web UI
-make install-web        # npm install
-make build-web          # Build React app (Vite)
-npm test --prefix web   # Web unit tests (Vitest)
-
-# Deployment
-make docker-build IMG=<registry>/<image>:<tag>
-make docker-push IMG=<registry>/<image>:<tag>
-make install            # Install CRDs to cluster
-make deploy IMG=<registry>/<image>:<tag>
-```
 
 ## Critical Rules
 
@@ -91,7 +59,8 @@ make deploy IMG=<registry>/<image>:<tag>
 
 **After editing `*_types.go` or markers:**
 ```bash
-make manifests generate
+make helm
+make doc
 ```
 
 **Always use kubebuilder CLI to create new APIs and webhooks. Never create these files manually.**
@@ -102,13 +71,6 @@ kubebuilder create webhook --group sreportal --version v1alpha1 --kind <Kind> \
   --defaulting --programmatic-validation
 ```
 
-## Planned CRDs (not yet implemented)
-
-- **Cluster** - Operator chaining / multi-cluster federation
-- **Component** - Health monitoring with HTTP/gRPC/K8s/Prometheus checks
-- **Incident** - Incident tracking with status updates and severity
-- **Maintenance** - Scheduled maintenance windows
-
 ## External Dependencies
 
 - `sigs.k8s.io/external-dns` - DNSEndpoint CRD and source interfaces
@@ -117,3 +79,9 @@ kubebuilder create webhook --group sreportal --version v1alpha1 --kind <Kind> \
 - `github.com/mark3labs/mcp-go` - Model Context Protocol server
 - `sigs.k8s.io/controller-runtime` - Kubernetes operator framework
 - `golang.org/x/net` - HTTP/2 cleartext support
+
+## Workflow
+
+- Conventional commits: `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`
+- PRs require: constitutional compliance, tests, 80%+ coverage, lint pass, generated code up to date
+- After changes: `make helm` -> `make test` -> `make lint` -> `make doc`
