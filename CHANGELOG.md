@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.2](https://github.com/golgoth31/sreportal/compare/v1.15.1...v1.15.2) (2026-03-22)
+
+
+### Bug Fixes
+
+* **rbac:** align release permissions with controller reconcile needs ([8f33d60](https://github.com/golgoth31/sreportal/commit/8f33d60287ef712b2eb6be2f05993fdae70752e8))
+
 ## [1.15.1](https://github.com/golgoth31/sreportal/compare/v1.15.0...v1.15.1) (2026-03-22)
 
 
