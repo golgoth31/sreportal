@@ -58,7 +58,9 @@ func NewReleaseReconciler(c client.Client, cache CacheInvalidator, ttl time.Dura
 	}
 }
 
-// +kubebuilder:rbac:groups=sreportal.io,resources=releases,verbs=get;list;watch;delete
+// +kubebuilder:rbac:groups=sreportal.io,resources=releases,verbs=get;list;watch;delete;create;update;patch
+// +kubebuilder:rbac:groups=sreportal.io,resources=releases/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=sreportal.io,resources=releases/finalizers,verbs=update
 
 // Reconcile invalidates the release cache for the affected day and deletes
 // expired CRs that exceed the configured TTL.

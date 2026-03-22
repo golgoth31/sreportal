@@ -67,6 +67,7 @@ rules:
   - dns
   - dnsrecords
   - portals
+  - releases
   verbs:
   - create
   - delete
@@ -82,6 +83,7 @@ rules:
   - dns/finalizers
   - dnsrecords/finalizers
   - portals/finalizers
+  - releases/finalizers
   verbs:
   - update
 - apiGroups:
@@ -91,16 +93,8 @@ rules:
   - dns/status
   - dnsrecords/status
   - portals/status
+  - releases/status
   verbs:
   - get
   - patch
   - update
-- apiGroups:
-  - sreportal.io
-  resources:
-  - releases
-  verbs:
-  - delete
-  - get
-  - list
-  - watch
