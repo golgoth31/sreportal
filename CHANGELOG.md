@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.1](https://github.com/golgoth31/sreportal/compare/v1.15.0...v1.15.1) (2026-03-22)
+
+
+### Bug Fixes
+
+* **webhook:** enforce release CR validation via admission webhooks ([ec6e9ee](https://github.com/golgoth31/sreportal/commit/ec6e9ee67f35771b92775f30704e87986d833873))
+
 ## [1.15.0](https://github.com/golgoth31/sreportal/compare/v1.14.1...v1.15.0) (2026-03-22)
 
 
