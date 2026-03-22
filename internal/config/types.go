@@ -82,22 +82,24 @@ type ReleaseTypeConfig struct {
 
 // SourcesConfig enables and configures each source type.
 type SourcesConfig struct {
-	Service             *ServiceConfig             `json:"service,omitempty" yaml:"service,omitempty"`
-	Ingress             *IngressConfig             `json:"ingress,omitempty" yaml:"ingress,omitempty"`
-	DNSEndpoint         *DNSEndpointConfig         `json:"dnsEndpoint,omitempty" yaml:"dnsEndpoint,omitempty"`
-	IstioGateway        *IstioGatewayConfig        `json:"istioGateway,omitempty" yaml:"istioGateway,omitempty"`
-	IstioVirtualService *IstioVirtualServiceConfig `json:"istioVirtualService,omitempty" yaml:"istioVirtualService,omitempty"`
-	GatewayHTTPRoute    *GatewayRouteConfig        `json:"gatewayHTTPRoute,omitempty" yaml:"gatewayHTTPRoute,omitempty"`
-	GatewayGRPCRoute    *GatewayRouteConfig        `json:"gatewayGRPCRoute,omitempty" yaml:"gatewayGRPCRoute,omitempty"`
-	GatewayTLSRoute     *GatewayRouteConfig        `json:"gatewayTLSRoute,omitempty" yaml:"gatewayTLSRoute,omitempty"`
-	GatewayTCPRoute     *GatewayRouteConfig        `json:"gatewayTCPRoute,omitempty" yaml:"gatewayTCPRoute,omitempty"`
-	GatewayUDPRoute     *GatewayRouteConfig        `json:"gatewayUDPRoute,omitempty" yaml:"gatewayUDPRoute,omitempty"`
+	Service                  *ServiceConfig                  `json:"service,omitempty" yaml:"service,omitempty"`
+	Ingress                  *IngressConfig                  `json:"ingress,omitempty" yaml:"ingress,omitempty"`
+	DNSEndpoint              *DNSEndpointConfig              `json:"dnsEndpoint,omitempty" yaml:"dnsEndpoint,omitempty"`
+	IstioGateway             *IstioGatewayConfig             `json:"istioGateway,omitempty" yaml:"istioGateway,omitempty"`
+	IstioVirtualService      *IstioVirtualServiceConfig      `json:"istioVirtualService,omitempty" yaml:"istioVirtualService,omitempty"`
+	GatewayHTTPRoute         *GatewayRouteConfig             `json:"gatewayHTTPRoute,omitempty" yaml:"gatewayHTTPRoute,omitempty"`
+	GatewayGRPCRoute         *GatewayRouteConfig             `json:"gatewayGRPCRoute,omitempty" yaml:"gatewayGRPCRoute,omitempty"`
+	GatewayTLSRoute          *GatewayRouteConfig             `json:"gatewayTLSRoute,omitempty" yaml:"gatewayTLSRoute,omitempty"`
+	GatewayTCPRoute          *GatewayRouteConfig             `json:"gatewayTCPRoute,omitempty" yaml:"gatewayTCPRoute,omitempty"`
+	GatewayUDPRoute          *GatewayRouteConfig             `json:"gatewayUDPRoute,omitempty" yaml:"gatewayUDPRoute,omitempty"`
+	CrossplaneScalewayRecord *CrossplaneScalewayRecordConfig `json:"crossplaneScalewayRecord,omitempty" yaml:"crossplaneScalewayRecord,omitempty"`
 	// Priority defines the preferred order of source types when the same FQDN+RecordType
 	// is discovered by multiple sources. Sources listed earlier take precedence over later ones.
 	// When a source is not listed, it receives the lowest priority. When empty, targets from
 	// all sources are merged (backward-compatible default).
 	// Valid values: "service", "ingress", "dnsendpoint", "istio-gateway", "istio-virtualservice",
-	// "gateway-httproute", "gateway-grpcroute", "gateway-tlsroute", "gateway-tcproute", "gateway-udproute".
+	// "gateway-httproute", "gateway-grpcroute", "gateway-tlsroute", "gateway-tcproute", "gateway-udproute",
+	// "crossplane-scaleway-record".
 	Priority []string `json:"priority,omitempty" yaml:"priority,omitempty"`
 }
 
@@ -216,6 +218,18 @@ type GatewayRouteConfig struct {
 	GatewayNamespace string `json:"gatewayNamespace,omitempty" yaml:"gatewayNamespace,omitempty"`
 	// GatewayLabelFilter filters Gateway resources by label selector.
 	GatewayLabelFilter string `json:"gatewayLabelFilter,omitempty" yaml:"gatewayLabelFilter,omitempty"`
+}
+
+// CrossplaneScalewayRecordConfig configures the Crossplane Scaleway DNS Record source.
+type CrossplaneScalewayRecordConfig struct {
+	// Enabled controls whether Crossplane Scaleway Record source is active.
+	Enabled bool `json:"enabled" yaml:"enabled"`
+	// Namespace restricts watching to a specific namespace. Empty means all namespaces.
+	Namespace string `json:"namespace,omitempty" yaml:"namespace,omitempty"`
+	// LabelFilter filters Records by label selector.
+	LabelFilter string `json:"labelFilter,omitempty" yaml:"labelFilter,omitempty"`
+	// ClusterScoped indicates the Record CRD is cluster-scoped (not namespaced).
+	ClusterScoped bool `json:"clusterScoped,omitempty" yaml:"clusterScoped,omitempty"`
 }
 
 // GroupMappingConfig configures how FQDNs are organized into groups for the UI.
