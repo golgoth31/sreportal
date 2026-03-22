@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.1](https://github.com/golgoth31/sreportal/compare/v1.16.0...v1.16.1) (2026-03-22)
+
+
+### Bug Fixes
+
+* **release:** replace static type colors with server-driven config ([8275335](https://github.com/golgoth31/sreportal/commit/827533580c1783aba04405ae3f5acc19f0ff7c97))
+
 ## [1.16.0](https://github.com/golgoth31/sreportal/compare/v1.15.2...v1.16.0) (2026-03-22)
 
 
