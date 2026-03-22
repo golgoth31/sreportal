@@ -57,6 +57,12 @@ type Config struct {
 
 	// ReleaseService is the shared release service for the ReleaseService gRPC handler
 	ReleaseService *releaseservice.Service
+
+	// ReleaseTTL is the TTL for release CRs, exposed to the frontend via ListReleaseDays
+	ReleaseTTL time.Duration
+
+	// ReleaseAllowedTypes is the list of allowed release types (empty means all allowed)
+	ReleaseAllowedTypes []string
 }
 
 // Server is the web server for the SRE Portal
@@ -157,7 +163,7 @@ func (s *Server) setupRoutes() {
 	}
 
 	if s.config.ReleaseService != nil {
-		releaseGRPC := grpc.NewReleaseService(s.config.ReleaseService)
+		releaseGRPC := grpc.NewReleaseService(s.config.ReleaseService, s.config.ReleaseTTL, s.config.ReleaseAllowedTypes)
 		releasePath, releaseHandler := sreportalv1connect.NewReleaseServiceHandler(releaseGRPC)
 		s.echo.Any(releasePath+"*", echo.WrapHandler(releaseHandler))
 	}

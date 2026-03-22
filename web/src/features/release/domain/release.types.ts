@@ -15,6 +15,11 @@ export interface ReleasesDay {
   readonly nextDay: string;
 }
 
+export interface ReleaseDays {
+  readonly days: readonly string[]; // sorted YYYY-MM-DD strings
+  readonly ttlDays: number; // TTL window in days
+}
+
 /** Case-insensitive keyword search across all text fields of an entry. */
 export function entryMatchesSearch(
   entry: ReleaseEntry,

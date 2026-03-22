@@ -18,6 +18,7 @@ package release
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 )
@@ -68,6 +69,18 @@ func (e Entry) DateKey() string {
 // CRName returns the K8s CR name for this entry's day.
 func (e Entry) CRName() string {
 	return crPrefix + e.DateKey()
+}
+
+// ValidateType checks that typ is in the allowedTypes list.
+// If allowedTypes is empty, all types are accepted (no restriction).
+func ValidateType(typ string, allowedTypes []string) error {
+	if len(allowedTypes) == 0 {
+		return nil
+	}
+	if slices.Contains(allowedTypes, typ) {
+		return nil
+	}
+	return fmt.Errorf("%w: %q (allowed: %v)", ErrTypeNotAllowed, typ, allowedTypes)
 }
 
 // ParseDateFromCRName extracts the YYYY-MM-DD date string from a CR name like "release-2026-03-21".

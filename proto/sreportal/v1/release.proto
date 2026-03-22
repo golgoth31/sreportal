@@ -11,6 +11,9 @@ service ReleaseService {
 
   // ListReleases returns release entries paginated by day
   rpc ListReleases(ListReleasesRequest) returns (ListReleasesResponse);
+
+  // ListReleaseDays returns all days that have releases and the TTL window
+  rpc ListReleaseDays(ListReleaseDaysRequest) returns (ListReleaseDaysResponse);
 }
 
 // ReleaseEntry represents a single release event
@@ -80,4 +83,16 @@ message ListReleasesResponse {
 
   // next_day is the YYYY-MM-DD of the next day with releases (empty if none)
   string next_day = 5;
+}
+
+// ListReleaseDaysRequest is the request for listing all release days
+message ListReleaseDaysRequest {}
+
+// ListReleaseDaysResponse contains the list of days with releases and TTL info
+message ListReleaseDaysResponse {
+  // days is the sorted list of YYYY-MM-DD strings that have Release CRs
+  repeated string days = 1;
+
+  // ttl_days is the number of days releases are kept (derived from operator TTL config)
+  int32 ttl_days = 2;
 }

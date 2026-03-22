@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -33,12 +34,14 @@ import (
 // ReleaseService implements the ReleaseServiceHandler interface.
 type ReleaseService struct {
 	sreportalv1connect.UnimplementedReleaseServiceHandler
-	service *releaseservice.Service
+	service      *releaseservice.Service
+	ttl          time.Duration
+	allowedTypes []string
 }
 
 // NewReleaseService creates a new ReleaseService.
-func NewReleaseService(svc *releaseservice.Service) *ReleaseService {
-	return &ReleaseService{service: svc}
+func NewReleaseService(svc *releaseservice.Service, ttl time.Duration, allowedTypes []string) *ReleaseService {
+	return &ReleaseService{service: svc, ttl: ttl, allowedTypes: allowedTypes}
 }
 
 // AddRelease appends a release entry to the day's Release CR.
@@ -54,6 +57,9 @@ func (s *ReleaseService) AddRelease(
 	date := e.Date.AsTime()
 	entry, err := domainrelease.NewEntry(e.Type, e.Version, e.Origin, date)
 	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	if err := domainrelease.ValidateType(e.Type, s.allowedTypes); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	entry.Author = e.Author
@@ -136,5 +142,23 @@ func (s *ReleaseService) ListReleases(
 		Entries:     protoEntries,
 		PreviousDay: prevDay,
 		NextDay:     nextDay,
+	}), nil
+}
+
+// ListReleaseDays returns all days that have releases and the TTL window.
+func (s *ReleaseService) ListReleaseDays(
+	ctx context.Context,
+	_ *connect.Request[releasev1.ListReleaseDaysRequest],
+) (*connect.Response[releasev1.ListReleaseDaysResponse], error) {
+	days, err := s.service.ListDays(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	ttlDays := int32(s.ttl.Hours() / 24)
+
+	return connect.NewResponse(&releasev1.ListReleaseDaysResponse{
+		Days:    days,
+		TtlDays: ttlDays,
 	}), nil
 }

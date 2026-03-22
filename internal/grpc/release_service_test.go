@@ -46,7 +46,7 @@ func TestAddRelease_CreatesEntry(t *testing.T) {
 	scheme := releaseScheme()
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&sreportalv1alpha1.Release{}).Build()
 	svc := releaseservice.NewService(k8sClient, "default")
-	grpcSvc := svcgrpc.NewReleaseService(svc)
+	grpcSvc := svcgrpc.NewReleaseService(svc, 30*24*time.Hour, nil)
 
 	date := time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC)
 	resp, err := grpcSvc.AddRelease(ctx, connect.NewRequest(&releasev1.AddReleaseRequest{
@@ -68,7 +68,7 @@ func TestAddRelease_MissingEntry(t *testing.T) {
 	scheme := releaseScheme()
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).Build()
 	svc := releaseservice.NewService(k8sClient, "default")
-	grpcSvc := svcgrpc.NewReleaseService(svc)
+	grpcSvc := svcgrpc.NewReleaseService(svc, 30*24*time.Hour, nil)
 
 	_, err := grpcSvc.AddRelease(ctx, connect.NewRequest(&releasev1.AddReleaseRequest{}))
 
@@ -81,7 +81,7 @@ func TestAddRelease_EmptyType(t *testing.T) {
 	scheme := releaseScheme()
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).Build()
 	svc := releaseservice.NewService(k8sClient, "default")
-	grpcSvc := svcgrpc.NewReleaseService(svc)
+	grpcSvc := svcgrpc.NewReleaseService(svc, 30*24*time.Hour, nil)
 
 	_, err := grpcSvc.AddRelease(ctx, connect.NewRequest(&releasev1.AddReleaseRequest{
 		Entry: &releasev1.ReleaseEntry{
@@ -101,7 +101,7 @@ func TestAddRelease_WithOptionalFields(t *testing.T) {
 	scheme := releaseScheme()
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&sreportalv1alpha1.Release{}).Build()
 	svc := releaseservice.NewService(k8sClient, "default")
-	grpcSvc := svcgrpc.NewReleaseService(svc)
+	grpcSvc := svcgrpc.NewReleaseService(svc, 30*24*time.Hour, nil)
 
 	date := time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC)
 	resp, err := grpcSvc.AddRelease(ctx, connect.NewRequest(&releasev1.AddReleaseRequest{
@@ -156,7 +156,7 @@ func TestListReleases_ReturnsEntries(t *testing.T) {
 	}
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(existing).Build()
 	svc := releaseservice.NewService(k8sClient, "default")
-	grpcSvc := svcgrpc.NewReleaseService(svc)
+	grpcSvc := svcgrpc.NewReleaseService(svc, 30*24*time.Hour, nil)
 
 	resp, err := grpcSvc.ListReleases(ctx, connect.NewRequest(&releasev1.ListReleasesRequest{
 		Day: "2026-03-21",
@@ -193,7 +193,7 @@ func TestListReleases_EmptyDayReturnsLatest(t *testing.T) {
 	}
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(&releases[0], &releases[1]).Build()
 	svc := releaseservice.NewService(k8sClient, "default")
-	grpcSvc := svcgrpc.NewReleaseService(svc)
+	grpcSvc := svcgrpc.NewReleaseService(svc, 30*24*time.Hour, nil)
 
 	resp, err := grpcSvc.ListReleases(ctx, connect.NewRequest(&releasev1.ListReleasesRequest{}))
 
@@ -236,7 +236,7 @@ func TestListReleases_DayNavigation(t *testing.T) {
 	}
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(&releases[0], &releases[1], &releases[2]).Build()
 	svc := releaseservice.NewService(k8sClient, "default")
-	grpcSvc := svcgrpc.NewReleaseService(svc)
+	grpcSvc := svcgrpc.NewReleaseService(svc, 30*24*time.Hour, nil)
 
 	// Request middle day
 	resp, err := grpcSvc.ListReleases(ctx, connect.NewRequest(&releasev1.ListReleasesRequest{
@@ -247,4 +247,71 @@ func TestListReleases_DayNavigation(t *testing.T) {
 	assert.Equal(t, "2026-03-20", resp.Msg.Day)
 	assert.Equal(t, "2026-03-19", resp.Msg.PreviousDay)
 	assert.Equal(t, "2026-03-21", resp.Msg.NextDay)
+}
+
+func TestAddRelease_TypeNotAllowed(t *testing.T) {
+	ctx := context.Background()
+	scheme := releaseScheme()
+	k8sClient := fake.NewClientBuilder().WithScheme(scheme).Build()
+	svc := releaseservice.NewService(k8sClient, "default")
+	grpcSvc := svcgrpc.NewReleaseService(svc, 30*24*time.Hour, []string{"deployment", "rollback"})
+
+	_, err := grpcSvc.AddRelease(ctx, connect.NewRequest(&releasev1.AddReleaseRequest{
+		Entry: &releasev1.ReleaseEntry{
+			Type:    "hotfix",
+			Version: "v1.0.0",
+			Origin:  "ci/cd",
+			Date:    timestamppb.New(time.Now()),
+		},
+	}))
+
+	require.Error(t, err)
+	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+	assert.Contains(t, err.Error(), "not allowed")
+}
+
+func TestAddRelease_TypeAllowed(t *testing.T) {
+	ctx := context.Background()
+	scheme := releaseScheme()
+	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&sreportalv1alpha1.Release{}).Build()
+	svc := releaseservice.NewService(k8sClient, "default")
+	grpcSvc := svcgrpc.NewReleaseService(svc, 30*24*time.Hour, []string{"deployment", "rollback"})
+
+	date := time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC)
+	resp, err := grpcSvc.AddRelease(ctx, connect.NewRequest(&releasev1.AddReleaseRequest{
+		Entry: &releasev1.ReleaseEntry{
+			Type:    "deployment",
+			Version: "v1.0.0",
+			Origin:  "ci/cd",
+			Date:    timestamppb.New(date),
+		},
+	}))
+
+	require.NoError(t, err)
+	assert.Equal(t, "2026-03-21", resp.Msg.Day)
+}
+
+func TestListReleaseDays_ReturnsDaysAndTTL(t *testing.T) {
+	ctx := context.Background()
+	scheme := releaseScheme()
+
+	releases := []sreportalv1alpha1.Release{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "release-2026-03-19", Namespace: "default"},
+			Spec:       sreportalv1alpha1.ReleaseSpec{},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "release-2026-03-21", Namespace: "default"},
+			Spec:       sreportalv1alpha1.ReleaseSpec{},
+		},
+	}
+	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(&releases[0], &releases[1]).Build()
+	svc := releaseservice.NewService(k8sClient, "default")
+	grpcSvc := svcgrpc.NewReleaseService(svc, 30*24*time.Hour, nil)
+
+	resp, err := grpcSvc.ListReleaseDays(ctx, connect.NewRequest(&releasev1.ListReleaseDaysRequest{}))
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{"2026-03-19", "2026-03-21"}, resp.Msg.Days)
+	assert.Equal(t, int32(30), resp.Msg.TtlDays)
 }

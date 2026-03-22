@@ -3,11 +3,16 @@ import { ConnectError, Code, createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
 
 import {
+  ListReleaseDaysRequestSchema,
   ListReleasesRequestSchema,
   ReleaseService,
   type ReleaseEntry as ProtoEntry,
 } from "@/gen/sreportal/v1/release_pb";
-import type { ReleaseEntry, ReleasesDay } from "../domain/release.types";
+import type {
+  ReleaseEntry,
+  ReleaseDays,
+  ReleasesDay,
+} from "../domain/release.types";
 
 const transport = createConnectTransport({ baseUrl: window.location.origin });
 const client = createClient(ReleaseService, transport);
@@ -29,6 +34,15 @@ function toDomainEntry(e: ProtoEntry): ReleaseEntry {
     author: e.author,
     message: e.message,
     link: e.link,
+  };
+}
+
+export async function listReleaseDays(): Promise<ReleaseDays> {
+  const request = create(ListReleaseDaysRequestSchema, {});
+  const response = await client.listReleaseDays(request);
+  return {
+    days: [...response.days],
+    ttlDays: response.ttlDays,
   };
 }
 

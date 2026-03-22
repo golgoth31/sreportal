@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AddReleaseRequest, AddReleaseResponse, ListReleasesRequest, ListReleasesResponse } from "./release_pb.js";
+import { AddReleaseRequest, AddReleaseResponse, ListReleaseDaysRequest, ListReleaseDaysResponse, ListReleasesRequest, ListReleasesResponse } from "./release_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -34,6 +34,17 @@ export const ReleaseService = {
       name: "ListReleases",
       I: ListReleasesRequest,
       O: ListReleasesResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ListReleaseDays returns all days that have releases and the TTL window
+     *
+     * @generated from rpc sreportal.v1.ReleaseService.ListReleaseDays
+     */
+    listReleaseDays: {
+      name: "ListReleaseDays",
+      I: ListReleaseDaysRequest,
+      O: ListReleaseDaysResponse,
       kind: MethodKind.Unary,
     },
   }

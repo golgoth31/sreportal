@@ -25,4 +25,5 @@ var (
 	ErrInvalidDate    = errors.New("release date must not be zero")
 	ErrNotFound       = errors.New("release not found")
 	ErrInvalidCRName  = errors.New("invalid release CR name")
+	ErrTypeNotAllowed = errors.New("release type not allowed")
 )

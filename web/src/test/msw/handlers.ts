@@ -3,6 +3,7 @@ import { http, HttpResponse } from "msw";
 import {
   listFqdnsResponseJson,
   listPortalsResponseJson,
+  listReleaseDaysResponseJson,
   listReleasesResponseJson,
   sampleFqdn,
   samplePortal,
@@ -12,6 +13,7 @@ import {
 export const listFqdnsPath = /\/sreportal\.v1\.DNSService\/ListFQDNs$/;
 export const listPortalsPath = /\/sreportal\.v1\.PortalService\/ListPortals$/;
 export const listReleasesPath = /\/sreportal\.v1\.ReleaseService\/ListReleases$/;
+export const listReleaseDaysPath = /\/sreportal\.v1\.ReleaseService\/ListReleaseDays$/;
 
 export const defaultHandlers = [
   http.post(listFqdnsPath, () =>
@@ -36,6 +38,11 @@ export const defaultHandlers = [
   http.post(listReleasesPath, () =>
     HttpResponse.json(
       listReleasesResponseJson("", []),
+    ),
+  ),
+  http.post(listReleaseDaysPath, () =>
+    HttpResponse.json(
+      listReleaseDaysResponseJson([], 30),
     ),
   ),
 ];

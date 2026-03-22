@@ -63,6 +63,11 @@ config:
       interval: 5m
       retryOnError: 30s
       disableDNSCheck: false
+
+    release:
+      ttl: 720h        # How long Release CRs are kept (default: 30 days)
+      namespace: ""    # Namespace for Release CRs (defaults to operator namespace)
+      types: []
 controllerManager:
   manager:
     args:

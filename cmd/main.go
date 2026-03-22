@@ -334,6 +334,10 @@ func main() {
 			setupLog.Error(err, "unable to create webhook", "webhook", "Portal")
 			os.Exit(1)
 		}
+		if err := webhookv1alpha1.SetupReleaseWebhookWithManager(mgr, operatorConfig.Release.Types); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "Release")
+			os.Exit(1)
+		}
 	}
 	remoteCache := remoteclient.NewCache()
 	if err := controller.NewPortalReconciler(
@@ -405,9 +409,11 @@ func main() {
 
 	// Start the web server in a goroutine
 	webCfg := webserver.Config{
-		Address:        webAddr,
-		Gatherer:       ctrlmetrics.Registry,
-		ReleaseService: releaseSvc,
+		Address:             webAddr,
+		Gatherer:            ctrlmetrics.Registry,
+		ReleaseService:      releaseSvc,
+		ReleaseTTL:          releaseTTL,
+		ReleaseAllowedTypes: operatorConfig.Release.Types,
 	}
 	if devMode {
 		setupLog.Info("dev mode enabled: serving web UI from filesystem", "web-root", webRoot)

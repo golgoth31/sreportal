@@ -39,6 +39,9 @@ const (
 	// ReleaseServiceListReleasesProcedure is the fully-qualified name of the ReleaseService's
 	// ListReleases RPC.
 	ReleaseServiceListReleasesProcedure = "/sreportal.v1.ReleaseService/ListReleases"
+	// ReleaseServiceListReleaseDaysProcedure is the fully-qualified name of the ReleaseService's
+	// ListReleaseDays RPC.
+	ReleaseServiceListReleaseDaysProcedure = "/sreportal.v1.ReleaseService/ListReleaseDays"
 )
 
 // ReleaseServiceClient is a client for the sreportal.v1.ReleaseService service.
@@ -47,6 +50,8 @@ type ReleaseServiceClient interface {
 	AddRelease(context.Context, *connect.Request[v1.AddReleaseRequest]) (*connect.Response[v1.AddReleaseResponse], error)
 	// ListReleases returns release entries paginated by day
 	ListReleases(context.Context, *connect.Request[v1.ListReleasesRequest]) (*connect.Response[v1.ListReleasesResponse], error)
+	// ListReleaseDays returns all days that have releases and the TTL window
+	ListReleaseDays(context.Context, *connect.Request[v1.ListReleaseDaysRequest]) (*connect.Response[v1.ListReleaseDaysResponse], error)
 }
 
 // NewReleaseServiceClient constructs a client for the sreportal.v1.ReleaseService service. By
@@ -72,13 +77,20 @@ func NewReleaseServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(releaseServiceMethods.ByName("ListReleases")),
 			connect.WithClientOptions(opts...),
 		),
+		listReleaseDays: connect.NewClient[v1.ListReleaseDaysRequest, v1.ListReleaseDaysResponse](
+			httpClient,
+			baseURL+ReleaseServiceListReleaseDaysProcedure,
+			connect.WithSchema(releaseServiceMethods.ByName("ListReleaseDays")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // releaseServiceClient implements ReleaseServiceClient.
 type releaseServiceClient struct {
-	addRelease   *connect.Client[v1.AddReleaseRequest, v1.AddReleaseResponse]
-	listReleases *connect.Client[v1.ListReleasesRequest, v1.ListReleasesResponse]
+	addRelease      *connect.Client[v1.AddReleaseRequest, v1.AddReleaseResponse]
+	listReleases    *connect.Client[v1.ListReleasesRequest, v1.ListReleasesResponse]
+	listReleaseDays *connect.Client[v1.ListReleaseDaysRequest, v1.ListReleaseDaysResponse]
 }
 
 // AddRelease calls sreportal.v1.ReleaseService.AddRelease.
@@ -91,12 +103,19 @@ func (c *releaseServiceClient) ListReleases(ctx context.Context, req *connect.Re
 	return c.listReleases.CallUnary(ctx, req)
 }
 
+// ListReleaseDays calls sreportal.v1.ReleaseService.ListReleaseDays.
+func (c *releaseServiceClient) ListReleaseDays(ctx context.Context, req *connect.Request[v1.ListReleaseDaysRequest]) (*connect.Response[v1.ListReleaseDaysResponse], error) {
+	return c.listReleaseDays.CallUnary(ctx, req)
+}
+
 // ReleaseServiceHandler is an implementation of the sreportal.v1.ReleaseService service.
 type ReleaseServiceHandler interface {
 	// AddRelease appends a release entry to the day's Release CR
 	AddRelease(context.Context, *connect.Request[v1.AddReleaseRequest]) (*connect.Response[v1.AddReleaseResponse], error)
 	// ListReleases returns release entries paginated by day
 	ListReleases(context.Context, *connect.Request[v1.ListReleasesRequest]) (*connect.Response[v1.ListReleasesResponse], error)
+	// ListReleaseDays returns all days that have releases and the TTL window
+	ListReleaseDays(context.Context, *connect.Request[v1.ListReleaseDaysRequest]) (*connect.Response[v1.ListReleaseDaysResponse], error)
 }
 
 // NewReleaseServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -118,12 +137,20 @@ func NewReleaseServiceHandler(svc ReleaseServiceHandler, opts ...connect.Handler
 		connect.WithSchema(releaseServiceMethods.ByName("ListReleases")),
 		connect.WithHandlerOptions(opts...),
 	)
+	releaseServiceListReleaseDaysHandler := connect.NewUnaryHandler(
+		ReleaseServiceListReleaseDaysProcedure,
+		svc.ListReleaseDays,
+		connect.WithSchema(releaseServiceMethods.ByName("ListReleaseDays")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/sreportal.v1.ReleaseService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ReleaseServiceAddReleaseProcedure:
 			releaseServiceAddReleaseHandler.ServeHTTP(w, r)
 		case ReleaseServiceListReleasesProcedure:
 			releaseServiceListReleasesHandler.ServeHTTP(w, r)
+		case ReleaseServiceListReleaseDaysProcedure:
+			releaseServiceListReleaseDaysHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -139,4 +166,8 @@ func (UnimplementedReleaseServiceHandler) AddRelease(context.Context, *connect.R
 
 func (UnimplementedReleaseServiceHandler) ListReleases(context.Context, *connect.Request[v1.ListReleasesRequest]) (*connect.Response[v1.ListReleasesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sreportal.v1.ReleaseService.ListReleases is not implemented"))
+}
+
+func (UnimplementedReleaseServiceHandler) ListReleaseDays(context.Context, *connect.Request[v1.ListReleaseDaysRequest]) (*connect.Response[v1.ListReleaseDaysResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sreportal.v1.ReleaseService.ListReleaseDays is not implemented"))
 }

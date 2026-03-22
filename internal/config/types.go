@@ -70,6 +70,8 @@ type ReleaseConfig struct {
 	TTL Duration `json:"ttl,omitempty" yaml:"ttl,omitempty"`
 	// Namespace is the namespace for Release CRs (defaults to operator namespace).
 	Namespace string `json:"namespace,omitempty" yaml:"namespace,omitempty"`
+	// Types is the list of release allowed types.
+	Types []string `json:"types,omitempty" yaml:"types,omitempty"`
 }
 
 // SourcesConfig enables and configures each source type.
