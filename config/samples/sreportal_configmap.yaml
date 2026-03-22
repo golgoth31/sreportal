@@ -78,4 +78,15 @@ data:
     release:
       ttl: 720h        # How long Release CRs are kept (default: 30 days)
       namespace: ""    # Namespace for Release CRs (defaults to operator namespace)
+      # types configures allowed release types and their display colors in the web UI.
+      # Each entry has a name (used as allowlist) and a color (CSS color for the type badge).
+      # When empty, all types are accepted and the web UI uses built-in default colors.
       types: []
+      # Example:
+      # types:
+      #   - name: deployment
+      #     color: "#3b82f6"
+      #   - name: rollback
+      #     color: "#f97316"
+      #   - name: hotfix
+      #     color: "#ef4444"

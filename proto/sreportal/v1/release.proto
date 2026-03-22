@@ -95,4 +95,16 @@ message ListReleaseDaysResponse {
 
   // ttl_days is the number of days releases are kept (derived from operator TTL config)
   int32 ttl_days = 2;
+
+  // types is the list of configured release types with display colors
+  repeated ReleaseTypeConfig types = 3;
+}
+
+// ReleaseTypeConfig describes a release type and its display color
+message ReleaseTypeConfig {
+  // name is the release type identifier (e.g., "deployment", "rollback")
+  string name = 1;
+
+  // color is the CSS color value for UI display (e.g., "#3b82f6")
+  string color = 2;
 }

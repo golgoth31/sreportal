@@ -50,21 +50,6 @@ export function PortalSidebar({
           <LinkIcon className="size-4 shrink-0" aria-hidden="true" />
           <span>DNS</span>
         </NavLink>
-        <NavLink
-          to={`${basePath}/dashboard`}
-          className={({ isActive }) =>
-            cn(
-              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-              isActive
-                ? "bg-accent text-accent-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            )
-          }
-        >
-          <BarChart3Icon className="size-4 shrink-0" aria-hidden="true" />
-          <span>Dashboard</span>
-          <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0">beta</Badge>
-        </NavLink>
         {showReleases && (
           <NavLink
             to={`${basePath}/releases`}
@@ -97,6 +82,23 @@ export function PortalSidebar({
             <span>Alerts</span>
           </NavLink>
         )}
+      </nav>
+      <nav className="mt-auto px-2" aria-label="Portal statistics">
+        <NavLink
+          to={`${basePath}/dashboard`}
+          className={({ isActive }) =>
+            cn(
+              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+              isActive
+                ? "bg-accent text-accent-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )
+          }
+        >
+          <BarChart3Icon className="size-4 shrink-0" aria-hidden="true" />
+          <span>Portal Statistics</span>
+          <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0">beta</Badge>
+        </NavLink>
       </nav>
     </aside>
   );

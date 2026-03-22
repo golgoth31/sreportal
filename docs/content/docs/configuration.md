@@ -293,14 +293,25 @@ Controls the Release CRD feature for tracking deployments, rollbacks, and other 
 release:
   ttl: 720h                 # How long Release CRs are kept (default: 720h = 30 days)
   namespace: ""             # Namespace for Release CRs (defaults to operator namespace)
-  types: []                 # Optional allowlist of release entry types (empty = any type allowed)
+  types:                    # Optional list of release types with display colors
+    - name: deployment
+      color: "#3b82f6"
+    - name: rollback
+      color: "#f97316"
 ```
 
 | Field | Default | Description |
 |-------|---------|-------------|
 | `ttl` | `720h` (30 days) | Release CRs older than this are automatically deleted by the Release controller |
 | `namespace` | _(operator namespace)_ | Namespace where Release CRs are stored |
-| `types` | _(empty)_ | If non-empty, only these `type` values are accepted by `AddRelease` (gRPC) and enforced in the domain layer |
+| `types` | _(empty)_ | List of release types with display configuration. Each entry has a `name` (used as allowlist for `AddRelease` validation) and a `color` (CSS color sent to the web UI for the type badge). When empty, all types are accepted and the web UI uses built-in default colors |
+
+Each type entry has the following fields:
+
+| Field | Description |
+|-------|-------------|
+| `name` | The release type identifier (e.g., `deployment`, `rollback`, `hotfix`) |
+| `color` | CSS color value for the type badge in the web UI (e.g., `#3b82f6`, `red`) |
 
 The Release controller re-checks each CR every 12 hours. When a CR's day is older than the TTL, the controller deletes it automatically.
 
@@ -380,5 +391,11 @@ data:
     release:
       ttl: 720h
       namespace: ""
-      types: []
+      types:
+        - name: deployment
+          color: "#3b82f6"
+        - name: rollback
+          color: "#f97316"
+        - name: hotfix
+          color: "#ef4444"
 ```

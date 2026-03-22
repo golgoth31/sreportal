@@ -779,6 +779,14 @@
           "type": "integer",
           "format": "int32",
           "title": "ttl_days is the number of days releases are kept (derived from operator TTL config)"
+        },
+        "types": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1ReleaseTypeConfig"
+          },
+          "title": "types is the list of configured release types with display colors"
         }
       },
       "title": "ListReleaseDaysResponse contains the list of days with releases and TTL info"
@@ -989,6 +997,20 @@
         }
       },
       "title": "ReleaseEntry represents a single release event"
+    },
+    "v1ReleaseTypeConfig": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "name is the release type identifier (e.g., \"deployment\", \"rollback\")"
+        },
+        "color": {
+          "type": "string",
+          "title": "color is the CSS color value for UI display (e.g., \"#3b82f6\")"
+        }
+      },
+      "title": "ReleaseTypeConfig describes a release type and its display color"
     },
     "v1RemoteSyncStatus": {
       "type": "object",

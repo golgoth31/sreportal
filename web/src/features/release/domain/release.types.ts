@@ -15,9 +15,27 @@ export interface ReleasesDay {
   readonly nextDay: string;
 }
 
+export interface ReleaseTypeConfig {
+  readonly name: string;
+  readonly color: string; // CSS color value (e.g., "#3b82f6")
+}
+
+/** Default type colors used when the server does not provide any. */
+export const DEFAULT_TYPE_COLORS: readonly ReleaseTypeConfig[] = [
+  { name: "deployment", color: "#3b82f6" },
+  { name: "rollback", color: "#f97316" },
+  { name: "hotfix", color: "#ef4444" },
+  { name: "canary", color: "#eab308" },
+  { name: "feature-flag", color: "#a855f7" },
+  { name: "config", color: "#14b8a6" },
+  { name: "migration", color: "#6366f1" },
+  { name: "infra", color: "#06b6d4" },
+] as const;
+
 export interface ReleaseDays {
   readonly days: readonly string[]; // sorted YYYY-MM-DD strings
   readonly ttlDays: number; // TTL window in days
+  readonly types: readonly ReleaseTypeConfig[];
 }
 
 /** Case-insensitive keyword search across all text fields of an entry. */

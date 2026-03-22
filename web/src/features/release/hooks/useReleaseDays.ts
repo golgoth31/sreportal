@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import { format } from "date-fns";
 
+import { DEFAULT_TYPE_COLORS } from "../domain/release.types";
 import { listReleaseDays } from "../infrastructure/releaseApi";
 
 const DAY_FORMAT = "yyyy-MM-dd";
@@ -21,6 +22,8 @@ export function useReleaseDays() {
   );
 
   const ttlDays = data?.ttlDays ?? 0;
+  const serverTypes = data?.types ?? [];
+  const types = serverTypes.length > 0 ? serverTypes : DEFAULT_TYPE_COLORS;
 
   const isDayDisabled = useCallback(
     (date: Date): boolean => {
@@ -33,6 +36,7 @@ export function useReleaseDays() {
   return {
     daysSet,
     ttlDays,
+    types,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     isDayDisabled,

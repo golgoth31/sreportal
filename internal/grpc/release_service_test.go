@@ -30,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	"github.com/golgoth31/sreportal/internal/config"
 	svcgrpc "github.com/golgoth31/sreportal/internal/grpc"
 	releasev1 "github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1"
 	releaseservice "github.com/golgoth31/sreportal/internal/release"
@@ -254,7 +255,9 @@ func TestAddRelease_TypeNotAllowed(t *testing.T) {
 	scheme := releaseScheme()
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).Build()
 	svc := releaseservice.NewService(k8sClient, "default")
-	grpcSvc := svcgrpc.NewReleaseService(svc, 30*24*time.Hour, []string{"deployment", "rollback"})
+	grpcSvc := svcgrpc.NewReleaseService(svc, 30*24*time.Hour, []config.ReleaseTypeConfig{
+		{Name: "deployment"}, {Name: "rollback"},
+	})
 
 	_, err := grpcSvc.AddRelease(ctx, connect.NewRequest(&releasev1.AddReleaseRequest{
 		Entry: &releasev1.ReleaseEntry{
@@ -275,7 +278,9 @@ func TestAddRelease_TypeAllowed(t *testing.T) {
 	scheme := releaseScheme()
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&sreportalv1alpha1.Release{}).Build()
 	svc := releaseservice.NewService(k8sClient, "default")
-	grpcSvc := svcgrpc.NewReleaseService(svc, 30*24*time.Hour, []string{"deployment", "rollback"})
+	grpcSvc := svcgrpc.NewReleaseService(svc, 30*24*time.Hour, []config.ReleaseTypeConfig{
+		{Name: "deployment"}, {Name: "rollback"},
+	})
 
 	date := time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC)
 	resp, err := grpcSvc.AddRelease(ctx, connect.NewRequest(&releasev1.AddReleaseRequest{

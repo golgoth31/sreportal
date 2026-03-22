@@ -11,9 +11,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-import type { ReleaseEntry } from "../domain/release.types";
+import type { ReleaseEntry, ReleaseTypeConfig } from "../domain/release.types";
 import { formatEntryTime } from "../domain/release.types";
+
+const FALLBACK_COLOR = "#6b7280";
 
 type SortOrder = "desc" | "asc";
 
@@ -23,6 +24,7 @@ interface ReleaseListProps {
   hasFilters: boolean;
   onClearFilters: () => void;
   timeZone: string;
+  typeColors: readonly ReleaseTypeConfig[];
 }
 
 export function ReleaseList({
@@ -31,8 +33,14 @@ export function ReleaseList({
   hasFilters,
   onClearFilters,
   timeZone,
+  typeColors,
 }: ReleaseListProps) {
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
+
+  const colorMap = useMemo(
+    () => new Map(typeColors.map((t) => [t.name.toLowerCase(), t.color])),
+    [typeColors],
+  );
 
   const sortedEntries = useMemo(() => {
     if (sortOrder === "desc") return entries;
@@ -99,9 +107,22 @@ export function ReleaseList({
                 {formatEntryTime(entry.date, timeZone)}
               </TableCell>
               <TableCell>
-                <Badge variant="outline" className="text-[11px] px-1.5 py-0">
-                  {entry.type}
-                </Badge>
+                {(() => {
+                  const color = colorMap.get(entry.type.toLowerCase()) ?? FALLBACK_COLOR;
+                  return (
+                    <Badge
+                      variant="outline"
+                      className="text-[11px] px-1.5 py-0"
+                      style={{
+                        borderColor: color,
+                        backgroundColor: `${color}1a`,
+                        color,
+                      }}
+                    >
+                      {entry.type}
+                    </Badge>
+                  );
+                })()}
               </TableCell>
               <TableCell className="font-medium">{entry.version}</TableCell>
               <TableCell className="text-muted-foreground text-xs">

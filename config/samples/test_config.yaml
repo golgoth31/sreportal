@@ -15,9 +15,6 @@ sources:
     enabled: false
     ingressClassNames: [] # Empty = all ingress classes
 
-  gatewayHTTPRoute:
-    enabled: false
-
   # DNSEndpoint disabled - requires external-dns CRDs
   dnsEndpoint:
     enabled: false
@@ -64,3 +61,13 @@ reconciliation:
   interval: 30s
   retryOnError: 10s
   disableDNSCheck: false
+
+# Release tracking
+release:
+  ttl: 720h # How long Release CRs are kept (default: 30 days)
+  namespace: "" # Namespace for Release CRs (defaults to operator namespace)
+  types:
+    - name: release
+      color: red
+    - name: feature-flag
+      color: purple

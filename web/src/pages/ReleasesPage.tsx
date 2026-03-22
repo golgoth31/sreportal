@@ -50,6 +50,7 @@ export function ReleasesPage() {
   const {
     isDayDisabled,
     ttlDays,
+    types,
     isFetching: releaseDaysFetching,
     refetch: refetchReleaseDays,
   } = useReleaseDays();
@@ -178,6 +179,7 @@ export function ReleasesPage() {
           hasFilters={hasFilters}
           onClearFilters={clearFilters}
           timeZone={timeZone}
+          typeColors={types}
         />
       )}
     </div>

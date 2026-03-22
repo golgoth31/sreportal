@@ -64,8 +64,8 @@ type Config struct {
 	// ReleaseTTL is the TTL for release CRs, exposed to the frontend via ListReleaseDays
 	ReleaseTTL time.Duration
 
-	// ReleaseAllowedTypes is the list of allowed release types (empty means all allowed)
-	ReleaseAllowedTypes []string
+	// ReleaseAllowedTypes is the list of allowed release types with display config (empty means all allowed)
+	ReleaseAllowedTypes []config.ReleaseTypeConfig
 }
 
 // Server is the web server for the SRE Portal

@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file sreportal/v1/release.proto.
  */
 export const file_sreportal_v1_release: GenFile = /*@__PURE__*/
-  fileDesc("ChpzcmVwb3J0YWwvdjEvcmVsZWFzZS5wcm90bxIMc3JlcG9ydGFsLnYxIpYBCgxSZWxlYXNlRW50cnkSDAoEdHlwZRgBIAEoCRIPCgd2ZXJzaW9uGAIgASgJEg4KBm9yaWdpbhgDIAEoCRIoCgRkYXRlGAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIOCgZhdXRob3IYBSABKAkSDwoHbWVzc2FnZRgGIAEoCRIMCgRsaW5rGAcgASgJIj4KEUFkZFJlbGVhc2VSZXF1ZXN0EikKBWVudHJ5GAEgASgLMhouc3JlcG9ydGFsLnYxLlJlbGVhc2VFbnRyeSI2ChJBZGRSZWxlYXNlUmVzcG9uc2USCwoDZGF5GAEgASgJEhMKC2VudHJ5X2NvdW50GAIgASgFIkkKE0xpc3RSZWxlYXNlc1JlcXVlc3QSCwoDZGF5GAEgASgJEhEKCXBhZ2Vfc2l6ZRgCIAEoBRISCgpwYWdlX3Rva2VuGAMgASgJIpEBChRMaXN0UmVsZWFzZXNSZXNwb25zZRILCgNkYXkYASABKAkSKwoHZW50cmllcxgCIAMoCzIaLnNyZXBvcnRhbC52MS5SZWxlYXNlRW50cnkSFwoPbmV4dF9wYWdlX3Rva2VuGAMgASgJEhQKDHByZXZpb3VzX2RheRgEIAEoCRIQCghuZXh0X2RheRgFIAEoCSIYChZMaXN0UmVsZWFzZURheXNSZXF1ZXN0IjkKF0xpc3RSZWxlYXNlRGF5c1Jlc3BvbnNlEgwKBGRheXMYASADKAkSEAoIdHRsX2RheXMYAiABKAUymAIKDlJlbGVhc2VTZXJ2aWNlEk8KCkFkZFJlbGVhc2USHy5zcmVwb3J0YWwudjEuQWRkUmVsZWFzZVJlcXVlc3QaIC5zcmVwb3J0YWwudjEuQWRkUmVsZWFzZVJlc3BvbnNlElUKDExpc3RSZWxlYXNlcxIhLnNyZXBvcnRhbC52MS5MaXN0UmVsZWFzZXNSZXF1ZXN0GiIuc3JlcG9ydGFsLnYxLkxpc3RSZWxlYXNlc1Jlc3BvbnNlEl4KD0xpc3RSZWxlYXNlRGF5cxIkLnNyZXBvcnRhbC52MS5MaXN0UmVsZWFzZURheXNSZXF1ZXN0GiUuc3JlcG9ydGFsLnYxLkxpc3RSZWxlYXNlRGF5c1Jlc3BvbnNlQrwBChBjb20uc3JlcG9ydGFsLnYxQgxSZWxlYXNlUHJvdG9QAVpJZ2l0aHViLmNvbS9nb2xnb3RoMzEvc3JlcG9ydGFsL2ludGVybmFsL2dycGMvZ2VuL3NyZXBvcnRhbC92MTtzcmVwb3J0YWx2MaICA1NYWKoCDFNyZXBvcnRhbC5WMcoCDFNyZXBvcnRhbFxWMeICGFNyZXBvcnRhbFxWMVxHUEJNZXRhZGF0YeoCDVNyZXBvcnRhbDo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
+  fileDesc("ChpzcmVwb3J0YWwvdjEvcmVsZWFzZS5wcm90bxIMc3JlcG9ydGFsLnYxIpYBCgxSZWxlYXNlRW50cnkSDAoEdHlwZRgBIAEoCRIPCgd2ZXJzaW9uGAIgASgJEg4KBm9yaWdpbhgDIAEoCRIoCgRkYXRlGAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIOCgZhdXRob3IYBSABKAkSDwoHbWVzc2FnZRgGIAEoCRIMCgRsaW5rGAcgASgJIj4KEUFkZFJlbGVhc2VSZXF1ZXN0EikKBWVudHJ5GAEgASgLMhouc3JlcG9ydGFsLnYxLlJlbGVhc2VFbnRyeSI2ChJBZGRSZWxlYXNlUmVzcG9uc2USCwoDZGF5GAEgASgJEhMKC2VudHJ5X2NvdW50GAIgASgFIkkKE0xpc3RSZWxlYXNlc1JlcXVlc3QSCwoDZGF5GAEgASgJEhEKCXBhZ2Vfc2l6ZRgCIAEoBRISCgpwYWdlX3Rva2VuGAMgASgJIpEBChRMaXN0UmVsZWFzZXNSZXNwb25zZRILCgNkYXkYASABKAkSKwoHZW50cmllcxgCIAMoCzIaLnNyZXBvcnRhbC52MS5SZWxlYXNlRW50cnkSFwoPbmV4dF9wYWdlX3Rva2VuGAMgASgJEhQKDHByZXZpb3VzX2RheRgEIAEoCRIQCghuZXh0X2RheRgFIAEoCSIYChZMaXN0UmVsZWFzZURheXNSZXF1ZXN0ImkKF0xpc3RSZWxlYXNlRGF5c1Jlc3BvbnNlEgwKBGRheXMYASADKAkSEAoIdHRsX2RheXMYAiABKAUSLgoFdHlwZXMYAyADKAsyHy5zcmVwb3J0YWwudjEuUmVsZWFzZVR5cGVDb25maWciMAoRUmVsZWFzZVR5cGVDb25maWcSDAoEbmFtZRgBIAEoCRINCgVjb2xvchgCIAEoCTKYAgoOUmVsZWFzZVNlcnZpY2USTwoKQWRkUmVsZWFzZRIfLnNyZXBvcnRhbC52MS5BZGRSZWxlYXNlUmVxdWVzdBogLnNyZXBvcnRhbC52MS5BZGRSZWxlYXNlUmVzcG9uc2USVQoMTGlzdFJlbGVhc2VzEiEuc3JlcG9ydGFsLnYxLkxpc3RSZWxlYXNlc1JlcXVlc3QaIi5zcmVwb3J0YWwudjEuTGlzdFJlbGVhc2VzUmVzcG9uc2USXgoPTGlzdFJlbGVhc2VEYXlzEiQuc3JlcG9ydGFsLnYxLkxpc3RSZWxlYXNlRGF5c1JlcXVlc3QaJS5zcmVwb3J0YWwudjEuTGlzdFJlbGVhc2VEYXlzUmVzcG9uc2VCvAEKEGNvbS5zcmVwb3J0YWwudjFCDFJlbGVhc2VQcm90b1ABWklnaXRodWIuY29tL2dvbGdvdGgzMS9zcmVwb3J0YWwvaW50ZXJuYWwvZ3JwYy9nZW4vc3JlcG9ydGFsL3YxO3NyZXBvcnRhbHYxogIDU1hYqgIMU3JlcG9ydGFsLlYxygIMU3JlcG9ydGFsXFYx4gIYU3JlcG9ydGFsXFYxXEdQQk1ldGFkYXRh6gINU3JlcG9ydGFsOjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp]);
 
 /**
  * ReleaseEntry represents a single release event
@@ -244,6 +244,13 @@ export type ListReleaseDaysResponse = Message<"sreportal.v1.ListReleaseDaysRespo
    * @generated from field: int32 ttl_days = 2;
    */
   ttlDays: number;
+
+  /**
+   * types is the list of configured release types with display colors
+   *
+   * @generated from field: repeated sreportal.v1.ReleaseTypeConfig types = 3;
+   */
+  types: ReleaseTypeConfig[];
 };
 
 /**
@@ -252,6 +259,34 @@ export type ListReleaseDaysResponse = Message<"sreportal.v1.ListReleaseDaysRespo
  */
 export const ListReleaseDaysResponseSchema: GenMessage<ListReleaseDaysResponse> = /*@__PURE__*/
   messageDesc(file_sreportal_v1_release, 6);
+
+/**
+ * ReleaseTypeConfig describes a release type and its display color
+ *
+ * @generated from message sreportal.v1.ReleaseTypeConfig
+ */
+export type ReleaseTypeConfig = Message<"sreportal.v1.ReleaseTypeConfig"> & {
+  /**
+   * name is the release type identifier (e.g., "deployment", "rollback")
+   *
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * color is the CSS color value for UI display (e.g., "#3b82f6")
+   *
+   * @generated from field: string color = 2;
+   */
+  color: string;
+};
+
+/**
+ * Describes the message sreportal.v1.ReleaseTypeConfig.
+ * Use `create(ReleaseTypeConfigSchema)` to create a new message.
+ */
+export const ReleaseTypeConfigSchema: GenMessage<ReleaseTypeConfig> = /*@__PURE__*/
+  messageDesc(file_sreportal_v1_release, 7);
 
 /**
  * ReleaseService provides access to release tracking data

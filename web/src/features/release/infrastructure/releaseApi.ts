@@ -43,6 +43,7 @@ export async function listReleaseDays(): Promise<ReleaseDays> {
   return {
     days: [...response.days],
     ttlDays: response.ttlDays,
+    types: response.types.map((t) => ({ name: t.name, color: t.color })),
   };
 }
 

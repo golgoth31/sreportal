@@ -412,7 +412,9 @@ type ListReleaseDaysResponse struct {
 	// days is the sorted list of YYYY-MM-DD strings that have Release CRs
 	Days []string `protobuf:"bytes,1,rep,name=days,proto3" json:"days,omitempty"`
 	// ttl_days is the number of days releases are kept (derived from operator TTL config)
-	TtlDays       int32 `protobuf:"varint,2,opt,name=ttl_days,json=ttlDays,proto3" json:"ttl_days,omitempty"`
+	TtlDays int32 `protobuf:"varint,2,opt,name=ttl_days,json=ttlDays,proto3" json:"ttl_days,omitempty"`
+	// types is the list of configured release types with display colors
+	Types         []*ReleaseTypeConfig `protobuf:"bytes,3,rep,name=types,proto3" json:"types,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -461,6 +463,68 @@ func (x *ListReleaseDaysResponse) GetTtlDays() int32 {
 	return 0
 }
 
+func (x *ListReleaseDaysResponse) GetTypes() []*ReleaseTypeConfig {
+	if x != nil {
+		return x.Types
+	}
+	return nil
+}
+
+// ReleaseTypeConfig describes a release type and its display color
+type ReleaseTypeConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// name is the release type identifier (e.g., "deployment", "rollback")
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// color is the CSS color value for UI display (e.g., "#3b82f6")
+	Color         string `protobuf:"bytes,2,opt,name=color,proto3" json:"color,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReleaseTypeConfig) Reset() {
+	*x = ReleaseTypeConfig{}
+	mi := &file_sreportal_v1_release_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReleaseTypeConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReleaseTypeConfig) ProtoMessage() {}
+
+func (x *ReleaseTypeConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_sreportal_v1_release_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReleaseTypeConfig.ProtoReflect.Descriptor instead.
+func (*ReleaseTypeConfig) Descriptor() ([]byte, []int) {
+	return file_sreportal_v1_release_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *ReleaseTypeConfig) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ReleaseTypeConfig) GetColor() string {
+	if x != nil {
+		return x.Color
+	}
+	return ""
+}
+
 var File_sreportal_v1_release_proto protoreflect.FileDescriptor
 
 const file_sreportal_v1_release_proto_rawDesc = "" +
@@ -491,10 +555,14 @@ const file_sreportal_v1_release_proto_rawDesc = "" +
 	"\x0fnext_page_token\x18\x03 \x01(\tR\rnextPageToken\x12!\n" +
 	"\fprevious_day\x18\x04 \x01(\tR\vpreviousDay\x12\x19\n" +
 	"\bnext_day\x18\x05 \x01(\tR\anextDay\"\x18\n" +
-	"\x16ListReleaseDaysRequest\"H\n" +
+	"\x16ListReleaseDaysRequest\"\x7f\n" +
 	"\x17ListReleaseDaysResponse\x12\x12\n" +
 	"\x04days\x18\x01 \x03(\tR\x04days\x12\x19\n" +
-	"\bttl_days\x18\x02 \x01(\x05R\attlDays2\x98\x02\n" +
+	"\bttl_days\x18\x02 \x01(\x05R\attlDays\x125\n" +
+	"\x05types\x18\x03 \x03(\v2\x1f.sreportal.v1.ReleaseTypeConfigR\x05types\"=\n" +
+	"\x11ReleaseTypeConfig\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
+	"\x05color\x18\x02 \x01(\tR\x05color2\x98\x02\n" +
 	"\x0eReleaseService\x12O\n" +
 	"\n" +
 	"AddRelease\x12\x1f.sreportal.v1.AddReleaseRequest\x1a .sreportal.v1.AddReleaseResponse\x12U\n" +
@@ -514,7 +582,7 @@ func file_sreportal_v1_release_proto_rawDescGZIP() []byte {
 	return file_sreportal_v1_release_proto_rawDescData
 }
 
-var file_sreportal_v1_release_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_sreportal_v1_release_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_sreportal_v1_release_proto_goTypes = []any{
 	(*ReleaseEntry)(nil),            // 0: sreportal.v1.ReleaseEntry
 	(*AddReleaseRequest)(nil),       // 1: sreportal.v1.AddReleaseRequest
@@ -523,23 +591,25 @@ var file_sreportal_v1_release_proto_goTypes = []any{
 	(*ListReleasesResponse)(nil),    // 4: sreportal.v1.ListReleasesResponse
 	(*ListReleaseDaysRequest)(nil),  // 5: sreportal.v1.ListReleaseDaysRequest
 	(*ListReleaseDaysResponse)(nil), // 6: sreportal.v1.ListReleaseDaysResponse
-	(*timestamppb.Timestamp)(nil),   // 7: google.protobuf.Timestamp
+	(*ReleaseTypeConfig)(nil),       // 7: sreportal.v1.ReleaseTypeConfig
+	(*timestamppb.Timestamp)(nil),   // 8: google.protobuf.Timestamp
 }
 var file_sreportal_v1_release_proto_depIdxs = []int32{
-	7, // 0: sreportal.v1.ReleaseEntry.date:type_name -> google.protobuf.Timestamp
+	8, // 0: sreportal.v1.ReleaseEntry.date:type_name -> google.protobuf.Timestamp
 	0, // 1: sreportal.v1.AddReleaseRequest.entry:type_name -> sreportal.v1.ReleaseEntry
 	0, // 2: sreportal.v1.ListReleasesResponse.entries:type_name -> sreportal.v1.ReleaseEntry
-	1, // 3: sreportal.v1.ReleaseService.AddRelease:input_type -> sreportal.v1.AddReleaseRequest
-	3, // 4: sreportal.v1.ReleaseService.ListReleases:input_type -> sreportal.v1.ListReleasesRequest
-	5, // 5: sreportal.v1.ReleaseService.ListReleaseDays:input_type -> sreportal.v1.ListReleaseDaysRequest
-	2, // 6: sreportal.v1.ReleaseService.AddRelease:output_type -> sreportal.v1.AddReleaseResponse
-	4, // 7: sreportal.v1.ReleaseService.ListReleases:output_type -> sreportal.v1.ListReleasesResponse
-	6, // 8: sreportal.v1.ReleaseService.ListReleaseDays:output_type -> sreportal.v1.ListReleaseDaysResponse
-	6, // [6:9] is the sub-list for method output_type
-	3, // [3:6] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	7, // 3: sreportal.v1.ListReleaseDaysResponse.types:type_name -> sreportal.v1.ReleaseTypeConfig
+	1, // 4: sreportal.v1.ReleaseService.AddRelease:input_type -> sreportal.v1.AddReleaseRequest
+	3, // 5: sreportal.v1.ReleaseService.ListReleases:input_type -> sreportal.v1.ListReleasesRequest
+	5, // 6: sreportal.v1.ReleaseService.ListReleaseDays:input_type -> sreportal.v1.ListReleaseDaysRequest
+	2, // 7: sreportal.v1.ReleaseService.AddRelease:output_type -> sreportal.v1.AddReleaseResponse
+	4, // 8: sreportal.v1.ReleaseService.ListReleases:output_type -> sreportal.v1.ListReleasesResponse
+	6, // 9: sreportal.v1.ReleaseService.ListReleaseDays:output_type -> sreportal.v1.ListReleaseDaysResponse
+	7, // [7:10] is the sub-list for method output_type
+	4, // [4:7] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_sreportal_v1_release_proto_init() }
@@ -553,7 +623,7 @@ func file_sreportal_v1_release_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_sreportal_v1_release_proto_rawDesc), len(file_sreportal_v1_release_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

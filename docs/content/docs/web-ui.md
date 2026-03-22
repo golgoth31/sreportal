@@ -71,6 +71,7 @@ Features:
 - **Timezone selector**: display entry times in a chosen IANA timezone (common zones preset)
 - **Keyword search**: filter releases by type, version, origin, author, or message (case-insensitive)
 - **Compact layout**: each release is a single row showing time, type badge, version, origin, message, author, and an external link icon
+- **Configurable type colors**: type badge colors are driven by the operator's `release.types` configuration. When no types are configured, built-in default colors are used
 
 ### Portal Navigation
 

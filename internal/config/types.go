@@ -71,7 +71,13 @@ type ReleaseConfig struct {
 	// Namespace is the namespace for Release CRs (defaults to operator namespace).
 	Namespace string `json:"namespace,omitempty" yaml:"namespace,omitempty"`
 	// Types is the list of release allowed types.
-	Types []string `json:"types,omitempty" yaml:"types,omitempty"`
+	Types []ReleaseTypeConfig `json:"types,omitempty" yaml:"types,omitempty"`
+}
+
+// ReleaseTypeConfig configures the Release CRD feature.
+type ReleaseTypeConfig struct {
+	Name  string `json:"name,omitempty" yaml:"name,omitempty"`
+	Color string `json:"color,omitempty" yaml:"color,omitempty"`
 }
 
 // SourcesConfig enables and configures each source type.

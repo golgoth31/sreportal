@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/golgoth31/sreportal/internal/config"
 	"github.com/golgoth31/sreportal/internal/log"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -33,9 +34,13 @@ import (
 var releaselog = log.Default().WithName("release-resource")
 
 // SetupReleaseWebhookWithManager registers the validation webhook for Release in the manager.
-func SetupReleaseWebhookWithManager(mgr ctrl.Manager, allowedTypes []string) error {
+func SetupReleaseWebhookWithManager(mgr ctrl.Manager, allowedTypes []config.ReleaseTypeConfig) error {
+	names := make([]string, len(allowedTypes))
+	for i, t := range allowedTypes {
+		names[i] = t.Name
+	}
 	return ctrl.NewWebhookManagedBy(mgr, &sreportalv1alpha1.Release{}).
-		WithValidator(&ReleaseCustomValidator{allowedTypes: allowedTypes}).
+		WithValidator(&ReleaseCustomValidator{allowedTypes: names}).
 		Complete()
 }
 

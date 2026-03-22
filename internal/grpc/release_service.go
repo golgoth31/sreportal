@@ -25,6 +25,7 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/golgoth31/sreportal/internal/config"
 	domainrelease "github.com/golgoth31/sreportal/internal/domain/release"
 	releasev1 "github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1"
 	"github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1/sreportalv1connect"
@@ -37,11 +38,11 @@ type ReleaseService struct {
 	sreportalv1connect.UnimplementedReleaseServiceHandler
 	service      *releaseservice.Service
 	ttl          time.Duration
-	allowedTypes []string
+	allowedTypes []config.ReleaseTypeConfig
 }
 
 // NewReleaseService creates a new ReleaseService.
-func NewReleaseService(svc *releaseservice.Service, ttl time.Duration, allowedTypes []string) *ReleaseService {
+func NewReleaseService(svc *releaseservice.Service, ttl time.Duration, allowedTypes []config.ReleaseTypeConfig) *ReleaseService {
 	return &ReleaseService{service: svc, ttl: ttl, allowedTypes: allowedTypes}
 }
 
@@ -60,7 +61,11 @@ func (s *ReleaseService) AddRelease(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	if err := domainrelease.ValidateType(e.Type, s.allowedTypes); err != nil {
+	allowedNames := make([]string, len(s.allowedTypes))
+	for i, t := range s.allowedTypes {
+		allowedNames[i] = t.Name
+	}
+	if err := domainrelease.ValidateType(e.Type, allowedNames); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	entry.Author = e.Author
@@ -163,8 +168,14 @@ func (s *ReleaseService) ListReleaseDays(
 
 	ttlDays := int32(s.ttl.Hours() / 24)
 
+	protoTypes := make([]*releasev1.ReleaseTypeConfig, len(s.allowedTypes))
+	for i, t := range s.allowedTypes {
+		protoTypes[i] = &releasev1.ReleaseTypeConfig{Name: t.Name, Color: t.Color}
+	}
+
 	return connect.NewResponse(&releasev1.ListReleaseDaysResponse{
 		Days:    days,
 		TtlDays: ttlDays,
+		Types:   protoTypes,
 	}), nil
 }
