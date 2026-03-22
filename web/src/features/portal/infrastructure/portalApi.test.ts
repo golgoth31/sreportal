@@ -1,5 +1,5 @@
 import { create } from "@bufbuild/protobuf";
-import { http, HttpResponse } from "msw";
+import { http } from "msw";
 import { describe, expect, it } from "vitest";
 
 import { RemoteSyncStatusSchema } from "@/gen/sreportal/v1/portal_pb";
@@ -8,14 +8,14 @@ import {
   listPortalsResponseJson,
   samplePortal,
 } from "@/test/msw/connectJson";
-import { listPortalsPath } from "@/test/msw/handlers";
+import { grpcWebResponse, listPortalsPath } from "@/test/msw/handlers";
 import { server } from "@/test/msw/server";
 
 describe("listPortals", () => {
   it("maps remote_sync to domain remoteSync when present", async () => {
     server.use(
       http.post(listPortalsPath, () =>
-        HttpResponse.json(
+        grpcWebResponse(
           listPortalsResponseJson([
             samplePortal({
               name: "edge",

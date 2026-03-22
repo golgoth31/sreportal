@@ -184,7 +184,7 @@ The referenced Secrets must exist in the same namespace as the Portal resource.
 
 ### 5. (Optional) Track Releases
 
-Release CRs let you record deployment events. Each CR stores entries for a single day (named `release-YYYY-MM-DD`). You can add releases via the gRPC API, MCP, or by creating CRs directly:
+Release CRs let you record deployment events. Each CR stores entries for a single day (named `release-YYYY-MM-DD`). You can add releases via the gRPC `AddRelease` RPC or by creating CRs directly:
 
 ```yaml
 apiVersion: sreportal.io/v1alpha1
@@ -203,7 +203,7 @@ spec:
       link: "https://github.com/example/repo/pull/42"
 ```
 
-Releases are displayed on the main portal's Releases page in the web UI and are accessible via the MCP releases server.
+Releases are displayed on the main portal's Releases page in the web UI. The MCP releases server exposes `list_releases` for read-only access.
 
 ### 6. Access the Web UI
 

@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { http, HttpResponse } from "msw";
+import { http } from "msw";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
@@ -8,7 +8,7 @@ import {
   listReleasesResponseJson,
   sampleReleaseEntry,
 } from "@/test/msw/connectJson";
-import { listReleasesPath } from "@/test/msw/handlers";
+import { grpcWebResponse, listReleasesPath } from "@/test/msw/handlers";
 import { server } from "@/test/msw/server";
 
 import { useReleases } from "./useReleases";
@@ -29,7 +29,7 @@ describe("useReleases", () => {
   it("when data is loaded returns entries for the day", async () => {
     server.use(
       http.post(listReleasesPath, () =>
-        HttpResponse.json(
+        grpcWebResponse(
           listReleasesResponseJson("2026-03-21", [
             sampleReleaseEntry({
               type: "deployment",
@@ -62,7 +62,7 @@ describe("useReleases", () => {
   it("filters entries by keyword search", async () => {
     server.use(
       http.post(listReleasesPath, () =>
-        HttpResponse.json(
+        grpcWebResponse(
           listReleasesResponseJson("2026-03-21", [
             sampleReleaseEntry({
               type: "deployment",
@@ -98,7 +98,7 @@ describe("useReleases", () => {
   it("exposes day navigation fields", async () => {
     server.use(
       http.post(listReleasesPath, () =>
-        HttpResponse.json(
+        grpcWebResponse(
           listReleasesResponseJson(
             "2026-03-21",
             [sampleReleaseEntry({ type: "deploy", version: "v1", origin: "ci" })],

@@ -45,8 +45,7 @@ Base URL: `http://<sreportal-host>:8090`.
 
 | Tool | Description | Parameters |
 |------|-------------|------------|
-| `add_release` | Add a release entry | `type` (required), `version` (required), `origin` (required), `date` (required, ISO 8601), `author`, `message`, `link` (optional) |
-| `list_releases` | List release entries for a day | `day` (optional, YYYY-MM-DD; defaults to today) |
+| `list_releases` | List release entries for a day | `day` (optional, YYYY-MM-DD; defaults to the latest day with data). Response includes `previous_day` and `next_day` |
 
 ## Setup
 

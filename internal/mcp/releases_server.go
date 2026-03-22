@@ -23,7 +23,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/golgoth31/sreportal/internal/domain/release"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/metrics"
 	releaseservice "github.com/golgoth31/sreportal/internal/release"
@@ -95,38 +94,6 @@ type ListReleasesResult struct {
 
 func (s *ReleasesServer) registerTools() {
 	s.mcpServer.AddTool(
-		mcp.NewTool("add_release",
-			mcp.WithDescription("Add a new release entry to the SRE Portal release tracker. "+
-				"Creates a daily Release CR if one doesn't exist for the given date."),
-			mcp.WithString("type",
-				mcp.Required(),
-				mcp.Description("The kind of release (e.g., deployment, rollback, hotfix)"),
-			),
-			mcp.WithString("version",
-				mcp.Required(),
-				mcp.Description("The version string of the release"),
-			),
-			mcp.WithString("origin",
-				mcp.Required(),
-				mcp.Description("Where the release came from (e.g., ci/cd, manual, service name)"),
-			),
-			mcp.WithString("date",
-				mcp.Description("Release date in RFC3339 format (defaults to now)"),
-			),
-			mcp.WithString("author",
-				mcp.Description("The person or system that performed the release"),
-			),
-			mcp.WithString("message",
-				mcp.Description("Release description or commit message"),
-			),
-			mcp.WithString("link",
-				mcp.Description("URL to the release (PR, pipeline, changelog)"),
-			),
-		),
-		withToolMetrics("releases", "add_release", s.handleAddRelease),
-	)
-
-	s.mcpServer.AddTool(
 		mcp.NewTool("list_releases",
 			mcp.WithDescription("List release entries from the SRE Portal release tracker. "+
 				"Returns entries for a specific day with navigation to adjacent days."),
@@ -136,39 +103,6 @@ func (s *ReleasesServer) registerTools() {
 		),
 		withToolMetrics("releases", "list_releases", s.handleListReleases),
 	)
-}
-
-func (s *ReleasesServer) handleAddRelease(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	typ := request.GetString("type", "")
-	version := request.GetString("version", "")
-	origin := request.GetString("origin", "")
-	dateStr := request.GetString("date", "")
-
-	var date time.Time
-	if dateStr != "" {
-		var err error
-		date, err = time.Parse(time.RFC3339, dateStr)
-		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("invalid date format: %v (expected RFC3339)", err)), nil
-		}
-	} else {
-		date = time.Now().UTC()
-	}
-
-	entry, err := release.NewEntry(typ, version, origin, date)
-	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("invalid release entry: %v", err)), nil
-	}
-	entry.Author = request.GetString("author", "")
-	entry.Message = request.GetString("message", "")
-	entry.Link = request.GetString("link", "")
-
-	day, count, _, err := s.service.AddEntry(ctx, entry)
-	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("failed to add release: %v", err)), nil
-	}
-
-	return mcp.NewToolResultText(fmt.Sprintf("Release added to day %s (total entries: %d)", day, count)), nil
 }
 
 func (s *ReleasesServer) handleListReleases(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {

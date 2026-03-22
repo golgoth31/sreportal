@@ -1,6 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { createClient } from "@connectrpc/connect";
-import { createConnectTransport } from "@connectrpc/connect-web";
+import { createGrpcWebTransport } from "@connectrpc/connect-web";
 
 import {
   AlertmanagerService,
@@ -17,7 +17,7 @@ import type {
   Silence,
 } from "../domain/alertmanager.types";
 
-const transport = createConnectTransport({ baseUrl: window.location.origin });
+const transport = createGrpcWebTransport({ baseUrl: window.location.origin });
 const client = createClient(AlertmanagerService, transport);
 
 function timestampToIso(

@@ -1330,118 +1330,35 @@ var _ = Describe("MCP Server", func() {
 			})
 		})
 
-		Describe("handleAddRelease", func() {
-			It("should add a release entry", func() {
-				server := NewReleasesServer(releaseSvc)
-				request := newCallToolRequest("add_release", map[string]any{
-					"type":    "deployment",
-					"version": "v1.0.0",
-					"origin":  "ci/cd",
-					"date":    "2026-03-21T10:00:00Z",
-				})
-
-				result, err := server.handleAddRelease(ctx, request)
-
-				Expect(err).NotTo(HaveOccurred())
-				Expect(isErrorResult(result)).To(BeFalse())
-				text := extractTextContent(result)
-				Expect(text).To(ContainSubstring("2026-03-21"))
-				Expect(text).To(ContainSubstring("total entries: 1"))
-			})
-
-			It("should add a release entry with optional fields", func() {
-				server := NewReleasesServer(releaseSvc)
-				request := newCallToolRequest("add_release", map[string]any{
-					"type":    "deployment",
-					"version": "v1.0.0",
-					"origin":  "ci/cd",
-					"date":    "2026-03-21T10:00:00Z",
-					"author":  "alice",
-					"message": "fix login bug",
-					"link":    "https://github.com/example/repo/pull/42",
-				})
-
-				result, err := server.handleAddRelease(ctx, request)
-
-				Expect(err).NotTo(HaveOccurred())
-				Expect(isErrorResult(result)).To(BeFalse())
-
-				// Verify fields appear in list response
-				listReq := newCallToolRequest("list_releases", map[string]any{
-					"day": "2026-03-21",
-				})
-				listResult, err := server.handleListReleases(ctx, listReq)
-				Expect(err).NotTo(HaveOccurred())
-				text := extractTextContent(listResult)
-				Expect(text).To(ContainSubstring("alice"))
-				Expect(text).To(ContainSubstring("fix login bug"))
-				Expect(text).To(ContainSubstring("https://github.com/example/repo/pull/42"))
-			})
-
-			It("should return error for missing type", func() {
-				server := NewReleasesServer(releaseSvc)
-				request := newCallToolRequest("add_release", map[string]any{
-					"type":    "",
-					"version": "v1.0.0",
-					"origin":  "ci/cd",
-					"date":    "2026-03-21T10:00:00Z",
-				})
-
-				result, err := server.handleAddRelease(ctx, request)
-
-				Expect(err).NotTo(HaveOccurred())
-				Expect(isErrorResult(result)).To(BeTrue())
-			})
-
-			It("should return error for invalid date format", func() {
-				server := NewReleasesServer(releaseSvc)
-				request := newCallToolRequest("add_release", map[string]any{
-					"type":    "deployment",
-					"version": "v1.0.0",
-					"origin":  "ci/cd",
-					"date":    "not-a-date",
-				})
-
-				result, err := server.handleAddRelease(ctx, request)
-
-				Expect(err).NotTo(HaveOccurred())
-				Expect(isErrorResult(result)).To(BeTrue())
-				text := extractTextContent(result)
-				Expect(text).To(ContainSubstring("invalid date format"))
-			})
-
-			It("should default to current time when date is empty", func() {
-				server := NewReleasesServer(releaseSvc)
-				request := newCallToolRequest("add_release", map[string]any{
-					"type":    "deployment",
-					"version": "v1.0.0",
-					"origin":  "ci/cd",
-				})
-
-				result, err := server.handleAddRelease(ctx, request)
-
-				Expect(err).NotTo(HaveOccurred())
-				Expect(isErrorResult(result)).To(BeFalse())
-				text := extractTextContent(result)
-				Expect(text).To(ContainSubstring("total entries: 1"))
-			})
-		})
-
 		Describe("handleListReleases", func() {
 			It("should list releases for a day", func() {
-				server := NewReleasesServer(releaseSvc)
+				rel := &sreportalv1alpha1.Release{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "release-2026-03-21",
+						Namespace: "default",
+					},
+					Spec: sreportalv1alpha1.ReleaseSpec{
+						Entries: []sreportalv1alpha1.ReleaseEntry{
+							{
+								Type:    "deployment",
+								Version: "v1.0.0",
+								Origin:  "ci/cd",
+								Date:    metav1.NewTime(time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC)),
+								Author:  "alice",
+								Message: "ship",
+								Link:    "https://example.com/release",
+							},
+						},
+					},
+				}
+				k8sClient := fake.NewClientBuilder().
+					WithScheme(scheme).
+					WithObjects(rel).
+					WithStatusSubresource(&sreportalv1alpha1.Release{}).
+					Build()
+				svc := releaseservice.NewService(k8sClient, "default")
+				server := NewReleasesServer(svc)
 
-				// Add an entry first
-				addReq := newCallToolRequest("add_release", map[string]any{
-					"type":    "deployment",
-					"version": "v1.0.0",
-					"origin":  "ci/cd",
-					"date":    "2026-03-21T10:00:00Z",
-				})
-				_, err := server.handleAddRelease(ctx, addReq)
-				Expect(err).NotTo(HaveOccurred())
-
-				// List releases
 				listReq := newCallToolRequest("list_releases", map[string]any{
 					"day": "2026-03-21",
 				})

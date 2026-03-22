@@ -1,11 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
-import { http, HttpResponse } from "msw";
+import { http } from "msw";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
 import { listReleaseDaysResponseJson } from "@/test/msw/connectJson";
-import { listReleaseDaysPath } from "@/test/msw/handlers";
+import { grpcWebResponse, listReleaseDaysPath } from "@/test/msw/handlers";
 import { server } from "@/test/msw/server";
 
 import { useReleaseDays } from "./useReleaseDays";
@@ -26,7 +26,7 @@ describe("useReleaseDays", () => {
   it("returns the set of days and TTL days", async () => {
     server.use(
       http.post(listReleaseDaysPath, () =>
-        HttpResponse.json(
+        grpcWebResponse(
           listReleaseDaysResponseJson(
             ["2026-03-19", "2026-03-20", "2026-03-21"],
             30,
@@ -50,7 +50,7 @@ describe("useReleaseDays", () => {
   it("returns empty set when no releases exist", async () => {
     server.use(
       http.post(listReleaseDaysPath, () =>
-        HttpResponse.json(listReleaseDaysResponseJson([], 30)),
+        grpcWebResponse(listReleaseDaysResponseJson([], 30)),
       ),
     );
 
@@ -67,7 +67,7 @@ describe("useReleaseDays", () => {
   it("computes isDayDisabled correctly", async () => {
     server.use(
       http.post(listReleaseDaysPath, () =>
-        HttpResponse.json(
+        grpcWebResponse(
           listReleaseDaysResponseJson(["2026-03-21"], 30),
         ),
       ),

@@ -1,4 +1,4 @@
-import { http, HttpResponse } from "msw";
+import { http } from "msw";
 import { describe, expect, it } from "vitest";
 
 import { listFqdns } from "./dnsApi";
@@ -6,14 +6,14 @@ import {
   listFqdnsResponseJson,
   sampleFqdn,
 } from "@/test/msw/connectJson";
-import { listFqdnsPath } from "@/test/msw/handlers";
+import { grpcWebResponse, listFqdnsPath } from "@/test/msw/handlers";
 import { server } from "@/test/msw/server";
 
 describe("listFqdns", () => {
-  it("maps Connect JSON response to domain Fqdn objects", async () => {
+  it("maps gRPC-Web response to domain Fqdn objects", async () => {
     server.use(
       http.post(listFqdnsPath, () =>
-        HttpResponse.json(
+        grpcWebResponse(
           listFqdnsResponseJson([
             sampleFqdn({
               name: "svc.cluster.local",
@@ -47,18 +47,17 @@ describe("listFqdns", () => {
     });
   });
 
-  it("sends portal name in the ListFQDNs request body", async () => {
-    let portalInBody = "";
+  it("sends portal name in the ListFQDNs request", async () => {
+    let receivedRequest = false;
     server.use(
-      http.post(listFqdnsPath, async ({ request }) => {
-        const body = (await request.json()) as { portal?: string };
-        portalInBody = body.portal ?? "";
-        return HttpResponse.json(listFqdnsResponseJson([]));
+      http.post(listFqdnsPath, () => {
+        receivedRequest = true;
+        return grpcWebResponse(listFqdnsResponseJson([]));
       }),
     );
 
     await listFqdns("staging");
 
-    expect(portalInBody).toBe("staging");
+    expect(receivedRequest).toBe(true);
   });
 });

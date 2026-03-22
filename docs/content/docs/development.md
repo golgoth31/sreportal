@@ -127,6 +127,10 @@ This generates:
 
 The Swagger UI is served at `/swagger` by the web server.
 
+## Connect handlers
+
+Connect RPC handlers use a shared unary interceptor in `internal/grpc/interceptor.go` to log procedure errors (see [Architecture](../architecture#connect-api)). When adding new Connect services, register them with the same `connect.WithInterceptors(grpc.LoggingInterceptor())` options as existing handlers in `internal/webserver/server.go`.
+
 ## Critical Rules
 
 **Never edit auto-generated files:**

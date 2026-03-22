@@ -18,6 +18,7 @@ package webserver
 
 import (
 	"context"
+	"encoding/json"
 	"io/fs"
 	"net/http"
 	"path/filepath"
@@ -25,13 +26,15 @@ import (
 	"strings"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/golgoth31/sreportal/internal/log"
 
 	"github.com/golgoth31/sreportal/internal/config"
 	"github.com/golgoth31/sreportal/internal/grpc"
@@ -81,37 +84,9 @@ type Server struct {
 func New(cfg Config, c client.Client, operatorConfig *config.OperatorConfig, allowedOrigins []string) *Server {
 	e := echo.New()
 
-	// Middleware — route access logs through the controller-runtime zap logger
-	// so they honour the global JSON / console encoder configuration.
-	httpLog := ctrl.Log.WithName("http")
-	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
-		LogMethod:   true,
-		LogURI:      true,
-		LogStatus:   true,
-		LogLatency:  true,
-		LogRemoteIP: true,
-		HandleError: true,
-		LogValuesFunc: func(c *echo.Context, v middleware.RequestLoggerValues) error {
-			if v.Error != nil {
-				httpLog.Error(v.Error, "request",
-					"method", v.Method,
-					"uri", v.URI,
-					"status", v.Status,
-					"latency", v.Latency.String(),
-					"remoteIP", v.RemoteIP,
-				)
-			} else {
-				httpLog.Info("request",
-					"method", v.Method,
-					"uri", v.URI,
-					"status", v.Status,
-					"latency", v.Latency.String(),
-					"remoteIP", v.RemoteIP,
-				)
-			}
-			return nil
-		},
-	}))
+	// Request logging middleware — wraps the response writer to capture the
+	// real HTTP status code (Connect writes 4xx/5xx directly, bypassing Echo).
+	e.Use(requestLoggerMiddleware)
 	e.Use(middleware.Recover())
 	e.Use(metricsMiddleware)
 	if len(allowedOrigins) > 0 {
@@ -139,32 +114,37 @@ func (s *Server) DNSService() *grpc.DNSService {
 
 // setupRoutes configures all routes
 func (s *Server) setupRoutes() {
+	// Shared Connect interceptor — logs handler errors at WARN level since
+	// Connect returns HTTP 200 even on coded errors, making them invisible
+	// to the Echo request logger middleware.
+	connectOpts := connect.WithInterceptors(grpc.LoggingInterceptor())
+
 	// Mount Connect handlers for gRPC/Connect protocol
 	s.dnsService = grpc.NewDNSService(s.client)
-	dnsPath, dnsHandler := sreportalv1connect.NewDNSServiceHandler(s.dnsService)
+	dnsPath, dnsHandler := sreportalv1connect.NewDNSServiceHandler(s.dnsService, connectOpts)
 	s.echo.Any(dnsPath+"*", echo.WrapHandler(dnsHandler))
 
 	portalService := grpc.NewPortalService(s.client)
-	portalPath, portalHandler := sreportalv1connect.NewPortalServiceHandler(portalService)
+	portalPath, portalHandler := sreportalv1connect.NewPortalServiceHandler(portalService, connectOpts)
 	s.echo.Any(portalPath+"*", echo.WrapHandler(portalHandler))
 
 	alertmanagerService := grpc.NewAlertmanagerService(s.client)
-	amPath, amHandler := sreportalv1connect.NewAlertmanagerServiceHandler(alertmanagerService)
+	amPath, amHandler := sreportalv1connect.NewAlertmanagerServiceHandler(alertmanagerService, connectOpts)
 	s.echo.Any(amPath+"*", echo.WrapHandler(amHandler))
 
 	versionService := grpc.NewVersionService()
-	versionPath, versionHandler := sreportalv1connect.NewVersionServiceHandler(versionService)
+	versionPath, versionHandler := sreportalv1connect.NewVersionServiceHandler(versionService, connectOpts)
 	s.echo.Any(versionPath+"*", echo.WrapHandler(versionHandler))
 
 	if s.config.Gatherer != nil {
 		metricsService := grpc.NewMetricsService(s.config.Gatherer)
-		metricsPath, metricsHandler := sreportalv1connect.NewMetricsServiceHandler(metricsService)
+		metricsPath, metricsHandler := sreportalv1connect.NewMetricsServiceHandler(metricsService, connectOpts)
 		s.echo.Any(metricsPath+"*", echo.WrapHandler(metricsHandler))
 	}
 
 	if s.config.ReleaseService != nil {
 		releaseGRPC := grpc.NewReleaseService(s.config.ReleaseService, s.config.ReleaseTTL, s.config.ReleaseAllowedTypes)
-		releasePath, releaseHandler := sreportalv1connect.NewReleaseServiceHandler(releaseGRPC)
+		releasePath, releaseHandler := sreportalv1connect.NewReleaseServiceHandler(releaseGRPC, connectOpts)
 		s.echo.Any(releasePath+"*", echo.WrapHandler(releaseHandler))
 	}
 
@@ -274,10 +254,14 @@ func (s *Server) MountHandler(path string, handler http.Handler) {
 	s.echo.Any(path, echo.WrapHandler(handler))
 }
 
-// statusCaptureWriter wraps http.ResponseWriter to capture the status code.
+// statusCaptureWriter wraps http.ResponseWriter to capture the real HTTP status
+// code and, for error responses, the response body. This is necessary because
+// Connect handlers write status codes directly to the underlying writer,
+// bypassing Echo's response tracking.
 type statusCaptureWriter struct {
 	http.ResponseWriter
-	code int
+	code    int
+	errBody []byte // populated only for 4xx/5xx responses
 }
 
 func (w *statusCaptureWriter) WriteHeader(code int) {
@@ -285,15 +269,81 @@ func (w *statusCaptureWriter) WriteHeader(code int) {
 	w.ResponseWriter.WriteHeader(code)
 }
 
+func (w *statusCaptureWriter) Write(b []byte) (int, error) {
+	if w.code >= http.StatusBadRequest {
+		w.errBody = append(w.errBody, b...)
+	}
+	return w.ResponseWriter.Write(b)
+}
+
+// errorMessage extracts the "message" field from a Connect JSON error body,
+// or returns an empty string if unavailable.
+func (w *statusCaptureWriter) errorMessage() string {
+	if len(w.errBody) == 0 {
+		return ""
+	}
+	var body struct {
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(w.errBody, &body); err != nil {
+		return ""
+	}
+	return body.Message
+}
+
+// capturedStatus returns the statusCaptureWriter installed on the Echo context,
+// or nil if none is present.
+func capturedStatus(c *echo.Context) *statusCaptureWriter {
+	sw, _ := c.Response().(*statusCaptureWriter)
+	return sw
+}
+
+// requestLoggerMiddleware logs every request with the real HTTP status captured
+// from the response writer. Log level is chosen by status code:
+//
+//	2xx/3xx → INFO, 4xx → WARN, 5xx/error → ERROR.
+func requestLoggerMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+	logger := log.Default().WithName("http")
+
+	return func(c *echo.Context) error {
+		start := time.Now()
+
+		// Install the capture writer so all inner middleware and handlers
+		// (including Connect) record the real status code.
+		sw := &statusCaptureWriter{ResponseWriter: c.Response(), code: http.StatusOK}
+		c.SetResponse(sw)
+
+		err := next(c)
+
+		attrs := []any{
+			"method", c.Request().Method,
+			"uri", c.Request().RequestURI,
+			"status", sw.code,
+			"latency", time.Since(start).String(),
+			"remoteIP", c.RealIP(),
+		}
+
+		switch {
+		case err != nil:
+			logger.Error(err, "request", attrs...)
+		case sw.code >= http.StatusInternalServerError:
+			logger.Error(nil, "request", append(attrs, "error", sw.errorMessage())...)
+		case sw.code >= http.StatusBadRequest:
+			logger.Warn("request", append(attrs, "error", sw.errorMessage())...)
+		default:
+			logger.Info("request", attrs...)
+		}
+
+		return err
+	}
+}
+
 // metricsMiddleware records Prometheus metrics for every HTTP request.
+// It relies on the statusCaptureWriter installed by requestLoggerMiddleware.
 func metricsMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c *echo.Context) error {
 		metrics.HTTPRequestsInFlight.Inc()
 		start := time.Now()
-
-		// Wrap the response writer to capture the status code
-		sw := &statusCaptureWriter{ResponseWriter: c.Response(), code: http.StatusOK}
-		c.SetResponse(sw)
 
 		err := next(c)
 
@@ -302,7 +352,11 @@ func metricsMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 		handler := routeHandler(c)
 		method := c.Request().Method
-		code := strconv.Itoa(sw.code)
+
+		code := strconv.Itoa(http.StatusOK)
+		if sw := capturedStatus(c); sw != nil {
+			code = strconv.Itoa(sw.code)
+		}
 
 		metrics.HTTPRequestDuration.WithLabelValues(method, handler).Observe(duration)
 		metrics.HTTPRequestsTotal.WithLabelValues(method, handler, code).Inc()

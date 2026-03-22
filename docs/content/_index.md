@@ -42,7 +42,7 @@ layout: hextra-home
   >}}
   {{< hextra/feature-card
     title="Web Dashboard"
-    subtitle="Angular-powered SPA served directly by the operator. Browse FQDNs grouped by source, filter by search, and navigate between portals."
+    subtitle="React (Vite) SPA served directly by the operator. Browse FQDNs grouped by source, filter by search, and navigate between portals."
     class="hx-aspect-auto md:hx-aspect-[1.1/1] max-md:hx-min-h-[340px]"
     style="background: radial-gradient(ellipse at 50% 80%,rgba(34,197,94,0.15),hsla(0,0%,100%,0));"
   >}}

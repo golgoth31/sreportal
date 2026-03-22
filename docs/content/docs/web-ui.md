@@ -23,19 +23,21 @@ Then open [http://localhost:8090](http://localhost:8090) in your browser.
 |-------|-------------|
 | `/` | Redirects to `/main/links` |
 | `/:portalName/links` | Displays FQDNs for the specified portal |
+| `/:portalName/dashboard` | Prometheus metrics charts (operator registry) |
 | `/:portalName/alerts` | Displays Alertmanager resources and active alerts for the portal |
 | `/:portalName/releases` | Displays release events for a given day (main portal only) |
-| `/help` | MCP setup instructions (DNS and Alerts endpoints) and available tools |
+| `/help` | MCP setup instructions (all MCP endpoints) and available tools |
 
-The root URL redirects to the `main` portal's links page. Each portal has its own Links and (when it has Alertmanager resources) Alerts routes.
+The root URL redirects to the `main` portal's links page. Each portal has its own DNS (links), Dashboard, and (when applicable) Releases and Alerts routes.
 
 ## Sidebar
 
 When viewing a portal, a left sidebar shows:
 
-- **Links** — navigates to `/:portalName/links`
-- **Alerts** — shown only if the portal has at least one Alertmanager resource; navigates to `/:portalName/alerts`
+- **DNS** — navigates to `/:portalName/links` (FQDN list)
+- **Dashboard** — navigates to `/:portalName/dashboard` (metrics charts; labeled beta)
 - **Releases** — shown only on the main portal when at least one Release CR exists; navigates to `/:portalName/releases`
+- **Alerts** — shown only if the portal has at least one Alertmanager resource; navigates to `/:portalName/alerts`
 
 ## Features
 
@@ -65,13 +67,14 @@ For portals that have Alertmanager resources, the Alerts page lists each Alertma
 The Releases page is visible only on the main portal when at least one Release CR exists. It displays all release events for a given day in a compact list, sorted by date (most recent first).
 
 Features:
-- **Date picker**: select any day using a calendar popover
-- **Keyword search**: filter releases by type, version, origin, author, or message
+- **Date picker**: calendar limited to the TTL window (from `ListReleaseDays`: days with data and `ttl_days` from operator config)
+- **Timezone selector**: display entry times in a chosen IANA timezone (common zones preset)
+- **Keyword search**: filter releases by type, version, origin, author, or message (case-insensitive)
 - **Compact layout**: each release is a single row showing time, type badge, version, origin, message, author, and an external link icon
 
 ### Portal Navigation
 
-When multiple portals exist, the navigation bar allows switching between portals. Each portal shows only the FQDNs (and alerts) routed to it.
+When multiple portals exist, the navigation bar allows switching between portals. Each portal shows only the FQDNs (and alerts) routed to it. The Dashboard uses the same portal segment in the URL but always reflects cluster-wide operator metrics.
 
 ### Theme Toggle
 
@@ -85,7 +88,7 @@ The Dashboard page displays key metrics from the operator's Prometheus registry 
 
 The Help page (`/help`) provides:
 - Four MCP endpoints: DNS/portals (`/mcp` or `/mcp/dns`), Alerts (`/mcp/alerts`), Metrics (`/mcp/metrics`), and Releases (`/mcp/releases`), each with its tools table
-- Tools: `search_fqdns`, `list_portals`, `get_fqdn_details` (DNS); `list_alerts` (Alerts); `list_metrics` (Metrics); `add_release`, `list_releases` (Releases)
+- Tools: `search_fqdns`, `list_portals`, `get_fqdn_details` (DNS); `list_alerts` (Alerts); `list_metrics` (Metrics); `list_releases` (Releases)
 - Setup instructions for Claude Desktop, Claude Code, and Cursor with copy-to-clipboard config snippets
 - Example queries to try with an AI assistant
 

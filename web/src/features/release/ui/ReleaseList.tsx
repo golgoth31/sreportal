@@ -22,6 +22,7 @@ interface ReleaseListProps {
   isLoading: boolean;
   hasFilters: boolean;
   onClearFilters: () => void;
+  timeZone: string;
 }
 
 export function ReleaseList({
@@ -29,6 +30,7 @@ export function ReleaseList({
   isLoading,
   hasFilters,
   onClearFilters,
+  timeZone,
 }: ReleaseListProps) {
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
 
@@ -94,7 +96,7 @@ export function ReleaseList({
           sortedEntries.map((entry, i) => (
             <TableRow key={`${entry.version}-${entry.date}-${i}`}>
               <TableCell className="font-mono text-xs text-muted-foreground">
-                {formatEntryTime(entry.date)}
+                {formatEntryTime(entry.date, timeZone)}
               </TableCell>
               <TableCell>
                 <Badge variant="outline" className="text-[11px] px-1.5 py-0">

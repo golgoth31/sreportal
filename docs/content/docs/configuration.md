@@ -293,12 +293,14 @@ Controls the Release CRD feature for tracking deployments, rollbacks, and other 
 release:
   ttl: 720h                 # How long Release CRs are kept (default: 720h = 30 days)
   namespace: ""             # Namespace for Release CRs (defaults to operator namespace)
+  types: []                 # Optional allowlist of release entry types (empty = any type allowed)
 ```
 
 | Field | Default | Description |
 |-------|---------|-------------|
 | `ttl` | `720h` (30 days) | Release CRs older than this are automatically deleted by the Release controller |
 | `namespace` | _(operator namespace)_ | Namespace where Release CRs are stored |
+| `types` | _(empty)_ | If non-empty, only these `type` values are accepted by `AddRelease` (gRPC) and enforced in the domain layer |
 
 The Release controller re-checks each CR every 12 hours. When a CR's day is older than the TTL, the controller deletes it automatically.
 
@@ -378,4 +380,5 @@ data:
     release:
       ttl: 720h
       namespace: ""
+      types: []
 ```

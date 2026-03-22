@@ -51,11 +51,32 @@ export function filterEntries(
   return entries.filter((e) => entryMatchesSearch(e, search));
 }
 
-/** Format an ISO date string to a short locale time (HH:MM). */
-export function formatEntryTime(iso: string): string {
+/** Format an ISO date string to a short time (HH:MM) in the given IANA timezone. */
+export function formatEntryTime(iso: string, timeZone = "UTC"): string {
   if (!iso) return "";
-  return new Date(iso).toLocaleTimeString(undefined, {
+  return new Date(iso).toLocaleTimeString("en-GB", {
     hour: "2-digit",
     minute: "2-digit",
+    timeZone,
   });
 }
+
+/** Common IANA timezones for the timezone selector. */
+export const COMMON_TIMEZONES: readonly string[] = [
+  "UTC",
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+  "America/Sao_Paulo",
+  "Europe/London",
+  "Europe/Paris",
+  "Europe/Berlin",
+  "Europe/Moscow",
+  "Asia/Dubai",
+  "Asia/Kolkata",
+  "Asia/Shanghai",
+  "Asia/Tokyo",
+  "Australia/Sydney",
+  "Pacific/Auckland",
+] as const;

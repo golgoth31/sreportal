@@ -9,8 +9,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ErrorAlert } from "@/components/ErrorAlert";
 import { FilterBar, type ActiveFilter } from "@/components/FilterBar";
+import { COMMON_TIMEZONES } from "@/features/release/domain/release.types";
 import { useReleaseDays } from "@/features/release/hooks/useReleaseDays";
 import { useReleases } from "@/features/release/hooks/useReleases";
 import { ReleaseList } from "@/features/release/ui/ReleaseList";
@@ -39,6 +47,7 @@ export function ReleasesPage() {
   const { isDayDisabled, ttlDays } = useReleaseDays();
 
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [timeZone, setTimeZone] = useState("UTC");
 
   const selectedDate = useMemo(() => parseDayToDate(day), [day]);
 
@@ -103,6 +112,23 @@ export function ReleasesPage() {
               </PopoverContent>
             </Popover>
 
+            {/* Timezone selector */}
+            <Select value={timeZone} onValueChange={setTimeZone}>
+              <SelectTrigger
+                className="w-52 font-mono text-sm"
+                aria-label="Select timezone"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {COMMON_TIMEZONES.map((tz) => (
+                  <SelectItem key={tz} value={tz}>
+                    {tz}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             <span className="text-muted-foreground text-sm ml-2">
               {hasFilters
                 ? `${entries.length} / ${totalCount} release(s)`
@@ -133,6 +159,7 @@ export function ReleasesPage() {
           isLoading={isLoading}
           hasFilters={hasFilters}
           onClearFilters={clearFilters}
+          timeZone={timeZone}
         />
       )}
     </div>

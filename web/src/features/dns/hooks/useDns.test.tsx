@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor, act } from "@testing-library/react";
-import { http, HttpResponse } from "msw";
+import { http } from "msw";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
@@ -9,7 +9,7 @@ import {
   listFqdnsResponseJson,
   sampleFqdn,
 } from "@/test/msw/connectJson";
-import { listFqdnsPath } from "@/test/msw/handlers";
+import { grpcWebResponse, listFqdnsPath } from "@/test/msw/handlers";
 import { server } from "@/test/msw/server";
 
 function createTestQueryWrapper() {
@@ -30,7 +30,7 @@ describe("useDns", () => {
   it("when data is loaded exposes filtered and grouped views derived from domain helpers", async () => {
     server.use(
       http.post(listFqdnsPath, () =>
-        HttpResponse.json(
+        grpcWebResponse(
           listFqdnsResponseJson([
             sampleFqdn({
               name: "a.example.com",

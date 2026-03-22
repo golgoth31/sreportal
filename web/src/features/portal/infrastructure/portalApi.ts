@@ -1,6 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { createClient } from "@connectrpc/connect";
-import { createConnectTransport } from "@connectrpc/connect-web";
+import { createGrpcWebTransport } from "@connectrpc/connect-web";
 
 import {
   ListPortalsRequestSchema,
@@ -9,7 +9,7 @@ import {
 } from "@/gen/sreportal/v1/portal_pb";
 import type { Portal } from "../domain/portal.types";
 
-const transport = createConnectTransport({ baseUrl: window.location.origin });
+const transport = createGrpcWebTransport({ baseUrl: window.location.origin });
 const client = createClient(PortalService, transport);
 
 function toDomainPortal(p: ProtoPortal): Portal {

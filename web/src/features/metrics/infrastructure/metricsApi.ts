@@ -1,6 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { createClient } from "@connectrpc/connect";
-import { createConnectTransport } from "@connectrpc/connect-web";
+import { createGrpcWebTransport } from "@connectrpc/connect-web";
 
 import {
   ListMetricsRequestSchema,
@@ -18,7 +18,7 @@ import type {
   MetricType,
 } from "../domain/metrics.types";
 
-const transport = createConnectTransport({ baseUrl: window.location.origin });
+const transport = createGrpcWebTransport({ baseUrl: window.location.origin });
 const client = createClient(MetricsService, transport);
 
 function toDomainBucket(b: ProtoHistogramBucket): HistogramBucket {

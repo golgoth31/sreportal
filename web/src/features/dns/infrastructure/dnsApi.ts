@@ -1,6 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { createClient } from "@connectrpc/connect";
-import { createConnectTransport } from "@connectrpc/connect-web";
+import { createGrpcWebTransport } from "@connectrpc/connect-web";
 
 import {
   DNSService,
@@ -10,7 +10,7 @@ import {
 } from "@/gen/sreportal/v1/dns_pb";
 import type { Fqdn, OriginRef, SyncStatus } from "../domain/dns.types";
 
-const transport = createConnectTransport({ baseUrl: window.location.origin });
+const transport = createGrpcWebTransport({ baseUrl: window.location.origin });
 const client = createClient(DNSService, transport);
 
 function toDomainOriginRef(ref: OriginResourceRef): OriginRef {

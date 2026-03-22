@@ -1,6 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { ConnectError, Code, createClient } from "@connectrpc/connect";
-import { createConnectTransport } from "@connectrpc/connect-web";
+import { createGrpcWebTransport } from "@connectrpc/connect-web";
 
 import {
   ListReleaseDaysRequestSchema,
@@ -14,7 +14,7 @@ import type {
   ReleasesDay,
 } from "../domain/release.types";
 
-const transport = createConnectTransport({ baseUrl: window.location.origin });
+const transport = createGrpcWebTransport({ baseUrl: window.location.origin });
 const client = createClient(ReleaseService, transport);
 
 function timestampToIso(

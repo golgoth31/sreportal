@@ -1,6 +1,0 @@
-{
-  "version": "1",
-  "name": "SRE Portal",
-  "type": "collection",
-  "ignore": ["node_modules", ".git"]
-}

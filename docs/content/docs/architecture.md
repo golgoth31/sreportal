@@ -135,6 +135,8 @@ The release service maintains two caches:
 
 The API uses the [Connect protocol](https://connectrpc.com) (gRPC-compatible over HTTP/1.1 and HTTP/2) with protobuf definitions in `proto/sreportal/v1/`.
 
+All Connect handlers share a unary interceptor (`internal/grpc/interceptor.go`) that logs handler errors at **WARN** level. Connect often returns HTTP 200 even when the RPC fails with a coded error, so this makes failures visible in logs alongside the HTTP access log.
+
 ### DNSService
 
 | RPC | Description |
@@ -158,8 +160,15 @@ The API uses the [Connect protocol](https://connectrpc.com) (gRPC-compatible ove
 
 | RPC | Description |
 |-----|-------------|
-| `AddRelease` | Add a release entry for a given day |
-| `ListReleases` | List release entries for a day (with previous/next day navigation) |
+| `AddRelease` | Append a release entry to the day’s Release CR (type validated against configured allowlist when `release.types` is set) |
+| `ListReleases` | List release entries for a day (pagination within the day; `previous_day` / `next_day` for adjacent days with data) |
+| `ListReleaseDays` | Return all days that have Release CRs and the TTL window (`ttl_days`) for the UI |
+
+### VersionService
+
+| RPC | Description |
+|-----|-------------|
+| `GetVersion` | Return build metadata (`version`, `commit`, `date`) |
 
 ### MetricsService
 
@@ -195,8 +204,7 @@ The operator includes four built-in [Model Context Protocol](https://modelcontex
 
 | Tool | Description |
 |------|-------------|
-| `add_release` | Add a release entry (type, version, origin, date, and optional author, message, link) |
-| `list_releases` | List release entries for a day (with previous/next day navigation) |
+| `list_releases` | List release entries for a day (`previous_day` / `next_day` in the result) |
 
 ## Data Flow
 

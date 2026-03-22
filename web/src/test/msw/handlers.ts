@@ -15,9 +15,19 @@ export const listPortalsPath = /\/sreportal\.v1\.PortalService\/ListPortals$/;
 export const listReleasesPath = /\/sreportal\.v1\.ReleaseService\/ListReleases$/;
 export const listReleaseDaysPath = /\/sreportal\.v1\.ReleaseService\/ListReleaseDays$/;
 
+/** gRPC-Web Content-Type header. */
+const GRPC_WEB_HEADERS = {
+  "Content-Type": "application/grpc-web+proto",
+};
+
+/** Wrap a gRPC-Web binary body into an MSW HttpResponse. */
+export function grpcWebResponse(body: Uint8Array) {
+  return new HttpResponse(body, { headers: GRPC_WEB_HEADERS });
+}
+
 export const defaultHandlers = [
   http.post(listFqdnsPath, () =>
-    HttpResponse.json(
+    grpcWebResponse(
       listFqdnsResponseJson([
         sampleFqdn({
           name: "api.example.com",
@@ -29,19 +39,19 @@ export const defaultHandlers = [
     ),
   ),
   http.post(listPortalsPath, () =>
-    HttpResponse.json(
+    grpcWebResponse(
       listPortalsResponseJson([
         samplePortal({ name: "main", title: "Main", main: true }),
       ]),
     ),
   ),
   http.post(listReleasesPath, () =>
-    HttpResponse.json(
+    grpcWebResponse(
       listReleasesResponseJson("", []),
     ),
   ),
   http.post(listReleaseDaysPath, () =>
-    HttpResponse.json(
+    grpcWebResponse(
       listReleaseDaysResponseJson([], 30),
     ),
   ),
