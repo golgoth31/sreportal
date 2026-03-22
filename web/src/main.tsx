@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { RouterProvider } from "react-router";
 
 import "./index.css";
+import { DEFAULT_REFETCH_INTERVAL_MS } from "./lib/queryDefaults";
 import { router } from "./router";
 
 const queryClient = new QueryClient({
@@ -11,6 +12,7 @@ const queryClient = new QueryClient({
     queries: {
       retry: 2,
       staleTime: 10_000,
+      refetchInterval: DEFAULT_REFETCH_INTERVAL_MS,
     },
   },
 });

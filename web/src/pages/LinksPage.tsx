@@ -1,7 +1,8 @@
 import { ExternalLinkIcon } from "lucide-react";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useParams } from "react-router";
 
+import { PageRefreshButton } from "@/components/PageRefreshButton";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -26,15 +27,25 @@ export function LinksPage() {
     totalCount,
     filteredCount,
     isLoading,
+    isFetching,
     error,
     searchTerm,
     groupFilter,
     setSearchTerm,
     setGroupFilter,
     clearFilters,
+    refetch: refetchDns,
   } = useDns(portalName);
 
-  const { portals } = usePortals();
+  const {
+    portals,
+    refetch: refetchPortals,
+    isFetching: portalsFetching,
+  } = usePortals();
+
+  const handleRefresh = useCallback(() => {
+    void Promise.all([refetchDns(), refetchPortals()]);
+  }, [refetchDns, refetchPortals]);
   const currentPortal = portals.find(
     (p) => (p.subPath || p.name) === portalName
   );
@@ -79,14 +90,20 @@ export function LinksPage() {
           )}
         </div>
 
-        {/* Stats */}
-        {!isLoading && !error && (
-          <span className="text-muted-foreground text-sm ml-auto">
-            {hasFilters
-              ? `${filteredCount} of ${totalCount} FQDNs`
-              : `${totalCount} FQDNs`}
-          </span>
-        )}
+        <div className="flex items-center gap-2 ml-auto flex-wrap justify-end">
+          <PageRefreshButton
+            onRefresh={handleRefresh}
+            isFetching={isFetching || portalsFetching}
+          />
+          {/* Stats */}
+          {!isLoading && !error && (
+            <span className="text-muted-foreground text-sm">
+              {hasFilters
+                ? `${filteredCount} of ${totalCount} FQDNs`
+                : `${totalCount} FQDNs`}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Filters */}

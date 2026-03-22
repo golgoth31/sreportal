@@ -11,7 +11,8 @@ export function useDns(portal: string) {
   const [searchTerm, setSearchTerm] = useState("");
   const [groupFilter, setGroupFilter] = useState("");
 
-  const { fqdns, isLoading, error, refetch } = useDnsQuery(portal);
+  const { fqdns, isLoading, isFetching, error, refetch } =
+    useDnsQuery(portal);
 
   const filtered = useMemo(
     () => filterFqdns(fqdns, searchTerm, groupFilter),
@@ -38,6 +39,7 @@ export function useDns(portal: string) {
     totalCount: fqdns.length,
     filteredCount: filtered.length,
     isLoading,
+    isFetching,
     error,
     searchTerm,
     groupFilter,

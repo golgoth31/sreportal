@@ -1,15 +1,23 @@
 {
   "mcpServers": {
-    "sreportal": {
-      "type": "http",
-      "url": "http://localhost:8090/mcp"
-    },
     "shadcn": {
       "command": "npx",
       "args": [
         "shadcn@latest",
         "mcp"
       ]
+    },
+    "sreportal-dns": {
+      "type": "http",
+      "url": "http://localhost:8090/mcp"
+    },
+    "sreportal-alerts": {
+      "type": "http",
+      "url": "http://localhost:8090/mcp/alerts"
+    },
+    "sreportal-releases": {
+      "type": "http",
+      "url": "http://localhost:8090/mcp/releases"
     }
   }
 }

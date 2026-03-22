@@ -18,7 +18,6 @@ export function useMetrics() {
     queryKey: ["metrics"],
     queryFn: () => listMetrics(),
     staleTime: 10_000,
-    refetchInterval: 15_000,
   });
 
   const allFamilies = query.data ?? EMPTY_FAMILIES;
@@ -51,7 +50,9 @@ export function useMetrics() {
     subsystems,
     totalMetrics,
     isLoading: query.isLoading,
+    isFetching: query.isFetching,
     error: query.error,
+    refetch: query.refetch,
     search,
     setSearch,
     subsystemFilter,

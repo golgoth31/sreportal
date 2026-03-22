@@ -11,7 +11,6 @@ export function useReleaseDays() {
     queryKey: ["releaseDays"],
     queryFn: listReleaseDays,
     staleTime: 30_000,
-    refetchInterval: 60_000,
   });
 
   const data = query.data;
@@ -35,6 +34,8 @@ export function useReleaseDays() {
     daysSet,
     ttlDays,
     isLoading: query.isLoading,
+    isFetching: query.isFetching,
     isDayDisabled,
+    refetch: query.refetch,
   };
 }

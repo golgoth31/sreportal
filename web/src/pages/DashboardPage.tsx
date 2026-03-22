@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 
+import { PageRefreshButton } from "@/components/PageRefreshButton";
 import {
   ActivityIcon,
   GlobeIcon,
@@ -27,9 +28,11 @@ export function DashboardPage() {
     families,
     allFamilies,
     isLoading,
+    isFetching,
     error,
     hasFilters,
     clearFilters,
+    refetch,
   } = useMetrics();
 
   const stats = useMemo(
@@ -49,9 +52,16 @@ export function DashboardPage() {
 
   return (
     <div className="max-w-screen-xl mx-auto px-4 py-6 space-y-6">
-      <div className="flex items-center gap-2">
-        <h1 className="text-xl font-semibold tracking-tight">Dashboard</h1>
-        <Badge variant="outline">beta</Badge>
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-semibold tracking-tight">Dashboard</h1>
+          <Badge variant="outline">beta</Badge>
+        </div>
+        <PageRefreshButton
+          className="ml-auto"
+          onRefresh={refetch}
+          isFetching={isFetching}
+        />
       </div>
 
       {error && <ErrorAlert title="Failed to load metrics" error={error} />}

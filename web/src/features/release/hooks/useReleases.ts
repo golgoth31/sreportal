@@ -12,7 +12,6 @@ export function useReleases() {
     queryKey: ["releases", day],
     queryFn: () => listReleases(day),
     staleTime: 10_000,
-    refetchInterval: 30_000,
   });
 
   const data = query.data;
@@ -46,7 +45,9 @@ export function useReleases() {
     previousDay: data?.previousDay ?? "",
     nextDay: data?.nextDay ?? "",
     isLoading: query.isLoading,
+    isFetching: query.isFetching,
     error: query.error,
+    refetch: query.refetch,
     search,
     setSearch,
     goToDay,

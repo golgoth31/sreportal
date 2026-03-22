@@ -9,12 +9,12 @@ export function useDnsQuery(portal: string) {
   const query = useQuery({
     queryKey: ["fqdns", portal],
     queryFn: () => listFqdns(portal),
-    refetchInterval: 5_000,
   });
 
   return {
     fqdns: query.data ?? EMPTY_FQDNS,
     isLoading: query.isLoading,
+    isFetching: query.isFetching,
     error: query.error,
     refetch: query.refetch,
   };

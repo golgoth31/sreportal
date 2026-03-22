@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useParams } from "react-router";
 
+import { PageRefreshButton } from "@/components/PageRefreshButton";
 import {
   Select,
   SelectContent,
@@ -21,6 +22,7 @@ export function AlertsPage() {
     resources,
     totalAlerts,
     isLoading,
+    isFetching,
     error,
     search,
     setSearch,
@@ -28,6 +30,7 @@ export function AlertsPage() {
     setStateFilter,
     clearFilters,
     hasFilters,
+    refetch,
   } = useAlerts({ portal: portalName });
 
   const activeFilters = useMemo((): ActiveFilter[] => {
@@ -53,13 +56,16 @@ export function AlertsPage() {
     <div className="max-w-screen-xl mx-auto px-4 py-6 space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <h1 className="text-xl font-semibold tracking-tight">Alerts</h1>
-        {!isLoading && !error && (
-          <span className="text-muted-foreground text-sm ml-auto">
-            {hasFilters
-              ? `${resources.length} resource(s), ${totalAlerts} alert(s)`
-              : `${resources.length} Alertmanager(s), ${totalAlerts} alert(s)`}
-          </span>
-        )}
+        <div className="flex items-center gap-2 ml-auto flex-wrap justify-end">
+          <PageRefreshButton onRefresh={refetch} isFetching={isFetching} />
+          {!isLoading && !error && (
+            <span className="text-muted-foreground text-sm">
+              {hasFilters
+                ? `${resources.length} resource(s), ${totalAlerts} alert(s)`
+                : `${resources.length} Alertmanager(s), ${totalAlerts} alert(s)`}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Filters */}

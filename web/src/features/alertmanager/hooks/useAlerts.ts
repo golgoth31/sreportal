@@ -32,7 +32,6 @@ export function useAlerts({ portal }: UseAlertsParams) {
     queryKey: ["alerts", portal],
     queryFn: () => listAlerts({ portal: portal || undefined }),
     staleTime: 10_000,
-    refetchInterval: 30_000,
   });
 
   const allResources = query.data ?? EMPTY_RESOURCES;
@@ -81,6 +80,7 @@ export function useAlerts({ portal }: UseAlertsParams) {
     resources,
     totalAlerts,
     isLoading: query.isLoading,
+    isFetching: query.isFetching,
     error: query.error,
     search,
     setSearch,

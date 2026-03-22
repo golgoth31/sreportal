@@ -1,5 +1,7 @@
 import { CheckIcon, CopyIcon, PlugIcon } from "lucide-react";
+import { useCallback } from "react";
 
+import { PageRefreshButton } from "@/components/PageRefreshButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -186,6 +188,10 @@ function sectionUrl(baseUrl: string, path: string): string {
 }
 
 export function McpPage() {
+  const handleRefresh = useCallback(() => {
+    window.location.reload();
+  }, []);
+
   const baseUrl = window.location.origin;
 
   const mcpRootUrl = sectionUrl(baseUrl, "/mcp");
@@ -212,19 +218,26 @@ export function McpPage() {
   return (
     <div className="max-w-3xl mx-auto py-8 px-4 space-y-8">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <PlugIcon className="size-6 text-primary" />
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            MCP Server Integration
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Connect AI assistants directly to your SRE Portal via the Model
-            Context Protocol (Streamable HTTP). Requires the operator to be
-            started with <code className="font-mono text-xs">--enable-mcp</code>
-            .
-          </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-3 min-w-0">
+          <PlugIcon className="size-6 text-primary shrink-0" />
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">
+              MCP Server Integration
+            </h1>
+            <p className="text-muted-foreground text-sm mt-1">
+              Connect AI assistants directly to your SRE Portal via the Model
+              Context Protocol (Streamable HTTP). Requires the operator to be
+              started with <code className="font-mono text-xs">--enable-mcp</code>
+              .
+            </p>
+          </div>
         </div>
+        <PageRefreshButton
+          className="shrink-0"
+          onRefresh={handleRefresh}
+          label="Reload page"
+        />
       </div>
 
       <Separator />

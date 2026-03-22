@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { ErrorAlert } from "@/components/ErrorAlert";
 import { FilterBar, type ActiveFilter } from "@/components/FilterBar";
+import { PageRefreshButton } from "@/components/PageRefreshButton";
 import { COMMON_TIMEZONES } from "@/features/release/domain/release.types";
 import { useReleaseDays } from "@/features/release/hooks/useReleaseDays";
 import { useReleases } from "@/features/release/hooks/useReleases";
@@ -36,15 +37,26 @@ export function ReleasesPage() {
     entries,
     totalCount,
     isLoading,
+    isFetching: releasesFetching,
     error,
     search,
     setSearch,
     goToDay,
     clearFilters,
     hasFilters,
+    refetch: refetchReleases,
   } = useReleases();
 
-  const { isDayDisabled, ttlDays } = useReleaseDays();
+  const {
+    isDayDisabled,
+    ttlDays,
+    isFetching: releaseDaysFetching,
+    refetch: refetchReleaseDays,
+  } = useReleaseDays();
+
+  const handleRefresh = useCallback(() => {
+    void Promise.all([refetchReleases(), refetchReleaseDays()]);
+  }, [refetchReleases, refetchReleaseDays]);
 
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [timeZone, setTimeZone] = useState("UTC");
@@ -85,8 +97,13 @@ export function ReleasesPage() {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <h1 className="text-xl font-semibold tracking-tight">Releases</h1>
 
+        <div className="flex items-center gap-2 ml-auto flex-wrap justify-end">
+          <PageRefreshButton
+            onRefresh={handleRefresh}
+            isFetching={releasesFetching || releaseDaysFetching}
+          />
         {!isLoading && (
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-2">
             {/* Date picker */}
             <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
               <PopoverTrigger asChild>
@@ -136,6 +153,7 @@ export function ReleasesPage() {
             </span>
           </div>
         )}
+        </div>
       </div>
 
       {/* Search */}
