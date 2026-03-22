@@ -23,6 +23,14 @@ rules:
   - list
   - watch
 - apiGroups:
+  - domain.scaleway.upbound.io
+  resources:
+  - records
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - externaldns.k8s.io
   resources:
   - dnsendpoints

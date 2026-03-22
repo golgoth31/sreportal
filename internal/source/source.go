@@ -17,6 +17,7 @@ limitations under the License.
 package source
 
 import (
+	"github.com/golgoth31/sreportal/internal/source/crossplanescalewayrecord"
 	"github.com/golgoth31/sreportal/internal/source/dnsendpoint"
 	"github.com/golgoth31/sreportal/internal/source/gatewaygrpcroute"
 	"github.com/golgoth31/sreportal/internal/source/gatewayhttproute"
@@ -44,5 +45,6 @@ func DefaultBuilders() []registry.Builder {
 		gatewaytlsroute.NewBuilder(),
 		gatewaytcproute.NewBuilder(),
 		gatewayudproute.NewBuilder(),
+		crossplanescalewayrecord.NewBuilder(),
 	}
 }
