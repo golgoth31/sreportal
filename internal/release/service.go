@@ -78,8 +78,9 @@ func (s *Service) InvalidateDays() {
 }
 
 // AddEntry appends a release entry to the day's CR, creating it if needed.
-// Returns the day key and the total entry count after the append.
-func (s *Service) AddEntry(ctx context.Context, entry domainrelease.Entry) (string, int, error) {
+// Returns the day key, the total entry count after the append, whether a new CR
+// was created, and any error.
+func (s *Service) AddEntry(ctx context.Context, entry domainrelease.Entry) (string, int, bool, error) {
 	day := entry.DateKey()
 	crName := entry.CRName()
 	nn := types.NamespacedName{Name: crName, Namespace: s.namespace}
@@ -95,6 +96,7 @@ func (s *Service) AddEntry(ctx context.Context, entry domainrelease.Entry) (stri
 	}
 
 	var count int
+	var created bool
 	for attempt := range maxRetries {
 		var rel sreportalv1alpha1.Release
 		err := s.client.Get(ctx, nn, &rel)
@@ -114,11 +116,12 @@ func (s *Service) AddEntry(ctx context.Context, entry domainrelease.Entry) (stri
 				if apierrors.IsAlreadyExists(createErr) {
 					continue // Race: another request created it, retry as append
 				}
-				return "", 0, fmt.Errorf("create release CR: %w", createErr)
+				return "", 0, false, fmt.Errorf("create release CR: %w", createErr)
 			}
 			count = 1
+			created = true
 		} else if err != nil {
-			return "", 0, fmt.Errorf("get release CR: %w", err)
+			return "", 0, false, fmt.Errorf("get release CR: %w", err)
 		} else {
 			// Append to existing CR
 			rel.Spec.Entries = append(rel.Spec.Entries, k8sEntry)
@@ -126,7 +129,7 @@ func (s *Service) AddEntry(ctx context.Context, entry domainrelease.Entry) (stri
 				if apierrors.IsConflict(updateErr) && attempt < maxRetries-1 {
 					continue
 				}
-				return "", 0, fmt.Errorf("update release CR: %w", updateErr)
+				return "", 0, false, fmt.Errorf("update release CR: %w", updateErr)
 			}
 			count = len(rel.Spec.Entries)
 		}
@@ -140,10 +143,10 @@ func (s *Service) AddEntry(ctx context.Context, entry domainrelease.Entry) (stri
 		delete(s.cache, day)
 		s.mu.Unlock()
 
-		return day, count, nil
+		return day, count, created, nil
 	}
 
-	return "", 0, fmt.Errorf("add release entry: max retries exceeded for day %s", day)
+	return "", 0, false, fmt.Errorf("add release entry: max retries exceeded for day %s", day)
 }
 
 // ListEntries returns all entries for a given day (YYYY-MM-DD). Cache-first.

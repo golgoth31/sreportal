@@ -96,7 +96,8 @@ func (r *ReleaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if crDate.Before(cutoff) {
 		logger.Info("deleting expired release CR", "name", req.Name, "day", day)
 		if err := r.Delete(ctx, &rel); err != nil && !apierrors.IsNotFound(err) {
-			return ctrl.Result{}, fmt.Errorf("delete expired release CR: %w", err)
+			logger.Error(err, "failed to delete expired release CR", "name", req.Name, "day", day)
+			return ctrl.Result{}, nil
 		}
 		// Cache invalidation will happen when the delete triggers a new reconcile
 		return ctrl.Result{}, nil

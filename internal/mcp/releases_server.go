@@ -163,7 +163,7 @@ func (s *ReleasesServer) handleAddRelease(ctx context.Context, request mcp.CallT
 	entry.Message = request.GetString("message", "")
 	entry.Link = request.GetString("link", "")
 
-	day, count, err := s.service.AddEntry(ctx, entry)
+	day, count, _, err := s.service.AddEntry(ctx, entry)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to add release: %v", err)), nil
 	}

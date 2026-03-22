@@ -28,6 +28,7 @@ import (
 	domainrelease "github.com/golgoth31/sreportal/internal/domain/release"
 	releasev1 "github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1"
 	"github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1/sreportalv1connect"
+	"github.com/golgoth31/sreportal/internal/log"
 	releaseservice "github.com/golgoth31/sreportal/internal/release"
 )
 
@@ -66,9 +67,14 @@ func (s *ReleaseService) AddRelease(
 	entry.Message = e.Message
 	entry.Link = e.Link
 
-	day, count, err := s.service.AddEntry(ctx, entry)
+	day, count, created, err := s.service.AddEntry(ctx, entry)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	if created {
+		logger := log.Default().WithName("release-service")
+		logger.Info("release CR created", "day", day, "type", e.Type, "version", e.Version, "origin", e.Origin)
 	}
 
 	return connect.NewResponse(&releasev1.AddReleaseResponse{

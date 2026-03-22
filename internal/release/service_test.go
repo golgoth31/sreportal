@@ -48,11 +48,12 @@ func TestAddEntry_CreatesNewCR(t *testing.T) {
 	entry, err := domainrelease.NewEntry("deployment", "v1.0.0", "ci/cd", time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC))
 	require.NoError(t, err)
 
-	day, count, err := svc.AddEntry(ctx, entry)
+	day, count, created, err := svc.AddEntry(ctx, entry)
 
 	require.NoError(t, err)
 	assert.Equal(t, "2026-03-21", day)
 	assert.Equal(t, 1, count)
+	assert.True(t, created)
 
 	// Verify CR was created
 	var rel sreportalv1alpha1.Release
@@ -89,11 +90,12 @@ func TestAddEntry_AppendsToExistingCR(t *testing.T) {
 	entry, err := domainrelease.NewEntry("rollback", "v0.9.0", "manual", time.Date(2026, 3, 21, 14, 0, 0, 0, time.UTC))
 	require.NoError(t, err)
 
-	day, count, err := svc.AddEntry(ctx, entry)
+	day, count, created, err := svc.AddEntry(ctx, entry)
 
 	require.NoError(t, err)
 	assert.Equal(t, "2026-03-21", day)
 	assert.Equal(t, 2, count)
+	assert.False(t, created)
 
 	// Verify CR was updated
 	var rel sreportalv1alpha1.Release
@@ -179,7 +181,7 @@ func TestListEntries_CacheInvalidatedAfterAdd(t *testing.T) {
 	// Add entry (invalidates cache)
 	entry, err := domainrelease.NewEntry("hotfix", "v1.0.1", "manual", time.Date(2026, 3, 21, 16, 0, 0, 0, time.UTC))
 	require.NoError(t, err)
-	_, _, err = svc.AddEntry(ctx, entry)
+	_, _, _, err = svc.AddEntry(ctx, entry)
 	require.NoError(t, err)
 
 	// Cache should be invalidated, re-fetches from K8s
