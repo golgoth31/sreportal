@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.16.0](https://github.com/golgoth31/sreportal/compare/v1.15.2...v1.16.0) (2026-03-22)
+
+
+### Features
+
+* **observability:** improve http request logging and switch web ui to grpc-web ([cc70655](https://github.com/golgoth31/sreportal/commit/cc7065550290b3c9ca71b1b17c53fa8b3e968df6))
+* **release:** log info when a new release CR is created via gRPC ([4e16163](https://github.com/golgoth31/sreportal/commit/4e1616339ea9f8f9b02e3bd49912baae13d3f313))
+
+
+### Bug Fixes
+
+* **web:** add manual refresh button and centralize query defaults ([9c5c947](https://github.com/golgoth31/sreportal/commit/9c5c9474b6efd5cde3cc5db6d3361076efb0d2e7))
+
 ## [1.15.2](https://github.com/golgoth31/sreportal/compare/v1.15.1...v1.15.2) (2026-03-22)
 
 
