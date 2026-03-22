@@ -55,8 +55,12 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
+  controller: true
   domain: sreportal.io
   kind: Release
   path: github.com/golgoth31/sreportal/api/v1alpha1
   version: v1alpha1
+  webhooks:
+    validation: true
+    webhookVersion: v1
 version: "3"

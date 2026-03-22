@@ -1,4 +1,4 @@
-import { format, parse } from "date-fns";
+import { format, parse, subDays } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/popover";
 import { ErrorAlert } from "@/components/ErrorAlert";
 import { FilterBar, type ActiveFilter } from "@/components/FilterBar";
+import { useReleaseDays } from "@/features/release/hooks/useReleaseDays";
 import { useReleases } from "@/features/release/hooks/useReleases";
 import { ReleaseList } from "@/features/release/ui/ReleaseList";
 
@@ -35,9 +36,17 @@ export function ReleasesPage() {
     hasFilters,
   } = useReleases();
 
+  const { isDayDisabled, ttlDays } = useReleaseDays();
+
   const [calendarOpen, setCalendarOpen] = useState(false);
 
   const selectedDate = useMemo(() => parseDayToDate(day), [day]);
+
+  const today = useMemo(() => new Date(), []);
+  const fromDate = useMemo(
+    () => (ttlDays > 0 ? subDays(today, ttlDays) : undefined),
+    [today, ttlDays],
+  );
 
   const handleDateSelect = useCallback(
     (date: Date | undefined) => {
@@ -87,6 +96,9 @@ export function ReleasesPage() {
                   selected={selectedDate}
                   onSelect={handleDateSelect}
                   defaultMonth={selectedDate}
+                  disabled={isDayDisabled}
+                  fromDate={fromDate}
+                  toDate={today}
                 />
               </PopoverContent>
             </Popover>

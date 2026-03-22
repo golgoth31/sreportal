@@ -238,6 +238,39 @@
         ]
       }
     },
+    "/sreportal.v1.ReleaseService/ListReleaseDays": {
+      "post": {
+        "summary": "ListReleaseDays returns all days that have releases and the TTL window",
+        "operationId": "ReleaseService_ListReleaseDays",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListReleaseDaysResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1ListReleaseDaysRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ReleaseService"
+        ]
+      }
+    },
     "/sreportal.v1.ReleaseService/ListReleases": {
       "post": {
         "summary": "ListReleases returns release entries paginated by day",
@@ -727,6 +760,28 @@
         }
       },
       "title": "ListPortalsResponse contains the list of portals"
+    },
+    "v1ListReleaseDaysRequest": {
+      "type": "object",
+      "title": "ListReleaseDaysRequest is the request for listing all release days"
+    },
+    "v1ListReleaseDaysResponse": {
+      "type": "object",
+      "properties": {
+        "days": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "days is the sorted list of YYYY-MM-DD strings that have Release CRs"
+        },
+        "ttlDays": {
+          "type": "integer",
+          "format": "int32",
+          "title": "ttl_days is the number of days releases are kept (derived from operator TTL config)"
+        }
+      },
+      "title": "ListReleaseDaysResponse contains the list of days with releases and TTL info"
     },
     "v1ListReleasesRequest": {
       "type": "object",

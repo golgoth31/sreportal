@@ -12,6 +12,7 @@ import {
   type Portal,
 } from "@/gen/sreportal/v1/portal_pb";
 import {
+  ListReleaseDaysResponseSchema,
   ListReleasesResponseSchema,
   ReleaseEntrySchema,
   type ReleaseEntry,
@@ -72,6 +73,14 @@ export function sampleReleaseEntry(
     link: "",
     ...overrides,
   });
+}
+
+export function listReleaseDaysResponseJson(
+  days: string[],
+  ttlDays = 30,
+) {
+  const message = create(ListReleaseDaysResponseSchema, { days, ttlDays });
+  return toJson(ListReleaseDaysResponseSchema, message);
 }
 
 export function listReleasesResponseJson(

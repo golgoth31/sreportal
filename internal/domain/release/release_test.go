@@ -90,6 +90,31 @@ func TestEntry_CRName(t *testing.T) {
 	assert.Equal(t, "release-2026-03-21", entry.CRName())
 }
 
+func TestValidateType(t *testing.T) {
+	cases := []struct {
+		name         string
+		typ          string
+		allowedTypes []string
+		wantErr      error
+	}{
+		{"empty allowed list accepts any type", "deployment", nil, nil},
+		{"empty slice accepts any type", "deployment", []string{}, nil},
+		{"type in allowed list", "deployment", []string{"deployment", "rollback"}, nil},
+		{"type not in allowed list", "hotfix", []string{"deployment", "rollback"}, release.ErrTypeNotAllowed},
+		{"exact match required", "deploy", []string{"deployment"}, release.ErrTypeNotAllowed},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := release.ValidateType(tc.typ, tc.allowedTypes)
+			if tc.wantErr != nil {
+				require.ErrorIs(t, err, tc.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestParseDateFromCRName(t *testing.T) {
 	cases := []struct {
 		name    string
