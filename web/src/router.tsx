@@ -43,6 +43,9 @@ const ReleasesPage = lazy(() =>
 const McpPage = lazy(() =>
   import("@/features/mcp/ui/McpPage").then((m) => ({ default: m.McpPage }))
 );
+const NetpolPage = lazy(() =>
+  import("@/pages/NetpolPage").then((m) => ({ default: m.NetpolPage }))
+);
 
 export const router = createBrowserRouter([
   {
@@ -78,6 +81,15 @@ export const router = createBrowserRouter([
         element: (
           <Suspense fallback={<PageSkeleton />}>
             <ReleasesPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: ":portalName/netpol",
+        errorElement: <ErrorPage />,
+        element: (
+          <Suspense fallback={<PageSkeleton />}>
+            <NetpolPage />
           </Suspense>
         ),
       },

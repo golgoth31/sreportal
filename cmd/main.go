@@ -455,6 +455,7 @@ func main() {
 		alertsMcpServer := mcp.NewAlertsServer(mgr.GetClient())
 		metricsMcpServer := mcp.NewMetricsServer(ctrlmetrics.Registry)
 		releasesMcpServer := mcp.NewReleasesServer(releaseSvc)
+		netpolMcpServer := mcp.NewNetpolServer(mgr.GetClient())
 
 		switch mcpTransport {
 		case "stdio":
@@ -471,12 +472,14 @@ func main() {
 				"alerts", "/mcp/alerts",
 				"metrics", "/mcp/metrics",
 				"releases", "/mcp/releases",
+				"netpol", "/mcp/netpol",
 			)
 			webServer.MountHandler("/mcp", dnsMcpServer.Handler())
 			webServer.MountHandler("/mcp/dns", dnsMcpServer.Handler())
 			webServer.MountHandler("/mcp/alerts", alertsMcpServer.Handler())
 			webServer.MountHandler("/mcp/metrics", metricsMcpServer.Handler())
 			webServer.MountHandler("/mcp/releases", releasesMcpServer.Handler())
+			webServer.MountHandler("/mcp/netpol", netpolMcpServer.Handler())
 		default:
 			setupLog.Error(nil, "unknown MCP transport", "transport", mcpTransport)
 			os.Exit(1)

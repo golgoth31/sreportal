@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package sreportal.v1;
+
+// NetworkPolicyService provides access to Kubernetes NetworkPolicy and FQDNNetworkPolicy resources
+service NetworkPolicyService {
+  // ListNetworkPolicies returns all network policies with parsed ingress/egress relations
+  rpc ListNetworkPolicies(ListNetworkPoliciesRequest) returns (ListNetworkPoliciesResponse);
+}
+
+// ListNetworkPoliciesRequest is the request for listing network policies
+message ListNetworkPoliciesRequest {
+  // namespace filters by Kubernetes namespace (empty for all)
+  string namespace = 1;
+
+  // search filters by policy or app name substring
+  string search = 2;
+}
+
+// ListNetworkPoliciesResponse contains parsed network flow relations
+message ListNetworkPoliciesResponse {
+  // nodes are all discovered services, databases, crons, and external endpoints
+  repeated NetpolNode nodes = 1;
+
+  // edges are the directional flow relations between nodes
+  repeated NetpolEdge edges = 2;
+}
+
+// NetpolNode represents a service, database, cron job, or external endpoint discovered from network policies
+message NetpolNode {
+  // id is the unique node identifier (e.g. "service:core:my-account-api")
+  string id = 1;
+
+  // label is the human-readable name (e.g. "my-account-api")
+  string label = 2;
+
+  // namespace is the Kubernetes namespace
+  string namespace = 3;
+
+  // node_type is one of: service, cron, database, external
+  string node_type = 4;
+
+  // group is the product line or logical group (e.g. "AP", "Core", "DI")
+  string group = 5;
+}
+
+// NetpolEdge represents a directional flow between two nodes
+message NetpolEdge {
+  // from is the source node id
+  string from = 1;
+
+  // to is the target node id
+  string to = 2;
+
+  // edge_type is one of: internal, cross-pl, cron, database, external
+  string edge_type = 3;
+}

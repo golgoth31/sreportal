@@ -1,4 +1,4 @@
-import { AlertTriangleIcon, BarChart3Icon, LinkIcon, RocketIcon } from "lucide-react";
+import { AlertTriangleIcon, BarChart3Icon, LinkIcon, RocketIcon, ShieldIcon } from "lucide-react";
 import { NavLink } from "react-router";
 
 import { Badge } from "@/components/ui/badge";
@@ -66,6 +66,20 @@ export function PortalSidebar({
             <span>Releases</span>
           </NavLink>
         )}
+        <NavLink
+          to={`${basePath}/netpol`}
+          className={({ isActive }) =>
+            cn(
+              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+              isActive
+                ? "bg-accent text-accent-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )
+          }
+        >
+          <ShieldIcon className="size-4 shrink-0" aria-hidden="true" />
+          <span>Network Policies</span>
+        </NavLink>
         {showAlerts && (
           <NavLink
             to={`${basePath}/alerts`}

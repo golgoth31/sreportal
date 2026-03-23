@@ -53,6 +53,12 @@ rules:
   - list
   - watch
 - apiGroups:
+  - networking.gke.io
+  resources:
+  - fqdnnetworkpolicies
+  verbs:
+  - list
+- apiGroups:
   - networking.istio.io
   resources:
   - gateways
@@ -69,6 +75,12 @@ rules:
   - get
   - list
   - watch
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - networkpolicies
+  verbs:
+  - list
 - apiGroups:
   - sreportal.io
   resources:

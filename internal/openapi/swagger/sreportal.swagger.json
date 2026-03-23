@@ -15,6 +15,9 @@
       "name": "MetricsService"
     },
     {
+      "name": "NetworkPolicyService"
+    },
+    {
       "name": "PortalService"
     },
     {
@@ -169,6 +172,39 @@
         ],
         "tags": [
           "MetricsService"
+        ]
+      }
+    },
+    "/sreportal.v1.NetworkPolicyService/ListNetworkPolicies": {
+      "post": {
+        "summary": "ListNetworkPolicies returns all network policies with parsed ingress/egress relations",
+        "operationId": "NetworkPolicyService_ListNetworkPolicies",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListNetworkPoliciesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1ListNetworkPoliciesRequest"
+            }
+          }
+        ],
+        "tags": [
+          "NetworkPolicyService"
         ]
       }
     },
@@ -737,6 +773,42 @@
       },
       "title": "ListMetricsResponse contains the list of metric families"
     },
+    "v1ListNetworkPoliciesRequest": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "title": "namespace filters by Kubernetes namespace (empty for all)"
+        },
+        "search": {
+          "type": "string",
+          "title": "search filters by policy or app name substring"
+        }
+      },
+      "title": "ListNetworkPoliciesRequest is the request for listing network policies"
+    },
+    "v1ListNetworkPoliciesResponse": {
+      "type": "object",
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1NetpolNode"
+          },
+          "title": "nodes are all discovered services, databases, crons, and external endpoints"
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1NetpolEdge"
+          },
+          "title": "edges are the directional flow relations between nodes"
+        }
+      },
+      "title": "ListNetworkPoliciesResponse contains parsed network flow relations"
+    },
     "v1ListPortalsRequest": {
       "type": "object",
       "properties": {
@@ -902,6 +974,50 @@
         }
       },
       "title": "MetricFamily represents a group of metrics sharing a name, help text, and type"
+    },
+    "v1NetpolEdge": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "title": "from is the source node id"
+        },
+        "to": {
+          "type": "string",
+          "title": "to is the target node id"
+        },
+        "edgeType": {
+          "type": "string",
+          "title": "edge_type is one of: internal, cross-pl, cron, database, external"
+        }
+      },
+      "title": "NetpolEdge represents a directional flow between two nodes"
+    },
+    "v1NetpolNode": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "id is the unique node identifier (e.g. \"service:core:my-account-api\")"
+        },
+        "label": {
+          "type": "string",
+          "title": "label is the human-readable name (e.g. \"my-account-api\")"
+        },
+        "namespace": {
+          "type": "string",
+          "title": "namespace is the Kubernetes namespace"
+        },
+        "nodeType": {
+          "type": "string",
+          "title": "node_type is one of: service, cron, database, external"
+        },
+        "group": {
+          "type": "string",
+          "title": "group is the product line or logical group (e.g. \"AP\", \"Core\", \"DI\")"
+        }
+      },
+      "title": "NetpolNode represents a service, database, cron job, or external endpoint discovered from network policies"
     },
     "v1OriginResourceRef": {
       "type": "object",
