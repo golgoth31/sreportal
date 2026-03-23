@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.18.0](https://github.com/golgoth31/sreportal/compare/v1.17.0...v1.18.0) (2026-03-23)
+
+
+### Features
+
+* **release:** flatten AddRelease request payload ([0880bd5](https://github.com/golgoth31/sreportal/commit/0880bd50058bdb2d0435bf2a5bbff1e0526dd3ff))
+
 ## [1.17.0](https://github.com/golgoth31/sreportal/compare/v1.16.1...v1.17.0) (2026-03-22)
 
 
