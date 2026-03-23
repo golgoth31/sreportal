@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.19.1](https://github.com/golgoth31/sreportal/compare/v1.19.0...v1.19.1) (2026-03-23)
+
+
+### Bug Fixes
+
+* **release:** replace link column with clickable version text ([e31cf9d](https://github.com/golgoth31/sreportal/commit/e31cf9d0d0a00362142b6eda4d54225bcedeb804))
+
 ## [1.19.0](https://github.com/golgoth31/sreportal/compare/v1.18.0...v1.19.0) (2026-03-23)
 
 
