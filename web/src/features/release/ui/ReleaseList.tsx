@@ -124,14 +124,14 @@ export function ReleaseList({
                 })()}
               </TableCell>
               <TableCell className="text-xs">
-                {entry.version && entry.link ? (
+                {entry.link ? (
                   <a
                     href={entry.link}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-primary hover:underline"
                   >
-                    {entry.version}
+                    {entry.version || "show me"}
                   </a>
                 ) : (
                   entry.version
