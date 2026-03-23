@@ -19,9 +19,8 @@ package release
 import "errors"
 
 var (
-	ErrInvalidType    = errors.New("release type must not be empty")
-	ErrInvalidVersion = errors.New("release version must not be empty")
-	ErrInvalidOrigin  = errors.New("release origin must not be empty")
+	ErrInvalidType   = errors.New("release type must not be empty")
+	ErrInvalidOrigin = errors.New("release origin must not be empty")
 	ErrInvalidDate    = errors.New("release date must not be zero")
 	ErrNotFound       = errors.New("release not found")
 	ErrInvalidCRName  = errors.New("invalid release CR name")

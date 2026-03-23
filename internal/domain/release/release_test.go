@@ -50,7 +50,6 @@ func TestNewEntry_Validation(t *testing.T) {
 		wantErr error
 	}{
 		{"empty type", "", "v1.0.0", "ci", validDate, release.ErrInvalidType},
-		{"empty version", "deploy", "", "ci", validDate, release.ErrInvalidVersion},
 		{"empty origin", "deploy", "v1.0.0", "", validDate, release.ErrInvalidOrigin},
 		{"zero date", "deploy", "v1.0.0", "ci", time.Time{}, release.ErrInvalidDate},
 	}
@@ -60,6 +59,17 @@ func TestNewEntry_Validation(t *testing.T) {
 			require.ErrorIs(t, err, tc.wantErr)
 		})
 	}
+}
+
+func TestNewEntry_EmptyVersion_IsValid(t *testing.T) {
+	date := time.Date(2026, 3, 21, 14, 30, 0, 0, time.UTC)
+
+	entry, err := release.NewEntry("deployment", "", "ci/cd", date)
+
+	require.NoError(t, err)
+	assert.Equal(t, "deployment", entry.Type)
+	assert.Empty(t, entry.Version)
+	assert.Equal(t, "ci/cd", entry.Origin)
 }
 
 func TestEntry_DateKey(t *testing.T) {

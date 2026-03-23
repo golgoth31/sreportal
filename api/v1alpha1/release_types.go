@@ -38,9 +38,8 @@ type ReleaseEntry struct {
 	Type string `json:"type"`
 
 	// version is the version string of the release
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:MinLength=1
-	Version string `json:"version"`
+	// +optional
+	Version string `json:"version,omitempty"`
 
 	// origin identifies where the release came from (e.g., "ci/cd", "manual", service name)
 	// +kubebuilder:validation:Required

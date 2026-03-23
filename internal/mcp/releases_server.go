@@ -76,7 +76,7 @@ func NewReleasesServer(svc *releaseservice.Service) *ReleasesServer {
 // ReleaseEntryResult represents a release entry in MCP responses.
 type ReleaseEntryResult struct {
 	Type    string `json:"type"`
-	Version string `json:"version"`
+	Version string `json:"version,omitempty"`
 	Origin  string `json:"origin"`
 	Date    string `json:"date"`
 	Author  string `json:"author,omitempty"`
