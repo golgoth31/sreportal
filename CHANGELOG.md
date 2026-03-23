@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.19.2](https://github.com/golgoth31/sreportal/compare/v1.19.1...v1.19.2) (2026-03-23)
+
+
+### Bug Fixes
+
+* **release:** show fallback link text when version is missing ([d854ec6](https://github.com/golgoth31/sreportal/commit/d854ec66ce566b1030f14a0b3ca8da0b369a0f89))
+
 ## [1.19.1](https://github.com/golgoth31/sreportal/compare/v1.19.0...v1.19.1) (2026-03-23)
 
 
