@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file sreportal/v1/release.proto.
  */
 export const file_sreportal_v1_release: GenFile = /*@__PURE__*/
-  fileDesc("ChpzcmVwb3J0YWwvdjEvcmVsZWFzZS5wcm90bxIMc3JlcG9ydGFsLnYxIpYBCgxSZWxlYXNlRW50cnkSDAoEdHlwZRgBIAEoCRIPCgd2ZXJzaW9uGAIgASgJEg4KBm9yaWdpbhgDIAEoCRIoCgRkYXRlGAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIOCgZhdXRob3IYBSABKAkSDwoHbWVzc2FnZRgGIAEoCRIMCgRsaW5rGAcgASgJIj4KEUFkZFJlbGVhc2VSZXF1ZXN0EikKBWVudHJ5GAEgASgLMhouc3JlcG9ydGFsLnYxLlJlbGVhc2VFbnRyeSI2ChJBZGRSZWxlYXNlUmVzcG9uc2USCwoDZGF5GAEgASgJEhMKC2VudHJ5X2NvdW50GAIgASgFIkkKE0xpc3RSZWxlYXNlc1JlcXVlc3QSCwoDZGF5GAEgASgJEhEKCXBhZ2Vfc2l6ZRgCIAEoBRISCgpwYWdlX3Rva2VuGAMgASgJIpEBChRMaXN0UmVsZWFzZXNSZXNwb25zZRILCgNkYXkYASABKAkSKwoHZW50cmllcxgCIAMoCzIaLnNyZXBvcnRhbC52MS5SZWxlYXNlRW50cnkSFwoPbmV4dF9wYWdlX3Rva2VuGAMgASgJEhQKDHByZXZpb3VzX2RheRgEIAEoCRIQCghuZXh0X2RheRgFIAEoCSIYChZMaXN0UmVsZWFzZURheXNSZXF1ZXN0ImkKF0xpc3RSZWxlYXNlRGF5c1Jlc3BvbnNlEgwKBGRheXMYASADKAkSEAoIdHRsX2RheXMYAiABKAUSLgoFdHlwZXMYAyADKAsyHy5zcmVwb3J0YWwudjEuUmVsZWFzZVR5cGVDb25maWciMAoRUmVsZWFzZVR5cGVDb25maWcSDAoEbmFtZRgBIAEoCRINCgVjb2xvchgCIAEoCTKYAgoOUmVsZWFzZVNlcnZpY2USTwoKQWRkUmVsZWFzZRIfLnNyZXBvcnRhbC52MS5BZGRSZWxlYXNlUmVxdWVzdBogLnNyZXBvcnRhbC52MS5BZGRSZWxlYXNlUmVzcG9uc2USVQoMTGlzdFJlbGVhc2VzEiEuc3JlcG9ydGFsLnYxLkxpc3RSZWxlYXNlc1JlcXVlc3QaIi5zcmVwb3J0YWwudjEuTGlzdFJlbGVhc2VzUmVzcG9uc2USXgoPTGlzdFJlbGVhc2VEYXlzEiQuc3JlcG9ydGFsLnYxLkxpc3RSZWxlYXNlRGF5c1JlcXVlc3QaJS5zcmVwb3J0YWwudjEuTGlzdFJlbGVhc2VEYXlzUmVzcG9uc2VCvAEKEGNvbS5zcmVwb3J0YWwudjFCDFJlbGVhc2VQcm90b1ABWklnaXRodWIuY29tL2dvbGdvdGgzMS9zcmVwb3J0YWwvaW50ZXJuYWwvZ3JwYy9nZW4vc3JlcG9ydGFsL3YxO3NyZXBvcnRhbHYxogIDU1hYqgIMU3JlcG9ydGFsLlYxygIMU3JlcG9ydGFsXFYx4gIYU3JlcG9ydGFsXFYxXEdQQk1ldGFkYXRh6gINU3JlcG9ydGFsOjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp]);
+  fileDesc("ChpzcmVwb3J0YWwvdjEvcmVsZWFzZS5wcm90bxIMc3JlcG9ydGFsLnYxIpYBCgxSZWxlYXNlRW50cnkSDAoEdHlwZRgBIAEoCRIPCgd2ZXJzaW9uGAIgASgJEg4KBm9yaWdpbhgDIAEoCRIoCgRkYXRlGAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIOCgZhdXRob3IYBSABKAkSDwoHbWVzc2FnZRgGIAEoCRIMCgRsaW5rGAcgASgJIjYKEkFkZFJlbGVhc2VSZXNwb25zZRILCgNkYXkYASABKAkSEwoLZW50cnlfY291bnQYAiABKAUiSQoTTGlzdFJlbGVhc2VzUmVxdWVzdBILCgNkYXkYASABKAkSEQoJcGFnZV9zaXplGAIgASgFEhIKCnBhZ2VfdG9rZW4YAyABKAkikQEKFExpc3RSZWxlYXNlc1Jlc3BvbnNlEgsKA2RheRgBIAEoCRIrCgdlbnRyaWVzGAIgAygLMhouc3JlcG9ydGFsLnYxLlJlbGVhc2VFbnRyeRIXCg9uZXh0X3BhZ2VfdG9rZW4YAyABKAkSFAoMcHJldmlvdXNfZGF5GAQgASgJEhAKCG5leHRfZGF5GAUgASgJIhgKFkxpc3RSZWxlYXNlRGF5c1JlcXVlc3QiaQoXTGlzdFJlbGVhc2VEYXlzUmVzcG9uc2USDAoEZGF5cxgBIAMoCRIQCgh0dGxfZGF5cxgCIAEoBRIuCgV0eXBlcxgDIAMoCzIfLnNyZXBvcnRhbC52MS5SZWxlYXNlVHlwZUNvbmZpZyIwChFSZWxlYXNlVHlwZUNvbmZpZxIMCgRuYW1lGAEgASgJEg0KBWNvbG9yGAIgASgJMpMCCg5SZWxlYXNlU2VydmljZRJKCgpBZGRSZWxlYXNlEhouc3JlcG9ydGFsLnYxLlJlbGVhc2VFbnRyeRogLnNyZXBvcnRhbC52MS5BZGRSZWxlYXNlUmVzcG9uc2USVQoMTGlzdFJlbGVhc2VzEiEuc3JlcG9ydGFsLnYxLkxpc3RSZWxlYXNlc1JlcXVlc3QaIi5zcmVwb3J0YWwudjEuTGlzdFJlbGVhc2VzUmVzcG9uc2USXgoPTGlzdFJlbGVhc2VEYXlzEiQuc3JlcG9ydGFsLnYxLkxpc3RSZWxlYXNlRGF5c1JlcXVlc3QaJS5zcmVwb3J0YWwudjEuTGlzdFJlbGVhc2VEYXlzUmVzcG9uc2VCvAEKEGNvbS5zcmVwb3J0YWwudjFCDFJlbGVhc2VQcm90b1ABWklnaXRodWIuY29tL2dvbGdvdGgzMS9zcmVwb3J0YWwvaW50ZXJuYWwvZ3JwYy9nZW4vc3JlcG9ydGFsL3YxO3NyZXBvcnRhbHYxogIDU1hYqgIMU3JlcG9ydGFsLlYxygIMU3JlcG9ydGFsXFYx4gIYU3JlcG9ydGFsXFYxXEdQQk1ldGFkYXRh6gINU3JlcG9ydGFsOjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp]);
 
 /**
  * ReleaseEntry represents a single release event
@@ -78,27 +78,6 @@ export const ReleaseEntrySchema: GenMessage<ReleaseEntry> = /*@__PURE__*/
   messageDesc(file_sreportal_v1_release, 0);
 
 /**
- * AddReleaseRequest is the request for adding a release entry
- *
- * @generated from message sreportal.v1.AddReleaseRequest
- */
-export type AddReleaseRequest = Message<"sreportal.v1.AddReleaseRequest"> & {
-  /**
-   * entry is the release entry to add
-   *
-   * @generated from field: sreportal.v1.ReleaseEntry entry = 1;
-   */
-  entry?: ReleaseEntry;
-};
-
-/**
- * Describes the message sreportal.v1.AddReleaseRequest.
- * Use `create(AddReleaseRequestSchema)` to create a new message.
- */
-export const AddReleaseRequestSchema: GenMessage<AddReleaseRequest> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_release, 1);
-
-/**
  * AddReleaseResponse is the response after adding a release entry
  *
  * @generated from message sreportal.v1.AddReleaseResponse
@@ -124,7 +103,7 @@ export type AddReleaseResponse = Message<"sreportal.v1.AddReleaseResponse"> & {
  * Use `create(AddReleaseResponseSchema)` to create a new message.
  */
 export const AddReleaseResponseSchema: GenMessage<AddReleaseResponse> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_release, 2);
+  messageDesc(file_sreportal_v1_release, 1);
 
 /**
  * ListReleasesRequest is the request for listing releases
@@ -159,7 +138,7 @@ export type ListReleasesRequest = Message<"sreportal.v1.ListReleasesRequest"> & 
  * Use `create(ListReleasesRequestSchema)` to create a new message.
  */
 export const ListReleasesRequestSchema: GenMessage<ListReleasesRequest> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_release, 3);
+  messageDesc(file_sreportal_v1_release, 2);
 
 /**
  * ListReleasesResponse contains the list of release entries for a day
@@ -208,7 +187,7 @@ export type ListReleasesResponse = Message<"sreportal.v1.ListReleasesResponse"> 
  * Use `create(ListReleasesResponseSchema)` to create a new message.
  */
 export const ListReleasesResponseSchema: GenMessage<ListReleasesResponse> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_release, 4);
+  messageDesc(file_sreportal_v1_release, 3);
 
 /**
  * ListReleaseDaysRequest is the request for listing all release days
@@ -223,7 +202,7 @@ export type ListReleaseDaysRequest = Message<"sreportal.v1.ListReleaseDaysReques
  * Use `create(ListReleaseDaysRequestSchema)` to create a new message.
  */
 export const ListReleaseDaysRequestSchema: GenMessage<ListReleaseDaysRequest> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_release, 5);
+  messageDesc(file_sreportal_v1_release, 4);
 
 /**
  * ListReleaseDaysResponse contains the list of days with releases and TTL info
@@ -258,7 +237,7 @@ export type ListReleaseDaysResponse = Message<"sreportal.v1.ListReleaseDaysRespo
  * Use `create(ListReleaseDaysResponseSchema)` to create a new message.
  */
 export const ListReleaseDaysResponseSchema: GenMessage<ListReleaseDaysResponse> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_release, 6);
+  messageDesc(file_sreportal_v1_release, 5);
 
 /**
  * ReleaseTypeConfig describes a release type and its display color
@@ -286,7 +265,7 @@ export type ReleaseTypeConfig = Message<"sreportal.v1.ReleaseTypeConfig"> & {
  * Use `create(ReleaseTypeConfigSchema)` to create a new message.
  */
 export const ReleaseTypeConfigSchema: GenMessage<ReleaseTypeConfig> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_release, 7);
+  messageDesc(file_sreportal_v1_release, 6);
 
 /**
  * ReleaseService provides access to release tracking data
@@ -301,7 +280,7 @@ export const ReleaseService: GenService<{
    */
   addRelease: {
     methodKind: "unary";
-    input: typeof AddReleaseRequestSchema;
+    input: typeof ReleaseEntrySchema;
     output: typeof AddReleaseResponseSchema;
   },
   /**
