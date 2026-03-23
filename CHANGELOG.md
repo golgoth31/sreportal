@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.19.0](https://github.com/golgoth31/sreportal/compare/v1.18.0...v1.19.0) (2026-03-23)
+
+
+### Features
+
+* **release:** make version field optional in ReleaseEntry ([117a560](https://github.com/golgoth31/sreportal/commit/117a5600341b068497eb183175a10d14cea9304b))
+
 ## [1.18.0](https://github.com/golgoth31/sreportal/compare/v1.17.0...v1.18.0) (2026-03-23)
 
 
