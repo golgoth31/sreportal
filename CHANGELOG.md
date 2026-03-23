@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.19.2](https://github.com/golgoth31/sreportal/compare/v1.19.1...v1.19.2) (2026-03-23)
+
+
+### Bug Fixes
+
+* **release:** show fallback link text when version is missing ([d854ec6](https://github.com/golgoth31/sreportal/commit/d854ec66ce566b1030f14a0b3ca8da0b369a0f89))
+
+## [1.19.1](https://github.com/golgoth31/sreportal/compare/v1.19.0...v1.19.1) (2026-03-23)
+
+
+### Bug Fixes
+
+* **release:** replace link column with clickable version text ([e31cf9d](https://github.com/golgoth31/sreportal/commit/e31cf9d0d0a00362142b6eda4d54225bcedeb804))
+
+## [1.19.0](https://github.com/golgoth31/sreportal/compare/v1.18.0...v1.19.0) (2026-03-23)
+
+
+### Features
+
+* **release:** make version field optional in ReleaseEntry ([117a560](https://github.com/golgoth31/sreportal/commit/117a5600341b068497eb183175a10d14cea9304b))
+
+## [1.18.0](https://github.com/golgoth31/sreportal/compare/v1.17.0...v1.18.0) (2026-03-23)
+
+
+### Features
+
+* **release:** flatten AddRelease request payload ([0880bd5](https://github.com/golgoth31/sreportal/commit/0880bd50058bdb2d0435bf2a5bbff1e0526dd3ff))
+
 ## [1.17.0](https://github.com/golgoth31/sreportal/compare/v1.16.1...v1.17.0) (2026-03-22)
 
 

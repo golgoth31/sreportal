@@ -28,7 +28,7 @@ function timestampToIso(
 function toDomainEntry(e: ProtoEntry): ReleaseEntry {
   return {
     type: e.type,
-    version: e.version,
+    version: e.version || undefined,
     origin: e.origin,
     date: e.date ? timestampToIso(e.date) : "",
     author: e.author,

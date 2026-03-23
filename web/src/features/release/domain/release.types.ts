@@ -1,6 +1,6 @@
 export interface ReleaseEntry {
   readonly type: string;
-  readonly version: string;
+  readonly version?: string;
   readonly origin: string;
   readonly date: string; // ISO 8601
   readonly author: string;
@@ -22,11 +22,12 @@ export interface ReleaseTypeConfig {
 
 /** Default type colors used when the server does not provide any. */
 export const DEFAULT_TYPE_COLORS: readonly ReleaseTypeConfig[] = [
-  { name: "deployment", color: "#3b82f6" },
+  { name: "release", color: "#3b82f6" },
   { name: "rollback", color: "#f97316" },
   { name: "hotfix", color: "#ef4444" },
   { name: "canary", color: "#eab308" },
   { name: "feature-flag", color: "#a855f7" },
+  { name: "feature flag", color: "#a855f7" },
   { name: "config", color: "#14b8a6" },
   { name: "migration", color: "#6366f1" },
   { name: "infra", color: "#06b6d4" },
@@ -46,7 +47,7 @@ export function entryMatchesSearch(
   const lower = term.toLowerCase();
   return (
     entry.type.toLowerCase().includes(lower) ||
-    entry.version.toLowerCase().includes(lower) ||
+    (entry.version ?? "").toLowerCase().includes(lower) ||
     entry.origin.toLowerCase().includes(lower) ||
     entry.author.toLowerCase().includes(lower) ||
     entry.message.toLowerCase().includes(lower)

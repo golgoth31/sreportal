@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AddReleaseRequest, AddReleaseResponse, ListReleaseDaysRequest, ListReleaseDaysResponse, ListReleasesRequest, ListReleasesResponse } from "./release_pb.js";
+import { AddReleaseResponse, ListReleaseDaysRequest, ListReleaseDaysResponse, ListReleasesRequest, ListReleasesResponse, ReleaseEntry } from "./release_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -21,7 +21,7 @@ export const ReleaseService = {
      */
     addRelease: {
       name: "AddRelease",
-      I: AddReleaseRequest,
+      I: ReleaseEntry,
       O: AddReleaseResponse,
       kind: MethodKind.Unary,
     },

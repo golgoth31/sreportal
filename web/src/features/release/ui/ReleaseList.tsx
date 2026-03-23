@@ -1,4 +1,4 @@
-import { ArrowDownIcon, ArrowUpIcon, ExternalLinkIcon } from "lucide-react";
+import { ArrowDownIcon, ArrowUpIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -75,14 +75,13 @@ export function ReleaseList({
           <TableHead className="w-28">Origin</TableHead>
           <TableHead>Message</TableHead>
           <TableHead className="w-24">Author</TableHead>
-          <TableHead className="w-10 sr-only">Link</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {sortedEntries.length === 0 ? (
           <TableRow>
             <TableCell
-              colSpan={7}
+              colSpan={6}
               className="text-center text-muted-foreground h-24"
             >
               {hasFilters ? (
@@ -102,7 +101,7 @@ export function ReleaseList({
           </TableRow>
         ) : (
           sortedEntries.map((entry, i) => (
-            <TableRow key={`${entry.version}-${entry.date}-${i}`}>
+            <TableRow key={`${entry.type}-${entry.date}-${i}`}>
               <TableCell className="font-mono text-xs text-muted-foreground">
                 {formatEntryTime(entry.date, timeZone)}
               </TableCell>
@@ -124,7 +123,20 @@ export function ReleaseList({
                   );
                 })()}
               </TableCell>
-              <TableCell className="font-medium">{entry.version}</TableCell>
+              <TableCell className="text-xs">
+                {entry.link ? (
+                  <a
+                    href={entry.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    {entry.version || "show me"}
+                  </a>
+                ) : (
+                  entry.version
+                )}
+              </TableCell>
               <TableCell className="text-muted-foreground text-xs">
                 {entry.origin}
               </TableCell>
@@ -132,19 +144,6 @@ export function ReleaseList({
                 {entry.message}
               </TableCell>
               <TableCell className="text-xs">{entry.author}</TableCell>
-              <TableCell>
-                {entry.link && (
-                  <a
-                    href={entry.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center text-primary hover:underline"
-                    aria-label={`Link for ${entry.version}`}
-                  >
-                    <ExternalLinkIcon className="size-3.5" aria-hidden="true" />
-                  </a>
-                )}
-              </TableCell>
             </TableRow>
           ))
         )}

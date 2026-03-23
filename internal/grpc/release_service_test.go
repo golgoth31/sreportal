@@ -50,31 +50,16 @@ func TestAddRelease_CreatesEntry(t *testing.T) {
 	grpcSvc := svcgrpc.NewReleaseService(svc, 30*24*time.Hour, nil)
 
 	date := time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC)
-	resp, err := grpcSvc.AddRelease(ctx, connect.NewRequest(&releasev1.AddReleaseRequest{
-		Entry: &releasev1.ReleaseEntry{
-			Type:    "deployment",
-			Version: "v1.0.0",
-			Origin:  "ci/cd",
-			Date:    timestamppb.New(date),
-		},
+	resp, err := grpcSvc.AddRelease(ctx, connect.NewRequest(&releasev1.ReleaseEntry{
+		Type:    "deployment",
+		Version: "v1.0.0",
+		Origin:  "ci/cd",
+		Date:    timestamppb.New(date),
 	}))
 
 	require.NoError(t, err)
 	assert.Equal(t, "2026-03-21", resp.Msg.Day)
 	assert.Equal(t, int32(1), resp.Msg.EntryCount)
-}
-
-func TestAddRelease_MissingEntry(t *testing.T) {
-	ctx := context.Background()
-	scheme := releaseScheme()
-	k8sClient := fake.NewClientBuilder().WithScheme(scheme).Build()
-	svc := releaseservice.NewService(k8sClient, "default")
-	grpcSvc := svcgrpc.NewReleaseService(svc, 30*24*time.Hour, nil)
-
-	_, err := grpcSvc.AddRelease(ctx, connect.NewRequest(&releasev1.AddReleaseRequest{}))
-
-	require.Error(t, err)
-	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
 
 func TestAddRelease_EmptyType(t *testing.T) {
@@ -84,13 +69,11 @@ func TestAddRelease_EmptyType(t *testing.T) {
 	svc := releaseservice.NewService(k8sClient, "default")
 	grpcSvc := svcgrpc.NewReleaseService(svc, 30*24*time.Hour, nil)
 
-	_, err := grpcSvc.AddRelease(ctx, connect.NewRequest(&releasev1.AddReleaseRequest{
-		Entry: &releasev1.ReleaseEntry{
-			Type:    "",
-			Version: "v1.0.0",
-			Origin:  "ci/cd",
-			Date:    timestamppb.New(time.Now()),
-		},
+	_, err := grpcSvc.AddRelease(ctx, connect.NewRequest(&releasev1.ReleaseEntry{
+		Type:    "",
+		Version: "v1.0.0",
+		Origin:  "ci/cd",
+		Date:    timestamppb.New(time.Now()),
 	}))
 
 	require.Error(t, err)
@@ -105,16 +88,14 @@ func TestAddRelease_WithOptionalFields(t *testing.T) {
 	grpcSvc := svcgrpc.NewReleaseService(svc, 30*24*time.Hour, nil)
 
 	date := time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC)
-	resp, err := grpcSvc.AddRelease(ctx, connect.NewRequest(&releasev1.AddReleaseRequest{
-		Entry: &releasev1.ReleaseEntry{
-			Type:    "deployment",
-			Version: "v1.0.0",
-			Origin:  "ci/cd",
-			Date:    timestamppb.New(date),
-			Author:  "alice",
-			Message: "fix login bug",
-			Link:    "https://github.com/example/repo/pull/42",
-		},
+	resp, err := grpcSvc.AddRelease(ctx, connect.NewRequest(&releasev1.ReleaseEntry{
+		Type:    "deployment",
+		Version: "v1.0.0",
+		Origin:  "ci/cd",
+		Date:    timestamppb.New(date),
+		Author:  "alice",
+		Message: "fix login bug",
+		Link:    "https://github.com/example/repo/pull/42",
 	}))
 
 	require.NoError(t, err)
@@ -250,6 +231,33 @@ func TestListReleases_DayNavigation(t *testing.T) {
 	assert.Equal(t, "2026-03-21", resp.Msg.NextDay)
 }
 
+func TestAddRelease_WithoutVersion(t *testing.T) {
+	ctx := context.Background()
+	scheme := releaseScheme()
+	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&sreportalv1alpha1.Release{}).Build()
+	svc := releaseservice.NewService(k8sClient, "default")
+	grpcSvc := svcgrpc.NewReleaseService(svc, 30*24*time.Hour, nil)
+
+	date := time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC)
+	resp, err := grpcSvc.AddRelease(ctx, connect.NewRequest(&releasev1.ReleaseEntry{
+		Type:   "deployment",
+		Origin: "ci/cd",
+		Date:   timestamppb.New(date),
+	}))
+
+	require.NoError(t, err)
+	assert.Equal(t, "2026-03-21", resp.Msg.Day)
+	assert.Equal(t, int32(1), resp.Msg.EntryCount)
+
+	// Verify version is empty in persisted entry
+	listResp, err := grpcSvc.ListReleases(ctx, connect.NewRequest(&releasev1.ListReleasesRequest{
+		Day: "2026-03-21",
+	}))
+	require.NoError(t, err)
+	require.Len(t, listResp.Msg.Entries, 1)
+	assert.Empty(t, listResp.Msg.Entries[0].Version)
+}
+
 func TestAddRelease_TypeNotAllowed(t *testing.T) {
 	ctx := context.Background()
 	scheme := releaseScheme()
@@ -259,13 +267,11 @@ func TestAddRelease_TypeNotAllowed(t *testing.T) {
 		{Name: "deployment"}, {Name: "rollback"},
 	})
 
-	_, err := grpcSvc.AddRelease(ctx, connect.NewRequest(&releasev1.AddReleaseRequest{
-		Entry: &releasev1.ReleaseEntry{
-			Type:    "hotfix",
-			Version: "v1.0.0",
-			Origin:  "ci/cd",
-			Date:    timestamppb.New(time.Now()),
-		},
+	_, err := grpcSvc.AddRelease(ctx, connect.NewRequest(&releasev1.ReleaseEntry{
+		Type:    "hotfix",
+		Version: "v1.0.0",
+		Origin:  "ci/cd",
+		Date:    timestamppb.New(time.Now()),
 	}))
 
 	require.Error(t, err)
@@ -283,13 +289,11 @@ func TestAddRelease_TypeAllowed(t *testing.T) {
 	})
 
 	date := time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC)
-	resp, err := grpcSvc.AddRelease(ctx, connect.NewRequest(&releasev1.AddReleaseRequest{
-		Entry: &releasev1.ReleaseEntry{
-			Type:    "deployment",
-			Version: "v1.0.0",
-			Origin:  "ci/cd",
-			Date:    timestamppb.New(date),
-		},
+	resp, err := grpcSvc.AddRelease(ctx, connect.NewRequest(&releasev1.ReleaseEntry{
+		Type:    "deployment",
+		Version: "v1.0.0",
+		Origin:  "ci/cd",
+		Date:    timestamppb.New(date),
 	}))
 
 	require.NoError(t, err)

@@ -7,7 +7,7 @@ import "google/protobuf/timestamp.proto";
 // ReleaseService provides access to release tracking data
 service ReleaseService {
   // AddRelease appends a release entry to the day's Release CR
-  rpc AddRelease(AddReleaseRequest) returns (AddReleaseResponse);
+  rpc AddRelease(ReleaseEntry) returns (AddReleaseResponse);
 
   // ListReleases returns release entries paginated by day
   rpc ListReleases(ListReleasesRequest) returns (ListReleasesResponse);
@@ -38,12 +38,6 @@ message ReleaseEntry {
 
   // link is a URL to the release (e.g., PR, pipeline, changelog)
   string link = 7;
-}
-
-// AddReleaseRequest is the request for adding a release entry
-message AddReleaseRequest {
-  // entry is the release entry to add
-  ReleaseEntry entry = 1;
 }
 
 // AddReleaseResponse is the response after adding a release entry

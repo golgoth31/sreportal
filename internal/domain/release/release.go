@@ -44,9 +44,6 @@ func NewEntry(typ, version, origin string, date time.Time) (Entry, error) {
 	if typ == "" {
 		return Entry{}, ErrInvalidType
 	}
-	if version == "" {
-		return Entry{}, ErrInvalidVersion
-	}
 	if origin == "" {
 		return Entry{}, ErrInvalidOrigin
 	}

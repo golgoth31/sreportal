@@ -47,7 +47,7 @@ const (
 // ReleaseServiceClient is a client for the sreportal.v1.ReleaseService service.
 type ReleaseServiceClient interface {
 	// AddRelease appends a release entry to the day's Release CR
-	AddRelease(context.Context, *connect.Request[v1.AddReleaseRequest]) (*connect.Response[v1.AddReleaseResponse], error)
+	AddRelease(context.Context, *connect.Request[v1.ReleaseEntry]) (*connect.Response[v1.AddReleaseResponse], error)
 	// ListReleases returns release entries paginated by day
 	ListReleases(context.Context, *connect.Request[v1.ListReleasesRequest]) (*connect.Response[v1.ListReleasesResponse], error)
 	// ListReleaseDays returns all days that have releases and the TTL window
@@ -65,7 +65,7 @@ func NewReleaseServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 	baseURL = strings.TrimRight(baseURL, "/")
 	releaseServiceMethods := v1.File_sreportal_v1_release_proto.Services().ByName("ReleaseService").Methods()
 	return &releaseServiceClient{
-		addRelease: connect.NewClient[v1.AddReleaseRequest, v1.AddReleaseResponse](
+		addRelease: connect.NewClient[v1.ReleaseEntry, v1.AddReleaseResponse](
 			httpClient,
 			baseURL+ReleaseServiceAddReleaseProcedure,
 			connect.WithSchema(releaseServiceMethods.ByName("AddRelease")),
@@ -88,13 +88,13 @@ func NewReleaseServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 
 // releaseServiceClient implements ReleaseServiceClient.
 type releaseServiceClient struct {
-	addRelease      *connect.Client[v1.AddReleaseRequest, v1.AddReleaseResponse]
+	addRelease      *connect.Client[v1.ReleaseEntry, v1.AddReleaseResponse]
 	listReleases    *connect.Client[v1.ListReleasesRequest, v1.ListReleasesResponse]
 	listReleaseDays *connect.Client[v1.ListReleaseDaysRequest, v1.ListReleaseDaysResponse]
 }
 
 // AddRelease calls sreportal.v1.ReleaseService.AddRelease.
-func (c *releaseServiceClient) AddRelease(ctx context.Context, req *connect.Request[v1.AddReleaseRequest]) (*connect.Response[v1.AddReleaseResponse], error) {
+func (c *releaseServiceClient) AddRelease(ctx context.Context, req *connect.Request[v1.ReleaseEntry]) (*connect.Response[v1.AddReleaseResponse], error) {
 	return c.addRelease.CallUnary(ctx, req)
 }
 
@@ -111,7 +111,7 @@ func (c *releaseServiceClient) ListReleaseDays(ctx context.Context, req *connect
 // ReleaseServiceHandler is an implementation of the sreportal.v1.ReleaseService service.
 type ReleaseServiceHandler interface {
 	// AddRelease appends a release entry to the day's Release CR
-	AddRelease(context.Context, *connect.Request[v1.AddReleaseRequest]) (*connect.Response[v1.AddReleaseResponse], error)
+	AddRelease(context.Context, *connect.Request[v1.ReleaseEntry]) (*connect.Response[v1.AddReleaseResponse], error)
 	// ListReleases returns release entries paginated by day
 	ListReleases(context.Context, *connect.Request[v1.ListReleasesRequest]) (*connect.Response[v1.ListReleasesResponse], error)
 	// ListReleaseDays returns all days that have releases and the TTL window
@@ -160,7 +160,7 @@ func NewReleaseServiceHandler(svc ReleaseServiceHandler, opts ...connect.Handler
 // UnimplementedReleaseServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedReleaseServiceHandler struct{}
 
-func (UnimplementedReleaseServiceHandler) AddRelease(context.Context, *connect.Request[v1.AddReleaseRequest]) (*connect.Response[v1.AddReleaseResponse], error) {
+func (UnimplementedReleaseServiceHandler) AddRelease(context.Context, *connect.Request[v1.ReleaseEntry]) (*connect.Response[v1.AddReleaseResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sreportal.v1.ReleaseService.AddRelease is not implemented"))
 }
 

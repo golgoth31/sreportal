@@ -265,7 +265,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/v1AddReleaseRequest"
+              "$ref": "#/definitions/v1ReleaseEntry"
             }
           }
         ],
@@ -402,16 +402,6 @@
           }
         }
       }
-    },
-    "v1AddReleaseRequest": {
-      "type": "object",
-      "properties": {
-        "entry": {
-          "$ref": "#/definitions/v1ReleaseEntry",
-          "title": "entry is the release entry to add"
-        }
-      },
-      "title": "AddReleaseRequest is the request for adding a release entry"
     },
     "v1AddReleaseResponse": {
       "type": "object",

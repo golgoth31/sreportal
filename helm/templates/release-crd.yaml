@@ -77,7 +77,6 @@ spec:
                       type: string
                     version:
                       description: version is the version string of the release
-                      minLength: 1
                       type: string
                   required:
                   - author
@@ -86,7 +85,6 @@ spec:
                   - message
                   - origin
                   - type
-                  - version
                   type: object
                 type: array
             type: object

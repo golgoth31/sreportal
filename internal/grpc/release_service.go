@@ -19,7 +19,6 @@ package grpc
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"connectrpc.com/connect"
@@ -49,13 +48,9 @@ func NewReleaseService(svc *releaseservice.Service, ttl time.Duration, allowedTy
 // AddRelease appends a release entry to the day's Release CR.
 func (s *ReleaseService) AddRelease(
 	ctx context.Context,
-	req *connect.Request[releasev1.AddReleaseRequest],
+	req *connect.Request[releasev1.ReleaseEntry],
 ) (*connect.Response[releasev1.AddReleaseResponse], error) {
-	if req.Msg.Entry == nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("entry is required"))
-	}
-
-	e := req.Msg.Entry
+	e := req.Msg
 	date := e.Date.AsTime()
 	entry, err := domainrelease.NewEntry(e.Type, e.Version, e.Origin, date)
 	if err != nil {
