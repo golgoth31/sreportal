@@ -308,6 +308,26 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 		})
 	}
 
+	// Create or update FlowNodeSet/FlowEdgeSet CRs for remote network flows.
+	if err := r.reconcileRemoteNetworkFlows(ctx, portal); err != nil {
+		remoteLog.Warn("failed to reconcile network flows for remote portal", "name", portal.Name, "namespace", portal.Namespace, "error", err.Error())
+		meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
+			Type:               "NetworkFlowsSynced",
+			Status:             metav1.ConditionFalse,
+			Reason:             "NetworkFlowsSyncFailed",
+			Message:            fmt.Sprintf("Failed to sync network flows from remote portal: %v", err),
+			LastTransitionTime: metav1.Now(),
+		})
+	} else {
+		meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
+			Type:               "NetworkFlowsSynced",
+			Status:             metav1.ConditionTrue,
+			Reason:             "NetworkFlowsSyncSuccess",
+			Message:            "Network flows synced for remote portal",
+			LastTransitionTime: metav1.Now(),
+		})
+	}
+
 	readyCondition := metav1.Condition{
 		Type:               "Ready",
 		Status:             metav1.ConditionTrue,
@@ -577,6 +597,150 @@ func (r *PortalReconciler) reconcileRemoteDNS(ctx context.Context, portal *srepo
 		"portal", portal.Name,
 		"fqdnCount", result.FQDNCount,
 		"groupCount", len(result.Groups))
+
+	return nil
+}
+
+// remoteFlowNodeSetName returns the name of the FlowNodeSet CR for a remote portal.
+func remoteFlowNodeSetName(portalName string) string {
+	return fmt.Sprintf("remote-%s-nodes", portalName)
+}
+
+// remoteFlowEdgeSetName returns the name of the FlowEdgeSet CR for a remote portal.
+func remoteFlowEdgeSetName(portalName string) string {
+	return fmt.Sprintf("remote-%s-edges", portalName)
+}
+
+// reconcileRemoteNetworkFlows fetches network flow data from a remote portal and
+// creates or updates local FlowNodeSet and FlowEdgeSet CRs owned by the Portal.
+func (r *PortalReconciler) reconcileRemoteNetworkFlows(ctx context.Context, portal *sreportalv1alpha1.Portal) error {
+	logger := log.FromContext(ctx)
+
+	remoteClient, err := r.remoteClientFor(ctx, portal)
+	if err != nil {
+		return fmt.Errorf("build remote client: %w", err)
+	}
+
+	result, err := remoteClient.FetchNetworkPolicies(ctx, portal.Spec.Remote.URL)
+	if err != nil {
+		return fmt.Errorf("fetch network policies: %w", err)
+	}
+
+	logger.V(1).Info("fetched remote network flows", "nodes", len(result.Nodes), "edges", len(result.Edges))
+
+	if err := r.ensureFlowNodeSet(ctx, portal, result); err != nil {
+		return fmt.Errorf("ensure FlowNodeSet: %w", err)
+	}
+
+	if err := r.ensureFlowEdgeSet(ctx, portal, result); err != nil {
+		return fmt.Errorf("ensure FlowEdgeSet: %w", err)
+	}
+
+	return nil
+}
+
+// ensureFlowNodeSet creates or updates the FlowNodeSet CR for a remote portal.
+func (r *PortalReconciler) ensureFlowNodeSet(ctx context.Context, portal *sreportalv1alpha1.Portal, result *remoteclient.NetworkFlowsFetchResult) error {
+	logger := log.FromContext(ctx)
+
+	name := remoteFlowNodeSetName(portal.Name)
+	nodeSet := &sreportalv1alpha1.FlowNodeSet{}
+
+	err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: portal.Namespace}, nodeSet)
+	if err != nil && !errors.IsNotFound(err) {
+		return fmt.Errorf("get FlowNodeSet: %w", err)
+	}
+
+	isNew := errors.IsNotFound(err)
+	if isNew {
+		nodeSet = &sreportalv1alpha1.FlowNodeSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: portal.Namespace,
+			},
+			Spec: sreportalv1alpha1.FlowNodeSetSpec{
+				DiscoveryRef: fmt.Sprintf("remote-%s", portal.Name),
+			},
+		}
+	}
+
+	if err := controllerutil.SetControllerReference(portal, nodeSet, r.Scheme); err != nil {
+		return fmt.Errorf("set controller reference: %w", err)
+	}
+
+	if isNew {
+		if err := r.Create(ctx, nodeSet); err != nil {
+			return fmt.Errorf("create FlowNodeSet: %w", err)
+		}
+		logger.Info("created FlowNodeSet CR for remote portal", "nodeSet", name)
+	} else {
+		if err := r.Update(ctx, nodeSet); err != nil {
+			return fmt.Errorf("update FlowNodeSet: %w", err)
+		}
+	}
+
+	// Update status with fetched nodes
+	base := nodeSet.DeepCopy()
+	nodeSet.Status.Nodes = result.Nodes
+
+	if err := r.Status().Patch(ctx, nodeSet, client.MergeFrom(base)); err != nil {
+		return fmt.Errorf("patch FlowNodeSet status: %w", err)
+	}
+
+	logger.Info("updated FlowNodeSet status with remote nodes", "nodeSet", name, "nodeCount", len(result.Nodes))
+
+	return nil
+}
+
+// ensureFlowEdgeSet creates or updates the FlowEdgeSet CR for a remote portal.
+func (r *PortalReconciler) ensureFlowEdgeSet(ctx context.Context, portal *sreportalv1alpha1.Portal, result *remoteclient.NetworkFlowsFetchResult) error {
+	logger := log.FromContext(ctx)
+
+	name := remoteFlowEdgeSetName(portal.Name)
+	edgeSet := &sreportalv1alpha1.FlowEdgeSet{}
+
+	err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: portal.Namespace}, edgeSet)
+	if err != nil && !errors.IsNotFound(err) {
+		return fmt.Errorf("get FlowEdgeSet: %w", err)
+	}
+
+	isNew := errors.IsNotFound(err)
+	if isNew {
+		edgeSet = &sreportalv1alpha1.FlowEdgeSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: portal.Namespace,
+			},
+			Spec: sreportalv1alpha1.FlowEdgeSetSpec{
+				DiscoveryRef: fmt.Sprintf("remote-%s", portal.Name),
+			},
+		}
+	}
+
+	if err := controllerutil.SetControllerReference(portal, edgeSet, r.Scheme); err != nil {
+		return fmt.Errorf("set controller reference: %w", err)
+	}
+
+	if isNew {
+		if err := r.Create(ctx, edgeSet); err != nil {
+			return fmt.Errorf("create FlowEdgeSet: %w", err)
+		}
+		logger.Info("created FlowEdgeSet CR for remote portal", "edgeSet", name)
+	} else {
+		if err := r.Update(ctx, edgeSet); err != nil {
+			return fmt.Errorf("update FlowEdgeSet: %w", err)
+		}
+	}
+
+	// Update status with fetched edges
+	base := edgeSet.DeepCopy()
+	edgeSet.Status.Edges = result.Edges
+
+	if err := r.Status().Patch(ctx, edgeSet, client.MergeFrom(base)); err != nil {
+		return fmt.Errorf("patch FlowEdgeSet status: %w", err)
+	}
+
+	logger.Info("updated FlowEdgeSet status with remote edges", "edgeSet", name, "edgeCount", len(result.Edges))
 
 	return nil
 }

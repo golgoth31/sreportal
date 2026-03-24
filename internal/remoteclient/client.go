@@ -372,6 +372,75 @@ func (c *Client) doFetchAlerts(ctx context.Context, baseURL string, portalName s
 	}, nil
 }
 
+// NetworkFlowsFetchResult contains the result of fetching network flows from a remote portal.
+type NetworkFlowsFetchResult struct {
+	// Nodes contains the flow nodes fetched from the remote portal.
+	Nodes []sreportalv1alpha1.FlowNode
+	// Edges contains the flow edges fetched from the remote portal.
+	Edges []sreportalv1alpha1.FlowEdge
+}
+
+// FetchNetworkPolicies fetches network flow nodes and edges from a remote portal.
+func (c *Client) FetchNetworkPolicies(ctx context.Context, baseURL string) (*NetworkFlowsFetchResult, error) {
+	var lastErr error
+
+	for attempt := 0; attempt < c.retryAttempts; attempt++ {
+		if attempt > 0 {
+			delay := c.retryDelay * time.Duration(1<<(attempt-1))
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(delay):
+			}
+		}
+
+		result, err := c.doFetchNetworkPolicies(ctx, baseURL)
+		if err == nil {
+			return result, nil
+		}
+		lastErr = err
+	}
+
+	return nil, fmt.Errorf("fetch network policies failed after %d attempts: %w", c.retryAttempts, lastErr)
+}
+
+func (c *Client) doFetchNetworkPolicies(ctx context.Context, baseURL string) (*NetworkFlowsFetchResult, error) {
+	netpolClient := sreportalv1connect.NewNetworkPolicyServiceClient(
+		c.httpClient,
+		baseURL,
+	)
+
+	resp, err := netpolClient.ListNetworkPolicies(ctx, connect.NewRequest(&sreportalv1.ListNetworkPoliciesRequest{}))
+	if err != nil {
+		return nil, fmt.Errorf("fetch network policies from remote portal: %w", err)
+	}
+
+	nodes := make([]sreportalv1alpha1.FlowNode, 0, len(resp.Msg.Nodes))
+	for _, n := range resp.Msg.Nodes {
+		nodes = append(nodes, sreportalv1alpha1.FlowNode{
+			ID:        n.Id,
+			Label:     n.Label,
+			Namespace: n.Namespace,
+			NodeType:  n.NodeType,
+			Group:     n.Group,
+		})
+	}
+
+	edges := make([]sreportalv1alpha1.FlowEdge, 0, len(resp.Msg.Edges))
+	for _, e := range resp.Msg.Edges {
+		edges = append(edges, sreportalv1alpha1.FlowEdge{
+			From:     e.From,
+			To:       e.To,
+			EdgeType: e.EdgeType,
+		})
+	}
+
+	return &NetworkFlowsFetchResult{
+		Nodes: nodes,
+		Edges: edges,
+	}, nil
+}
+
 // HealthCheck performs a health check on a remote portal by attempting to list portals.
 func (c *Client) HealthCheck(ctx context.Context, baseURL string) error {
 	portalClient := sreportalv1connect.NewPortalServiceClient(
