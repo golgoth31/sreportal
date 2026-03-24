@@ -1,0 +1,90 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.20.0
+  name: flowedgesets.sreportal.io
+spec:
+  group: sreportal.io
+  names:
+    kind: FlowEdgeSet
+    listKind: FlowEdgeSetList
+    plural: flowedgesets
+    singular: flowedgeset
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.discoveryRef
+      name: Discovery
+      type: string
+    - jsonPath: .status.edges
+      name: Edges
+      type: integer
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: FlowEdgeSet stores the discovered flow edges for a NetworkFlowDiscovery
+          resource.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: FlowEdgeSetSpec defines the desired state of FlowEdgeSet.
+            properties:
+              discoveryRef:
+                description: discoveryRef is the name of the parent NetworkFlowDiscovery
+                  resource
+                minLength: 1
+                type: string
+            required:
+            - discoveryRef
+            type: object
+          status:
+            description: FlowEdgeSetStatus defines the observed state of FlowEdgeSet.
+            properties:
+              edges:
+                description: edges are the directional flow relations between nodes
+                items:
+                  description: FlowEdge represents a directional flow between two
+                    nodes.
+                  properties:
+                    edgeType:
+                      description: edgeType describes the flow type (e.g. internal,
+                        cross-ns, cron, database, messaging, external)
+                      type: string
+                    from:
+                      description: from is the source node id
+                      type: string
+                    to:
+                      description: to is the target node id
+                      type: string
+                  required:
+                  - edgeType
+                  - from
+                  - to
+                  type: object
+                type: array
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

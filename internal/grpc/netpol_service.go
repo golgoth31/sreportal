@@ -30,7 +30,7 @@ import (
 )
 
 // NetworkPolicyService implements the NetworkPolicyServiceHandler interface.
-// It reads pre-computed flow graphs from NetworkFlowDiscovery CRD status.
+// It reads pre-computed flow graphs from FlowNodeSet and FlowEdgeSet CRDs.
 type NetworkPolicyService struct {
 	sreportalv1connect.UnimplementedNetworkPolicyServiceHandler
 	client client.Client
@@ -41,45 +41,41 @@ func NewNetworkPolicyService(c client.Client) *NetworkPolicyService {
 	return &NetworkPolicyService{client: c}
 }
 
-// ListNetworkPolicies returns the pre-computed flow graph from NetworkFlowDiscovery CRD status.
+// ListNetworkPolicies returns the pre-computed flow graph from FlowNodeSet and FlowEdgeSet CRDs.
 func (s *NetworkPolicyService) ListNetworkPolicies(
 	ctx context.Context,
 	req *connect.Request[netpolv1.ListNetworkPoliciesRequest],
 ) (*connect.Response[netpolv1.ListNetworkPoliciesResponse], error) {
-	var nfdList sreportalv1alpha1.NetworkFlowDiscoveryList
-	listOpts := []client.ListOption{}
-	if req.Msg.Namespace != "" {
-		listOpts = append(listOpts, client.InNamespace(req.Msg.Namespace))
-	}
-
-	if err := s.client.List(ctx, &nfdList, listOpts...); err != nil {
+	// Read nodes from FlowNodeSets
+	var nodeSetList sreportalv1alpha1.FlowNodeSetList
+	if err := s.client.List(ctx, &nodeSetList); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	// Merge graphs from all NetworkFlowDiscovery resources
-	nodeMap := make(map[string]*netpolv1.NetpolNode)
-	edgeSet := make(map[string]*netpolv1.NetpolEdge)
+	// Read edges from FlowEdgeSets
+	var edgeSetList sreportalv1alpha1.FlowEdgeSetList
+	if err := s.client.List(ctx, &edgeSetList); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
 
-	for _, nfd := range nfdList.Items {
-		for _, n := range nfd.Status.Nodes {
+	// Merge all nodes and edges
+	nodeMap := make(map[string]*netpolv1.NetpolNode)
+	for _, ns := range nodeSetList.Items {
+		for _, n := range ns.Status.Nodes {
 			if _, ok := nodeMap[n.ID]; !ok {
 				nodeMap[n.ID] = &netpolv1.NetpolNode{
-					Id:        n.ID,
-					Label:     n.Label,
-					Namespace: n.Namespace,
-					NodeType:  n.NodeType,
-					Group:     n.Group,
+					Id: n.ID, Label: n.Label, Namespace: n.Namespace, NodeType: n.NodeType, Group: n.Group,
 				}
 			}
 		}
-		for _, e := range nfd.Status.Edges {
+	}
+
+	edgeSet := make(map[string]*netpolv1.NetpolEdge)
+	for _, es := range edgeSetList.Items {
+		for _, e := range es.Status.Edges {
 			key := e.From + "|" + e.To + "|" + e.EdgeType
 			if _, ok := edgeSet[key]; !ok {
-				edgeSet[key] = &netpolv1.NetpolEdge{
-					From:     e.From,
-					To:       e.To,
-					EdgeType: e.EdgeType,
-				}
+				edgeSet[key] = &netpolv1.NetpolEdge{From: e.From, To: e.To, EdgeType: e.EdgeType}
 			}
 		}
 	}

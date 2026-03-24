@@ -35,13 +35,13 @@ type NetworkFlowDiscoverySpec struct {
 
 // NetworkFlowDiscoveryStatus defines the observed state of NetworkFlowDiscovery.
 type NetworkFlowDiscoveryStatus struct {
-	// nodes are all discovered services, databases, crons, and external endpoints
+	// nodeCount is the number of discovered nodes
 	// +optional
-	Nodes []FlowNode `json:"nodes,omitempty"`
+	NodeCount int `json:"nodeCount,omitempty"`
 
-	// edges are the directional flow relations between nodes
+	// edgeCount is the number of discovered edges
 	// +optional
-	Edges []FlowEdge `json:"edges,omitempty"`
+	EdgeCount int `json:"edgeCount,omitempty"`
 
 	// conditions represent the current state of the resource.
 	// +listType=map
@@ -87,8 +87,8 @@ type FlowEdge struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Portal",type=string,JSONPath=`.spec.portalRef`
-// +kubebuilder:printcolumn:name="Nodes",type=integer,JSONPath=`.status.nodes`
-// +kubebuilder:printcolumn:name="Edges",type=integer,JSONPath=`.status.edges`
+// +kubebuilder:printcolumn:name="Nodes",type=integer,JSONPath=`.status.nodeCount`
+// +kubebuilder:printcolumn:name="Edges",type=integer,JSONPath=`.status.edgeCount`
 // +kubebuilder:printcolumn:name="Last Reconcile",type=date,JSONPath=`.status.lastReconcileTime`
 
 // NetworkFlowDiscovery is the Schema for the networkflowdiscoveries API.

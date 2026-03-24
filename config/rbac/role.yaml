@@ -114,6 +114,8 @@ rules:
   - alertmanagers/status
   - dns/status
   - dnsrecords/status
+  - flowedgesets/status
+  - flownodesets/status
   - networkflowdiscoveries/status
   - portals/status
   - releases/status
@@ -121,3 +123,15 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - sreportal.io
+  resources:
+  - flowedgesets
+  - flownodesets
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - update
+  - watch

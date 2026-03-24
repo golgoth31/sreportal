@@ -133,25 +133,32 @@ type netpolEdgeResult struct {
 	EdgeType string `json:"edge_type"`
 }
 
-// loadGraph reads the pre-computed graph from all NetworkFlowDiscovery CRD statuses.
+// loadGraph reads the pre-computed graph from FlowNodeSet and FlowEdgeSet CRDs.
 func (s *NetpolServer) loadGraph(ctx context.Context) (map[string]netpolNodeResult, []netpolEdgeResult, error) {
-	var nfdList sreportalv1alpha1.NetworkFlowDiscoveryList
-	if err := s.client.List(ctx, &nfdList); err != nil {
-		return nil, nil, fmt.Errorf("failed to list NetworkFlowDiscovery resources: %w", err)
+	var nodeSetList sreportalv1alpha1.FlowNodeSetList
+	if err := s.client.List(ctx, &nodeSetList); err != nil {
+		return nil, nil, fmt.Errorf("failed to list FlowNodeSet resources: %w", err)
+	}
+
+	var edgeSetList sreportalv1alpha1.FlowEdgeSetList
+	if err := s.client.List(ctx, &edgeSetList); err != nil {
+		return nil, nil, fmt.Errorf("failed to list FlowEdgeSet resources: %w", err)
 	}
 
 	nodeMap := make(map[string]netpolNodeResult)
-	edgeSet := make(map[string]netpolEdgeResult)
-
-	for _, nfd := range nfdList.Items {
-		for _, n := range nfd.Status.Nodes {
+	for _, ns := range nodeSetList.Items {
+		for _, n := range ns.Status.Nodes {
 			if _, ok := nodeMap[n.ID]; !ok {
 				nodeMap[n.ID] = netpolNodeResult{
 					ID: n.ID, Label: n.Label, Namespace: n.Namespace, NodeType: n.NodeType, Group: n.Group,
 				}
 			}
 		}
-		for _, e := range nfd.Status.Edges {
+	}
+
+	edgeSet := make(map[string]netpolEdgeResult)
+	for _, es := range edgeSetList.Items {
+		for _, e := range es.Status.Edges {
 			key := e.From + "|" + e.To + "|" + e.EdgeType
 			if _, ok := edgeSet[key]; !ok {
 				edgeSet[key] = netpolEdgeResult{From: e.From, To: e.To, EdgeType: e.EdgeType}

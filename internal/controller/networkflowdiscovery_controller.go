@@ -59,6 +59,10 @@ func NewNetworkFlowDiscoveryReconciler(c client.Client, scheme *runtime.Scheme) 
 // +kubebuilder:rbac:groups=sreportal.io,resources=networkflowdiscoveries,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=sreportal.io,resources=networkflowdiscoveries/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=networkflowdiscoveries/finalizers,verbs=update
+// +kubebuilder:rbac:groups=sreportal.io,resources=flownodesets,verbs=get;list;watch;create;update;patch
+// +kubebuilder:rbac:groups=sreportal.io,resources=flownodesets/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=sreportal.io,resources=flowedgesets,verbs=get;list;watch;create;update;patch
+// +kubebuilder:rbac:groups=sreportal.io,resources=flowedgesets/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=list
 // +kubebuilder:rbac:groups=networking.gke.io,resources=fqdnnetworkpolicies,verbs=list
 

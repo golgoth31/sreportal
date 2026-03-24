@@ -19,10 +19,10 @@ spec:
     - jsonPath: .spec.portalRef
       name: Portal
       type: string
-    - jsonPath: .status.nodes
+    - jsonPath: .status.nodeCount
       name: Nodes
       type: integer
-    - jsonPath: .status.edges
+    - jsonPath: .status.edgeCount
       name: Edges
       type: integer
     - jsonPath: .status.lastReconcileTime
@@ -133,62 +133,16 @@ spec:
                 x-kubernetes-list-map-keys:
                 - type
                 x-kubernetes-list-type: map
-              edges:
-                description: edges are the directional flow relations between nodes
-                items:
-                  description: FlowEdge represents a directional flow between two nodes.
-                  properties:
-                    edgeType:
-                      description: edgeType describes the flow type (e.g. internal,
-                        cross-ns, cron, database, messaging, external)
-                      type: string
-                    from:
-                      description: from is the source node id
-                      type: string
-                    to:
-                      description: to is the target node id
-                      type: string
-                  required:
-                  - edgeType
-                  - from
-                  - to
-                  type: object
-                type: array
+              edgeCount:
+                description: edgeCount is the number of discovered edges
+                type: integer
               lastReconcileTime:
                 description: lastReconcileTime is the timestamp of the last reconciliation
                 format: date-time
                 type: string
-              nodes:
-                description: nodes are all discovered services, databases, crons, and
-                  external endpoints
-                items:
-                  description: FlowNode represents a service, database, cron job, or
-                    external endpoint.
-                  properties:
-                    group:
-                      description: group is the logical group (namespace name by default)
-                      type: string
-                    id:
-                      description: id is the unique node identifier (e.g. "service:core:my-account-api")
-                      type: string
-                    label:
-                      description: label is the human-readable name
-                      type: string
-                    namespace:
-                      description: namespace is the Kubernetes namespace
-                      type: string
-                    nodeType:
-                      description: 'nodeType is one of: service, cron, database, messaging,
-                        external'
-                      type: string
-                  required:
-                  - group
-                  - id
-                  - label
-                  - namespace
-                  - nodeType
-                  type: object
-                type: array
+              nodeCount:
+                description: nodeCount is the number of discovered nodes
+                type: integer
             type: object
         required:
         - spec

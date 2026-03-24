@@ -1,0 +1,9 @@
+apiVersion: sreportal.io/v1alpha1
+kind: FlowNodeSet
+metadata:
+  labels:
+    app.kubernetes.io/name: sreportal
+    app.kubernetes.io/managed-by: kustomize
+  name: flownodeset-sample
+spec:
+  # TODO(user): Add fields here
