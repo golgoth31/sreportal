@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.20.0](https://github.com/golgoth31/sreportal/compare/v1.19.2...v1.20.0) (2026-03-24)
+
+
+### Features
+
+* **netpol:** add network policy explorer ([#149](https://github.com/golgoth31/sreportal/issues/149)) ([d9c06b5](https://github.com/golgoth31/sreportal/commit/d9c06b5869f7bb5329439071504789ac252504a3))
+
+
+### Bug Fixes
+
+* **web:** constrain sidebar height to viewport instead of page content ([95a3076](https://github.com/golgoth31/sreportal/commit/95a3076b9c2aa6557007dfd62f8cef7c4cd7b376))
+
 ## [1.19.2](https://github.com/golgoth31/sreportal/compare/v1.19.1...v1.19.2) (2026-03-23)
 
 
