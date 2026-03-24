@@ -43,3 +43,6 @@ resources:
   # - release_admin_role.yaml
   # - release_editor_role.yaml
   # - release_viewer_role.yaml
+  # - networkflowdiscovery_admin_role.yaml
+  # - networkflowdiscovery_editor_role.yaml
+  # - networkflowdiscovery_viewer_role.yaml

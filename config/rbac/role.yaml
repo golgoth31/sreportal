@@ -86,6 +86,7 @@ rules:
   - alertmanagers
   - dns
   - dnsrecords
+  - networkflowdiscoveries
   - portals
   - releases
   verbs:
@@ -102,6 +103,7 @@ rules:
   - alertmanagers/finalizers
   - dns/finalizers
   - dnsrecords/finalizers
+  - networkflowdiscoveries/finalizers
   - portals/finalizers
   - releases/finalizers
   verbs:
@@ -112,6 +114,7 @@ rules:
   - alertmanagers/status
   - dns/status
   - dnsrecords/status
+  - networkflowdiscoveries/status
   - portals/status
   - releases/status
   verbs:
