@@ -132,6 +132,10 @@ func (s *Server) setupRoutes() {
 	amPath, amHandler := sreportalv1connect.NewAlertmanagerServiceHandler(alertmanagerService, connectOpts)
 	s.echo.Any(amPath+"*", echo.WrapHandler(amHandler))
 
+	netpolService := grpc.NewNetworkPolicyService(s.client)
+	netpolPath, netpolHandler := sreportalv1connect.NewNetworkPolicyServiceHandler(netpolService, connectOpts)
+	s.echo.Any(netpolPath+"*", echo.WrapHandler(netpolHandler))
+
 	versionService := grpc.NewVersionService()
 	versionPath, versionHandler := sreportalv1connect.NewVersionServiceHandler(versionService, connectOpts)
 	s.echo.Any(versionPath+"*", echo.WrapHandler(versionHandler))

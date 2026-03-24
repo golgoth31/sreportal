@@ -1,0 +1,9 @@
+apiVersion: sreportal.io/v1alpha1
+kind: FlowEdgeSet
+metadata:
+  labels:
+    app.kubernetes.io/name: sreportal
+    app.kubernetes.io/managed-by: kustomize
+  name: flowedgeset-sample
+spec:
+  # TODO(user): Add fields here

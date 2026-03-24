@@ -7,6 +7,9 @@ resources:
   - bases/sreportal.io_portals.yaml
   - bases/sreportal.io_alertmanagers.yaml
   - bases/sreportal.io_releases.yaml
+  - bases/sreportal.io_networkflowdiscoveries.yaml
+  - bases/sreportal.io_flownodesets.yaml
+  - bases/sreportal.io_flowedgesets.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches:

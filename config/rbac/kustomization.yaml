@@ -43,3 +43,12 @@ resources:
   # - release_admin_role.yaml
   # - release_editor_role.yaml
   # - release_viewer_role.yaml
+  # - networkflowdiscovery_admin_role.yaml
+  # - networkflowdiscovery_editor_role.yaml
+  # - networkflowdiscovery_viewer_role.yaml
+  # - flownodeset_admin_role.yaml
+  # - flownodeset_editor_role.yaml
+  # - flownodeset_viewer_role.yaml
+  # - flowedgeset_admin_role.yaml
+  # - flowedgeset_editor_role.yaml
+  # - flowedgeset_viewer_role.yaml

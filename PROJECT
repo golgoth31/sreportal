@@ -63,4 +63,26 @@ resources:
   webhooks:
     validation: true
     webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: sreportal.io
+  kind: NetworkFlowDiscovery
+  path: github.com/golgoth31/sreportal/api/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: sreportal.io
+  kind: FlowNodeSet
+  path: github.com/golgoth31/sreportal/api/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: sreportal.io
+  kind: FlowEdgeSet
+  path: github.com/golgoth31/sreportal/api/v1alpha1
+  version: v1alpha1
 version: "3"

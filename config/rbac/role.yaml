@@ -52,6 +52,12 @@ rules:
   - list
   - watch
 - apiGroups:
+  - networking.gke.io
+  resources:
+  - fqdnnetworkpolicies
+  verbs:
+  - list
+- apiGroups:
   - networking.istio.io
   resources:
   - gateways
@@ -69,11 +75,18 @@ rules:
   - list
   - watch
 - apiGroups:
+  - networking.k8s.io
+  resources:
+  - networkpolicies
+  verbs:
+  - list
+- apiGroups:
   - sreportal.io
   resources:
   - alertmanagers
   - dns
   - dnsrecords
+  - networkflowdiscoveries
   - portals
   - releases
   verbs:
@@ -90,6 +103,7 @@ rules:
   - alertmanagers/finalizers
   - dns/finalizers
   - dnsrecords/finalizers
+  - networkflowdiscoveries/finalizers
   - portals/finalizers
   - releases/finalizers
   verbs:
@@ -100,9 +114,24 @@ rules:
   - alertmanagers/status
   - dns/status
   - dnsrecords/status
+  - flowedgesets/status
+  - flownodesets/status
+  - networkflowdiscoveries/status
   - portals/status
   - releases/status
   verbs:
   - get
   - patch
   - update
+- apiGroups:
+  - sreportal.io
+  resources:
+  - flowedgesets
+  - flownodesets
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - update
+  - watch

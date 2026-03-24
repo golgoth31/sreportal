@@ -49,6 +49,7 @@ import (
 	"github.com/golgoth31/sreportal/internal/alertmanagerclient"
 	"github.com/golgoth31/sreportal/internal/config"
 	"github.com/golgoth31/sreportal/internal/controller"
+	nfdchain "github.com/golgoth31/sreportal/internal/controller/networkflowdiscovery"
 	portalctrl "github.com/golgoth31/sreportal/internal/controller/portal"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/mcp"
@@ -358,6 +359,17 @@ func main() {
 		setupLog.Error(err, "unable to add main portal ensure runnable")
 		os.Exit(1)
 	}
+
+	// Add runnable to ensure NetworkFlowDiscovery exists for the main portal
+	if err := mgr.Add(nfdchain.NewEnsureNFDRunnable(
+		mgr.GetClient(),
+		mgr.GetCache(),
+		portalNamespace,
+		portalctrl.MainPortalName,
+	)); err != nil {
+		setupLog.Error(err, "unable to add NFD ensure runnable")
+		os.Exit(1)
+	}
 	amClient := alertmanagerclient.NewClient()
 	if err := controller.NewAlertmanagerReconciler(
 		mgr.GetClient(),
@@ -367,6 +379,13 @@ func main() {
 		remoteCache,
 	).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Alertmanager")
+		os.Exit(1)
+	}
+	if err := controller.NewNetworkFlowDiscoveryReconciler(
+		mgr.GetClient(),
+		mgr.GetScheme(),
+	).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "NetworkFlowDiscovery")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder
@@ -455,6 +474,7 @@ func main() {
 		alertsMcpServer := mcp.NewAlertsServer(mgr.GetClient())
 		metricsMcpServer := mcp.NewMetricsServer(ctrlmetrics.Registry)
 		releasesMcpServer := mcp.NewReleasesServer(releaseSvc)
+		netpolMcpServer := mcp.NewNetpolServer(mgr.GetClient())
 
 		switch mcpTransport {
 		case "stdio":
@@ -471,12 +491,14 @@ func main() {
 				"alerts", "/mcp/alerts",
 				"metrics", "/mcp/metrics",
 				"releases", "/mcp/releases",
+				"netpol", "/mcp/netpol",
 			)
 			webServer.MountHandler("/mcp", dnsMcpServer.Handler())
 			webServer.MountHandler("/mcp/dns", dnsMcpServer.Handler())
 			webServer.MountHandler("/mcp/alerts", alertsMcpServer.Handler())
 			webServer.MountHandler("/mcp/metrics", metricsMcpServer.Handler())
 			webServer.MountHandler("/mcp/releases", releasesMcpServer.Handler())
+			webServer.MountHandler("/mcp/netpol", netpolMcpServer.Handler())
 		default:
 			setupLog.Error(nil, "unknown MCP transport", "transport", mcpTransport)
 			os.Exit(1)
