@@ -31,7 +31,7 @@ export function PortalSidebar({
 
   return (
     <aside
-      className="w-48 shrink-0 border-r bg-muted/30 flex flex-col py-4"
+      className="w-48 shrink-0 border-r bg-muted/30 flex flex-col py-4 overflow-y-auto"
       aria-label="Portal menu"
     >
       <nav className="flex flex-col gap-0.5 px-2" aria-label="Links and Alerts">

@@ -32,7 +32,7 @@ export function RootLayout() {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen flex flex-col bg-background">
+      <div className="h-screen flex flex-col bg-background">
         {/* Header */}
         <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur-sm">
           <div className="flex h-14 items-center gap-4 px-4 max-w-screen-xl mx-auto w-full">
