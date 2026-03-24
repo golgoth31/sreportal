@@ -5,7 +5,7 @@ weight: 5
 
 SRE Portal includes a React single-page application served directly by the operator.
 
-![SRE Portal Web UI](/assets/img/web.png)
+![SRE Portal Web UI](/assets/img/dark/links.png)
 
 ## Accessing the Dashboard
 

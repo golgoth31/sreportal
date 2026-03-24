@@ -126,6 +126,10 @@ install-web: ## Install web UI dependencies.
 test-web: install-web ## Run web UI unit tests (Vitest).
 	cd web && npm test
 
+.PHONY: screenshots
+screenshots: install-web ## Generate PNG screenshots of each web page with mock data.
+	cd web && ./node_modules/.bin/tsx scripts/screenshots.ts
+
 ##@ Build
 
 .PHONY: build
@@ -220,7 +224,7 @@ helm: manifests generate kustomize helmify
 	$(KUSTOMIZE) build config/default | $(HELMIFY) -generate-defaults helm
 
 .PHONY: doc
-doc: manifests generate api2md
+doc: manifests generate api2md screenshots
 	$(API2MD) --source-path=./api --config="./hack/api-docs/config.yaml" --output-path=./docs/content/docs/api.md
 
 ##@ Dependencies
