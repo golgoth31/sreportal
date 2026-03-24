@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.21.0](https://github.com/golgoth31/sreportal/compare/v1.20.1...v1.21.0) (2026-03-24)
+
+
+### Features
+
+* **netpol:** add remote portal support for network policies ([6171127](https://github.com/golgoth31/sreportal/commit/6171127ed2407fd0bcbc6b8c525e5ef20f927128))
+
 ## [1.20.1](https://github.com/golgoth31/sreportal/compare/v1.20.0...v1.20.1) (2026-03-24)
 
 
