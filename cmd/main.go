@@ -49,6 +49,7 @@ import (
 	"github.com/golgoth31/sreportal/internal/alertmanagerclient"
 	"github.com/golgoth31/sreportal/internal/config"
 	"github.com/golgoth31/sreportal/internal/controller"
+	nfdchain "github.com/golgoth31/sreportal/internal/controller/networkflowdiscovery"
 	portalctrl "github.com/golgoth31/sreportal/internal/controller/portal"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/mcp"
@@ -356,6 +357,17 @@ func main() {
 		portalNamespace,
 	)); err != nil {
 		setupLog.Error(err, "unable to add main portal ensure runnable")
+		os.Exit(1)
+	}
+
+	// Add runnable to ensure NetworkFlowDiscovery exists for the main portal
+	if err := mgr.Add(nfdchain.NewEnsureNFDRunnable(
+		mgr.GetClient(),
+		mgr.GetCache(),
+		portalNamespace,
+		portalctrl.MainPortalName,
+	)); err != nil {
+		setupLog.Error(err, "unable to add NFD ensure runnable")
 		os.Exit(1)
 	}
 	amClient := alertmanagerclient.NewClient()
