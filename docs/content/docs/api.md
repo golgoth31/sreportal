@@ -10,6 +10,9 @@
 - [sreportal.io/v1alpha1.Alertmanager](#sreportaliov1alpha1alertmanager)
 - [sreportal.io/v1alpha1.DNS](#sreportaliov1alpha1dns)
 - [sreportal.io/v1alpha1.DNSRecord](#sreportaliov1alpha1dnsrecord)
+- [sreportal.io/v1alpha1.FlowEdgeSet](#sreportaliov1alpha1flowedgeset)
+- [sreportal.io/v1alpha1.FlowNodeSet](#sreportaliov1alpha1flownodeset)
+- [sreportal.io/v1alpha1.NetworkFlowDiscovery](#sreportaliov1alpha1networkflowdiscovery)
 - [sreportal.io/v1alpha1.Portal](#sreportaliov1alpha1portal)
 - [sreportal.io/v1alpha1.Release](#sreportaliov1alpha1release)
 
@@ -53,6 +56,48 @@ DNSRecord is the Schema for the dnsrecords API. It represents DNS endpoints disc
 | `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#objectmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |   |   |
 | `spec` _[sreportal.io/v1alpha1.DNSRecordSpec](#sreportaliov1alpha1dnsrecordspec)_ | spec defines the desired state of DNSRecord |   |   |
 | `status` _[sreportal.io/v1alpha1.DNSRecordStatus](#sreportaliov1alpha1dnsrecordstatus)_ | status defines the observed state of DNSRecord |   |   |
+
+
+
+#### sreportal.io/v1alpha1.FlowEdgeSet
+
+FlowEdgeSet stores the discovered flow edges for a NetworkFlowDiscovery resource.
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `apiVersion` _string_ | `sreportal.io/v1alpha1` |   |   |
+| `kind` _string_ | `FlowEdgeSet` |   |   |
+| `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#objectmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |   |   |
+| `spec` _[sreportal.io/v1alpha1.FlowEdgeSetSpec](#sreportaliov1alpha1flowedgesetspec)_ |   |   |   |
+| `status` _[sreportal.io/v1alpha1.FlowEdgeSetStatus](#sreportaliov1alpha1flowedgesetstatus)_ |   |   |   |
+
+
+
+#### sreportal.io/v1alpha1.FlowNodeSet
+
+FlowNodeSet stores the discovered flow nodes for a NetworkFlowDiscovery resource.
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `apiVersion` _string_ | `sreportal.io/v1alpha1` |   |   |
+| `kind` _string_ | `FlowNodeSet` |   |   |
+| `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#objectmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |   |   |
+| `spec` _[sreportal.io/v1alpha1.FlowNodeSetSpec](#sreportaliov1alpha1flownodesetspec)_ |   |   |   |
+| `status` _[sreportal.io/v1alpha1.FlowNodeSetStatus](#sreportaliov1alpha1flownodesetstatus)_ |   |   |   |
+
+
+
+#### sreportal.io/v1alpha1.NetworkFlowDiscovery
+
+NetworkFlowDiscovery is the Schema for the networkflowdiscoveries API. It discovers network flows from Kubernetes NetworkPolicies and FQDNNetworkPolicies.
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `apiVersion` _string_ | `sreportal.io/v1alpha1` |   |   |
+| `kind` _string_ | `NetworkFlowDiscovery` |   |   |
+| `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#objectmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |   |   |
+| `spec` _[sreportal.io/v1alpha1.NetworkFlowDiscoverySpec](#sreportaliov1alpha1networkflowdiscoveryspec)_ | spec defines the desired state of NetworkFlowDiscovery |   |   |
+| `status` _[sreportal.io/v1alpha1.NetworkFlowDiscoveryStatus](#sreportaliov1alpha1networkflowdiscoverystatus)_ | status defines the observed state of NetworkFlowDiscovery |   |   |
 
 
 
@@ -339,6 +384,122 @@ _Appears in:_
 | `ttl` _integer_ | ttl is the DNS record TTL in seconds |   |   |
 | `labels` _[sreportal.io/v1alpha1.map[string]string](#sreportaliov1alpha1map[string]string)_ | labels contains the endpoint labels from external-dns |   |   |
 | `lastSeen` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | lastSeen is the timestamp when this endpoint was last observed |   |   |
+
+
+
+#### sreportal.io/v1alpha1.FlowEdgeSetSpec
+
+FlowEdgeSetSpec defines the desired state of FlowEdgeSet.
+
+_Appears in:_
+- [sreportal.io/v1alpha1.FlowEdgeSet](#sreportaliov1alpha1flowedgeset)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `discoveryRef` _string_ | discoveryRef is the name of the parent NetworkFlowDiscovery resource |   |   |
+
+
+
+#### sreportal.io/v1alpha1.FlowEdgeSetStatus
+
+FlowEdgeSetStatus defines the observed state of FlowEdgeSet.
+discoveryRef is the name of the parent NetworkFlowDiscovery resource
+
+_Appears in:_
+- [sreportal.io/v1alpha1.FlowEdgeSet](#sreportaliov1alpha1flowedgeset)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `edges` _[sreportal.io/v1alpha1.FlowEdge](#sreportaliov1alpha1flowedge) array_ | edges are the directional flow relations between nodes |   |   |
+
+
+
+#### sreportal.io/v1alpha1.FlowNodeSetSpec
+
+FlowNodeSetSpec defines the desired state of FlowNodeSet.
+
+_Appears in:_
+- [sreportal.io/v1alpha1.FlowNodeSet](#sreportaliov1alpha1flownodeset)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `discoveryRef` _string_ | discoveryRef is the name of the parent NetworkFlowDiscovery resource |   |   |
+
+
+
+#### sreportal.io/v1alpha1.FlowNodeSetStatus
+
+FlowNodeSetStatus defines the observed state of FlowNodeSet.
+discoveryRef is the name of the parent NetworkFlowDiscovery resource
+
+_Appears in:_
+- [sreportal.io/v1alpha1.FlowNodeSet](#sreportaliov1alpha1flownodeset)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `nodes` _[sreportal.io/v1alpha1.FlowNode](#sreportaliov1alpha1flownode) array_ | nodes are all discovered services, databases, crons, and external endpoints |   |   |
+
+
+
+#### sreportal.io/v1alpha1.NetworkFlowDiscoverySpec
+
+NetworkFlowDiscoverySpec defines the desired state of NetworkFlowDiscovery.
+
+_Appears in:_
+- [sreportal.io/v1alpha1.NetworkFlowDiscovery](#sreportaliov1alpha1networkflowdiscovery)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `portalRef` _string_ | portalRef is the name of the Portal this resource is linked to |   |   |
+| `namespaces` _string array_ | namespaces is an optional list of namespaces to scan. When empty, all namespaces are scanned. |   |   |
+
+
+
+#### sreportal.io/v1alpha1.NetworkFlowDiscoveryStatus
+
+NetworkFlowDiscoveryStatus defines the observed state of NetworkFlowDiscovery.
+
+_Appears in:_
+- [sreportal.io/v1alpha1.NetworkFlowDiscovery](#sreportaliov1alpha1networkflowdiscovery)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `nodeCount` _integer_ | nodeCount is the number of discovered nodes |   |   |
+| `edgeCount` _integer_ | edgeCount is the number of discovered edges |   |   |
+| `conditions` _[Condition](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#condition-v1-meta) array_ | conditions represent the current state of the resource. |   |   |
+| `lastReconcileTime` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | lastReconcileTime is the timestamp of the last reconciliation |   |   |
+
+
+
+#### sreportal.io/v1alpha1.FlowNode
+
+FlowNode represents a service, database, cron job, or external endpoint.
+
+_Appears in:_
+- [sreportal.io/v1alpha1.FlowNodeSetStatus](#sreportaliov1alpha1flownodesetstatus)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `id` _string_ | id is the unique node identifier (e.g. "service:core:my-account-api") |   |   |
+| `label` _string_ | label is the human-readable name |   |   |
+| `namespace` _string_ | namespace is the Kubernetes namespace |   |   |
+| `nodeType` _string_ | nodeType is one of: service, cron, database, messaging, external |   |   |
+| `group` _string_ | group is the logical group (namespace name by default) |   |   |
+
+
+
+#### sreportal.io/v1alpha1.FlowEdge
+
+FlowEdge represents a directional flow between two nodes.
+
+_Appears in:_
+- [sreportal.io/v1alpha1.FlowEdgeSetStatus](#sreportaliov1alpha1flowedgesetstatus)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `from` _string_ | from is the source node id |   |   |
+| `to` _string_ | to is the target node id |   |   |
+| `edgeType` _string_ | edgeType describes the flow type (e.g. internal, cross-ns, cron, database, messaging, external) |   |   |
 
 
 
