@@ -22,63 +22,69 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	sreportaliov1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 )
 
 var _ = Describe("NetworkFlowDiscovery Controller", func() {
 	Context("When reconciling a resource", func() {
-		const resourceName = "test-resource"
+		const resourceName = "test-nfd"
 
 		ctx := context.Background()
 
 		typeNamespacedName := types.NamespacedName{
 			Name:      resourceName,
-			Namespace: "default", // TODO(user):Modify as needed
+			Namespace: "default",
 		}
-		networkflowdiscovery := &sreportaliov1alpha1.NetworkFlowDiscovery{}
 
 		BeforeEach(func() {
 			By("creating the custom resource for the Kind NetworkFlowDiscovery")
-			err := k8sClient.Get(ctx, typeNamespacedName, networkflowdiscovery)
+			nfd := &sreportalv1alpha1.NetworkFlowDiscovery{}
+			err := k8sClient.Get(ctx, typeNamespacedName, nfd)
 			if err != nil && errors.IsNotFound(err) {
-				resource := &sreportaliov1alpha1.NetworkFlowDiscovery{
+				resource := &sreportalv1alpha1.NetworkFlowDiscovery{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
 					},
-					// TODO(user): Specify other spec details if needed.
+					Spec: sreportalv1alpha1.NetworkFlowDiscoverySpec{
+						PortalRef: "main",
+					},
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
 		})
 
 		AfterEach(func() {
-			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &sreportaliov1alpha1.NetworkFlowDiscovery{}
+			resource := &sreportalv1alpha1.NetworkFlowDiscovery{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
-
-			By("Cleanup the specific resource instance NetworkFlowDiscovery")
-			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+			if err == nil {
+				By("Cleanup the specific resource instance NetworkFlowDiscovery")
+				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+			}
 		})
+
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
-			controllerReconciler := &NetworkFlowDiscoveryReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
-			}
+			controllerReconciler := NewNetworkFlowDiscoveryReconciler(
+				k8sClient,
+				k8sClient.Scheme(),
+			)
 
-			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+			result, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
-			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
-			// Example: If you expect a certain status condition after reconciliation, verify it here.
+			Expect(result.RequeueAfter).To(Equal(networkFlowDiscoveryRequeueAfter))
+
+			Eventually(func(g Gomega) {
+				var updated sreportalv1alpha1.NetworkFlowDiscovery
+				g.Expect(k8sClient.Get(ctx, typeNamespacedName, &updated)).To(Succeed())
+				g.Expect(updated.Status.LastReconcileTime).NotTo(BeNil())
+			}).Should(Succeed())
 		})
 	})
 })
