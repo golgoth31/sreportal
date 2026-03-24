@@ -63,8 +63,8 @@ func NewNetworkFlowDiscoveryReconciler(c client.Client, scheme *runtime.Scheme) 
 // +kubebuilder:rbac:groups=sreportal.io,resources=flownodesets/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=flowedgesets,verbs=get;list;watch;create;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=flowedgesets/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=list
-// +kubebuilder:rbac:groups=networking.gke.io,resources=fqdnnetworkpolicies,verbs=list
+// +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch
+// +kubebuilder:rbac:groups=networking.gke.io,resources=fqdnnetworkpolicies,verbs=get;list;watch
 
 // Reconcile builds the network flow graph and updates the resource status.
 func (r *NetworkFlowDiscoveryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {

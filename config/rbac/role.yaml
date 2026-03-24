@@ -56,7 +56,9 @@ rules:
   resources:
   - fqdnnetworkpolicies
   verbs:
+  - get
   - list
+  - watch
 - apiGroups:
   - networking.istio.io
   resources:
@@ -70,16 +72,11 @@ rules:
   - networking.k8s.io
   resources:
   - ingresses
+  - networkpolicies
   verbs:
   - get
   - list
   - watch
-- apiGroups:
-  - networking.k8s.io
-  resources:
-  - networkpolicies
-  verbs:
-  - list
 - apiGroups:
   - sreportal.io
   resources:
