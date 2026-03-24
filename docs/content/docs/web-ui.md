@@ -25,10 +25,11 @@ Then open [http://localhost:8090](http://localhost:8090) in your browser.
 | `/:portalName/links` | Displays FQDNs for the specified portal |
 | `/:portalName/dashboard` | Prometheus metrics charts (operator registry) |
 | `/:portalName/alerts` | Displays Alertmanager resources and active alerts for the portal |
+| `/:portalName/netpol` | Displays network policy flow graph for the portal |
 | `/:portalName/releases` | Displays release events for a given day (main portal only) |
 | `/help` | MCP setup instructions (all MCP endpoints) and available tools |
 
-The root URL redirects to the `main` portal's links page. Each portal has its own DNS (links), Dashboard, and (when applicable) Releases and Alerts routes.
+The root URL redirects to the `main` portal's links page. Each portal has its own DNS (links), Dashboard, Network Policies, and (when applicable) Releases and Alerts routes.
 
 ## Sidebar
 
@@ -37,21 +38,24 @@ When viewing a portal, a left sidebar shows:
 - **DNS** — navigates to `/:portalName/links` (FQDN list)
 - **Dashboard** — navigates to `/:portalName/dashboard` (metrics charts; labeled beta)
 - **Releases** — shown only on the main portal when at least one Release CR exists; navigates to `/:portalName/releases`
+- **Network Policies** — navigates to `/:portalName/netpol` (network flow graph)
 - **Alerts** — shown only if the portal has at least one Alertmanager resource; navigates to `/:portalName/alerts`
 
 ## Features
 
 ### FQDN Display
 
+![FQDN Display](/assets/img/dark/links.png)
+
 The links page shows all FQDNs aggregated for the selected portal. FQDNs are displayed with their record type, targets, and description.
 
-### Grouping
+#### Grouping
 
 FQDNs are organized into groups based on:
 - **Source**: `manual` (from DNS CR spec), `external-dns` (auto-discovered), or `remote` (fetched from a remote portal)
 - **Group name**: determined by annotations, labels, namespace mapping, or the default group (see [Annotations](../annotations))
 
-### Search and Filters
+#### Search and Filters
 
 The links page provides:
 - **Search**: filter FQDNs by name
@@ -60,9 +64,25 @@ The links page provides:
 
 ### Alerts Page
 
+![FQDN Display](/assets/img/dark/alerts.png)
+
 For portals that have Alertmanager resources, the Alerts page lists each Alertmanager CR with its active alerts. You can filter by search text and alert state (e.g. active, suppressed). Each resource is shown in a collapsible card with labels, annotations, and timestamps.
 
+### Network Policies Page
+
+![Network Policies](/assets/img/dark/netpol.png)
+
+The Network Policies page visualizes network flows discovered from Kubernetes NetworkPolicies and GKE FQDNNetworkPolicies. It provides three views:
+
+- **Flow Matrix** — a heatmap showing allowed connections between services grouped by namespace
+- **Impact View** — select a service to see all its ingress and egress flows
+- **Cross-Namespace** — highlights flows that cross namespace boundaries
+
+The graph data is computed by the NetworkFlowDiscovery controller and stored in FlowNodeSet/FlowEdgeSet CRDs. For remote portals, the data is fetched via the Connect API and synced locally.
+
 ### Releases Page
+
+![FQDN Display](/assets/img/dark/releases.png)
 
 The Releases page is visible only on the main portal when at least one Release CR exists. It displays all release events for a given day in a compact list, sorted by date (most recent first).
 
