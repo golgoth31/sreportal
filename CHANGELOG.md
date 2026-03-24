@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.20.1](https://github.com/golgoth31/sreportal/compare/v1.20.0...v1.20.1) (2026-03-24)
+
+
+### Bug Fixes
+
+* **netpol:** add missing RBAC verbs for networkpolicies watch ([da3d739](https://github.com/golgoth31/sreportal/commit/da3d739a648346c80622bc455b7ea451d8535f28))
+
 ## [1.20.0](https://github.com/golgoth31/sreportal/compare/v1.19.2...v1.20.0) (2026-03-24)
 
 
