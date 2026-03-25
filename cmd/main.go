@@ -56,6 +56,7 @@ import (
 	alertmanagerreadstore "github.com/golgoth31/sreportal/internal/readstore/alertmanager"
 	dnsreadstore "github.com/golgoth31/sreportal/internal/readstore/dns"
 	portalreadstore "github.com/golgoth31/sreportal/internal/readstore/portal"
+	releasereadstore "github.com/golgoth31/sreportal/internal/readstore/release"
 	releaseservice "github.com/golgoth31/sreportal/internal/release"
 	"github.com/golgoth31/sreportal/internal/remoteclient"
 	"github.com/golgoth31/sreportal/internal/source"
@@ -448,13 +449,12 @@ func main() {
 		releaseTTL = 30 * 24 * 60 * 60 * 1e9 // 30 days in nanoseconds
 	}
 	releaseSvc := releaseservice.NewService(mgr.GetClient(), releaseNamespace)
+	releaseStore := releasereadstore.NewReleaseStore()
 
-	// Release controller: watches Release CRs, invalidates cache, and deletes expired CRs
-	if err := controller.NewReleaseReconciler(
-		mgr.GetClient(),
-		releaseSvc,
-		releaseTTL,
-	).SetupWithManager(mgr); err != nil {
+	// Release controller: watches Release CRs, pushes to ReadStore, and deletes expired CRs
+	releaseReconciler := controller.NewReleaseReconciler(mgr.GetClient(), releaseTTL)
+	releaseReconciler.SetReleaseWriter(releaseStore)
+	if err := releaseReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Release")
 		os.Exit(1)
 	}
@@ -463,6 +463,7 @@ func main() {
 	webCfg := webserver.Config{
 		Address:             webAddr,
 		Gatherer:            ctrlmetrics.Registry,
+		ReleaseReader:       releaseStore,
 		ReleaseService:      releaseSvc,
 		ReleaseTTL:          releaseTTL,
 		ReleaseAllowedTypes: operatorConfig.Release.Types,
@@ -502,7 +503,7 @@ func main() {
 		dnsMcpServer := mcp.NewDNSServer(fqdnStore, portalStore)
 		alertsMcpServer := mcp.NewAlertsServer(alertmanagerStore)
 		metricsMcpServer := mcp.NewMetricsServer(ctrlmetrics.Registry)
-		releasesMcpServer := mcp.NewReleasesServer(releaseSvc)
+		releasesMcpServer := mcp.NewReleasesServer(releaseStore)
 		netpolMcpServer := mcp.NewNetpolServer(mgr.GetClient())
 
 		switch mcpTransport {

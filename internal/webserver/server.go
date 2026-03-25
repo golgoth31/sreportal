@@ -40,6 +40,7 @@ import (
 	domainalertmanager "github.com/golgoth31/sreportal/internal/domain/alertmanagerreadmodel"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 	domainportal "github.com/golgoth31/sreportal/internal/domain/portal"
+	domainrelease "github.com/golgoth31/sreportal/internal/domain/release"
 	"github.com/golgoth31/sreportal/internal/grpc"
 	"github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1/sreportalv1connect"
 	"github.com/golgoth31/sreportal/internal/metrics"
@@ -61,7 +62,10 @@ type Config struct {
 	// Gatherer is the Prometheus metrics gatherer for the MetricsService
 	Gatherer prometheus.Gatherer
 
-	// ReleaseService is the shared release service for the ReleaseService gRPC handler
+	// ReleaseReader is the read-side interface for Release data (provided by the ReadStore)
+	ReleaseReader domainrelease.ReleaseReader
+
+	// ReleaseService is the shared release service for the write path (AddEntry)
 	ReleaseService *releaseservice.Service
 
 	// ReleaseTTL is the TTL for release CRs, exposed to the frontend via ListReleaseDays
@@ -151,8 +155,8 @@ func (s *Server) setupRoutes() {
 		s.echo.Any(metricsPath+"*", echo.WrapHandler(metricsHandler))
 	}
 
-	if s.config.ReleaseService != nil {
-		releaseGRPC := grpc.NewReleaseService(s.config.ReleaseService, s.config.ReleaseTTL, s.config.ReleaseAllowedTypes)
+	if s.config.ReleaseReader != nil {
+		releaseGRPC := grpc.NewReleaseService(s.config.ReleaseReader, s.config.ReleaseService, s.config.ReleaseTTL, s.config.ReleaseAllowedTypes)
 		releasePath, releaseHandler := sreportalv1connect.NewReleaseServiceHandler(releaseGRPC, connectOpts)
 		s.echo.Any(releasePath+"*", echo.WrapHandler(releaseHandler))
 	}

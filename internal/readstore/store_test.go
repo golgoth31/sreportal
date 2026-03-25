@@ -85,6 +85,53 @@ func TestStore_All_ReturnsCopy(t *testing.T) {
 	assert.Equal(t, "a", snap2[0].Name, "mutation of returned slice must not affect store")
 }
 
+func TestStore_Get_ReturnsItemsForKey(t *testing.T) {
+	s := readstore.New[item]()
+
+	s.Replace("key1", []item{{Name: "a"}, {Name: "b"}})
+	s.Replace("key2", []item{{Name: "c"}})
+
+	got := s.Get("key1")
+	require.Len(t, got, 2)
+	assert.Equal(t, "a", got[0].Name)
+	assert.Equal(t, "b", got[1].Name)
+}
+
+func TestStore_Get_ReturnsNilForMissingKey(t *testing.T) {
+	s := readstore.New[item]()
+
+	got := s.Get("nonexistent")
+	assert.Nil(t, got)
+}
+
+func TestStore_Get_ReturnsCopy(t *testing.T) {
+	s := readstore.New[item]()
+	s.Replace("key1", []item{{Name: "a"}})
+
+	snap := s.Get("key1")
+	snap[0].Name = "mutated"
+
+	assert.Equal(t, "a", s.Get("key1")[0].Name, "mutation of returned slice must not affect store")
+}
+
+func TestStore_Keys_ReturnsAllKeys(t *testing.T) {
+	s := readstore.New[item]()
+
+	s.Replace("key1", []item{{Name: "a"}})
+	s.Replace("key2", []item{{Name: "b"}})
+
+	keys := s.Keys()
+	require.Len(t, keys, 2)
+	assert.ElementsMatch(t, []string{"key1", "key2"}, keys)
+}
+
+func TestStore_Keys_ReturnsEmptyWhenNoData(t *testing.T) {
+	s := readstore.New[item]()
+
+	keys := s.Keys()
+	assert.Empty(t, keys)
+}
+
 func TestStore_Subscribe_ClosedOnReplace(t *testing.T) {
 	s := readstore.New[item]()
 

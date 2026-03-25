@@ -63,6 +63,36 @@ func (s *Store[T]) All() []T {
 	return out
 }
 
+// Get returns the items stored under a specific key. Returns nil if the key
+// does not exist. The returned slice is a copy.
+func (s *Store[T]) Get(key string) []T {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	items, ok := s.data[key]
+	if !ok {
+		return nil
+	}
+
+	out := make([]T, len(items))
+	copy(out, items)
+
+	return out
+}
+
+// Keys returns all keys currently in the store.
+func (s *Store[T]) Keys() []string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	keys := make([]string, 0, len(s.data))
+	for k := range s.data {
+		keys = append(keys, k)
+	}
+
+	return keys
+}
+
 // Subscribe returns a channel that will be closed on the next mutation
 // (Replace or Delete). After receiving the notification, callers must call
 // Subscribe() again to wait for subsequent changes.

@@ -335,25 +335,29 @@ Le pattern broadcast channel remplace le polling :
 
 ## Wiring (cmd/main.go)
 
-**État actuel** (DNS, Portal, Alertmanager migrés) :
+**État actuel** (DNS, Portal, Alertmanager, Release migrés) :
 
 ```go
 // ✅ ReadStores — créés et câblés
 fqdnStore := dnsreadstore.NewFQDNStore()
 portalStore := portalreadstore.NewPortalStore()
 alertmanagerStore := alertmanagerreadstore.NewAlertmanagerStore()
+releaseStore := releasereadstore.NewReleaseStore()
 
 // Controllers reçoivent les writers
 dnsReconciler.SetFQDNWriter(fqdnStore)
 portalReconciler.SetPortalWriter(portalStore)
 amReconciler.SetAlertmanagerWriter(alertmanagerStore)
+releaseReconciler.SetReleaseWriter(releaseStore)
 
 // gRPC/MCP reçoivent les readers
 webCfg.FQDNReader = fqdnStore
 webCfg.PortalReader = portalStore
 webCfg.AlertmanagerReader = alertmanagerStore
+webCfg.ReleaseReader = releaseStore
 mcp.NewDNSServer(fqdnStore, portalStore)
 mcp.NewAlertsServer(alertmanagerStore)
+mcp.NewReleasesServer(releaseStore)
 ```
 
 **État cible** (tous les contextes migrés) :
@@ -389,7 +393,7 @@ L'ordre recommandé est :
 2. ✅ **DNS** — le plus complexe (Stream + cache existant à supprimer), valide le pattern
 3. ✅ **Portal** — simple, peu de logique
 4. ✅ **Alertmanager** — filtrage modéré
-5. ⬜ **Release** — cas spécial write direct, suppression du cache artisanal
+5. ✅ **Release** — cas spécial write direct, suppression du cache artisanal
 6. ⬜ **Network Policy** — merge multi-CRD (FlowNodeSet + FlowEdgeSet)
 
 Chaque migration est indépendante et peut être livrée en PR séparée.
@@ -465,6 +469,35 @@ Chaque migration est indépendante et peut être livrée en PR séparée.
 - `client.Client` dans `AlertsServer` (MCP) et `AlertmanagerService` (gRPC)
 - Imports `sreportalv1alpha1`, `sigs.k8s.io/controller-runtime/pkg/client` dans les services alertmanager
 
+### Détail de la migration Release (✅ terminée)
+
+**Fichiers créés :**
+- `internal/domain/release/read_model.go` — `EntryView`, `DayView`
+- `internal/domain/release/reader.go` — interface `ReleaseReader`
+- `internal/domain/release/writer.go` — interface `ReleaseWriter`
+- `internal/readstore/release/release_store.go` + `release_store_test.go` — implémentation `ReleaseStore` (5 tests)
+
+**Store générique étendu :**
+- `internal/readstore/store.go` — ajout `Get(key)` et `Keys()` (5 tests ajoutés)
+
+**Fichiers modifiés :**
+- `internal/controller/release_controller.go` — suppression `CacheInvalidator`, ajout `releaseWriter`, `SetReleaseWriter()`, `releaseEntriesToViews()` ; pousse dans le store après réconciliation, supprime du store en cas de NotFound
+- `internal/controller/release_controller_test.go` — réécrit avec `ReleaseStore` au lieu de `fakeCacheInvalidator`, vérifie le contenu du store
+- `internal/grpc/release_service.go` — `ReleaseReader` remplace `release.Service` pour les lectures (`ListReleases`, `ListReleaseDays`), `release.Service` conservé pour `AddRelease` (write path K8s)
+- `internal/grpc/release_service_test.go` — tests lecture utilisent `ReleaseStore`, tests écriture conservent fake K8s client
+- `internal/mcp/releases_server.go` — `ReleaseReader` remplace `release.Service`
+- `internal/mcp/mcp_test.go` — tests Release récrits avec `ReleaseStore`
+- `internal/release/service.go` — suppression `ListEntries`, `ListDays`, `InvalidateDay`, `InvalidateDays`, et tout le cache (`CachedDay`, `mu`, `cache`, `daysMu`, `daysCache`, `daysValid`)
+- `internal/release/service_test.go` — conserve uniquement les tests `AddEntry`
+- `internal/webserver/server.go` — ajout `ReleaseReader` dans `Config`
+- `cmd/main.go` — création `releaseStore`, wiring writer→controller, reader→webserver/MCP
+
+**Supprimé :**
+- `CacheInvalidator` interface dans controller
+- `release.Service.ListEntries()`, `ListDays()`, `InvalidateDay()`, `InvalidateDays()`
+- `CachedDay` type, `mu`, `cache`, `daysMu`, `daysCache`, `daysValid` dans `release.Service`
+- Imports `metav1`, `fake` dans `mcp_test.go` (devenus inutiles pour les tests release)
+
 ## Tableau récapitulatif
 
 | Bounded Context | Write path | Read path | Controller → Store | Statut |
@@ -473,4 +506,4 @@ Chaque migration est indépendante et peut être livrée en PR séparée.
 | Portal | Reconciliation CRD | `PortalReader` | `Replace(key, PortalView)` | ✅ Done |
 | Alertmanager | Reconciliation CRD | `AlertmanagerReader` | `Replace(key, AlertmanagerView)` | ✅ Done |
 | Netpol | Reconciliation CRD | `FlowGraphReader` | `ReplaceNodes/ReplaceEdges(key, ...)` | ⬜ TODO |
-| Release | **AddEntry → K8s direct** | `ReleaseReader` | `Replace(day, []EntryView)` | ⬜ TODO |
+| Release | **AddEntry → K8s direct** | `ReleaseReader` | `Replace(day, []EntryView)` | ✅ Done |

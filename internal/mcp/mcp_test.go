@@ -27,17 +27,16 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/client_golang/prometheus"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 	domainmetrics "github.com/golgoth31/sreportal/internal/domain/metrics"
 	domainportal "github.com/golgoth31/sreportal/internal/domain/portal"
+	domainrelease "github.com/golgoth31/sreportal/internal/domain/release"
 	dnsstore "github.com/golgoth31/sreportal/internal/readstore/dns"
 	portalstore "github.com/golgoth31/sreportal/internal/readstore/portal"
-	releaseservice "github.com/golgoth31/sreportal/internal/release"
+	releasestore "github.com/golgoth31/sreportal/internal/readstore/release"
 )
 
 func TestMCP(t *testing.T) {
@@ -849,53 +848,35 @@ var _ = Describe("MCP Server", func() {
 	})
 
 	Describe("ReleasesServer", func() {
-		var releaseSvc *releaseservice.Service
+		var store *releasestore.ReleaseStore
 
 		BeforeEach(func() {
-			k8sClient := fake.NewClientBuilder().
-				WithScheme(scheme).
-				WithStatusSubresource(&sreportalv1alpha1.Release{}).
-				Build()
-			releaseSvc = releaseservice.NewService(k8sClient, "default")
+			store = releasestore.NewReleaseStore()
 		})
 
 		Describe("creation", func() {
 			It("should create server with tools registered", func() {
-				server := NewReleasesServer(releaseSvc)
+				server := NewReleasesServer(store)
 				Expect(server).NotTo(BeNil())
 				Expect(server.mcpServer).NotTo(BeNil())
-				Expect(server.service).NotTo(BeNil())
+				Expect(server.reader).NotTo(BeNil())
 			})
 		})
 
 		Describe("handleListReleases", func() {
 			It("should list releases for a day", func() {
-				rel := &sreportalv1alpha1.Release{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "release-2026-03-21",
-						Namespace: "default",
+				_ = store.Replace(ctx, "2026-03-21", []domainrelease.EntryView{
+					{
+						Type:    "deployment",
+						Version: "v1.0.0",
+						Origin:  "ci/cd",
+						Date:    time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC),
+						Author:  "alice",
+						Message: "ship",
+						Link:    "https://example.com/release",
 					},
-					Spec: sreportalv1alpha1.ReleaseSpec{
-						Entries: []sreportalv1alpha1.ReleaseEntry{
-							{
-								Type:    "deployment",
-								Version: "v1.0.0",
-								Origin:  "ci/cd",
-								Date:    metav1.NewTime(time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC)),
-								Author:  "alice",
-								Message: "ship",
-								Link:    "https://example.com/release",
-							},
-						},
-					},
-				}
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithObjects(rel).
-					WithStatusSubresource(&sreportalv1alpha1.Release{}).
-					Build()
-				svc := releaseservice.NewService(k8sClient, "default")
-				server := NewReleasesServer(svc)
+				})
+				server := NewReleasesServer(store)
 
 				listReq := newCallToolRequest("list_releases", map[string]any{
 					"day": "2026-03-21",
@@ -911,7 +892,7 @@ var _ = Describe("MCP Server", func() {
 			})
 
 			It("should return no releases message when empty", func() {
-				server := NewReleasesServer(releaseSvc)
+				server := NewReleasesServer(store)
 				request := newCallToolRequest("list_releases", map[string]any{})
 
 				result, err := server.handleListReleases(ctx, request)

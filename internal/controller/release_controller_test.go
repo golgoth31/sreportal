@@ -31,22 +31,10 @@ import (
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/controller"
+	releasereadstore "github.com/golgoth31/sreportal/internal/readstore/release"
 )
 
 const defaultTTL = 30 * 24 * time.Hour
-
-type fakeCacheInvalidator struct {
-	invalidatedDays []string
-	daysInvalidated int
-}
-
-func (f *fakeCacheInvalidator) InvalidateDay(day string) {
-	f.invalidatedDays = append(f.invalidatedDays, day)
-}
-
-func (f *fakeCacheInvalidator) InvalidateDays() {
-	f.daysInvalidated++
-}
 
 func newReleaseScheme() *runtime.Scheme {
 	s := runtime.NewScheme()
@@ -54,44 +42,76 @@ func newReleaseScheme() *runtime.Scheme {
 	return s
 }
 
-func TestReleaseReconciler_Reconcile_InvalidatesCacheAndRequeues(t *testing.T) {
+func TestReleaseReconciler_Reconcile_PushesEntriesToStore(t *testing.T) {
+	ctx := context.Background()
 	existing := &sreportalv1alpha1.Release{
 		ObjectMeta: metav1.ObjectMeta{Name: "release-2026-03-21", Namespace: "default"},
+		Spec: sreportalv1alpha1.ReleaseSpec{
+			Entries: []sreportalv1alpha1.ReleaseEntry{
+				{
+					Type:    "deployment",
+					Version: "v1.0.0",
+					Origin:  "ci/cd",
+					Date:    metav1.NewTime(time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC)),
+					Author:  "alice",
+				},
+				{
+					Type:    "rollback",
+					Version: "v0.9.0",
+					Origin:  "manual",
+					Date:    metav1.NewTime(time.Date(2026, 3, 21, 14, 0, 0, 0, time.UTC)),
+				},
+			},
+		},
 	}
 	c := fake.NewClientBuilder().WithScheme(newReleaseScheme()).WithObjects(existing).Build()
-	cache := &fakeCacheInvalidator{}
-	r := controller.NewReleaseReconciler(c, cache, defaultTTL)
+	store := releasereadstore.NewReleaseStore()
+	r := controller.NewReleaseReconciler(c, defaultTTL)
+	r.SetReleaseWriter(store)
 
-	result, err := r.Reconcile(context.Background(), ctrl.Request{
+	result, err := r.Reconcile(ctx, ctrl.Request{
 		NamespacedName: types.NamespacedName{Name: "release-2026-03-21", Namespace: "default"},
 	})
 
 	require.NoError(t, err)
 	assert.Equal(t, 12*time.Hour, result.RequeueAfter)
-	assert.Equal(t, []string{"2026-03-21"}, cache.invalidatedDays)
-	assert.Equal(t, 1, cache.daysInvalidated)
+
+	entries, err := store.ListEntries(ctx, "2026-03-21")
+	require.NoError(t, err)
+	require.Len(t, entries, 2)
+	assert.Equal(t, "deployment", entries[0].Type)
+	assert.Equal(t, "v1.0.0", entries[0].Version)
+	assert.Equal(t, "alice", entries[0].Author)
+	assert.Equal(t, "rollback", entries[1].Type)
 }
 
-func TestReleaseReconciler_Reconcile_DeletedCR_InvalidatesCache(t *testing.T) {
-	// CR does not exist (was deleted)
+func TestReleaseReconciler_Reconcile_DeletedCR_RemovesFromStore(t *testing.T) {
+	ctx := context.Background()
 	c := fake.NewClientBuilder().WithScheme(newReleaseScheme()).Build()
-	cache := &fakeCacheInvalidator{}
-	r := controller.NewReleaseReconciler(c, cache, defaultTTL)
+	store := releasereadstore.NewReleaseStore()
+	// Pre-populate store
+	_ = store.Replace(ctx, "2026-03-21", nil)
 
-	result, err := r.Reconcile(context.Background(), ctrl.Request{
+	r := controller.NewReleaseReconciler(c, defaultTTL)
+	r.SetReleaseWriter(store)
+
+	result, err := r.Reconcile(ctx, ctrl.Request{
 		NamespacedName: types.NamespacedName{Name: "release-2026-03-21", Namespace: "default"},
 	})
 
 	require.NoError(t, err)
 	assert.Equal(t, ctrl.Result{}, result)
-	assert.Equal(t, []string{"2026-03-21"}, cache.invalidatedDays)
-	assert.Equal(t, 1, cache.daysInvalidated)
+
+	entries, err := store.ListEntries(ctx, "2026-03-21")
+	require.NoError(t, err)
+	assert.Empty(t, entries)
 }
 
 func TestReleaseReconciler_Reconcile_SkipsUnparseableName(t *testing.T) {
 	c := fake.NewClientBuilder().WithScheme(newReleaseScheme()).Build()
-	cache := &fakeCacheInvalidator{}
-	r := controller.NewReleaseReconciler(c, cache, defaultTTL)
+	store := releasereadstore.NewReleaseStore()
+	r := controller.NewReleaseReconciler(c, defaultTTL)
+	r.SetReleaseWriter(store)
 
 	result, err := r.Reconcile(context.Background(), ctrl.Request{
 		NamespacedName: types.NamespacedName{Name: "not-a-release", Namespace: "default"},
@@ -99,25 +119,27 @@ func TestReleaseReconciler_Reconcile_SkipsUnparseableName(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, ctrl.Result{}, result)
-	assert.Empty(t, cache.invalidatedDays)
-	assert.Equal(t, 0, cache.daysInvalidated)
+
+	days, err := store.ListDays(context.Background())
+	require.NoError(t, err)
+	assert.Empty(t, days)
 }
 
 func TestReleaseReconciler_Reconcile_DeletesExpiredCR(t *testing.T) {
-	// Create a CR for a day that's 60 days ago
 	existing := &sreportalv1alpha1.Release{
 		ObjectMeta: metav1.ObjectMeta{Name: "release-2025-01-01", Namespace: "default"},
 	}
 	c := fake.NewClientBuilder().WithScheme(newReleaseScheme()).WithObjects(existing).Build()
-	cache := &fakeCacheInvalidator{}
-	r := controller.NewReleaseReconciler(c, cache, defaultTTL)
+	store := releasereadstore.NewReleaseStore()
+	r := controller.NewReleaseReconciler(c, defaultTTL)
+	r.SetReleaseWriter(store)
 
 	result, err := r.Reconcile(context.Background(), ctrl.Request{
 		NamespacedName: types.NamespacedName{Name: "release-2025-01-01", Namespace: "default"},
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, ctrl.Result{}, result) // No requeue — CR was deleted
+	assert.Equal(t, ctrl.Result{}, result)
 
 	// Verify CR was deleted
 	var rel sreportalv1alpha1.Release
@@ -126,25 +148,26 @@ func TestReleaseReconciler_Reconcile_DeletesExpiredCR(t *testing.T) {
 }
 
 func TestReleaseReconciler_Reconcile_PreservesNonExpiredCR(t *testing.T) {
-	// Create a CR for today
+	ctx := context.Background()
 	today := time.Now().UTC().Format("2006-01-02")
 	crName := "release-" + today
 	existing := &sreportalv1alpha1.Release{
 		ObjectMeta: metav1.ObjectMeta{Name: crName, Namespace: "default"},
 	}
 	c := fake.NewClientBuilder().WithScheme(newReleaseScheme()).WithObjects(existing).Build()
-	cache := &fakeCacheInvalidator{}
-	r := controller.NewReleaseReconciler(c, cache, defaultTTL)
+	store := releasereadstore.NewReleaseStore()
+	r := controller.NewReleaseReconciler(c, defaultTTL)
+	r.SetReleaseWriter(store)
 
-	result, err := r.Reconcile(context.Background(), ctrl.Request{
+	result, err := r.Reconcile(ctx, ctrl.Request{
 		NamespacedName: types.NamespacedName{Name: crName, Namespace: "default"},
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, 12*time.Hour, result.RequeueAfter) // Requeued, not deleted
+	assert.Equal(t, 12*time.Hour, result.RequeueAfter)
 
 	// Verify CR still exists
 	var rel sreportalv1alpha1.Release
-	err = c.Get(context.Background(), types.NamespacedName{Name: crName, Namespace: "default"}, &rel)
+	err = c.Get(ctx, types.NamespacedName{Name: crName, Namespace: "default"}, &rel)
 	require.NoError(t, err)
 }
