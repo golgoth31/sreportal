@@ -1,0 +1,5 @@
+apiKey:
+  enabled: true
+  keys:
+    - name: X-API-KEY
+      key: abc123

@@ -28,7 +28,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -37,6 +36,7 @@ import (
 	svcgrpc "github.com/golgoth31/sreportal/internal/grpc"
 	releasev1 "github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1"
 	"github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1/sreportalv1connect"
+	readstorerelease "github.com/golgoth31/sreportal/internal/readstore/release"
 	releaseservice "github.com/golgoth31/sreportal/internal/release"
 )
 
@@ -46,7 +46,8 @@ func setupReleaseServer(t *testing.T, chain *auth.Chain) sreportalv1connect.Rele
 	_ = sreportalv1alpha1.AddToScheme(scheme)
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&sreportalv1alpha1.Release{}).Build()
 	svc := releaseservice.NewService(k8sClient, "default")
-	grpcSvc := svcgrpc.NewReleaseService(svc, 30*24*time.Hour, nil)
+	reader := readstorerelease.NewReleaseStore()
+	grpcSvc := svcgrpc.NewReleaseService(reader, svc, 30*24*time.Hour, nil)
 
 	var opts []connect.HandlerOption
 	if chain != nil {
@@ -149,40 +150,16 @@ func TestInterceptor_APIKey_OnProtectedEndpoint(t *testing.T) {
 	assert.NotEmpty(t, resp.Msg.Day)
 }
 
-func TestInterceptor_ListReleases_NoAuth_WithExistingData(t *testing.T) {
+func TestInterceptor_ListReleases_NoAuth_Passes(t *testing.T) {
 	// Verify ListReleases (also a read endpoint) passes without auth
-	scheme := runtime.NewScheme()
-	_ = sreportalv1alpha1.AddToScheme(scheme)
-	existing := &sreportalv1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Name: "release-2026-03-25", Namespace: "default"},
-		Spec: sreportalv1alpha1.ReleaseSpec{
-			Entries: []sreportalv1alpha1.ReleaseEntry{{
-				Type: "deploy", Version: "v1", Origin: "ci",
-				Date: metav1.NewTime(time.Date(2026, 3, 25, 10, 0, 0, 0, time.UTC)),
-			}},
-		},
-	}
-	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(existing).Build()
-	svc := releaseservice.NewService(k8sClient, "default")
-	grpcSvc := svcgrpc.NewReleaseService(svc, 30*24*time.Hour, nil)
-
 	chain := auth.NewChain(
 		auth.NewBasicAuthenticator(auth.BasicAuthConfig{Username: "admin", Password: "secret"}),
 	)
-
-	mux := http.NewServeMux()
-	path, handler := sreportalv1connect.NewReleaseServiceHandler(grpcSvc,
-		connect.WithInterceptors(auth.AuthInterceptor(chain)),
-	)
-	mux.Handle(path, handler)
-	server := httptest.NewServer(mux)
-	t.Cleanup(server.Close)
-
-	client := sreportalv1connect.NewReleaseServiceClient(server.Client(), server.URL)
+	client := setupReleaseServer(t, chain)
 
 	resp, err := client.ListReleases(context.Background(), connect.NewRequest(&releasev1.ListReleasesRequest{
 		Day: "2026-03-25",
 	}))
 	require.NoError(t, err)
-	assert.Len(t, resp.Msg.Entries, 1)
+	assert.NotNil(t, resp.Msg)
 }

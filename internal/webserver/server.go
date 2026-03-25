@@ -162,8 +162,8 @@ func (s *Server) setupRoutes() {
 		s.echo.Any(metricsPath+"*", echo.WrapHandler(metricsHandler))
 	}
 
-	if s.config.ReleaseService != nil {
-		releaseGRPC := grpc.NewReleaseService(s.config.ReleaseService, s.config.ReleaseTTL, s.config.ReleaseAllowedTypes)
+	if s.config.ReleaseReader != nil {
+		releaseGRPC := grpc.NewReleaseService(s.config.ReleaseReader, s.config.ReleaseService, s.config.ReleaseTTL, s.config.ReleaseAllowedTypes)
 		releaseOpts := []connect.HandlerOption{connectOpts}
 		if s.config.AuthChain != nil {
 			releaseOpts = append(releaseOpts, connect.WithInterceptors(auth.AuthInterceptor(s.config.AuthChain)))
