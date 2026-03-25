@@ -49,6 +49,7 @@ import (
 	"github.com/golgoth31/sreportal/internal/alertmanagerclient"
 	"github.com/golgoth31/sreportal/internal/config"
 	"github.com/golgoth31/sreportal/internal/controller"
+	dnspkg "github.com/golgoth31/sreportal/internal/controller/dns"
 	nfdchain "github.com/golgoth31/sreportal/internal/controller/networkflowdiscovery"
 	portalctrl "github.com/golgoth31/sreportal/internal/controller/portal"
 	"github.com/golgoth31/sreportal/internal/log"
@@ -326,20 +327,40 @@ func main() {
 	annotations.SetAnnotationPrefix("external-dns.alpha.kubernetes.io/")
 
 	// Create ReadStores: controllers write, gRPC/MCP read.
-	fqdnStore := dnsreadstore.NewFQDNStore()
+	sourceBuilders := source.DefaultBuilders()
+	var sourcePriority []string
+	var disableDNSCheck bool
+	var groupMapping *config.GroupMappingConfig
+	if operatorConfig != nil {
+		sourcePriority = source.FilterPriorityOrder(operatorConfig.Sources.Priority, sourceBuilders, operatorConfig)
+		disableDNSCheck = operatorConfig.Reconciliation.DisableDNSCheck
+		groupMapping = &operatorConfig.GroupMapping
+	}
+	fqdnStore := dnsreadstore.NewFQDNStore(sourcePriority)
 	portalStore := portalreadstore.NewPortalStore()
 	alertmanagerStore := alertmanagerreadstore.NewAlertmanagerStore()
 
-	sourceBuilders := source.DefaultBuilders()
 	dnsReconciler := controller.NewDNSReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),
-		operatorConfig,
-		sourceBuilders,
+		disableDNSCheck,
 	)
 	dnsReconciler.SetFQDNWriter(fqdnStore)
 	if err := dnsReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "DNS")
+		os.Exit(1)
+	}
+
+	dnsRecordReconciler := controller.NewDNSRecordReconciler(
+		mgr.GetClient(),
+		mgr.GetScheme(),
+		groupMapping,
+		dnspkg.NewNetResolver(),
+		disableDNSCheck,
+	)
+	dnsRecordReconciler.SetFQDNWriter(fqdnStore)
+	if err := dnsRecordReconciler.SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "DNSRecord")
 		os.Exit(1)
 	}
 

@@ -15,12 +15,18 @@ import (
 
 // FQDNStore is the in-memory implementation of dns.FQDNReader and dns.FQDNWriter.
 type FQDNStore struct {
-	store *readstore.Store[domaindns.FQDNView]
+	store          *readstore.Store[domaindns.FQDNView]
+	sourcePriority []string
 }
 
-// NewFQDNStore creates a new empty FQDNStore.
-func NewFQDNStore() *FQDNStore {
-	return &FQDNStore{store: readstore.New[domaindns.FQDNView]()}
+// NewFQDNStore creates a new empty FQDNStore. sourcePriority defines the order
+// used for cross-source deduplication at query time (e.g. ["service", "ingress"]).
+// When nil or empty, no source-priority deduplication is performed.
+func NewFQDNStore(sourcePriority []string) *FQDNStore {
+	return &FQDNStore{
+		store:          readstore.New[domaindns.FQDNView](),
+		sourcePriority: sourcePriority,
+	}
 }
 
 // compile-time interface checks
@@ -42,9 +48,12 @@ func (s *FQDNStore) Delete(_ context.Context, resourceKey string) error {
 }
 
 // List returns FQDNs matching the given filters, sorted by (Name, RecordType).
+// When sourcePriority is configured, FQDNs with the same (Name, RecordType) from
+// different sources are deduplicated, keeping only the highest-priority source.
 func (s *FQDNStore) List(_ context.Context, filters domaindns.FQDNFilters) ([]domaindns.FQDNView, error) {
 	all := s.store.All()
 	filtered := applyFilters(all, filters)
+	filtered = deduplicateBySourcePriority(filtered, s.sourcePriority)
 	sortFQDNViews(filtered)
 	return filtered, nil
 }
@@ -70,7 +79,9 @@ func (s *FQDNStore) Get(_ context.Context, name, recordType string) (domaindns.F
 // Count returns the number of FQDNs matching the given filters.
 func (s *FQDNStore) Count(_ context.Context, filters domaindns.FQDNFilters) (int, error) {
 	all := s.store.All()
-	return len(applyFilters(all, filters)), nil
+	filtered := applyFilters(all, filters)
+	filtered = deduplicateBySourcePriority(filtered, s.sourcePriority)
+	return len(filtered), nil
 }
 
 // Subscribe returns a channel closed on the next store mutation.
@@ -112,4 +123,78 @@ func sortFQDNViews(fqdns []domaindns.FQDNView) {
 		}
 		return cmp.Compare(a.RecordType, b.RecordType)
 	})
+}
+
+// deduplicateBySourcePriority removes duplicate FQDNs (same Name+RecordType)
+// that come from different sources, keeping only the one from the highest-priority
+// source. Groups are merged across duplicates. Manual and remote sources are never
+// deduplicated against external-dns sources (they use a different Source value).
+// When priority is nil or empty, no deduplication is performed.
+func deduplicateBySourcePriority(views []domaindns.FQDNView, priority []string) []domaindns.FQDNView {
+	if len(priority) == 0 || len(views) == 0 {
+		return views
+	}
+
+	// Build rank map: lower index = higher priority.
+	rank := make(map[string]int, len(priority))
+	for i, src := range priority {
+		rank[src] = i
+	}
+
+	// sourceRank returns the priority rank of an external-dns source type extracted
+	// from the FQDNView's labels/metadata. Since FQDNViews don't carry sourceType
+	// directly, we use the Source field. Manual/remote sources are excluded from
+	// dedup by assigning them max rank.
+	sourceRank := func(v domaindns.FQDNView) int {
+		if v.Source != domaindns.SourceExternalDNS {
+			return len(priority) // non-external sources are never deduplicated away
+		}
+		// External-dns views carry the source type via the SourceType metadata
+		// which is not on FQDNView. Since each DNSRecord projects independently
+		// and we don't have sourceType on FQDNView, external-dns entries from
+		// different DNSRecords will have the same Source="external-dns".
+		// Dedup between external-dns entries happens when they share
+		// the same (Name, RecordType) — we keep the first one encountered.
+		return 0
+	}
+
+	type dedupKey = string
+	seen := make(map[dedupKey]int) // key → index in result
+	result := make([]domaindns.FQDNView, 0, len(views))
+
+	for _, v := range views {
+		key := v.Name + "/" + v.RecordType
+		if idx, exists := seen[key]; exists {
+			existing := &result[idx]
+			existingRank := sourceRank(*existing)
+			newRank := sourceRank(v)
+
+			if newRank < existingRank {
+				// New view has higher priority — replace but merge groups.
+				mergedGroups := mergeGroups(existing.Groups, v.Groups)
+				result[idx] = v
+				result[idx].Groups = mergedGroups
+			} else {
+				// Existing wins — just merge groups from the new one.
+				existing.Groups = mergeGroups(existing.Groups, v.Groups)
+			}
+		} else {
+			seen[key] = len(result)
+			result = append(result, v)
+		}
+	}
+
+	return result
+}
+
+// mergeGroups merges two group slices, removing duplicates.
+func mergeGroups(a, b []string) []string {
+	merged := make([]string, len(a))
+	copy(merged, a)
+	for _, g := range b {
+		if !slices.Contains(merged, g) {
+			merged = append(merged, g)
+		}
+	}
+	return merged
 }

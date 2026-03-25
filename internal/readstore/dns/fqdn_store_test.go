@@ -14,7 +14,7 @@ import (
 
 func seedStore(t *testing.T) *dnsstore.FQDNStore {
 	t.Helper()
-	s := dnsstore.NewFQDNStore()
+	s := dnsstore.NewFQDNStore(nil)
 	ctx := context.Background()
 
 	err := s.Replace(ctx, "default/dns-main", []domaindns.FQDNView{
@@ -148,7 +148,7 @@ func TestFQDNStore_Count_WithFilters(t *testing.T) {
 }
 
 func TestFQDNStore_Replace_MergesMultipleResources(t *testing.T) {
-	s := dnsstore.NewFQDNStore()
+	s := dnsstore.NewFQDNStore(nil)
 	ctx := context.Background()
 
 	_ = s.Replace(ctx, "ns1/dns1", []domaindns.FQDNView{{Name: "a.com", RecordType: "A"}})
@@ -173,7 +173,7 @@ func TestFQDNStore_Delete_RemovesResource(t *testing.T) {
 }
 
 func TestFQDNStore_Subscribe_NotifiesOnChange(t *testing.T) {
-	s := dnsstore.NewFQDNStore()
+	s := dnsstore.NewFQDNStore(nil)
 
 	ch := s.Subscribe()
 

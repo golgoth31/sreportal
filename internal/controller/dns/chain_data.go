@@ -23,7 +23,6 @@ import (
 // ChainData holds typed shared state between DNS reconciliation handlers,
 // replacing the former map[string]any to eliminate boxing allocations.
 type ChainData struct {
-	ExternalGroups   []sreportalv1alpha1.FQDNGroupStatus
 	ManualGroups     []sreportalv1alpha1.DNSGroup
 	AggregatedGroups []sreportalv1alpha1.FQDNGroupStatus
 }

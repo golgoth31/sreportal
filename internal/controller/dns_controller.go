@@ -22,22 +22,16 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/metrics"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
-	"github.com/golgoth31/sreportal/internal/config"
 	"github.com/golgoth31/sreportal/internal/controller/dns"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 	"github.com/golgoth31/sreportal/internal/reconciler"
-	"github.com/golgoth31/sreportal/internal/source"
-	"github.com/golgoth31/sreportal/internal/source/registry"
 )
 
 const (
@@ -60,22 +54,11 @@ func (r *DNSReconciler) SetFQDNWriter(w domaindns.FQDNWriter) {
 }
 
 // NewDNSReconciler creates a new DNSReconciler with the handler chain.
-// builders is the same list used by the source factory (e.g. source.DefaultBuilders())
-// so that priority filtering and enabled sources stay in sync.
-// When cfg.Reconciliation.DisableDNSCheck is true, the ResolveDNSHandler step
-// is omitted and FQDNs will not carry a SyncStatus.
-func NewDNSReconciler(c client.Client, scheme *runtime.Scheme, cfg *config.OperatorConfig, builders []registry.Builder) *DNSReconciler {
-	var groupMappingConfig *config.GroupMappingConfig
-	var sourcePriority []string
-	disableDNSCheck := false
-	if cfg != nil {
-		groupMappingConfig = &cfg.GroupMapping
-		sourcePriority = source.FilterPriorityOrder(cfg.Sources.Priority, builders, cfg)
-		disableDNSCheck = cfg.Reconciliation.DisableDNSCheck
-	}
-
+// The chain handles manual DNS entries only; external-dns endpoints are handled
+// by the DNSRecordReconciler which projects directly into the read store.
+// When disableDNSCheck is true, the ResolveDNSHandler step is omitted.
+func NewDNSReconciler(c client.Client, scheme *runtime.Scheme, disableDNSCheck bool) *DNSReconciler {
 	handlers := []reconciler.Handler[*sreportalv1alpha1.DNS, dns.ChainData]{
-		dns.NewAggregateDNSRecordsHandler(c, groupMappingConfig, sourcePriority),
 		dns.NewCollectManualEntriesHandler(),
 		dns.NewAggregateFQDNsHandler(),
 	}
@@ -115,15 +98,6 @@ func (r *DNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 			}
 		}
 		return ctrl.Result{}, client.IgnoreNotFound(err)
-	}
-
-	// Skip DNS resources owned by a Portal (these are managed by PortalReconciler for remote portals)
-	for _, ownerRef := range resource.OwnerReferences {
-		if ownerRef.Kind == "Portal" && ownerRef.Controller != nil && *ownerRef.Controller {
-			logger.V(1).Info("skipping DNS resource owned by Portal (remote portal)",
-				"name", resource.Name, "namespace", resource.Namespace, "portal", ownerRef.Name)
-			return ctrl.Result{}, nil
-		}
 	}
 
 	logger.Info("reconciling DNS resource", "name", resource.Name, "namespace", resource.Namespace)
@@ -195,7 +169,7 @@ func groupsToFQDNViews(resource *sreportalv1alpha1.DNS) []domaindns.FQDNView {
 					RecordType:  fqdn.RecordType,
 					Targets:     fqdn.Targets,
 					LastSeen:    fqdn.LastSeen.Time,
-					PortalName:  resource.Name,
+					PortalName:  resource.Spec.PortalRef,
 					Namespace:   resource.Namespace,
 					SyncStatus:  fqdn.SyncStatus,
 				}
@@ -222,34 +196,6 @@ func groupsToFQDNViews(resource *sreportalv1alpha1.DNS) []domaindns.FQDNView {
 func (r *DNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&sreportalv1alpha1.DNS{}).
-		Watches(&sreportalv1alpha1.DNSRecord{}, handler.EnqueueRequestsFromMapFunc(
-			func(ctx context.Context, obj client.Object) []reconcile.Request {
-				dnsRecord, ok := obj.(*sreportalv1alpha1.DNSRecord)
-				if !ok {
-					return nil
-				}
-
-				// Find DNS resources that share the same portalRef
-				var dnsList sreportalv1alpha1.DNSList
-				if err := r.List(ctx, &dnsList,
-					client.InNamespace(dnsRecord.Namespace),
-					client.MatchingFields{"spec.portalRef": dnsRecord.Spec.PortalRef},
-				); err != nil {
-					return nil
-				}
-
-				requests := make([]reconcile.Request, 0, len(dnsList.Items))
-				for _, d := range dnsList.Items {
-					requests = append(requests, reconcile.Request{
-						NamespacedName: types.NamespacedName{
-							Name:      d.Name,
-							Namespace: d.Namespace,
-						},
-					})
-				}
-				return requests
-			},
-		)).
 		Named("dns").
 		Complete(r)
 }

@@ -36,7 +36,7 @@ const (
 	SourceRemote = "remote"
 )
 
-// AggregateFQDNsHandler aggregates FQDNs from all sources into groups
+// AggregateFQDNsHandler converts manual DNS groups into FQDNGroupStatus entries.
 type AggregateFQDNsHandler struct{}
 
 // NewAggregateFQDNsHandler creates a new AggregateFQDNsHandler
@@ -49,60 +49,34 @@ func (h *AggregateFQDNsHandler) Handle(ctx context.Context, rc *reconciler.Recon
 	logger := log.FromContext(ctx).WithName("aggregate-fqdns")
 	now := metav1.Now()
 
-	// Map to store groups by name
-	groupMap := make(map[string]*sreportalv1alpha1.FQDNGroupStatus)
+	groups := make([]sreportalv1alpha1.FQDNGroupStatus, 0, len(rc.Data.ManualGroups))
 
-	// Add external-dns groups from DNSRecords (set by AggregateDNSRecordsHandler)
-	for _, group := range rc.Data.ExternalGroups {
-		groupCopy := group
-		groupMap[group.Name] = &groupCopy
-	}
-	logger.V(1).Info("added external groups from DNSRecords", "count", len(rc.Data.ExternalGroups))
-
-	// Process manual groups — merge FQDNs with any external group of the same name.
 	for _, group := range rc.Data.ManualGroups {
-		manualFQDNs := make([]sreportalv1alpha1.FQDNStatus, 0, len(group.Entries))
+		fqdns := make([]sreportalv1alpha1.FQDNStatus, 0, len(group.Entries))
 		for _, entry := range group.Entries {
-			manualFQDNs = append(manualFQDNs, sreportalv1alpha1.FQDNStatus{
+			fqdns = append(fqdns, sreportalv1alpha1.FQDNStatus{
 				FQDN:        entry.FQDN,
 				Description: entry.Description,
 				LastSeen:    now,
 			})
 		}
+		sort.Slice(fqdns, func(i, j int) bool {
+			return fqdns[i].FQDN < fqdns[j].FQDN
+		})
 
-		if existing, ok := groupMap[group.Name]; ok {
-			// Same name: append manual FQDNs to the external group and keep both.
-			existing.FQDNs = append(existing.FQDNs, manualFQDNs...)
-			if group.Description != "" {
-				existing.Description = group.Description
-			}
-			sort.Slice(existing.FQDNs, func(i, j int) bool {
-				return existing.FQDNs[i].FQDN < existing.FQDNs[j].FQDN
-			})
-		} else {
-			// No external group with this name: create a pure manual group.
-			sort.Slice(manualFQDNs, func(i, j int) bool {
-				return manualFQDNs[i].FQDN < manualFQDNs[j].FQDN
-			})
-			groupMap[group.Name] = &sreportalv1alpha1.FQDNGroupStatus{
-				Name:        group.Name,
-				Description: group.Description,
-				Source:      SourceManual,
-				FQDNs:       manualFQDNs,
-			}
-		}
+		groups = append(groups, sreportalv1alpha1.FQDNGroupStatus{
+			Name:        group.Name,
+			Description: group.Description,
+			Source:      SourceManual,
+			FQDNs:       fqdns,
+		})
 	}
 
-	// Convert map to sorted slice
-	groups := make([]sreportalv1alpha1.FQDNGroupStatus, 0, len(groupMap))
-	for _, group := range groupMap {
-		groups = append(groups, *group)
-	}
 	sort.Slice(groups, func(i, j int) bool {
 		return groups[i].Name < groups[j].Name
 	})
 
-	logger.V(1).Info("aggregated groups", "count", len(groups))
+	logger.V(1).Info("aggregated manual groups", "count", len(groups))
 	rc.Data.AggregatedGroups = groups
 	return nil
 }

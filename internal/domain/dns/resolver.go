@@ -20,6 +20,8 @@ import (
 	"context"
 	"sort"
 	"strings"
+	"sync"
+	"time"
 )
 
 // SyncStatus represents the DNS resolution status of an FQDN.
@@ -117,6 +119,43 @@ func targetsMatch(expected, actual []string) bool {
 	}
 
 	return true
+}
+
+// ResolveFQDNViews resolves SyncStatus for each FQDNView using parallel DNS lookups.
+// Returns a new slice — the input is not mutated.
+func ResolveFQDNViews(ctx context.Context, r Resolver, views []FQDNView) []FQDNView {
+	if len(views) == 0 {
+		return nil
+	}
+
+	resolved := make([]FQDNView, len(views))
+	copy(resolved, views)
+
+	const maxWorkers = 10
+	const perLookupTimeout = 5 * time.Second
+
+	workers := min(maxWorkers, len(resolved))
+	ch := make(chan int, len(resolved))
+	for i := range resolved {
+		ch <- i
+	}
+	close(ch)
+
+	var wg sync.WaitGroup
+	for range workers {
+		wg.Go(func() {
+			for idx := range ch {
+				v := &resolved[idx]
+				lookupCtx, cancel := context.WithTimeout(ctx, perLookupTimeout)
+				result := CheckFQDN(lookupCtx, r, v.Name, v.RecordType, v.Targets)
+				v.SyncStatus = string(result.Status)
+				cancel()
+			}
+		})
+	}
+
+	wg.Wait()
+	return resolved
 }
 
 func sortedCopy(s []string) []string {

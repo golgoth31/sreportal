@@ -33,7 +33,7 @@ import (
 
 func seedFQDNStore(t *testing.T) *dnsstore.FQDNStore {
 	t.Helper()
-	store := dnsstore.NewFQDNStore()
+	store := dnsstore.NewFQDNStore(nil)
 	ctx := context.Background()
 
 	now := time.Now()
@@ -152,7 +152,7 @@ func TestListFQDNs_OriginRef_IsNil_ForManualEntries(t *testing.T) {
 }
 
 func TestListFQDNs_ReturnsBothRecordTypes(t *testing.T) {
-	store := dnsstore.NewFQDNStore()
+	store := dnsstore.NewFQDNStore(nil)
 	now := time.Now()
 	_ = store.Replace(context.Background(), "default/test-dns", []domaindns.FQDNView{
 		{Name: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}, LastSeen: now, PortalName: "main"},
