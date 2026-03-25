@@ -32,38 +32,34 @@ import (
 
 const releaseRequeueInterval = 12 * time.Hour
 
-// CacheInvalidator is the interface the release service must implement
-// for the controller to invalidate its caches.
-type CacheInvalidator interface {
-	InvalidateDay(day string)
-	InvalidateDays()
-}
-
-// ReleaseReconciler watches Release CRs, invalidates the in-memory cache,
-// and deletes expired CRs based on the configured TTL.
+// ReleaseReconciler watches Release CRs, pushes read projections into the
+// ReleaseWriter, and deletes expired CRs based on the configured TTL.
 type ReleaseReconciler struct {
 	client.Client
-	cache CacheInvalidator
-	ttl   time.Duration
-	now   func() time.Time // injectable for testing
+	releaseWriter domainrelease.ReleaseWriter
+	ttl           time.Duration
+	now           func() time.Time // injectable for testing
 }
 
 // NewReleaseReconciler creates a new ReleaseReconciler.
-func NewReleaseReconciler(c client.Client, cache CacheInvalidator, ttl time.Duration) *ReleaseReconciler {
+func NewReleaseReconciler(c client.Client, ttl time.Duration) *ReleaseReconciler {
 	return &ReleaseReconciler{
 		Client: c,
-		cache:  cache,
 		ttl:    ttl,
 		now:    time.Now,
 	}
+}
+
+// SetReleaseWriter sets the writer used to push release projections.
+func (r *ReleaseReconciler) SetReleaseWriter(w domainrelease.ReleaseWriter) {
+	r.releaseWriter = w
 }
 
 // +kubebuilder:rbac:groups=sreportal.io,resources=releases,verbs=get;list;watch;delete;create;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=releases/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=releases/finalizers,verbs=update
 
-// Reconcile invalidates the release cache for the affected day and deletes
-// expired CRs that exceed the configured TTL.
+// Reconcile pushes release entries into the read store and deletes expired CRs.
 func (r *ReleaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
@@ -77,10 +73,10 @@ func (r *ReleaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	var rel sreportalv1alpha1.Release
 	if err := r.Get(ctx, req.NamespacedName, &rel); err != nil {
 		if apierrors.IsNotFound(err) {
-			// CR was deleted — invalidate caches
-			logger.V(1).Info("release CR deleted, invalidating cache", "day", day)
-			r.cache.InvalidateDay(day)
-			r.cache.InvalidateDays()
+			logger.V(1).Info("release CR deleted, removing from store", "day", day)
+			if r.releaseWriter != nil {
+				_ = r.releaseWriter.Delete(ctx, day)
+			}
 			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, fmt.Errorf("get release CR: %w", err)
@@ -99,16 +95,36 @@ func (r *ReleaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			logger.Error(err, "failed to delete expired release CR", "name", req.Name, "day", day)
 			return ctrl.Result{}, nil
 		}
-		// Cache invalidation will happen when the delete triggers a new reconcile
+		// Store cleanup will happen when the delete triggers a new reconcile
 		return ctrl.Result{}, nil
 	}
 
-	// Not expired — invalidate caches and requeue for periodic TTL re-check
-	logger.V(1).Info("invalidating release cache", "day", day, "name", req.Name)
-	r.cache.InvalidateDay(day)
-	r.cache.InvalidateDays()
+	// Not expired — push entries to store and requeue for periodic TTL re-check
+	if r.releaseWriter != nil {
+		views := releaseEntriesToViews(rel.Spec.Entries)
+		if err := r.releaseWriter.Replace(ctx, day, views); err != nil {
+			return ctrl.Result{}, fmt.Errorf("write release store: %w", err)
+		}
+	}
 
 	return ctrl.Result{RequeueAfter: releaseRequeueInterval}, nil
+}
+
+// releaseEntriesToViews converts CRD entries to domain read model views.
+func releaseEntriesToViews(entries []sreportalv1alpha1.ReleaseEntry) []domainrelease.EntryView {
+	views := make([]domainrelease.EntryView, 0, len(entries))
+	for _, e := range entries {
+		views = append(views, domainrelease.EntryView{
+			Type:    e.Type,
+			Version: e.Version,
+			Origin:  e.Origin,
+			Date:    e.Date.Time,
+			Author:  e.Author,
+			Message: e.Message,
+			Link:    e.Link,
+		})
+	}
+	return views
 }
 
 // SetupWithManager registers the controller with the manager.

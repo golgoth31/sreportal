@@ -21,27 +21,27 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/golgoth31/sreportal/internal/config"
+	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
+	domainportal "github.com/golgoth31/sreportal/internal/domain/portal"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/metrics"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // DNSServer wraps the MCP server with SRE Portal DNS/portal functionality.
 // Mount at /mcp/dns for Streamable HTTP.
 type DNSServer struct {
 	mcpServer    *server.MCPServer
-	client       client.Client
-	groupMapping *config.GroupMappingConfig
+	fqdnReader   domaindns.FQDNReader
+	portalReader domainportal.PortalReader
 }
 
 // NewDNSServer creates a new MCP server instance for DNS and portals.
-func NewDNSServer(k8sClient client.Client, groupMapping *config.GroupMappingConfig) *DNSServer {
+func NewDNSServer(fqdnReader domaindns.FQDNReader, portalReader domainportal.PortalReader) *DNSServer {
 	s := &DNSServer{
-		client:       k8sClient,
-		groupMapping: groupMapping,
+		fqdnReader:   fqdnReader,
+		portalReader: portalReader,
 	}
 
 	hooks := &server.Hooks{}

@@ -72,6 +72,14 @@ type EndpointStatus struct {
 	// +optional
 	Labels map[string]string `json:"labels,omitempty"`
 
+	// syncStatus indicates whether the endpoint is correctly resolved in DNS.
+	// sync: the FQDN resolves to the expected type and targets.
+	// notavailable: the FQDN does not exist in DNS.
+	// notsync: the FQDN exists but resolves to different targets or type.
+	// +kubebuilder:validation:Enum=sync;notavailable;notsync;""
+	// +optional
+	SyncStatus string `json:"syncStatus,omitempty"`
+
 	// lastSeen is the timestamp when this endpoint was last observed
 	// +kubebuilder:validation:Required
 	LastSeen metav1.Time `json:"lastSeen"`

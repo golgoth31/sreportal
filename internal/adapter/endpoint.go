@@ -297,6 +297,7 @@ func EndpointStatusToGroups(endpoints []sreportalv1alpha1.EndpointStatus, mappin
 					FQDN:       ep.DNSName,
 					RecordType: ep.RecordType,
 					Targets:    ep.Targets,
+					SyncStatus: ep.SyncStatus,
 					LastSeen:   ep.LastSeen,
 					OriginRef:  originRefFromLabel(ep.Labels[endpoint.ResourceLabelKey]),
 				})

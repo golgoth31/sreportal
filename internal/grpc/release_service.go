@@ -18,7 +18,6 @@ package grpc
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"connectrpc.com/connect"
@@ -35,14 +34,25 @@ import (
 // ReleaseService implements the ReleaseServiceHandler interface.
 type ReleaseService struct {
 	sreportalv1connect.UnimplementedReleaseServiceHandler
-	service      *releaseservice.Service
+	reader       domainrelease.ReleaseReader
+	writer       *releaseservice.Service
 	ttl          time.Duration
 	allowedTypes []config.ReleaseTypeConfig
 }
 
 // NewReleaseService creates a new ReleaseService.
-func NewReleaseService(svc *releaseservice.Service, ttl time.Duration, allowedTypes []config.ReleaseTypeConfig) *ReleaseService {
-	return &ReleaseService{service: svc, ttl: ttl, allowedTypes: allowedTypes}
+func NewReleaseService(
+	reader domainrelease.ReleaseReader,
+	writer *releaseservice.Service,
+	ttl time.Duration,
+	allowedTypes []config.ReleaseTypeConfig,
+) *ReleaseService {
+	return &ReleaseService{
+		reader:       reader,
+		writer:       writer,
+		ttl:          ttl,
+		allowedTypes: allowedTypes,
+	}
 }
 
 // AddRelease appends a release entry to the day's Release CR.
@@ -67,7 +77,7 @@ func (s *ReleaseService) AddRelease(
 	entry.Message = e.Message
 	entry.Link = e.Link
 
-	day, count, created, err := s.service.AddEntry(ctx, entry)
+	day, count, created, err := s.writer.AddEntry(ctx, entry)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -92,7 +102,7 @@ func (s *ReleaseService) ListReleases(
 
 	// If no day specified, use the latest available day
 	if day == "" {
-		days, err := s.service.ListDays(ctx)
+		days, err := s.reader.ListDays(ctx)
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
@@ -102,30 +112,19 @@ func (s *ReleaseService) ListReleases(
 		day = days[len(days)-1]
 	}
 
-	entries, err := s.service.ListEntries(ctx, day)
+	entries, err := s.reader.ListEntries(ctx, day)
 	if err != nil {
-		if errors.Is(err, domainrelease.ErrNotFound) {
-			return nil, connect.NewError(connect.CodeNotFound, err)
-		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
 	// Build proto entries
 	protoEntries := make([]*releasev1.ReleaseEntry, 0, len(entries))
 	for _, e := range entries {
-		protoEntries = append(protoEntries, &releasev1.ReleaseEntry{
-			Type:    e.Type,
-			Version: e.Version,
-			Origin:  e.Origin,
-			Date:    timestamppb.New(e.Date.Time),
-			Author:  e.Author,
-			Message: e.Message,
-			Link:    e.Link,
-		})
+		protoEntries = append(protoEntries, entryViewToProto(e))
 	}
 
 	// Determine previous/next day navigation
-	days, err := s.service.ListDays(ctx)
+	days, err := s.reader.ListDays(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -156,7 +155,7 @@ func (s *ReleaseService) ListReleaseDays(
 	ctx context.Context,
 	_ *connect.Request[releasev1.ListReleaseDaysRequest],
 ) (*connect.Response[releasev1.ListReleaseDaysResponse], error) {
-	days, err := s.service.ListDays(ctx)
+	days, err := s.reader.ListDays(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -173,4 +172,16 @@ func (s *ReleaseService) ListReleaseDays(
 		TtlDays: ttlDays,
 		Types:   protoTypes,
 	}), nil
+}
+
+func entryViewToProto(e domainrelease.EntryView) *releasev1.ReleaseEntry {
+	return &releasev1.ReleaseEntry{
+		Type:    e.Type,
+		Version: e.Version,
+		Origin:  e.Origin,
+		Date:    timestamppb.New(e.Date),
+		Author:  e.Author,
+		Message: e.Message,
+		Link:    e.Link,
+	}
 }

@@ -34,37 +34,16 @@ var _ = Describe("AggregateFQDNsHandler", func() {
 		handler = dnspkg.NewAggregateFQDNsHandler()
 	})
 
-	newRC := func(external []sreportalv1alpha1.FQDNGroupStatus, manual []sreportalv1alpha1.DNSGroup) *reconciler.ReconcileContext[*sreportalv1alpha1.DNS, dnspkg.ChainData] {
+	newRC := func(manual []sreportalv1alpha1.DNSGroup) *reconciler.ReconcileContext[*sreportalv1alpha1.DNS, dnspkg.ChainData] {
 		return &reconciler.ReconcileContext[*sreportalv1alpha1.DNS, dnspkg.ChainData]{
 			Resource: &sreportalv1alpha1.DNS{},
 			Data: dnspkg.ChainData{
-				ExternalGroups: external,
-				ManualGroups:   manual,
+				ManualGroups: manual,
 			},
 		}
 	}
 
-	Context("when only external groups are present", func() {
-		It("should pass external groups through unchanged", func() {
-			external := []sreportalv1alpha1.FQDNGroupStatus{
-				{
-					Name:   "APIs",
-					Source: dnspkg.SourceExternalDNS,
-					FQDNs:  []sreportalv1alpha1.FQDNStatus{{FQDN: "api.example.com", RecordType: "A"}},
-				},
-			}
-			rc := newRC(external, nil)
-
-			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
-
-			groups := rc.Data.AggregatedGroups
-			Expect(groups).To(HaveLen(1))
-			Expect(groups[0].Name).To(Equal("APIs"))
-			Expect(groups[0].Source).To(Equal(dnspkg.SourceExternalDNS))
-		})
-	})
-
-	Context("when only manual groups are present", func() {
+	Context("when manual groups are present", func() {
 		It("should convert manual entries to FQDNGroupStatus", func() {
 			manual := []sreportalv1alpha1.DNSGroup{
 				{
@@ -76,7 +55,7 @@ var _ = Describe("AggregateFQDNsHandler", func() {
 					},
 				},
 			}
-			rc := newRC(nil, manual)
+			rc := newRC(manual)
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
@@ -93,62 +72,26 @@ var _ = Describe("AggregateFQDNsHandler", func() {
 		})
 	})
 
-	Context("when manual and external groups have different names", func() {
-		It("should merge both into the output, sorted by name", func() {
-			external := []sreportalv1alpha1.FQDNGroupStatus{
-				{Name: "Web", Source: dnspkg.SourceExternalDNS, FQDNs: []sreportalv1alpha1.FQDNStatus{{FQDN: "web.example.com"}}},
-			}
+	Context("when multiple manual groups are present", func() {
+		It("should produce sorted output", func() {
 			manual := []sreportalv1alpha1.DNSGroup{
-				{Name: "Infra", Entries: []sreportalv1alpha1.DNSEntry{{FQDN: "db.example.com"}}},
+				{Name: "Zebra", Entries: []sreportalv1alpha1.DNSEntry{{FQDN: "z.example.com"}}},
+				{Name: "Alpha", Entries: []sreportalv1alpha1.DNSEntry{{FQDN: "a.example.com"}}},
 			}
-			rc := newRC(external, manual)
+			rc := newRC(manual)
 
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
 			groups := rc.Data.AggregatedGroups
 			Expect(groups).To(HaveLen(2))
-			Expect(groups[0].Name).To(Equal("Infra"))
+			Expect(groups[0].Name).To(Equal("Alpha"))
 			Expect(groups[0].Source).To(Equal(dnspkg.SourceManual))
-			Expect(groups[1].Name).To(Equal("Web"))
-			Expect(groups[1].Source).To(Equal(dnspkg.SourceExternalDNS))
+			Expect(groups[1].Name).To(Equal("Zebra"))
+			Expect(groups[1].Source).To(Equal(dnspkg.SourceManual))
 		})
 	})
 
-	Context("when manual and external groups share a name", func() {
-		It("should merge FQDNs from both sources into a single group", func() {
-			external := []sreportalv1alpha1.FQDNGroupStatus{
-				{
-					Name:   "Services",
-					Source: dnspkg.SourceExternalDNS,
-					FQDNs:  []sreportalv1alpha1.FQDNStatus{{FQDN: "auto.example.com", RecordType: "A"}},
-				},
-			}
-			manual := []sreportalv1alpha1.DNSGroup{
-				{
-					Name:        "Services",
-					Description: "Curated services",
-					Entries:     []sreportalv1alpha1.DNSEntry{{FQDN: "curated.example.com", Description: "Manual entry"}},
-				},
-			}
-			rc := newRC(external, manual)
-
-			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
-
-			groups := rc.Data.AggregatedGroups
-			Expect(groups).To(HaveLen(1))
-			Expect(groups[0].Name).To(Equal("Services"))
-			// Source stays external-dns (manual description is applied)
-			Expect(groups[0].Source).To(Equal(dnspkg.SourceExternalDNS))
-			Expect(groups[0].Description).To(Equal("Curated services"))
-			// Both FQDNs present, sorted alphabetically
-			Expect(groups[0].FQDNs).To(HaveLen(2))
-			Expect(groups[0].FQDNs[0].FQDN).To(Equal("auto.example.com"))
-			Expect(groups[0].FQDNs[1].FQDN).To(Equal("curated.example.com"))
-			Expect(groups[0].FQDNs[1].Description).To(Equal("Manual entry"))
-		})
-	})
-
-	Context("when no Data keys are present", func() {
+	Context("when no manual groups are present", func() {
 		It("should produce an empty aggregated groups slice", func() {
 			rc := &reconciler.ReconcileContext[*sreportalv1alpha1.DNS, dnspkg.ChainData]{
 				Resource: &sreportalv1alpha1.DNS{},
@@ -157,25 +100,6 @@ var _ = Describe("AggregateFQDNsHandler", func() {
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
 			Expect(rc.Data.AggregatedGroups).To(BeEmpty())
-		})
-	})
-
-	Context("when aggregated groups are sorted", func() {
-		It("should always produce alphabetically sorted groups", func() {
-			external := []sreportalv1alpha1.FQDNGroupStatus{
-				{Name: "Zebra", Source: dnspkg.SourceExternalDNS},
-				{Name: "Alpha", Source: dnspkg.SourceExternalDNS},
-				{Name: "Mango", Source: dnspkg.SourceExternalDNS},
-			}
-			rc := newRC(external, nil)
-
-			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
-
-			groups := rc.Data.AggregatedGroups
-			Expect(groups).To(HaveLen(3))
-			Expect(groups[0].Name).To(Equal("Alpha"))
-			Expect(groups[1].Name).To(Equal("Mango"))
-			Expect(groups[2].Name).To(Equal("Zebra"))
 		})
 	})
 })

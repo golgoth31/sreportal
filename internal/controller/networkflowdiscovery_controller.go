@@ -24,8 +24,11 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"k8s.io/apimachinery/pkg/api/errors"
+
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	nfdchain "github.com/golgoth31/sreportal/internal/controller/networkflowdiscovery"
+	domainnetpol "github.com/golgoth31/sreportal/internal/domain/netpol"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/metrics"
 	"github.com/golgoth31/sreportal/internal/reconciler"
@@ -39,23 +42,35 @@ const (
 // NetworkFlowDiscoveryReconciler reconciles a NetworkFlowDiscovery object using a chain of handlers.
 type NetworkFlowDiscoveryReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
-	chain  *reconciler.Chain[*sreportalv1alpha1.NetworkFlowDiscovery, nfdchain.ChainData]
+	Scheme          *runtime.Scheme
+	chain           *reconciler.Chain[*sreportalv1alpha1.NetworkFlowDiscovery, nfdchain.ChainData]
+	updateStatus    *nfdchain.UpdateStatusHandler
+	flowGraphWriter domainnetpol.FlowGraphWriter
 }
 
 // NewNetworkFlowDiscoveryReconciler creates a new reconciler with the handler chain.
 func NewNetworkFlowDiscoveryReconciler(c client.Client, scheme *runtime.Scheme, remoteClientCache *remoteclient.Cache) *NetworkFlowDiscoveryReconciler {
+	updateStatus := nfdchain.NewUpdateStatusHandler(c)
 	handlers := []reconciler.Handler[*sreportalv1alpha1.NetworkFlowDiscovery, nfdchain.ChainData]{
 		nfdchain.NewFetchRemoteGraphHandler(c, remoteClientCache),
 		nfdchain.NewBuildGraphHandler(c),
-		nfdchain.NewUpdateStatusHandler(c),
+		updateStatus,
 	}
 
-	return &NetworkFlowDiscoveryReconciler{
-		Client: c,
-		Scheme: scheme,
-		chain:  reconciler.NewChain(handlers...),
+	r := &NetworkFlowDiscoveryReconciler{
+		Client:       c,
+		Scheme:       scheme,
+		chain:        reconciler.NewChain(handlers...),
+		updateStatus: updateStatus,
 	}
+
+	return r
+}
+
+// SetFlowGraphWriter sets the writer used to push graph data to the in-memory read store.
+func (r *NetworkFlowDiscoveryReconciler) SetFlowGraphWriter(w domainnetpol.FlowGraphWriter) {
+	r.flowGraphWriter = w
+	r.updateStatus.SetFlowGraphWriter(w)
 }
 
 // +kubebuilder:rbac:groups=sreportal.io,resources=networkflowdiscoveries,verbs=get;list;watch;create;update;patch;delete
@@ -75,6 +90,12 @@ func (r *NetworkFlowDiscoveryReconciler) Reconcile(ctx context.Context, req ctrl
 
 	var resource sreportalv1alpha1.NetworkFlowDiscovery
 	if err := r.Get(ctx, req.NamespacedName, &resource); err != nil {
+		if errors.IsNotFound(err) && r.flowGraphWriter != nil {
+			if delErr := r.flowGraphWriter.Delete(ctx, req.Name); delErr != nil {
+				logger.Error(delErr, "failed to delete flow graph from read store")
+			}
+		}
+
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 

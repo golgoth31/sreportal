@@ -19,8 +19,6 @@ package release
 import (
 	"context"
 	"fmt"
-	"sort"
-	"sync"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,23 +31,11 @@ import (
 
 const maxRetries = 5
 
-// CachedDay holds cached entries for a single day.
-type CachedDay struct {
-	Entries         []sreportalv1alpha1.ReleaseEntry
-	ResourceVersion string
-}
-
-// Service manages Release CRs with in-memory caching and thread-safe appends.
+// Service manages Release CRs via the K8s API. It only handles the write path
+// (AddEntry). The read path is served by the ReadStore.
 type Service struct {
 	client    client.Client
 	namespace string
-
-	mu    sync.RWMutex
-	cache map[string]*CachedDay
-
-	daysMu    sync.RWMutex
-	daysCache []string
-	daysValid bool
 }
 
 // NewService creates a new release Service.
@@ -57,24 +43,7 @@ func NewService(c client.Client, namespace string) *Service {
 	return &Service{
 		client:    c,
 		namespace: namespace,
-		cache:     make(map[string]*CachedDay),
 	}
-}
-
-// InvalidateDay removes a single day from the entries cache.
-// Called by the Release controller when a CR is created, updated, or deleted.
-func (s *Service) InvalidateDay(day string) {
-	s.mu.Lock()
-	delete(s.cache, day)
-	s.mu.Unlock()
-}
-
-// InvalidateDays marks the days list cache as stale.
-// Called by the Release controller when any CR changes.
-func (s *Service) InvalidateDays() {
-	s.daysMu.Lock()
-	s.daysValid = false
-	s.daysMu.Unlock()
 }
 
 // AddEntry appends a release entry to the day's CR, creating it if needed.
@@ -138,78 +107,8 @@ func (s *Service) AddEntry(ctx context.Context, entry domainrelease.Entry) (stri
 		rel.Status.EntryCount = count
 		_ = s.client.Status().Update(ctx, &rel)
 
-		// Invalidate cache
-		s.mu.Lock()
-		delete(s.cache, day)
-		s.mu.Unlock()
-
 		return day, count, created, nil
 	}
 
 	return "", 0, false, fmt.Errorf("add release entry: max retries exceeded for day %s", day)
-}
-
-// ListEntries returns all entries for a given day (YYYY-MM-DD). Cache-first.
-func (s *Service) ListEntries(ctx context.Context, day string) ([]sreportalv1alpha1.ReleaseEntry, error) {
-	// Check cache first
-	s.mu.RLock()
-	cached, ok := s.cache[day]
-	s.mu.RUnlock()
-	if ok {
-		return cached.Entries, nil
-	}
-
-	// Fetch from K8s
-	crName := "release-" + day
-	nn := types.NamespacedName{Name: crName, Namespace: s.namespace}
-	var rel sreportalv1alpha1.Release
-	if err := s.client.Get(ctx, nn, &rel); err != nil {
-		if apierrors.IsNotFound(err) {
-			return nil, fmt.Errorf("day %s: %w", day, domainrelease.ErrNotFound)
-		}
-		return nil, fmt.Errorf("get release CR: %w", err)
-	}
-
-	// Populate cache
-	s.mu.Lock()
-	s.cache[day] = &CachedDay{
-		Entries:         rel.Spec.Entries,
-		ResourceVersion: rel.ResourceVersion,
-	}
-	s.mu.Unlock()
-
-	return rel.Spec.Entries, nil
-}
-
-// ListDays returns all days that have Release CRs, sorted ascending. Cache-first.
-func (s *Service) ListDays(ctx context.Context) ([]string, error) {
-	s.daysMu.RLock()
-	if s.daysValid {
-		days := s.daysCache
-		s.daysMu.RUnlock()
-		return days, nil
-	}
-	s.daysMu.RUnlock()
-
-	var list sreportalv1alpha1.ReleaseList
-	if err := s.client.List(ctx, &list, client.InNamespace(s.namespace)); err != nil {
-		return nil, fmt.Errorf("list release CRs: %w", err)
-	}
-
-	days := make([]string, 0, len(list.Items))
-	for _, rel := range list.Items {
-		day, err := domainrelease.ParseDateFromCRName(rel.Name)
-		if err != nil {
-			continue // Skip malformed names
-		}
-		days = append(days, day)
-	}
-	sort.Strings(days)
-
-	s.daysMu.Lock()
-	s.daysCache = days
-	s.daysValid = true
-	s.daysMu.Unlock()
-
-	return days, nil
 }

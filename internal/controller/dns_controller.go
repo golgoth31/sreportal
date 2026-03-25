@@ -18,24 +18,20 @@ package controller
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/metrics"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
-	"github.com/golgoth31/sreportal/internal/config"
 	"github.com/golgoth31/sreportal/internal/controller/dns"
+	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 	"github.com/golgoth31/sreportal/internal/reconciler"
-	"github.com/golgoth31/sreportal/internal/source"
-	"github.com/golgoth31/sreportal/internal/source/registry"
 )
 
 const (
@@ -46,27 +42,23 @@ const (
 // DNSReconciler reconciles a DNS object
 type DNSReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
-	chain  *reconciler.Chain[*sreportalv1alpha1.DNS, dns.ChainData]
+	Scheme     *runtime.Scheme
+	chain      *reconciler.Chain[*sreportalv1alpha1.DNS, dns.ChainData]
+	fqdnWriter domaindns.FQDNWriter
+}
+
+// SetFQDNWriter sets the FQDN read-store writer. When set, the reconciler
+// pushes pre-aggregated FQDNViews into the store after each successful reconciliation.
+func (r *DNSReconciler) SetFQDNWriter(w domaindns.FQDNWriter) {
+	r.fqdnWriter = w
 }
 
 // NewDNSReconciler creates a new DNSReconciler with the handler chain.
-// builders is the same list used by the source factory (e.g. source.DefaultBuilders())
-// so that priority filtering and enabled sources stay in sync.
-// When cfg.Reconciliation.DisableDNSCheck is true, the ResolveDNSHandler step
-// is omitted and FQDNs will not carry a SyncStatus.
-func NewDNSReconciler(c client.Client, scheme *runtime.Scheme, cfg *config.OperatorConfig, builders []registry.Builder) *DNSReconciler {
-	var groupMappingConfig *config.GroupMappingConfig
-	var sourcePriority []string
-	disableDNSCheck := false
-	if cfg != nil {
-		groupMappingConfig = &cfg.GroupMapping
-		sourcePriority = source.FilterPriorityOrder(cfg.Sources.Priority, builders, cfg)
-		disableDNSCheck = cfg.Reconciliation.DisableDNSCheck
-	}
-
+// The chain handles manual DNS entries only; external-dns endpoints are handled
+// by the DNSRecordReconciler which projects directly into the read store.
+// When disableDNSCheck is true, the ResolveDNSHandler step is omitted.
+func NewDNSReconciler(c client.Client, scheme *runtime.Scheme, disableDNSCheck bool) *DNSReconciler {
 	handlers := []reconciler.Handler[*sreportalv1alpha1.DNS, dns.ChainData]{
-		dns.NewAggregateDNSRecordsHandler(c, groupMappingConfig, sourcePriority),
 		dns.NewCollectManualEntriesHandler(),
 		dns.NewAggregateFQDNsHandler(),
 	}
@@ -98,16 +90,14 @@ func (r *DNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	// Fetch the DNS resource
 	var resource sreportalv1alpha1.DNS
 	if err := r.Get(ctx, req.NamespacedName, &resource); err != nil {
-		return ctrl.Result{}, client.IgnoreNotFound(err)
-	}
-
-	// Skip DNS resources owned by a Portal (these are managed by PortalReconciler for remote portals)
-	for _, ownerRef := range resource.OwnerReferences {
-		if ownerRef.Kind == "Portal" && ownerRef.Controller != nil && *ownerRef.Controller {
-			logger.V(1).Info("skipping DNS resource owned by Portal (remote portal)",
-				"name", resource.Name, "namespace", resource.Namespace, "portal", ownerRef.Name)
-			return ctrl.Result{}, nil
+		if client.IgnoreNotFound(err) == nil && r.fqdnWriter != nil {
+			// Resource deleted — remove from read store
+			resourceKey := req.Namespace + "/" + req.Name
+			if wErr := r.fqdnWriter.Delete(ctx, resourceKey); wErr != nil {
+				logger.Error(wErr, "failed to delete FQDN views from read store")
+			}
 		}
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	logger.Info("reconciling DNS resource", "name", resource.Name, "namespace", resource.Namespace)
@@ -144,42 +134,68 @@ func (r *DNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	metrics.ReconcileTotal.WithLabelValues("dns", "success").Inc()
 	metrics.ReconcileDuration.WithLabelValues("dns").Observe(time.Since(start).Seconds())
 
+	// Project aggregated groups into the FQDN read store
+	if r.fqdnWriter != nil {
+		resourceKey := resource.Namespace + "/" + resource.Name
+		views := groupsToFQDNViews(&resource)
+		if err := r.fqdnWriter.Replace(ctx, resourceKey, views); err != nil {
+			logger.Error(err, "failed to update FQDN read store")
+		}
+	}
+
 	logger.Info("reconciliation completed", "requeueAfter", rc.Result.RequeueAfter)
 	return rc.Result, nil
+}
+
+// groupsToFQDNViews converts a DNS resource's status groups into a deduplicated,
+// sorted slice of FQDNViews. This centralises the CRD → domain transformation
+// that was previously duplicated across gRPC and MCP services.
+func groupsToFQDNViews(resource *sreportalv1alpha1.DNS) []domaindns.FQDNView {
+	seen := make(map[string]*domaindns.FQDNView)
+
+	for _, group := range resource.Status.Groups {
+		for _, fqdn := range group.FQDNs {
+			key := fqdn.FQDN + "/" + fqdn.RecordType
+			if existing, ok := seen[key]; ok {
+				if !slices.Contains(existing.Groups, group.Name) {
+					existing.Groups = append(existing.Groups, group.Name)
+				}
+			} else {
+				view := domaindns.FQDNView{
+					Name:        fqdn.FQDN,
+					Source:      domaindns.Source(group.Source),
+					Groups:      []string{group.Name},
+					Description: fqdn.Description,
+					RecordType:  fqdn.RecordType,
+					Targets:     fqdn.Targets,
+					LastSeen:    fqdn.LastSeen.Time,
+					PortalName:  resource.Spec.PortalRef,
+					Namespace:   resource.Namespace,
+					SyncStatus:  fqdn.SyncStatus,
+				}
+				if fqdn.OriginRef != nil {
+					ref, _ := domaindns.ParseResourceRef(
+						fqdn.OriginRef.Kind + "/" + fqdn.OriginRef.Namespace + "/" + fqdn.OriginRef.Name,
+					)
+					view.OriginRef = &ref
+				}
+				seen[key] = &view
+			}
+		}
+	}
+
+	views := make([]domaindns.FQDNView, 0, len(seen))
+	for _, v := range seen {
+		views = append(views, *v)
+	}
+
+	return views
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *DNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&sreportalv1alpha1.DNS{}).
-		Watches(&sreportalv1alpha1.DNSRecord{}, handler.EnqueueRequestsFromMapFunc(
-			func(ctx context.Context, obj client.Object) []reconcile.Request {
-				dnsRecord, ok := obj.(*sreportalv1alpha1.DNSRecord)
-				if !ok {
-					return nil
-				}
-
-				// Find DNS resources that share the same portalRef
-				var dnsList sreportalv1alpha1.DNSList
-				if err := r.List(ctx, &dnsList,
-					client.InNamespace(dnsRecord.Namespace),
-					client.MatchingFields{"spec.portalRef": dnsRecord.Spec.PortalRef},
-				); err != nil {
-					return nil
-				}
-
-				requests := make([]reconcile.Request, 0, len(dnsList.Items))
-				for _, d := range dnsList.Items {
-					requests = append(requests, reconcile.Request{
-						NamespacedName: types.NamespacedName{
-							Name:      d.Name,
-							Namespace: d.Namespace,
-						},
-					})
-				}
-				return requests
-			},
-		)).
 		Named("dns").
 		Complete(r)
 }

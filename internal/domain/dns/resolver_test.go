@@ -78,6 +78,51 @@ func (e *dnsNotFoundError) NotFound() bool {
 	return true
 }
 
+func TestResolveFQDNViews_SetsCorrectSyncStatus(t *testing.T) {
+	ctx := context.Background()
+
+	resolver := newFakeResolver()
+	resolver.hosts["api.example.com"] = []string{"1.2.3.4"}
+	resolver.cnames["web.example.com"] = "lb.example.com."
+	// gone.example.com has no entry → notavailable
+
+	views := []dns.FQDNView{
+		{Name: "api.example.com", RecordType: "A", Targets: []string{"1.2.3.4"}},
+		{Name: "web.example.com", RecordType: "CNAME", Targets: []string{"lb.example.com"}},
+		{Name: "gone.example.com", RecordType: "A", Targets: []string{"5.6.7.8"}},
+	}
+
+	resolved := dns.ResolveFQDNViews(ctx, resolver, views)
+
+	require.Len(t, resolved, 3)
+	assert.Equal(t, string(dns.SyncStatusSync), resolved[0].SyncStatus, "A record matching targets")
+	assert.Equal(t, string(dns.SyncStatusSync), resolved[1].SyncStatus, "CNAME matching target")
+	assert.Equal(t, string(dns.SyncStatusNotAvailable), resolved[2].SyncStatus, "missing A record")
+}
+
+func TestResolveFQDNViews_EmptySlice_ReturnsNil(t *testing.T) {
+	ctx := context.Background()
+	resolver := newFakeResolver()
+
+	resolved := dns.ResolveFQDNViews(ctx, resolver, nil)
+	assert.Nil(t, resolved)
+}
+
+func TestResolveFQDNViews_DoesNotMutateInput(t *testing.T) {
+	ctx := context.Background()
+	resolver := newFakeResolver()
+	resolver.hosts["a.example.com"] = []string{"1.1.1.1"}
+
+	input := []dns.FQDNView{
+		{Name: "a.example.com", RecordType: "A", Targets: []string{"1.1.1.1"}, SyncStatus: ""},
+	}
+
+	resolved := dns.ResolveFQDNViews(ctx, resolver, input)
+
+	assert.Equal(t, "", input[0].SyncStatus, "original slice should not be mutated")
+	assert.Equal(t, string(dns.SyncStatusSync), resolved[0].SyncStatus)
+}
+
 func TestCheckFQDN(t *testing.T) {
 	ctx := context.Background()
 

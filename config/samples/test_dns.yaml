@@ -2,8 +2,7 @@
 apiVersion: sreportal.io/v1alpha1
 kind: DNS
 metadata:
-  name: main-portal
-  namespace: default
+  name: pouet
 spec:
   portalRef: main
   # Manual DNS entries (these will be preserved alongside discovered ones)
@@ -15,3 +14,5 @@ spec:
           description: "Documentation site"
         - fqdn: "status.example.com"
           description: "Status page"
+        - fqdn: "portal.notrenet.ovh"
+          description: "Portal"

@@ -29,8 +29,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
-	"github.com/golgoth31/sreportal/internal/config"
-	"github.com/golgoth31/sreportal/internal/source"
+	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
+	dnsreadstore "github.com/golgoth31/sreportal/internal/readstore/dns"
 )
 
 var _ = Describe("DNS Controller", func() {
@@ -102,7 +102,7 @@ var _ = Describe("DNS Controller", func() {
 		})
 
 		It("should successfully reconcile and populate status with groups", func() {
-			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), config.DefaultConfig(), source.DefaultBuilders())
+			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), true)
 
 			By("Reconciling and checking the DNS status contains the groups")
 			Eventually(func(g Gomega) {
@@ -177,7 +177,7 @@ var _ = Describe("DNS Controller", func() {
 		})
 
 		It("should successfully reconcile with empty status", func() {
-			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), config.DefaultConfig(), source.DefaultBuilders())
+			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), true)
 
 			By("Reconciling and checking the DNS status is empty but has conditions")
 			Eventually(func(g Gomega) {
@@ -195,204 +195,10 @@ var _ = Describe("DNS Controller", func() {
 		})
 	})
 
-	Context("When a single FQDN is removed from DNSRecord endpoints", func() {
-		const (
-			dnsName       = "test-dns-partial-removal"
-			dnsRecordName = "test-dnsrecord-partial-removal"
-		)
-		ctx := context.Background()
-
-		dnsNN := types.NamespacedName{Name: dnsName, Namespace: "default"}
-		dnsRecordNN := types.NamespacedName{Name: dnsRecordName, Namespace: "default"}
-
-		BeforeEach(func() {
-			By("creating a DNS resource")
-			dns := &sreportalv1alpha1.DNS{}
-			if err := k8sClient.Get(ctx, dnsNN, dns); errors.IsNotFound(err) {
-				Expect(k8sClient.Create(ctx, &sreportalv1alpha1.DNS{
-					ObjectMeta: metav1.ObjectMeta{Name: dnsName, Namespace: "default"},
-					Spec:       sreportalv1alpha1.DNSSpec{PortalRef: "main"},
-				})).To(Succeed())
-			}
-
-			By("creating a DNSRecord with two endpoints")
-			rec := &sreportalv1alpha1.DNSRecord{
-				ObjectMeta: metav1.ObjectMeta{Name: dnsRecordName, Namespace: "default"},
-				Spec: sreportalv1alpha1.DNSRecordSpec{
-					SourceType: "service",
-					PortalRef:  "main",
-				},
-			}
-			existingRec := &sreportalv1alpha1.DNSRecord{}
-			if err := k8sClient.Get(ctx, dnsRecordNN, existingRec); errors.IsNotFound(err) {
-				Expect(k8sClient.Create(ctx, rec)).To(Succeed())
-			}
-
-			By("populating DNSRecord status with two FQDNs")
-			Eventually(func(g Gomega) {
-				var r sreportalv1alpha1.DNSRecord
-				g.Expect(k8sClient.Get(ctx, dnsRecordNN, &r)).To(Succeed())
-				r.Status.Endpoints = []sreportalv1alpha1.EndpointStatus{
-					{DNSName: "keep.example.com", RecordType: "A", Targets: []string{"1.2.3.4"}, LastSeen: metav1.Now()},
-					{DNSName: "remove.example.com", RecordType: "A", Targets: []string{"5.6.7.8"}, LastSeen: metav1.Now()},
-				}
-				g.Expect(k8sClient.Status().Update(ctx, &r)).To(Succeed())
-			}, timeout, interval).Should(Succeed())
-		})
-
-		AfterEach(func() {
-			rec := &sreportalv1alpha1.DNSRecord{}
-			if err := k8sClient.Get(ctx, dnsRecordNN, rec); err == nil {
-				Expect(k8sClient.Delete(ctx, rec)).To(Succeed())
-			}
-			dns := &sreportalv1alpha1.DNS{}
-			if err := k8sClient.Get(ctx, dnsNN, dns); err == nil {
-				Expect(k8sClient.Delete(ctx, dns)).To(Succeed())
-			}
-		})
-
-		It("should remove the FQDN from DNS status after reconciliation", func() {
-			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), config.DefaultConfig(), source.DefaultBuilders())
-
-			By("reconciling to get both FQDNs in DNS status")
-			Eventually(func(g Gomega) {
-				_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: dnsNN})
-				g.Expect(err).NotTo(HaveOccurred())
-
-				var dns sreportalv1alpha1.DNS
-				g.Expect(k8sClient.Get(ctx, dnsNN, &dns)).To(Succeed())
-				var allFQDNs []string
-				for _, group := range dns.Status.Groups {
-					for _, fqdn := range group.FQDNs {
-						allFQDNs = append(allFQDNs, fqdn.FQDN)
-					}
-				}
-				g.Expect(allFQDNs).To(ContainElements("keep.example.com", "remove.example.com"))
-			}, timeout, interval).Should(Succeed())
-
-			By("removing one endpoint from DNSRecord status")
-			Eventually(func(g Gomega) {
-				var rec sreportalv1alpha1.DNSRecord
-				g.Expect(k8sClient.Get(ctx, dnsRecordNN, &rec)).To(Succeed())
-				rec.Status.Endpoints = []sreportalv1alpha1.EndpointStatus{
-					{DNSName: "keep.example.com", RecordType: "A", Targets: []string{"1.2.3.4"}, LastSeen: metav1.Now()},
-				}
-				g.Expect(k8sClient.Status().Update(ctx, &rec)).To(Succeed())
-			}, timeout, interval).Should(Succeed())
-
-			By("reconciling again and verifying the removed FQDN is gone")
-			Eventually(func(g Gomega) {
-				_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: dnsNN})
-				g.Expect(err).NotTo(HaveOccurred())
-
-				var dns sreportalv1alpha1.DNS
-				g.Expect(k8sClient.Get(ctx, dnsNN, &dns)).To(Succeed())
-				var allFQDNs []string
-				for _, group := range dns.Status.Groups {
-					for _, fqdn := range group.FQDNs {
-						allFQDNs = append(allFQDNs, fqdn.FQDN)
-					}
-				}
-				g.Expect(allFQDNs).To(ContainElement("keep.example.com"))
-				g.Expect(allFQDNs).NotTo(ContainElement("remove.example.com"))
-			}, timeout, interval).Should(Succeed())
-		})
-	})
-
-	Context("When all endpoints are removed from DNSRecord", func() {
-		const (
-			dnsName       = "test-dns-full-removal"
-			dnsRecordName = "test-dnsrecord-full-removal"
-		)
-		ctx := context.Background()
-
-		dnsNN := types.NamespacedName{Name: dnsName, Namespace: "default"}
-		dnsRecordNN := types.NamespacedName{Name: dnsRecordName, Namespace: "default"}
-
-		BeforeEach(func() {
-			By("creating a DNS resource")
-			dns := &sreportalv1alpha1.DNS{}
-			if err := k8sClient.Get(ctx, dnsNN, dns); errors.IsNotFound(err) {
-				Expect(k8sClient.Create(ctx, &sreportalv1alpha1.DNS{
-					ObjectMeta: metav1.ObjectMeta{Name: dnsName, Namespace: "default"},
-					Spec:       sreportalv1alpha1.DNSSpec{PortalRef: "main"},
-				})).To(Succeed())
-			}
-
-			By("creating a DNSRecord with endpoints")
-			rec := &sreportalv1alpha1.DNSRecord{
-				ObjectMeta: metav1.ObjectMeta{Name: dnsRecordName, Namespace: "default"},
-				Spec: sreportalv1alpha1.DNSRecordSpec{
-					SourceType: "service",
-					PortalRef:  "main",
-				},
-			}
-			existingRec := &sreportalv1alpha1.DNSRecord{}
-			if err := k8sClient.Get(ctx, dnsRecordNN, existingRec); errors.IsNotFound(err) {
-				Expect(k8sClient.Create(ctx, rec)).To(Succeed())
-			}
-
-			By("populating DNSRecord status with FQDNs")
-			Eventually(func(g Gomega) {
-				var r sreportalv1alpha1.DNSRecord
-				g.Expect(k8sClient.Get(ctx, dnsRecordNN, &r)).To(Succeed())
-				r.Status.Endpoints = []sreportalv1alpha1.EndpointStatus{
-					{DNSName: "alpha.example.com", RecordType: "A", Targets: []string{"1.2.3.4"}, LastSeen: metav1.Now()},
-					{DNSName: "beta.example.com", RecordType: "A", Targets: []string{"5.6.7.8"}, LastSeen: metav1.Now()},
-				}
-				g.Expect(k8sClient.Status().Update(ctx, &r)).To(Succeed())
-			}, timeout, interval).Should(Succeed())
-		})
-
-		AfterEach(func() {
-			rec := &sreportalv1alpha1.DNSRecord{}
-			if err := k8sClient.Get(ctx, dnsRecordNN, rec); err == nil {
-				Expect(k8sClient.Delete(ctx, rec)).To(Succeed())
-			}
-			dns := &sreportalv1alpha1.DNS{}
-			if err := k8sClient.Get(ctx, dnsNN, dns); err == nil {
-				Expect(k8sClient.Delete(ctx, dns)).To(Succeed())
-			}
-		})
-
-		It("should produce empty DNS status groups", func() {
-			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), config.DefaultConfig(), source.DefaultBuilders())
-
-			By("reconciling to populate initial status")
-			Eventually(func(g Gomega) {
-				_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: dnsNN})
-				g.Expect(err).NotTo(HaveOccurred())
-
-				var dns sreportalv1alpha1.DNS
-				g.Expect(k8sClient.Get(ctx, dnsNN, &dns)).To(Succeed())
-				g.Expect(dns.Status.Groups).NotTo(BeEmpty())
-			}, timeout, interval).Should(Succeed())
-
-			By("removing all endpoints from DNSRecord status")
-			Eventually(func(g Gomega) {
-				var rec sreportalv1alpha1.DNSRecord
-				g.Expect(k8sClient.Get(ctx, dnsRecordNN, &rec)).To(Succeed())
-				rec.Status.Endpoints = nil
-				g.Expect(k8sClient.Status().Update(ctx, &rec)).To(Succeed())
-			}, timeout, interval).Should(Succeed())
-
-			By("reconciling and verifying DNS status has no groups")
-			Eventually(func(g Gomega) {
-				_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: dnsNN})
-				g.Expect(err).NotTo(HaveOccurred())
-
-				var dns sreportalv1alpha1.DNS
-				g.Expect(k8sClient.Get(ctx, dnsNN, &dns)).To(Succeed())
-				g.Expect(dns.Status.Groups).To(BeEmpty())
-				g.Expect(dns.Status.Conditions).NotTo(BeEmpty())
-			}, timeout, interval).Should(Succeed())
-		})
-	})
-
 	Context("When the DNS resource does not exist", func() {
 		It("should not return an error", func() {
 			ctx := context.Background()
-			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), config.DefaultConfig(), source.DefaultBuilders())
+			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), true)
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: types.NamespacedName{
@@ -401,6 +207,55 @@ var _ = Describe("DNS Controller", func() {
 				},
 			})
 			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	Context("When DNS CR name differs from PortalRef", func() {
+		const dnsName = "test-dns-custom-name"
+		ctx := context.Background()
+
+		dnsNN := types.NamespacedName{Name: dnsName, Namespace: "default"}
+
+		AfterEach(func() {
+			dns := &sreportalv1alpha1.DNS{}
+			if err := k8sClient.Get(ctx, dnsNN, dns); err == nil {
+				Expect(k8sClient.Delete(ctx, dns)).To(Succeed())
+			}
+		})
+
+		It("should set FQDNView.PortalName from spec.portalRef, not resource name", func() {
+			store := dnsreadstore.NewFQDNStore(nil)
+			reconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), true)
+			reconciler.SetFQDNWriter(store)
+
+			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.DNS{
+				ObjectMeta: metav1.ObjectMeta{Name: dnsName, Namespace: "default"},
+				Spec: sreportalv1alpha1.DNSSpec{
+					PortalRef: "actual-portal",
+					Groups: []sreportalv1alpha1.DNSGroup{
+						{
+							Name:    "Test",
+							Entries: []sreportalv1alpha1.DNSEntry{{FQDN: "test.example.com"}},
+						},
+					},
+				},
+			})).To(Succeed())
+
+			Eventually(func(g Gomega) {
+				_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: dnsNN})
+				g.Expect(err).NotTo(HaveOccurred())
+
+				// Should be findable by the actual portal name, not the DNS CR name
+				views, err := store.List(ctx, domaindns.FQDNFilters{Portal: "actual-portal"})
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(views).To(HaveLen(1))
+				g.Expect(views[0].PortalName).To(Equal("actual-portal"))
+
+				// Should NOT appear under the DNS CR name
+				views, err = store.List(ctx, domaindns.FQDNFilters{Portal: dnsName})
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(views).To(BeEmpty())
+			}, timeout, interval).Should(Succeed())
 		})
 	})
 })

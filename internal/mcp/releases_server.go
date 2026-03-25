@@ -23,9 +23,9 @@ import (
 	"net/http"
 	"time"
 
+	domainrelease "github.com/golgoth31/sreportal/internal/domain/release"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/metrics"
-	releaseservice "github.com/golgoth31/sreportal/internal/release"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
@@ -34,12 +34,12 @@ import (
 // Mount at /mcp/releases for Streamable HTTP.
 type ReleasesServer struct {
 	mcpServer *server.MCPServer
-	service   *releaseservice.Service
+	reader    domainrelease.ReleaseReader
 }
 
 // NewReleasesServer creates a new MCP server instance for releases.
-func NewReleasesServer(svc *releaseservice.Service) *ReleasesServer {
-	s := &ReleasesServer{service: svc}
+func NewReleasesServer(reader domainrelease.ReleaseReader) *ReleasesServer {
+	s := &ReleasesServer{reader: reader}
 
 	hooks := &server.Hooks{}
 	hooks.AddOnRegisterSession(func(ctx context.Context, session server.ClientSession) {
@@ -110,7 +110,7 @@ func (s *ReleasesServer) handleListReleases(ctx context.Context, request mcp.Cal
 
 	// If no day specified, use the latest
 	if day == "" {
-		days, err := s.service.ListDays(ctx)
+		days, err := s.reader.ListDays(ctx)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("failed to list days: %v", err)), nil
 		}
@@ -120,13 +120,13 @@ func (s *ReleasesServer) handleListReleases(ctx context.Context, request mcp.Cal
 		day = days[len(days)-1]
 	}
 
-	entries, err := s.service.ListEntries(ctx, day)
+	entries, err := s.reader.ListEntries(ctx, day)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to list releases for day %s: %v", day, err)), nil
 	}
 
 	// Get day navigation
-	days, err := s.service.ListDays(ctx)
+	days, err := s.reader.ListDays(ctx)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to list days: %v", err)), nil
 	}

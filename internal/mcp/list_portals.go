@@ -20,11 +20,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 
-	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	domainportal "github.com/golgoth31/sreportal/internal/domain/portal"
 )
 
 // RemoteSyncResult mirrors Portal status.remoteSync for MCP JSON (aligned with Connect ListPortals).
@@ -49,40 +48,33 @@ type PortalResult struct {
 
 // handleListPortals handles the list_portals tool call
 func (s *DNSServer) handleListPortals(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	// List all Portal resources
-	var portalList sreportalv1alpha1.PortalList
-	if err := s.client.List(ctx, &portalList); err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("failed to list Portal resources: %v", err)), nil
+	views, err := s.portalReader.List(ctx, domainportal.PortalFilters{})
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to list portals: %v", err)), nil
 	}
 
-	if len(portalList.Items) == 0 {
+	if len(views) == 0 {
 		return mcp.NewToolResultText("No portals found."), nil
 	}
 
-	// Convert to results
-	results := make([]PortalResult, 0, len(portalList.Items))
-	for _, portal := range portalList.Items {
+	results := make([]PortalResult, 0, len(views))
+	for _, v := range views {
 		result := PortalResult{
-			Name:      portal.Name,
-			Namespace: portal.Namespace,
-			Title:     portal.Spec.Title,
-			Main:      portal.Spec.Main,
-			SubPath:   portal.Spec.SubPath,
-			Ready:     portal.Status.Ready,
+			Name:      v.Name,
+			Namespace: v.Namespace,
+			Title:     v.Title,
+			Main:      v.Main,
+			SubPath:   v.SubPath,
+			Ready:     v.Ready,
+			RemoteURL: v.URL,
 		}
-		if portal.Spec.Remote != nil {
-			result.RemoteURL = portal.Spec.Remote.URL
-		}
-		if portal.Status.RemoteSync != nil {
-			rs := &RemoteSyncResult{
-				LastSyncError: portal.Status.RemoteSync.LastSyncError,
-				RemoteTitle:   portal.Status.RemoteSync.RemoteTitle,
-				FQDNCount:     portal.Status.RemoteSync.FQDNCount,
+		if v.RemoteSync != nil {
+			result.RemoteSync = &RemoteSyncResult{
+				LastSyncTime:  v.RemoteSync.LastSyncTime,
+				LastSyncError: v.RemoteSync.LastSyncError,
+				RemoteTitle:   v.RemoteSync.RemoteTitle,
+				FQDNCount:     v.RemoteSync.FQDNCount,
 			}
-			if portal.Status.RemoteSync.LastSyncTime != nil {
-				rs.LastSyncTime = portal.Status.RemoteSync.LastSyncTime.Format(time.RFC3339)
-			}
-			result.RemoteSync = rs
 		}
 		results = append(results, result)
 	}

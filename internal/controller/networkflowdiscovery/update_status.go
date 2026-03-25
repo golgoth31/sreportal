@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	domainnetpol "github.com/golgoth31/sreportal/internal/domain/netpol"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
@@ -37,14 +38,20 @@ const (
 )
 
 // UpdateStatusHandler writes the computed graph into FlowNodeSet and FlowEdgeSet CRDs,
-// and updates the parent NetworkFlowDiscovery status with counts.
+// pushes the graph to the in-memory read store, and updates the parent NetworkFlowDiscovery status with counts.
 type UpdateStatusHandler struct {
-	client client.Client
+	client          client.Client
+	flowGraphWriter domainnetpol.FlowGraphWriter
 }
 
 // NewUpdateStatusHandler creates a new UpdateStatusHandler.
 func NewUpdateStatusHandler(c client.Client) *UpdateStatusHandler {
 	return &UpdateStatusHandler{client: c}
+}
+
+// SetFlowGraphWriter sets the writer used to push graph data to the in-memory read store.
+func (h *UpdateStatusHandler) SetFlowGraphWriter(w domainnetpol.FlowGraphWriter) {
+	h.flowGraphWriter = w
 }
 
 // Handle implements reconciler.Handler.
@@ -63,6 +70,18 @@ func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 	// Ensure FlowEdgeSet
 	if err := h.ensureFlowEdgeSet(ctx, nfd, ns, nfdName, rc.Data.Edges); err != nil {
 		return err
+	}
+
+	// Push graph to in-memory read store
+	if h.flowGraphWriter != nil {
+		portalRef := nfd.Spec.PortalRef
+		if err := h.flowGraphWriter.ReplaceNodes(ctx, nfdName, portalRef, flowNodesToViews(rc.Data.Nodes)); err != nil {
+			return fmt.Errorf("push nodes to read store: %w", err)
+		}
+
+		if err := h.flowGraphWriter.ReplaceEdges(ctx, nfdName, portalRef, flowEdgesToViews(rc.Data.Edges)); err != nil {
+			return fmt.Errorf("push edges to read store: %w", err)
+		}
 	}
 
 	// Update parent status
@@ -157,4 +176,32 @@ func (h *UpdateStatusHandler) ensureFlowEdgeSet(ctx context.Context, nfd *srepor
 	}
 
 	return nil
+}
+
+func flowNodesToViews(nodes []sreportalv1alpha1.FlowNode) []domainnetpol.FlowNode {
+	views := make([]domainnetpol.FlowNode, len(nodes))
+	for i, n := range nodes {
+		views[i] = domainnetpol.FlowNode{
+			ID:        n.ID,
+			Label:     n.Label,
+			Namespace: n.Namespace,
+			NodeType:  n.NodeType,
+			Group:     n.Group,
+		}
+	}
+
+	return views
+}
+
+func flowEdgesToViews(edges []sreportalv1alpha1.FlowEdge) []domainnetpol.FlowEdge {
+	views := make([]domainnetpol.FlowEdge, len(edges))
+	for i, e := range edges {
+		views[i] = domainnetpol.FlowEdge{
+			From:     e.From,
+			To:       e.To,
+			EdgeType: e.EdgeType,
+		}
+	}
+
+	return views
 }

@@ -49,10 +49,16 @@ import (
 	"github.com/golgoth31/sreportal/internal/alertmanagerclient"
 	"github.com/golgoth31/sreportal/internal/config"
 	"github.com/golgoth31/sreportal/internal/controller"
+	dnspkg "github.com/golgoth31/sreportal/internal/controller/dns"
 	nfdchain "github.com/golgoth31/sreportal/internal/controller/networkflowdiscovery"
 	portalctrl "github.com/golgoth31/sreportal/internal/controller/portal"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/mcp"
+	alertmanagerreadstore "github.com/golgoth31/sreportal/internal/readstore/alertmanager"
+	dnsreadstore "github.com/golgoth31/sreportal/internal/readstore/dns"
+	netpolreadstore "github.com/golgoth31/sreportal/internal/readstore/netpol"
+	portalreadstore "github.com/golgoth31/sreportal/internal/readstore/portal"
+	releasereadstore "github.com/golgoth31/sreportal/internal/readstore/release"
 	releaseservice "github.com/golgoth31/sreportal/internal/release"
 	"github.com/golgoth31/sreportal/internal/remoteclient"
 	"github.com/golgoth31/sreportal/internal/source"
@@ -320,14 +326,41 @@ func main() {
 
 	annotations.SetAnnotationPrefix("external-dns.alpha.kubernetes.io/")
 
+	// Create ReadStores: controllers write, gRPC/MCP read.
 	sourceBuilders := source.DefaultBuilders()
-	if err := controller.NewDNSReconciler(
+	var sourcePriority []string
+	var disableDNSCheck bool
+	var groupMapping *config.GroupMappingConfig
+	if operatorConfig != nil {
+		sourcePriority = source.FilterPriorityOrder(operatorConfig.Sources.Priority, sourceBuilders, operatorConfig)
+		disableDNSCheck = operatorConfig.Reconciliation.DisableDNSCheck
+		groupMapping = &operatorConfig.GroupMapping
+	}
+	fqdnStore := dnsreadstore.NewFQDNStore(sourcePriority)
+	portalStore := portalreadstore.NewPortalStore()
+	alertmanagerStore := alertmanagerreadstore.NewAlertmanagerStore()
+
+	dnsReconciler := controller.NewDNSReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),
-		operatorConfig,
-		sourceBuilders,
-	).SetupWithManager(mgr); err != nil {
+		disableDNSCheck,
+	)
+	dnsReconciler.SetFQDNWriter(fqdnStore)
+	if err := dnsReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "DNS")
+		os.Exit(1)
+	}
+
+	dnsRecordReconciler := controller.NewDNSRecordReconciler(
+		mgr.GetClient(),
+		mgr.GetScheme(),
+		groupMapping,
+		dnspkg.NewNetResolver(),
+		disableDNSCheck,
+	)
+	dnsRecordReconciler.SetFQDNWriter(fqdnStore)
+	if err := dnsRecordReconciler.SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "DNSRecord")
 		os.Exit(1)
 	}
 
@@ -359,11 +392,13 @@ func main() {
 		}
 	}
 	remoteCache := remoteclient.NewCache()
-	if err := controller.NewPortalReconciler(
+	portalReconciler := controller.NewPortalReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),
 		remoteCache,
-	).SetupWithManager(mgr); err != nil {
+	)
+	portalReconciler.SetPortalWriter(portalStore)
+	if err := portalReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Portal")
 		os.Exit(1)
 	}
@@ -389,21 +424,26 @@ func main() {
 		os.Exit(1)
 	}
 	amClient := alertmanagerclient.NewClient()
-	if err := controller.NewAlertmanagerReconciler(
+	amReconciler := controller.NewAlertmanagerReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),
 		amClient,
 		amClient,
 		remoteCache,
-	).SetupWithManager(mgr); err != nil {
+	)
+	amReconciler.SetAlertmanagerWriter(alertmanagerStore)
+	if err := amReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Alertmanager")
 		os.Exit(1)
 	}
-	if err := controller.NewNetworkFlowDiscoveryReconciler(
+	flowGraphStore := netpolreadstore.NewFlowGraphStore()
+	nfdReconciler := controller.NewNetworkFlowDiscoveryReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),
 		remoteCache,
-	).SetupWithManager(mgr); err != nil {
+	)
+	nfdReconciler.SetFlowGraphWriter(flowGraphStore)
+	if err := nfdReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "NetworkFlowDiscovery")
 		os.Exit(1)
 	}
@@ -434,13 +474,12 @@ func main() {
 		releaseTTL = 30 * 24 * 60 * 60 * 1e9 // 30 days in nanoseconds
 	}
 	releaseSvc := releaseservice.NewService(mgr.GetClient(), releaseNamespace)
+	releaseStore := releasereadstore.NewReleaseStore()
 
-	// Release controller: watches Release CRs, invalidates cache, and deletes expired CRs
-	if err := controller.NewReleaseReconciler(
-		mgr.GetClient(),
-		releaseSvc,
-		releaseTTL,
-	).SetupWithManager(mgr); err != nil {
+	// Release controller: watches Release CRs, pushes to ReadStore, and deletes expired CRs
+	releaseReconciler := controller.NewReleaseReconciler(mgr.GetClient(), releaseTTL)
+	releaseReconciler.SetReleaseWriter(releaseStore)
+	if err := releaseReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Release")
 		os.Exit(1)
 	}
@@ -449,9 +488,14 @@ func main() {
 	webCfg := webserver.Config{
 		Address:             webAddr,
 		Gatherer:            ctrlmetrics.Registry,
+		ReleaseReader:       releaseStore,
 		ReleaseService:      releaseSvc,
 		ReleaseTTL:          releaseTTL,
 		ReleaseAllowedTypes: operatorConfig.Release.Types,
+		FQDNReader:          fqdnStore,
+		PortalReader:        portalStore,
+		AlertmanagerReader:  alertmanagerStore,
+		FlowGraphReader:     flowGraphStore,
 	}
 	if devMode {
 		setupLog.Info("dev mode enabled: serving web UI from filesystem", "web-root", webRoot)
@@ -480,20 +524,13 @@ func main() {
 	}
 	webServer := webserver.New(webCfg, mgr.GetClient(), operatorConfig, corsOrigins)
 
-	// Register the DNSService cache loop with the manager so it runs under the
-	// manager's context and is stopped cleanly on shutdown.
-	if err := mgr.Add(webServer.DNSService()); err != nil {
-		setupLog.Error(err, "unable to register DNS service cache loop with manager")
-		os.Exit(1)
-	}
-
 	// Start MCP servers if enabled
 	if enableMCP {
-		dnsMcpServer := mcp.NewDNSServer(mgr.GetClient(), &operatorConfig.GroupMapping)
-		alertsMcpServer := mcp.NewAlertsServer(mgr.GetClient())
+		dnsMcpServer := mcp.NewDNSServer(fqdnStore, portalStore)
+		alertsMcpServer := mcp.NewAlertsServer(alertmanagerStore)
 		metricsMcpServer := mcp.NewMetricsServer(ctrlmetrics.Registry)
-		releasesMcpServer := mcp.NewReleasesServer(releaseSvc)
-		netpolMcpServer := mcp.NewNetpolServer(mgr.GetClient())
+		releasesMcpServer := mcp.NewReleasesServer(releaseStore)
+		netpolMcpServer := mcp.NewNetpolServer(flowGraphStore)
 
 		switch mcpTransport {
 		case "stdio":
