@@ -4,7 +4,7 @@ metadata:
   name: {{ include "helm.fullname" . }}-auth
   labels:
   {{- include "helm.labels" . | nindent 4 }}
-stringData:
+data:
   config.yaml: {{ required "auth.configYaml is required" .Values.auth.configYaml
-    | quote }}
+    | b64enc | quote }}
 type: Opaque
