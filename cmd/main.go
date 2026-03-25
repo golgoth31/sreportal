@@ -288,7 +288,8 @@ func main() {
 			return []string{nfd.Spec.PortalRef}
 		},
 	); err != nil {
-		setupLog.Error(err, "unable to create field indexer", "field", controller.FieldIndexPortalRef, "kind", "NetworkFlowDiscovery")
+		setupLog.Error(err, "unable to create field indexer",
+			"field", controller.FieldIndexPortalRef, "kind", "NetworkFlowDiscovery")
 		os.Exit(1)
 	}
 
