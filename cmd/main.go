@@ -47,6 +47,7 @@ import (
 	sreportal "github.com/golgoth31/sreportal"
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/alertmanagerclient"
+	"github.com/golgoth31/sreportal/internal/auth"
 	"github.com/golgoth31/sreportal/internal/config"
 	"github.com/golgoth31/sreportal/internal/controller"
 	dnspkg "github.com/golgoth31/sreportal/internal/controller/dns"
@@ -131,6 +132,10 @@ func main() {
 		"If set, the MCP (Model Context Protocol) server will be enabled for AI assistant integration.")
 	flag.StringVar(&mcpTransport, "mcp-transport", "streamable-http",
 		"The transport to use for the MCP server: 'stdio' or 'streamable-http'.")
+	var authConfigPath string
+	flag.StringVar(&authConfigPath, "auth-config", "",
+		"Path to the authentication configuration file (mounted from a Secret). "+
+			"Leave empty to disable authentication on write endpoints.")
 	var corsAllowedOrigins string
 	flag.StringVar(&corsAllowedOrigins, "cors-allowed-origins", "",
 		"Comma-separated list of origins allowed for CORS requests (e.g. http://localhost:5173). "+
@@ -171,6 +176,39 @@ func main() {
 		os.Exit(1)
 	}
 	setupLog.Info("loaded configuration", "path", configPath, "config", operatorConfig.LogSummary())
+
+	// Load authentication configuration from file (Secret-backed)
+	var authChain *auth.Chain
+	if authConfigPath != "" {
+		authCfg, err := auth.LoadFromFile(authConfigPath)
+		if err != nil {
+			setupLog.Error(err, "failed to load auth configuration", "path", authConfigPath)
+			os.Exit(1)
+		}
+		if authCfg.Enabled() {
+			var authenticators []auth.Authenticator
+			if authCfg.BasicAuth != nil && authCfg.BasicAuth.Enabled {
+				authenticators = append(authenticators, auth.NewBasicAuthenticator(*authCfg.BasicAuth))
+				setupLog.Info("auth: basic auth enabled")
+			}
+			if authCfg.APIKey != nil && authCfg.APIKey.Enabled {
+				authenticators = append(authenticators, auth.NewAPIKeyAuthenticator(*authCfg.APIKey))
+				setupLog.Info("auth: API key auth enabled", "keys", len(authCfg.APIKey.Keys))
+			}
+			if authCfg.JWT != nil && authCfg.JWT.Enabled {
+				jwtAuth, err := auth.NewJWTAuthenticator(context.Background(), *authCfg.JWT)
+				if err != nil {
+					setupLog.Error(err, "failed to initialize JWT authenticator")
+					os.Exit(1)
+				}
+				defer jwtAuth.Close()
+				authenticators = append(authenticators, jwtAuth)
+				setupLog.Info("auth: JWT auth enabled", "issuers", len(authCfg.JWT.Issuers))
+			}
+			authChain = auth.NewChain(authenticators...)
+			setupLog.Info("auth: write endpoints protected", "methods", len(authenticators))
+		}
+	}
 
 	// if the enable-http2 flag is false (the default), http/2 should be disabled
 	// due to its vulnerabilities. More specifically, disabling http/2 will
@@ -496,6 +534,7 @@ func main() {
 		PortalReader:        portalStore,
 		AlertmanagerReader:  alertmanagerStore,
 		FlowGraphReader:     flowGraphStore,
+		AuthChain:           authChain,
 	}
 	if devMode {
 		setupLog.Info("dev mode enabled: serving web UI from filesystem", "web-root", webRoot)

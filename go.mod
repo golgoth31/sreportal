@@ -4,8 +4,11 @@ go 1.26
 
 require (
 	connectrpc.com/connect v1.19.1
+	github.com/MicahParks/jwkset v0.11.0
+	github.com/MicahParks/keyfunc/v3 v3.8.0
 	github.com/cloudfoundry-community/go-cfclient v0.0.0-20220930021109-9c4e6c59ccf1
 	github.com/go-logr/logr v1.4.3
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/labstack/echo/v5 v5.0.4
 	github.com/mark3labs/mcp-go v0.45.0
 	github.com/onsi/ginkgo/v2 v2.28.1
