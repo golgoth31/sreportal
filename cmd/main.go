@@ -55,6 +55,7 @@ import (
 	"github.com/golgoth31/sreportal/internal/mcp"
 	alertmanagerreadstore "github.com/golgoth31/sreportal/internal/readstore/alertmanager"
 	dnsreadstore "github.com/golgoth31/sreportal/internal/readstore/dns"
+	netpolreadstore "github.com/golgoth31/sreportal/internal/readstore/netpol"
 	portalreadstore "github.com/golgoth31/sreportal/internal/readstore/portal"
 	releasereadstore "github.com/golgoth31/sreportal/internal/readstore/release"
 	releaseservice "github.com/golgoth31/sreportal/internal/release"
@@ -414,11 +415,14 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Alertmanager")
 		os.Exit(1)
 	}
-	if err := controller.NewNetworkFlowDiscoveryReconciler(
+	flowGraphStore := netpolreadstore.NewFlowGraphStore()
+	nfdReconciler := controller.NewNetworkFlowDiscoveryReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),
 		remoteCache,
-	).SetupWithManager(mgr); err != nil {
+	)
+	nfdReconciler.SetFlowGraphWriter(flowGraphStore)
+	if err := nfdReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "NetworkFlowDiscovery")
 		os.Exit(1)
 	}
@@ -470,6 +474,7 @@ func main() {
 		FQDNReader:          fqdnStore,
 		PortalReader:        portalStore,
 		AlertmanagerReader:  alertmanagerStore,
+		FlowGraphReader:     flowGraphStore,
 	}
 	if devMode {
 		setupLog.Info("dev mode enabled: serving web UI from filesystem", "web-root", webRoot)
@@ -504,7 +509,7 @@ func main() {
 		alertsMcpServer := mcp.NewAlertsServer(alertmanagerStore)
 		metricsMcpServer := mcp.NewMetricsServer(ctrlmetrics.Registry)
 		releasesMcpServer := mcp.NewReleasesServer(releaseStore)
-		netpolMcpServer := mcp.NewNetpolServer(mgr.GetClient())
+		netpolMcpServer := mcp.NewNetpolServer(flowGraphStore)
 
 		switch mcpTransport {
 		case "stdio":

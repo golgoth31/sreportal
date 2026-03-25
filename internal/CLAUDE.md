@@ -27,9 +27,20 @@ Registers:
 3. **PortalReconciler** - Simple status updates + EnsureMainPortalRunnable
 4. **AlertmanagerReconciler** - Chain FetchAlerts → UpdateStatus (Alertmanager API client injected)
 5. **DNSWebhook** - Validates `spec.portalRef` exists
-6. **Web server** (goroutine) - Echo v5 with h2c serving Connect handlers + React SPA + MCP at `/mcp`, `/mcp/dns`, `/mcp/alerts`
+6. **Web server** (goroutine) - Echo v5 with h2c serving Connect handlers + React SPA + MCP at `/mcp`, `/mcp/dns`, `/mcp/alerts`, `/mcp/metrics`, `/mcp/releases`, `/mcp/netpol`
+
+All ReadStores are created in `cmd/main.go` and wired: controllers receive writers, gRPC/MCP receive readers.
 
 K8s scheme registers: core types, external-dns v1alpha1, sreportal v1alpha1.
+
+## ReadStore (CQRS Read Path)
+
+All gRPC/MCP services read from in-memory ReadStores (`internal/readstore/`) instead of the K8s API. Controllers push projections after reconciliation.
+
+- Generic `readstore.Store[T]` — `map[string][]T` + `RWMutex` + broadcast channel
+- Domain interfaces in `internal/domain/<ctx>/reader.go`, `writer.go`
+- Store implementations in `internal/readstore/<ctx>/`
+- Bounded contexts: DNS, Portal, Alertmanager, Network Policy (dual stores + portalRef), Release
 
 ## Operator Configuration
 

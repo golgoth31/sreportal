@@ -25,9 +25,7 @@ import (
 	"slices"
 	"strings"
 
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	domainnetpol "github.com/golgoth31/sreportal/internal/domain/netpol"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/metrics"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -35,16 +33,16 @@ import (
 )
 
 // NetpolServer wraps the MCP server for network policy analysis.
-// It reads pre-computed flow graphs from FlowNodeSet and FlowEdgeSet CRDs.
+// It reads pre-computed flow graphs from the in-memory FlowGraphReader.
 // Mount at /mcp/netpol for Streamable HTTP.
 type NetpolServer struct {
 	mcpServer *server.MCPServer
-	client    client.Client
+	reader    domainnetpol.FlowGraphReader
 }
 
 // NewNetpolServer creates a new MCP server instance for network policies.
-func NewNetpolServer(k8sClient client.Client) *NetpolServer {
-	s := &NetpolServer{client: k8sClient}
+func NewNetpolServer(reader domainnetpol.FlowGraphReader) *NetpolServer {
+	s := &NetpolServer{reader: reader}
 
 	hooks := &server.Hooks{}
 	hooks.AddOnRegisterSession(func(ctx context.Context, session server.ClientSession) {
@@ -147,143 +145,42 @@ type netpolEdgeResult struct {
 	EdgeType string `json:"edge_type"`
 }
 
-// resolveAllowedDiscoveries returns the set of NetworkFlowDiscovery names linked to the
-// given portal. Returns nil when no portal filter is specified (all discoveries allowed).
-func (s *NetpolServer) resolveAllowedDiscoveries(ctx context.Context, portal string) (map[string]struct{}, error) {
-	if portal == "" {
-		return nil, nil
+func flowNodeToMCPResult(n domainnetpol.FlowNode) netpolNodeResult {
+	return netpolNodeResult{
+		ID: n.ID, Label: n.Label, Namespace: n.Namespace, NodeType: n.NodeType, Group: n.Group,
 	}
-
-	var nfdList sreportalv1alpha1.NetworkFlowDiscoveryList
-	if err := s.client.List(ctx, &nfdList, client.MatchingFields{"spec.portalRef": portal}); err != nil {
-		return nil, fmt.Errorf("resolve allowed discoveries for portal %q: %w", portal, err)
-	}
-
-	allowed := make(map[string]struct{}, len(nfdList.Items))
-	for _, nfd := range nfdList.Items {
-		allowed[nfd.Name] = struct{}{}
-	}
-
-	return allowed, nil
 }
 
-// loadGraph reads the pre-computed graph from FlowNodeSet and FlowEdgeSet CRDs,
-// filtering by allowed discoveries when portal filtering is active.
-func (s *NetpolServer) loadGraph(ctx context.Context, allowed map[string]struct{}) (map[string]netpolNodeResult, map[string]netpolEdgeResult, error) {
-	var nodeSetList sreportalv1alpha1.FlowNodeSetList
-	if err := s.client.List(ctx, &nodeSetList); err != nil {
-		return nil, nil, fmt.Errorf("list FlowNodeSet resources: %w", err)
+func flowEdgeToMCPResult(e domainnetpol.FlowEdge) netpolEdgeResult {
+	return netpolEdgeResult{From: e.From, To: e.To, EdgeType: e.EdgeType}
+}
+
+// loadGraph reads the full graph from the store for the given portal, returning maps for local processing.
+func (s *NetpolServer) loadGraph(ctx context.Context, portal string) (map[string]netpolNodeResult, map[string]netpolEdgeResult, error) {
+	filters := domainnetpol.FlowGraphFilters{Portal: portal}
+
+	nodes, err := s.reader.ListNodes(ctx, filters)
+	if err != nil {
+		return nil, nil, fmt.Errorf("list nodes: %w", err)
 	}
 
-	var edgeSetList sreportalv1alpha1.FlowEdgeSetList
-	if err := s.client.List(ctx, &edgeSetList); err != nil {
-		return nil, nil, fmt.Errorf("list FlowEdgeSet resources: %w", err)
+	edges, err := s.reader.ListEdges(ctx, filters)
+	if err != nil {
+		return nil, nil, fmt.Errorf("list edges: %w", err)
 	}
 
-	nodeMap := make(map[string]netpolNodeResult)
-	for _, ns := range nodeSetList.Items {
-		if allowed != nil {
-			if _, ok := allowed[ns.Spec.DiscoveryRef]; !ok {
-				continue
-			}
-		}
-
-		for _, n := range ns.Status.Nodes {
-			if _, ok := nodeMap[n.ID]; !ok {
-				nodeMap[n.ID] = netpolNodeResult{
-					ID: n.ID, Label: n.Label, Namespace: n.Namespace, NodeType: n.NodeType, Group: n.Group,
-				}
-			}
-		}
+	nodeMap := make(map[string]netpolNodeResult, len(nodes))
+	for _, n := range nodes {
+		nodeMap[n.ID] = flowNodeToMCPResult(n)
 	}
 
-	edgeMap := make(map[string]netpolEdgeResult)
-	for _, es := range edgeSetList.Items {
-		if allowed != nil {
-			if _, ok := allowed[es.Spec.DiscoveryRef]; !ok {
-				continue
-			}
-		}
-
-		for _, e := range es.Status.Edges {
-			key := e.From + "|" + e.To + "|" + e.EdgeType
-			if _, ok := edgeMap[key]; !ok {
-				edgeMap[key] = netpolEdgeResult{From: e.From, To: e.To, EdgeType: e.EdgeType}
-			}
-		}
+	edgeMap := make(map[string]netpolEdgeResult, len(edges))
+	for _, e := range edges {
+		key := e.From + "|" + e.To + "|" + e.EdgeType
+		edgeMap[key] = flowEdgeToMCPResult(e)
 	}
 
 	return nodeMap, edgeMap, nil
-}
-
-// mcpFilterByNamespace removes nodes not in the given namespace and prunes orphan edges.
-func mcpFilterByNamespace(nodeMap map[string]netpolNodeResult, edgeMap map[string]netpolEdgeResult, namespace string) {
-	if namespace == "" {
-		return
-	}
-
-	for id, n := range nodeMap {
-		if n.Namespace != namespace {
-			delete(nodeMap, id)
-		}
-	}
-
-	mcpPruneOrphanEdges(nodeMap, edgeMap)
-}
-
-// mcpFilterBySearch keeps only nodes matching the search term and their direct neighbors (1 hop).
-// Matches on label, group, and namespace (case-insensitive).
-func mcpFilterBySearch(nodeMap map[string]netpolNodeResult, edgeMap map[string]netpolEdgeResult, search string) {
-	search = strings.ToLower(search)
-	if search == "" {
-		return
-	}
-
-	directMatch := make(map[string]bool)
-	for id, n := range nodeMap {
-		if strings.Contains(strings.ToLower(n.Label), search) ||
-			strings.Contains(strings.ToLower(n.Group), search) ||
-			strings.Contains(strings.ToLower(n.Namespace), search) {
-			directMatch[id] = true
-		}
-	}
-
-	matched := make(map[string]bool, len(directMatch))
-	for id := range directMatch {
-		matched[id] = true
-	}
-
-	for _, e := range edgeMap {
-		if directMatch[e.From] {
-			matched[e.To] = true
-		}
-
-		if directMatch[e.To] {
-			matched[e.From] = true
-		}
-	}
-
-	for id := range nodeMap {
-		if !matched[id] {
-			delete(nodeMap, id)
-		}
-	}
-
-	mcpPruneOrphanEdges(nodeMap, edgeMap)
-}
-
-// mcpPruneOrphanEdges removes edges whose source or target node is no longer in nodeMap.
-func mcpPruneOrphanEdges(nodeMap map[string]netpolNodeResult, edgeMap map[string]netpolEdgeResult) {
-	for key, e := range edgeMap {
-		if _, ok := nodeMap[e.From]; !ok {
-			delete(edgeMap, key)
-			continue
-		}
-
-		if _, ok := nodeMap[e.To]; !ok {
-			delete(edgeMap, key)
-		}
-	}
 }
 
 func mcpSortedNodes(nodeMap map[string]netpolNodeResult) []netpolNodeResult {
@@ -325,27 +222,41 @@ func (s *NetpolServer) handleListFlows(ctx context.Context, request mcp.CallTool
 	namespace := request.GetString("namespace", "")
 	search := request.GetString("search", "")
 
-	allowed, err := s.resolveAllowedDiscoveries(ctx, portal)
+	filters := domainnetpol.FlowGraphFilters{
+		Portal:    portal,
+		Namespace: namespace,
+		Search:    search,
+	}
+
+	nodes, err := s.reader.ListNodes(ctx, filters)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	nodeMap, edgeMap, err := s.loadGraph(ctx, allowed)
+	edges, err := s.reader.ListEdges(ctx, filters)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	mcpFilterByNamespace(nodeMap, edgeMap, namespace)
-	mcpFilterBySearch(nodeMap, edgeMap, search)
+	nodeMap := make(map[string]netpolNodeResult, len(nodes))
+	for _, n := range nodes {
+		nodeMap[n.ID] = flowNodeToMCPResult(n)
+	}
 
-	nodes := mcpSortedNodes(nodeMap)
-	edges := mcpSortedEdges(edgeMap)
+	edgeMap := make(map[string]netpolEdgeResult, len(edges))
+	for _, e := range edges {
+		key := e.From + "|" + e.To + "|" + e.EdgeType
+		edgeMap[key] = flowEdgeToMCPResult(e)
+	}
+
+	sortedNodes := mcpSortedNodes(nodeMap)
+	sortedEdges := mcpSortedEdges(edgeMap)
 
 	result := map[string]any{
-		"total_nodes": len(nodes),
-		"total_edges": len(edges),
-		"nodes":       nodes,
-		"edges":       edges,
+		"total_nodes": len(sortedNodes),
+		"total_edges": len(sortedEdges),
+		"nodes":       sortedNodes,
+		"edges":       sortedEdges,
 	}
 
 	jsonBytes, err := json.MarshalIndent(result, "", "  ")
@@ -373,12 +284,7 @@ func (s *NetpolServer) handleGetServiceFlows(ctx context.Context, request mcp.Ca
 	svcName := request.GetString("service", "")
 	portal := request.GetString("portal", "")
 
-	allowed, err := s.resolveAllowedDiscoveries(ctx, portal)
-	if err != nil {
-		return mcp.NewToolResultError(err.Error()), nil
-	}
-
-	nodeMap, edgeMap, err := s.loadGraph(ctx, allowed)
+	nodeMap, edgeMap, err := s.loadGraph(ctx, portal)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
@@ -388,6 +294,7 @@ func (s *NetpolServer) handleGetServiceFlows(ctx context.Context, request mcp.Ca
 		if strings.EqualFold(n.Label, svcName) {
 			n := n
 			found = &n
+
 			break
 		}
 	}
@@ -439,12 +346,7 @@ func (s *NetpolServer) handleImpactAnalysis(ctx context.Context, request mcp.Cal
 	portal := request.GetString("portal", "")
 	maxDepth := int(request.GetFloat("max_depth", 4))
 
-	allowed, err := s.resolveAllowedDiscoveries(ctx, portal)
-	if err != nil {
-		return mcp.NewToolResultError(err.Error()), nil
-	}
-
-	nodeMap, edgeMap, err := s.loadGraph(ctx, allowed)
+	nodeMap, edgeMap, err := s.loadGraph(ctx, portal)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
@@ -453,6 +355,7 @@ func (s *NetpolServer) handleImpactAnalysis(ctx context.Context, request mcp.Cal
 	for id, n := range nodeMap {
 		if strings.EqualFold(n.Label, resourceName) {
 			targetID = id
+
 			break
 		}
 	}

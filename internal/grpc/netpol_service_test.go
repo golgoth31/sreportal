@@ -23,45 +23,21 @@ import (
 	"connectrpc.com/connect"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	domainnetpol "github.com/golgoth31/sreportal/internal/domain/netpol"
 	svcgrpc "github.com/golgoth31/sreportal/internal/grpc"
 	netpolv1 "github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1"
+	netpolreadstore "github.com/golgoth31/sreportal/internal/readstore/netpol"
 )
 
 // --- helpers ---
-
-func makeFlowNodeSet(name, discoveryRef string, nodes []sreportalv1alpha1.FlowNode) *sreportalv1alpha1.FlowNodeSet {
-	return &sreportalv1alpha1.FlowNodeSet{
-		ObjectMeta: metav1.ObjectMeta{Name: name},
-		Spec:       sreportalv1alpha1.FlowNodeSetSpec{DiscoveryRef: discoveryRef},
-		Status:     sreportalv1alpha1.FlowNodeSetStatus{Nodes: nodes},
-	}
-}
-
-func makeFlowEdgeSet(name, discoveryRef string, edges []sreportalv1alpha1.FlowEdge) *sreportalv1alpha1.FlowEdgeSet {
-	return &sreportalv1alpha1.FlowEdgeSet{
-		ObjectMeta: metav1.ObjectMeta{Name: name},
-		Spec:       sreportalv1alpha1.FlowEdgeSetSpec{DiscoveryRef: discoveryRef},
-		Status:     sreportalv1alpha1.FlowEdgeSetStatus{Edges: edges},
-	}
-}
-
-func makeNFD(name, portalRef string) *sreportalv1alpha1.NetworkFlowDiscovery {
-	return &sreportalv1alpha1.NetworkFlowDiscovery{
-		ObjectMeta: metav1.ObjectMeta{Name: name},
-		Spec:       sreportalv1alpha1.NetworkFlowDiscoverySpec{PortalRef: portalRef},
-	}
-}
 
 func nodeIDs(nodes []*netpolv1.NetpolNode) []string {
 	ids := make([]string, len(nodes))
 	for i, n := range nodes {
 		ids[i] = n.Id
 	}
+
 	return ids
 }
 
@@ -70,29 +46,34 @@ func edgePairs(edges []*netpolv1.NetpolEdge) []string {
 	for i, e := range edges {
 		pairs[i] = e.From + "->" + e.To
 	}
+
 	return pairs
+}
+
+func setupStore(t *testing.T, nodes []domainnetpol.FlowNode, edges []domainnetpol.FlowEdge) *netpolreadstore.FlowGraphStore {
+	t.Helper()
+	store := netpolreadstore.NewFlowGraphStore()
+	ctx := context.Background()
+	require.NoError(t, store.ReplaceNodes(ctx, "nfd-main", "", nodes))
+	require.NoError(t, store.ReplaceEdges(ctx, "nfd-main", "", edges))
+
+	return store
 }
 
 // --- tests ---
 
 func TestListNetworkPolicies_ReturnsAllNodesAndEdges_WhenNoFilter(t *testing.T) {
-	scheme := newScheme(t)
+	store := setupStore(t,
+		[]domainnetpol.FlowNode{
+			{ID: "svc:core:api", Label: "api", Namespace: "core", NodeType: "service", Group: "Core"},
+			{ID: "svc:core:web", Label: "web", Namespace: "core", NodeType: "service", Group: "Core"},
+		},
+		[]domainnetpol.FlowEdge{
+			{From: "svc:core:web", To: "svc:core:api", EdgeType: "internal"},
+		},
+	)
 
-	nodeSet := makeFlowNodeSet("ns1", "nfd-main", []sreportalv1alpha1.FlowNode{
-		{ID: "svc:core:api", Label: "api", Namespace: "core", NodeType: "service", Group: "Core"},
-		{ID: "svc:core:web", Label: "web", Namespace: "core", NodeType: "service", Group: "Core"},
-	})
-	edgeSet := makeFlowEdgeSet("es1", "nfd-main", []sreportalv1alpha1.FlowEdge{
-		{From: "svc:core:web", To: "svc:core:api", EdgeType: "internal"},
-	})
-
-	k8sClient := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithObjects(nodeSet, edgeSet).
-		WithStatusSubresource(nodeSet, edgeSet).
-		Build()
-
-	svc := svcgrpc.NewNetworkPolicyService(k8sClient)
+	svc := svcgrpc.NewNetworkPolicyService(store)
 
 	resp, err := svc.ListNetworkPolicies(
 		context.Background(),
@@ -108,29 +89,19 @@ func TestListNetworkPolicies_ReturnsAllNodesAndEdges_WhenNoFilter(t *testing.T) 
 }
 
 func TestListNetworkPolicies_DeduplicatesNodesAndEdges_AcrossMultipleSets(t *testing.T) {
-	scheme := newScheme(t)
+	store := netpolreadstore.NewFlowGraphStore()
+	ctx := context.Background()
 
-	ns1 := makeFlowNodeSet("ns1", "nfd-a", []sreportalv1alpha1.FlowNode{
-		{ID: "svc:core:api", Label: "api", Namespace: "core", NodeType: "service", Group: "Core"},
-	})
-	ns2 := makeFlowNodeSet("ns2", "nfd-b", []sreportalv1alpha1.FlowNode{
-		{ID: "svc:core:api", Label: "api", Namespace: "core", NodeType: "service", Group: "Core"},
-		{ID: "svc:core:web", Label: "web", Namespace: "core", NodeType: "service", Group: "Core"},
-	})
-	es1 := makeFlowEdgeSet("es1", "nfd-a", []sreportalv1alpha1.FlowEdge{
-		{From: "svc:core:web", To: "svc:core:api", EdgeType: "internal"},
-	})
-	es2 := makeFlowEdgeSet("es2", "nfd-b", []sreportalv1alpha1.FlowEdge{
-		{From: "svc:core:web", To: "svc:core:api", EdgeType: "internal"},
-	})
+	sharedNode := domainnetpol.FlowNode{ID: "svc:core:api", Label: "api", Namespace: "core", NodeType: "service", Group: "Core"}
+	webNode := domainnetpol.FlowNode{ID: "svc:core:web", Label: "web", Namespace: "core", NodeType: "service", Group: "Core"}
+	sharedEdge := domainnetpol.FlowEdge{From: "svc:core:web", To: "svc:core:api", EdgeType: "internal"}
 
-	k8sClient := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithObjects(ns1, ns2, es1, es2).
-		WithStatusSubresource(ns1, ns2, es1, es2).
-		Build()
+	require.NoError(t, store.ReplaceNodes(ctx, "nfd-a", "", []domainnetpol.FlowNode{sharedNode}))
+	require.NoError(t, store.ReplaceNodes(ctx, "nfd-b", "", []domainnetpol.FlowNode{sharedNode, webNode}))
+	require.NoError(t, store.ReplaceEdges(ctx, "nfd-a", "", []domainnetpol.FlowEdge{sharedEdge}))
+	require.NoError(t, store.ReplaceEdges(ctx, "nfd-b", "", []domainnetpol.FlowEdge{sharedEdge}))
 
-	svc := svcgrpc.NewNetworkPolicyService(k8sClient)
+	svc := svcgrpc.NewNetworkPolicyService(store)
 
 	resp, err := svc.ListNetworkPolicies(
 		context.Background(),
@@ -143,34 +114,19 @@ func TestListNetworkPolicies_DeduplicatesNodesAndEdges_AcrossMultipleSets(t *tes
 }
 
 func TestListNetworkPolicies_FiltersByPortal(t *testing.T) {
-	scheme := newScheme(t)
+	store := netpolreadstore.NewFlowGraphStore()
+	ctx := context.Background()
 
-	nfdMain := makeNFD("nfd-main", "main")
-	nfdOther := makeNFD("nfd-other", "other")
-
-	nsMain := makeFlowNodeSet("ns-main", "nfd-main", []sreportalv1alpha1.FlowNode{
+	require.NoError(t, store.ReplaceNodes(ctx, "nfd-main", "main", []domainnetpol.FlowNode{
 		{ID: "svc:core:api", Label: "api", Namespace: "core", NodeType: "service", Group: "Core"},
-	})
-	nsOther := makeFlowNodeSet("ns-other", "nfd-other", []sreportalv1alpha1.FlowNode{
+	}))
+	require.NoError(t, store.ReplaceNodes(ctx, "nfd-other", "other", []domainnetpol.FlowNode{
 		{ID: "svc:pay:stripe", Label: "stripe", Namespace: "pay", NodeType: "external", Group: "Pay"},
-	})
-	esMain := makeFlowEdgeSet("es-main", "nfd-main", []sreportalv1alpha1.FlowEdge{})
-	esOther := makeFlowEdgeSet("es-other", "nfd-other", []sreportalv1alpha1.FlowEdge{})
+	}))
+	require.NoError(t, store.ReplaceEdges(ctx, "nfd-main", "main", nil))
+	require.NoError(t, store.ReplaceEdges(ctx, "nfd-other", "other", nil))
 
-	k8sClient := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithObjects(nfdMain, nfdOther, nsMain, nsOther, esMain, esOther).
-		WithStatusSubresource(nsMain, nsOther, esMain, esOther).
-		WithIndex(&sreportalv1alpha1.NetworkFlowDiscovery{}, "spec.portalRef", func(o client.Object) []string {
-			nfd := o.(*sreportalv1alpha1.NetworkFlowDiscovery)
-			if nfd.Spec.PortalRef == "" {
-				return nil
-			}
-			return []string{nfd.Spec.PortalRef}
-		}).
-		Build()
-
-	svc := svcgrpc.NewNetworkPolicyService(k8sClient)
+	svc := svcgrpc.NewNetworkPolicyService(store)
 
 	resp, err := svc.ListNetworkPolicies(
 		context.Background(),
@@ -183,23 +139,17 @@ func TestListNetworkPolicies_FiltersByPortal(t *testing.T) {
 }
 
 func TestListNetworkPolicies_FiltersByNamespace(t *testing.T) {
-	scheme := newScheme(t)
+	store := setupStore(t,
+		[]domainnetpol.FlowNode{
+			{ID: "svc:core:api", Label: "api", Namespace: "core", NodeType: "service", Group: "Core"},
+			{ID: "svc:pay:stripe", Label: "stripe", Namespace: "pay", NodeType: "external", Group: "Pay"},
+		},
+		[]domainnetpol.FlowEdge{
+			{From: "svc:core:api", To: "svc:pay:stripe", EdgeType: "cross-pl"},
+		},
+	)
 
-	nodeSet := makeFlowNodeSet("ns1", "nfd-main", []sreportalv1alpha1.FlowNode{
-		{ID: "svc:core:api", Label: "api", Namespace: "core", NodeType: "service", Group: "Core"},
-		{ID: "svc:pay:stripe", Label: "stripe", Namespace: "pay", NodeType: "external", Group: "Pay"},
-	})
-	edgeSet := makeFlowEdgeSet("es1", "nfd-main", []sreportalv1alpha1.FlowEdge{
-		{From: "svc:core:api", To: "svc:pay:stripe", EdgeType: "cross-pl"},
-	})
-
-	k8sClient := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithObjects(nodeSet, edgeSet).
-		WithStatusSubresource(nodeSet, edgeSet).
-		Build()
-
-	svc := svcgrpc.NewNetworkPolicyService(k8sClient)
+	svc := svcgrpc.NewNetworkPolicyService(store)
 
 	resp, err := svc.ListNetworkPolicies(
 		context.Background(),
@@ -213,21 +163,16 @@ func TestListNetworkPolicies_FiltersByNamespace(t *testing.T) {
 }
 
 func TestListNetworkPolicies_SearchMatchesLabelGroupAndNamespace(t *testing.T) {
-	scheme := newScheme(t)
+	store := setupStore(t,
+		[]domainnetpol.FlowNode{
+			{ID: "svc:core:api", Label: "api", Namespace: "core", NodeType: "service", Group: "Core"},
+			{ID: "svc:pay:stripe", Label: "stripe", Namespace: "pay", NodeType: "external", Group: "Pay"},
+			{ID: "svc:core:web", Label: "web", Namespace: "core", NodeType: "service", Group: "Core"},
+		},
+		nil,
+	)
 
-	nodeSet := makeFlowNodeSet("ns1", "nfd-main", []sreportalv1alpha1.FlowNode{
-		{ID: "svc:core:api", Label: "api", Namespace: "core", NodeType: "service", Group: "Core"},
-		{ID: "svc:pay:stripe", Label: "stripe", Namespace: "pay", NodeType: "external", Group: "Pay"},
-		{ID: "svc:core:web", Label: "web", Namespace: "core", NodeType: "service", Group: "Core"},
-	})
-
-	k8sClient := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithObjects(nodeSet).
-		WithStatusSubresource(nodeSet).
-		Build()
-
-	svc := svcgrpc.NewNetworkPolicyService(k8sClient)
+	svc := svcgrpc.NewNetworkPolicyService(store)
 
 	cases := []struct {
 		name    string
@@ -269,28 +214,19 @@ func TestListNetworkPolicies_SearchMatchesLabelGroupAndNamespace(t *testing.T) {
 }
 
 func TestListNetworkPolicies_SearchExpandsToDirectNeighbors(t *testing.T) {
-	// Graph: A -> B -> C
-	// Search for "api" (matches A only).
-	// Expected: A and B (1-hop neighbor), NOT C.
-	scheme := newScheme(t)
+	store := setupStore(t,
+		[]domainnetpol.FlowNode{
+			{ID: "a", Label: "api", Namespace: "core", NodeType: "service", Group: "Core"},
+			{ID: "b", Label: "backend", Namespace: "core", NodeType: "service", Group: "Core"},
+			{ID: "c", Label: "cache", Namespace: "core", NodeType: "database", Group: "Core"},
+		},
+		[]domainnetpol.FlowEdge{
+			{From: "a", To: "b", EdgeType: "internal"},
+			{From: "b", To: "c", EdgeType: "internal"},
+		},
+	)
 
-	nodeSet := makeFlowNodeSet("ns1", "nfd-main", []sreportalv1alpha1.FlowNode{
-		{ID: "a", Label: "api", Namespace: "core", NodeType: "service", Group: "Core"},
-		{ID: "b", Label: "backend", Namespace: "core", NodeType: "service", Group: "Core"},
-		{ID: "c", Label: "cache", Namespace: "core", NodeType: "database", Group: "Core"},
-	})
-	edgeSet := makeFlowEdgeSet("es1", "nfd-main", []sreportalv1alpha1.FlowEdge{
-		{From: "a", To: "b", EdgeType: "internal"},
-		{From: "b", To: "c", EdgeType: "internal"},
-	})
-
-	k8sClient := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithObjects(nodeSet, edgeSet).
-		WithStatusSubresource(nodeSet, edgeSet).
-		Build()
-
-	svc := svcgrpc.NewNetworkPolicyService(k8sClient)
+	svc := svcgrpc.NewNetworkPolicyService(store)
 
 	resp, err := svc.ListNetworkPolicies(
 		context.Background(),
@@ -308,13 +244,9 @@ func TestListNetworkPolicies_SearchExpandsToDirectNeighbors(t *testing.T) {
 }
 
 func TestListNetworkPolicies_EmptyState_ReturnsEmptyGraph(t *testing.T) {
-	scheme := newScheme(t)
+	store := netpolreadstore.NewFlowGraphStore()
 
-	k8sClient := fake.NewClientBuilder().
-		WithScheme(scheme).
-		Build()
-
-	svc := svcgrpc.NewNetworkPolicyService(k8sClient)
+	svc := svcgrpc.NewNetworkPolicyService(store)
 
 	resp, err := svc.ListNetworkPolicies(
 		context.Background(),
@@ -327,25 +259,19 @@ func TestListNetworkPolicies_EmptyState_ReturnsEmptyGraph(t *testing.T) {
 }
 
 func TestListNetworkPolicies_SortOrder_IsDeterministic(t *testing.T) {
-	scheme := newScheme(t)
+	store := setupStore(t,
+		[]domainnetpol.FlowNode{
+			{ID: "svc:pay:z", Label: "z-svc", Namespace: "pay", NodeType: "service", Group: "Pay"},
+			{ID: "svc:core:a", Label: "a-svc", Namespace: "core", NodeType: "service", Group: "Core"},
+			{ID: "svc:core:b", Label: "b-svc", Namespace: "core", NodeType: "service", Group: "Core"},
+		},
+		[]domainnetpol.FlowEdge{
+			{From: "svc:pay:z", To: "svc:core:a", EdgeType: "cross-pl"},
+			{From: "svc:core:a", To: "svc:core:b", EdgeType: "internal"},
+		},
+	)
 
-	nodeSet := makeFlowNodeSet("ns1", "nfd-main", []sreportalv1alpha1.FlowNode{
-		{ID: "svc:pay:z", Label: "z-svc", Namespace: "pay", NodeType: "service", Group: "Pay"},
-		{ID: "svc:core:a", Label: "a-svc", Namespace: "core", NodeType: "service", Group: "Core"},
-		{ID: "svc:core:b", Label: "b-svc", Namespace: "core", NodeType: "service", Group: "Core"},
-	})
-	edgeSet := makeFlowEdgeSet("es1", "nfd-main", []sreportalv1alpha1.FlowEdge{
-		{From: "svc:pay:z", To: "svc:core:a", EdgeType: "cross-pl"},
-		{From: "svc:core:a", To: "svc:core:b", EdgeType: "internal"},
-	})
-
-	k8sClient := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithObjects(nodeSet, edgeSet).
-		WithStatusSubresource(nodeSet, edgeSet).
-		Build()
-
-	svc := svcgrpc.NewNetworkPolicyService(k8sClient)
+	svc := svcgrpc.NewNetworkPolicyService(store)
 
 	resp, err := svc.ListNetworkPolicies(
 		context.Background(),

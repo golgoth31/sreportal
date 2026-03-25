@@ -14,23 +14,26 @@ graph TB
 
     subgraph Pod["SRE Portal Pod (single container)"]
         Controllers["Controllers\n(controller-runtime)"]
+        ReadStore["ReadStore\n(in-memory projections)"]
         API["Connect gRPC API\n(h2c)"]
         WebUI["Web UI\n(React SPA / Echo v5)"]
-        MCP["MCP Servers\n(/mcp, /mcp/dns, /mcp/alerts,\n/mcp/metrics, /mcp/releases)"]
+        MCP["MCP Servers\n(/mcp, /mcp/dns, /mcp/alerts,\n/mcp/metrics, /mcp/releases,\n/mcp/netpol)"]
     end
 
+    Controllers -->|write| ReadStore
+    Controllers --> K8s["Kubernetes API Server"]
+    ReadStore -->|read| API
+    ReadStore -->|read| MCP
     WebUI --> API
-    API --> K8s["Kubernetes API Server"]
-    Controllers --> K8s
-    MCP --> K8s
 ```
 
-The four components share the same process:
+The five components share the same process:
 
-- **Controllers** reconcile CRDs using controller-runtime
-- **Connect API** serves gRPC-compatible endpoints over HTTP/2 (h2c)
+- **Controllers** reconcile CRDs using controller-runtime and push projections into the ReadStore
+- **ReadStore** holds pre-aggregated read models in-memory, decoupling reads from the Kubernetes API
+- **Connect API** serves gRPC-compatible endpoints over HTTP/2 (h2c), reading from the ReadStore
 - **Web UI** serves the React SPA as static files via Echo v5
-- **MCP Servers** expose [Model Context Protocol](https://modelcontextprotocol.io/) at `/mcp` and `/mcp/dns` (DNS/portals), `/mcp/alerts` (alerts), `/mcp/metrics` (Prometheus metrics), and `/mcp/releases` (release tracking) for AI assistant integration
+- **MCP Servers** expose [Model Context Protocol](https://modelcontextprotocol.io/) at `/mcp` and `/mcp/dns` (DNS/portals), `/mcp/alerts` (alerts), `/mcp/metrics` (Prometheus metrics), `/mcp/releases` (release tracking), and `/mcp/netpol` (network flows) for AI assistant integration
 
 ## Custom Resource Definitions
 
@@ -86,6 +89,30 @@ Dependencies point inward: controllers depend on the domain layer, but the domai
 
 All controllers are safe to run multiple times. They compute desired state from the current state and converge toward it without side effects from repeated runs.
 
+## ReadStore (CQRS Read Path)
+
+All gRPC and MCP services read from in-memory **ReadStores** instead of querying the Kubernetes API directly. Controllers write projections into these stores during reconciliation.
+
+```mermaid
+flowchart LR
+    Controller -->|"writer.Replace(key, models)"| Store["ReadStore<br/>(map + RWMutex + broadcast)"]
+    Store -->|"reader.List(ctx, filters)"| gRPC
+    Store -->|"reader.Subscribe()"| Stream["gRPC Stream"]
+    Store -->|"reader.List(ctx, filters)"| MCP
+```
+
+Each bounded context has its own domain interfaces (`internal/domain/<ctx>/reader.go`, `writer.go`) and store implementation (`internal/readstore/<ctx>/`), backed by a shared generic `readstore.Store[T]`.
+
+| Context | Store | Key | Reader | Writer |
+|---------|-------|-----|--------|--------|
+| DNS | `FQDNStore` | DNS CR resource key | `FQDNReader` | `FQDNWriter` |
+| Portal | `PortalStore` | Portal resource key | `PortalReader` | `PortalWriter` |
+| Alertmanager | `AlertmanagerStore` | Alertmanager resource key | `AlertmanagerReader` | `AlertmanagerWriter` |
+| Network Policy | `FlowGraphStore` | NFD name (dual node/edge stores + portalRef mapping) | `FlowGraphReader` | `FlowGraphWriter` |
+| Release | `ReleaseStore` | Day string (`2026-03-25`) | `ReleaseReader` | `ReleaseWriter` |
+
+Mutations broadcast to subscribers via a channel-close pattern, enabling event-driven streams (e.g. `StreamFQDNs`) without polling.
+
 ## Controllers
 
 ### DNS Controller (Chain of Responsibility)
@@ -119,17 +146,13 @@ A simple controller that sets `status.ready = true` with a `Ready` condition. It
 
 Uses the same Chain-of-Responsibility pattern as the DNS controller. The chain has two steps: **FetchAlerts** (HTTP GET to `spec.url.local`, Alertmanager API v2) and **UpdateStatus** (write `activeAlerts`, conditions, `lastReconcileTime` to status). Reconciles periodically (default ~2 minutes).
 
-### Release Controller (Cache Invalidation + TTL Cleanup)
+### Release Controller (ReadStore + TTL Cleanup)
 
 The Release controller watches Release CRs and performs two duties:
 
-1. **Cache invalidation**: invalidates the in-memory cache in the Release service whenever a CR is created, updated, or deleted. This ensures that all reads (via gRPC or MCP) are served from the cache and that external modifications (e.g. `kubectl edit`, CI pipelines) are detected immediately.
+1. **ReadStore projection**: converts Release CR entries to domain read models and pushes them to the ReadStore. External modifications (e.g. `kubectl edit`, CI pipelines) are detected immediately via the watch.
 
 2. **TTL cleanup**: checks whether the CR's day is older than the configured TTL (default: 30 days). Expired CRs are automatically deleted. Each CR is re-checked every 12 hours via `RequeueAfter`.
-
-The release service maintains two caches:
-- **Entries cache**: per-day release entries (invalidated per day)
-- **Days cache**: sorted list of all days that have Release CRs (invalidated on any CR change)
 
 ## Connect API
 
@@ -178,7 +201,7 @@ All Connect handlers share a unary interceptor (`internal/grpc/interceptor.go`) 
 
 ## MCP Servers
 
-The operator includes four built-in [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) servers on the web server port, using Streamable HTTP transport:
+The operator includes five built-in [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) servers on the web server port, using Streamable HTTP transport:
 
 **DNS / Portals** (mounted at `/mcp` and `/mcp/dns`; `/mcp` is kept for backward compatibility):
 
@@ -206,6 +229,14 @@ The operator includes four built-in [Model Context Protocol](https://modelcontex
 |------|-------------|
 | `list_releases` | List release entries for a day (`previous_day` / `next_day` in the result) |
 
+**Network Policies** (mounted at `/mcp/netpol`):
+
+| Tool | Description |
+|------|-------------|
+| `list_network_flows` | List network flow nodes and edges (optional filters: portal, namespace, search with 1-hop expansion) |
+| `get_service_flows` | Get all incoming and outgoing flows for a specific service |
+| `impact_analysis` | BFS blast radius analysis — which services are impacted if a resource goes down |
+
 ## Data Flow
 
 The complete flow from Kubernetes resource to web dashboard:
@@ -216,14 +247,16 @@ flowchart TD
     Source["Source Controller\n(periodic)"]
     DNSRecord["DNSRecord CRs\n(one per portal+sourceType)"]
     DNSCtrl["DNS Controller\n(chain)"]
-    Status["DNS.status.groups"]
+    Store["ReadStore\n(in-memory)"]
+    API["Connect API / MCP"]
     WebUI["Web UI\n(React SPA)"]
 
     K8s -->|"external-dns.alpha.kubernetes.io/hostname annotation"| Source
     Source -->|"Enrich with sreportal.io/portal, sreportal.io/groups, sreportal.io/ignore\nRoute to portal (ignored endpoints dropped)"| DNSRecord
     DNSRecord -->|"Watched by DNS controller"| DNSCtrl
-    DNSCtrl -->|"Aggregate DNSRecords + manual entries"| Status
-    Status -->|"Read by Connect API"| WebUI
+    DNSCtrl -->|"Push projections"| Store
+    Store -->|"Read by"| API
+    API --> WebUI
 ```
 
 ## Owner References

@@ -39,6 +39,7 @@ import (
 	"github.com/golgoth31/sreportal/internal/config"
 	domainalertmanager "github.com/golgoth31/sreportal/internal/domain/alertmanagerreadmodel"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
+	domainnetpol "github.com/golgoth31/sreportal/internal/domain/netpol"
 	domainportal "github.com/golgoth31/sreportal/internal/domain/portal"
 	domainrelease "github.com/golgoth31/sreportal/internal/domain/release"
 	"github.com/golgoth31/sreportal/internal/grpc"
@@ -82,6 +83,9 @@ type Config struct {
 
 	// AlertmanagerReader is the read-side interface for Alertmanager data (provided by the ReadStore)
 	AlertmanagerReader domainalertmanager.AlertmanagerReader
+
+	// FlowGraphReader is the read-side interface for network flow graph data (provided by the ReadStore)
+	FlowGraphReader domainnetpol.FlowGraphReader
 }
 
 // Server is the web server for the SRE Portal
@@ -141,7 +145,7 @@ func (s *Server) setupRoutes() {
 	amPath, amHandler := sreportalv1connect.NewAlertmanagerServiceHandler(alertmanagerService, connectOpts)
 	s.echo.Any(amPath+"*", echo.WrapHandler(amHandler))
 
-	netpolService := grpc.NewNetworkPolicyService(s.client)
+	netpolService := grpc.NewNetworkPolicyService(s.config.FlowGraphReader)
 	netpolPath, netpolHandler := sreportalv1connect.NewNetworkPolicyServiceHandler(netpolService, connectOpts)
 	s.echo.Any(netpolPath+"*", echo.WrapHandler(netpolHandler))
 
