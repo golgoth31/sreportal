@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.21.2](https://github.com/golgoth31/sreportal/compare/v1.21.1...v1.21.2) (2026-03-25)
+
+
+### Bug Fixes
+
+* **netpol:** add portal filtering and fix data mixing across portals ([6632c09](https://github.com/golgoth31/sreportal/commit/6632c0919ece2ac374c8a60cd327f7d056e25076))
+
 ## [1.21.1](https://github.com/golgoth31/sreportal/compare/v1.21.0...v1.21.1) (2026-03-25)
 
 
