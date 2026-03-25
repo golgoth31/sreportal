@@ -24,57 +24,49 @@ import (
 	"connectrpc.com/connect"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	domainalertmanager "github.com/golgoth31/sreportal/internal/domain/alertmanagerreadmodel"
 	svcgrpc "github.com/golgoth31/sreportal/internal/grpc"
 	alertmanagerv1 "github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1"
+	amstore "github.com/golgoth31/sreportal/internal/readstore/alertmanager"
 )
 
 func TestListAlerts_ReturnsAlertmanagerResources(t *testing.T) {
-	scheme := newScheme(t)
-	now := metav1.Now()
-	startsAt := metav1.NewTime(time.Date(2026, 3, 8, 10, 0, 0, 0, time.UTC))
+	ctx := context.Background()
+	now := time.Now()
+	startsAt := time.Date(2026, 3, 8, 10, 0, 0, 0, time.UTC)
 
-	am := &sreportalv1alpha1.Alertmanager{
-		ObjectMeta: metav1.ObjectMeta{Name: "am-prod", Namespace: "monitoring"},
-		Spec: sreportalv1alpha1.AlertmanagerSpec{
-			PortalRef: "main",
-			URL: sreportalv1alpha1.AlertmanagerURL{
-				Local:  "http://alertmanager:9093",
-				Remote: "https://alertmanager.example.com",
+	store := amstore.NewAlertmanagerStore()
+	_ = store.Replace(ctx, "monitoring/am-prod", domainalertmanager.AlertmanagerView{
+		Name:              "am-prod",
+		Namespace:         "monitoring",
+		PortalRef:         "main",
+		LocalURL:          "http://alertmanager:9093",
+		RemoteURL:         "https://alertmanager.example.com",
+		Ready:             true,
+		LastReconcileTime: &now,
+		Alerts: []domainalertmanager.AlertView{
+			{
+				Fingerprint: "aaa",
+				Labels:      map[string]string{"alertname": "HighCPU", "severity": "critical"},
+				Annotations: map[string]string{"summary": "CPU usage above 90%"},
+				State:       "active",
+				StartsAt:    startsAt,
+				UpdatedAt:   startsAt,
+			},
+			{
+				Fingerprint: "bbb",
+				Labels:      map[string]string{"alertname": "DiskFull", "severity": "warning"},
+				State:       "active",
+				StartsAt:    startsAt,
+				UpdatedAt:   startsAt,
 			},
 		},
-		Status: sreportalv1alpha1.AlertmanagerStatus{
-			ActiveAlerts: []sreportalv1alpha1.AlertStatus{
-				{
-					Fingerprint: "aaa",
-					Labels:      map[string]string{"alertname": "HighCPU", "severity": "critical"},
-					Annotations: map[string]string{"summary": "CPU usage above 90%"},
-					State:       "active",
-					StartsAt:    startsAt,
-					UpdatedAt:   startsAt,
-				},
-				{
-					Fingerprint: "bbb",
-					Labels:      map[string]string{"alertname": "DiskFull", "severity": "warning"},
-					State:       "active",
-					StartsAt:    startsAt,
-					UpdatedAt:   startsAt,
-				},
-			},
-			LastReconcileTime: &now,
-			Conditions: []metav1.Condition{
-				{Type: "Ready", Status: metav1.ConditionTrue, Reason: "ReconcileSucceeded", LastTransitionTime: now},
-			},
-		},
-	}
+	})
 
-	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(am).Build()
-	svc := svcgrpc.NewAlertmanagerService(c)
+	svc := svcgrpc.NewAlertmanagerService(store)
 
-	resp, err := svc.ListAlerts(context.Background(), connect.NewRequest(&alertmanagerv1.ListAlertsRequest{}))
+	resp, err := svc.ListAlerts(ctx, connect.NewRequest(&alertmanagerv1.ListAlertsRequest{}))
 	require.NoError(t, err)
 	require.Len(t, resp.Msg.Alertmanagers, 1)
 
@@ -93,54 +85,42 @@ func TestListAlerts_ReturnsAlertmanagerResources(t *testing.T) {
 }
 
 func TestListAlerts_FiltersByPortal(t *testing.T) {
-	scheme := newScheme(t)
+	ctx := context.Background()
+	store := amstore.NewAlertmanagerStore()
+	_ = store.Replace(ctx, "default/am-main", domainalertmanager.AlertmanagerView{
+		Name: "am-main", Namespace: "default", PortalRef: "main",
+		LocalURL: "http://am1:9093",
+	})
+	_ = store.Replace(ctx, "default/am-other", domainalertmanager.AlertmanagerView{
+		Name: "am-other", Namespace: "default", PortalRef: "other",
+		LocalURL: "http://am2:9093",
+	})
 
-	am1 := &sreportalv1alpha1.Alertmanager{
-		ObjectMeta: metav1.ObjectMeta{Name: "am-main", Namespace: "default"},
-		Spec: sreportalv1alpha1.AlertmanagerSpec{
-			PortalRef: "main",
-			URL:       sreportalv1alpha1.AlertmanagerURL{Local: "http://am1:9093"},
-		},
-	}
-	am2 := &sreportalv1alpha1.Alertmanager{
-		ObjectMeta: metav1.ObjectMeta{Name: "am-other", Namespace: "default"},
-		Spec: sreportalv1alpha1.AlertmanagerSpec{
-			PortalRef: "other",
-			URL:       sreportalv1alpha1.AlertmanagerURL{Local: "http://am2:9093"},
-		},
-	}
+	svc := svcgrpc.NewAlertmanagerService(store)
 
-	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(am1, am2).Build()
-	svc := svcgrpc.NewAlertmanagerService(c)
-
-	resp, err := svc.ListAlerts(context.Background(), connect.NewRequest(&alertmanagerv1.ListAlertsRequest{Portal: "main"}))
+	resp, err := svc.ListAlerts(ctx, connect.NewRequest(&alertmanagerv1.ListAlertsRequest{Portal: "main"}))
 	require.NoError(t, err)
 	require.Len(t, resp.Msg.Alertmanagers, 1)
 	assert.Equal(t, "am-main", resp.Msg.Alertmanagers[0].Name)
 }
 
 func TestListAlerts_FiltersBySearch(t *testing.T) {
-	scheme := newScheme(t)
-	startsAt := metav1.NewTime(time.Date(2026, 3, 8, 10, 0, 0, 0, time.UTC))
+	ctx := context.Background()
+	startsAt := time.Date(2026, 3, 8, 10, 0, 0, 0, time.UTC)
 
-	am := &sreportalv1alpha1.Alertmanager{
-		ObjectMeta: metav1.ObjectMeta{Name: "am-test", Namespace: "default"},
-		Spec: sreportalv1alpha1.AlertmanagerSpec{
-			PortalRef: "main",
-			URL:       sreportalv1alpha1.AlertmanagerURL{Local: "http://am:9093"},
+	store := amstore.NewAlertmanagerStore()
+	_ = store.Replace(ctx, "default/am-test", domainalertmanager.AlertmanagerView{
+		Name: "am-test", Namespace: "default", PortalRef: "main",
+		LocalURL: "http://am:9093",
+		Alerts: []domainalertmanager.AlertView{
+			{Fingerprint: "aaa", Labels: map[string]string{"alertname": "HighCPU"}, State: "active", StartsAt: startsAt, UpdatedAt: startsAt},
+			{Fingerprint: "bbb", Labels: map[string]string{"alertname": "DiskFull"}, State: "active", StartsAt: startsAt, UpdatedAt: startsAt},
 		},
-		Status: sreportalv1alpha1.AlertmanagerStatus{
-			ActiveAlerts: []sreportalv1alpha1.AlertStatus{
-				{Fingerprint: "aaa", Labels: map[string]string{"alertname": "HighCPU"}, State: "active", StartsAt: startsAt, UpdatedAt: startsAt},
-				{Fingerprint: "bbb", Labels: map[string]string{"alertname": "DiskFull"}, State: "active", StartsAt: startsAt, UpdatedAt: startsAt},
-			},
-		},
-	}
+	})
 
-	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(am).Build()
-	svc := svcgrpc.NewAlertmanagerService(c)
+	svc := svcgrpc.NewAlertmanagerService(store)
 
-	resp, err := svc.ListAlerts(context.Background(), connect.NewRequest(&alertmanagerv1.ListAlertsRequest{Search: "cpu"}))
+	resp, err := svc.ListAlerts(ctx, connect.NewRequest(&alertmanagerv1.ListAlertsRequest{Search: "cpu"}))
 	require.NoError(t, err)
 	require.Len(t, resp.Msg.Alertmanagers, 1)
 	require.Len(t, resp.Msg.Alertmanagers[0].Alerts, 1)
@@ -148,27 +128,22 @@ func TestListAlerts_FiltersBySearch(t *testing.T) {
 }
 
 func TestListAlerts_FiltersByState(t *testing.T) {
-	scheme := newScheme(t)
-	startsAt := metav1.NewTime(time.Date(2026, 3, 8, 10, 0, 0, 0, time.UTC))
+	ctx := context.Background()
+	startsAt := time.Date(2026, 3, 8, 10, 0, 0, 0, time.UTC)
 
-	am := &sreportalv1alpha1.Alertmanager{
-		ObjectMeta: metav1.ObjectMeta{Name: "am-test", Namespace: "default"},
-		Spec: sreportalv1alpha1.AlertmanagerSpec{
-			PortalRef: "main",
-			URL:       sreportalv1alpha1.AlertmanagerURL{Local: "http://am:9093"},
+	store := amstore.NewAlertmanagerStore()
+	_ = store.Replace(ctx, "default/am-test", domainalertmanager.AlertmanagerView{
+		Name: "am-test", Namespace: "default", PortalRef: "main",
+		LocalURL: "http://am:9093",
+		Alerts: []domainalertmanager.AlertView{
+			{Fingerprint: "aaa", Labels: map[string]string{"alertname": "A"}, State: "active", StartsAt: startsAt, UpdatedAt: startsAt},
+			{Fingerprint: "bbb", Labels: map[string]string{"alertname": "B"}, State: "suppressed", StartsAt: startsAt, UpdatedAt: startsAt},
 		},
-		Status: sreportalv1alpha1.AlertmanagerStatus{
-			ActiveAlerts: []sreportalv1alpha1.AlertStatus{
-				{Fingerprint: "aaa", Labels: map[string]string{"alertname": "A"}, State: "active", StartsAt: startsAt, UpdatedAt: startsAt},
-				{Fingerprint: "bbb", Labels: map[string]string{"alertname": "B"}, State: "suppressed", StartsAt: startsAt, UpdatedAt: startsAt},
-			},
-		},
-	}
+	})
 
-	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(am).Build()
-	svc := svcgrpc.NewAlertmanagerService(c)
+	svc := svcgrpc.NewAlertmanagerService(store)
 
-	resp, err := svc.ListAlerts(context.Background(), connect.NewRequest(&alertmanagerv1.ListAlertsRequest{State: "suppressed"}))
+	resp, err := svc.ListAlerts(ctx, connect.NewRequest(&alertmanagerv1.ListAlertsRequest{State: "suppressed"}))
 	require.NoError(t, err)
 	require.Len(t, resp.Msg.Alertmanagers, 1)
 	require.Len(t, resp.Msg.Alertmanagers[0].Alerts, 1)
@@ -176,38 +151,33 @@ func TestListAlerts_FiltersByState(t *testing.T) {
 }
 
 func TestListAlerts_UsesSpecRemoteURL(t *testing.T) {
-	scheme := newScheme(t)
-	startsAt := metav1.NewTime(time.Date(2026, 3, 8, 10, 0, 0, 0, time.UTC))
+	ctx := context.Background()
+	startsAt := time.Date(2026, 3, 8, 10, 0, 0, 0, time.UTC)
 
-	am := &sreportalv1alpha1.Alertmanager{
-		ObjectMeta: metav1.ObjectMeta{Name: "am-remote", Namespace: "default"},
-		Spec: sreportalv1alpha1.AlertmanagerSpec{
-			PortalRef: "remote-portal",
-			URL:       sreportalv1alpha1.AlertmanagerURL{Local: "http://portal:8080", Remote: "https://real-alertmanager.example.com"},
-			IsRemote:  true,
+	store := amstore.NewAlertmanagerStore()
+	_ = store.Replace(ctx, "default/am-remote", domainalertmanager.AlertmanagerView{
+		Name: "am-remote", Namespace: "default", PortalRef: "remote-portal",
+		LocalURL:  "http://portal:8080",
+		RemoteURL: "https://real-alertmanager.example.com",
+		Alerts: []domainalertmanager.AlertView{
+			{Fingerprint: "aaa", Labels: map[string]string{"alertname": "HighCPU"}, State: "active", StartsAt: startsAt, UpdatedAt: startsAt},
 		},
-		Status: sreportalv1alpha1.AlertmanagerStatus{
-			ActiveAlerts: []sreportalv1alpha1.AlertStatus{
-				{Fingerprint: "aaa", Labels: map[string]string{"alertname": "HighCPU"}, State: "active", StartsAt: startsAt, UpdatedAt: startsAt},
-			},
-		},
-	}
+	})
 
-	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(am).Build()
-	svc := svcgrpc.NewAlertmanagerService(c)
+	svc := svcgrpc.NewAlertmanagerService(store)
 
-	resp, err := svc.ListAlerts(context.Background(), connect.NewRequest(&alertmanagerv1.ListAlertsRequest{}))
+	resp, err := svc.ListAlerts(ctx, connect.NewRequest(&alertmanagerv1.ListAlertsRequest{}))
 	require.NoError(t, err)
 	require.Len(t, resp.Msg.Alertmanagers, 1)
 	assert.Equal(t, "https://real-alertmanager.example.com", resp.Msg.Alertmanagers[0].RemoteUrl)
 }
 
 func TestListAlerts_WhenNoAlertmanagers_ReturnsEmpty(t *testing.T) {
-	scheme := newScheme(t)
-	c := fake.NewClientBuilder().WithScheme(scheme).Build()
-	svc := svcgrpc.NewAlertmanagerService(c)
+	ctx := context.Background()
+	store := amstore.NewAlertmanagerStore()
+	svc := svcgrpc.NewAlertmanagerService(store)
 
-	resp, err := svc.ListAlerts(context.Background(), connect.NewRequest(&alertmanagerv1.ListAlertsRequest{}))
+	resp, err := svc.ListAlerts(ctx, connect.NewRequest(&alertmanagerv1.ListAlertsRequest{}))
 	require.NoError(t, err)
 	assert.Empty(t, resp.Msg.Alertmanagers)
 }

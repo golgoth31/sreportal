@@ -23,9 +23,8 @@ import (
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	domainalertmanager "github.com/golgoth31/sreportal/internal/domain/alertmanagerreadmodel"
 	alertmanagerv1 "github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1"
 	"github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1/sreportalv1connect"
 )
@@ -33,12 +32,12 @@ import (
 // AlertmanagerService implements the AlertmanagerServiceHandler interface.
 type AlertmanagerService struct {
 	sreportalv1connect.UnimplementedAlertmanagerServiceHandler
-	client client.Client
+	reader domainalertmanager.AlertmanagerReader
 }
 
 // NewAlertmanagerService creates a new AlertmanagerService.
-func NewAlertmanagerService(c client.Client) *AlertmanagerService {
-	return &AlertmanagerService{client: c}
+func NewAlertmanagerService(reader domainalertmanager.AlertmanagerReader) *AlertmanagerService {
+	return &AlertmanagerService{reader: reader}
 }
 
 // ListAlerts returns all active alerts from Alertmanager resources.
@@ -46,46 +45,33 @@ func (s *AlertmanagerService) ListAlerts(
 	ctx context.Context,
 	req *connect.Request[alertmanagerv1.ListAlertsRequest],
 ) (*connect.Response[alertmanagerv1.ListAlertsResponse], error) {
-	var amList sreportalv1alpha1.AlertmanagerList
-	listOpts := []client.ListOption{}
-
-	if req.Msg.Namespace != "" {
-		listOpts = append(listOpts, client.InNamespace(req.Msg.Namespace))
+	filters := domainalertmanager.AlertmanagerFilters{
+		Portal:    req.Msg.Portal,
+		Namespace: req.Msg.Namespace,
 	}
 
-	if err := s.client.List(ctx, &amList, listOpts...); err != nil {
+	views, err := s.reader.List(ctx, filters)
+	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	resources := make([]*alertmanagerv1.AlertmanagerResource, 0, len(amList.Items))
-	for _, am := range amList.Items {
-		if req.Msg.Portal != "" && am.Spec.PortalRef != req.Msg.Portal {
-			continue
-		}
-
-		alerts := toProtoAlerts(am.Status.ActiveAlerts, req.Msg.Search, req.Msg.State)
-
-		ready := false
-		for _, c := range am.Status.Conditions {
-			if c.Type == "Ready" && c.Status == "True" {
-				ready = true
-				break
-			}
-		}
+	resources := make([]*alertmanagerv1.AlertmanagerResource, 0, len(views))
+	for _, v := range views {
+		alerts := alertViewsToProto(v.Alerts, req.Msg.Search, req.Msg.State)
 
 		resource := &alertmanagerv1.AlertmanagerResource{
-			Name:      am.Name,
-			Namespace: am.Namespace,
-			PortalRef: am.Spec.PortalRef,
-			LocalUrl:  am.Spec.URL.Local,
-			RemoteUrl: am.Spec.URL.Remote,
+			Name:      v.Name,
+			Namespace: v.Namespace,
+			PortalRef: v.PortalRef,
+			LocalUrl:  v.LocalURL,
+			RemoteUrl: v.RemoteURL,
 			Alerts:    alerts,
-			Ready:     ready,
-			Silences:  toProtoSilences(am.Status.Silences),
+			Ready:     v.Ready,
+			Silences:  silenceViewsToProto(v.Silences),
 		}
 
-		if am.Status.LastReconcileTime != nil {
-			resource.LastReconcileTime = timestamppb.New(am.Status.LastReconcileTime.Time)
+		if v.LastReconcileTime != nil {
+			resource.LastReconcileTime = timestamppb.New(*v.LastReconcileTime)
 		}
 
 		resources = append(resources, resource)
@@ -103,31 +89,31 @@ func (s *AlertmanagerService) ListAlerts(
 	}), nil
 }
 
-func toProtoAlerts(statuses []sreportalv1alpha1.AlertStatus, search, stateFilter string) []*alertmanagerv1.Alert {
-	alerts := make([]*alertmanagerv1.Alert, 0, len(statuses))
+func alertViewsToProto(views []domainalertmanager.AlertView, search, stateFilter string) []*alertmanagerv1.Alert {
+	alerts := make([]*alertmanagerv1.Alert, 0, len(views))
 	searchLower := strings.ToLower(search)
 
-	for _, s := range statuses {
-		if stateFilter != "" && s.State != stateFilter {
+	for _, v := range views {
+		if stateFilter != "" && v.State != stateFilter {
 			continue
 		}
 
-		if search != "" && !matchesSearch(s, searchLower) {
+		if search != "" && !matchesAlertViewSearch(v, searchLower) {
 			continue
 		}
 
 		a := &alertmanagerv1.Alert{
-			Fingerprint: s.Fingerprint,
-			Labels:      s.Labels,
-			Annotations: s.Annotations,
-			State:       s.State,
-			StartsAt:    timestamppb.New(s.StartsAt.Time),
-			UpdatedAt:   timestamppb.New(s.UpdatedAt.Time),
-			Receivers:   s.Receivers,
-			SilencedBy:  s.SilencedBy,
+			Fingerprint: v.Fingerprint,
+			Labels:      v.Labels,
+			Annotations: v.Annotations,
+			State:       v.State,
+			StartsAt:    timestamppb.New(v.StartsAt),
+			UpdatedAt:   timestamppb.New(v.UpdatedAt),
+			Receivers:   v.Receivers,
+			SilencedBy:  v.SilencedBy,
 		}
-		if s.EndsAt != nil {
-			a.EndsAt = timestamppb.New(s.EndsAt.Time)
+		if v.EndsAt != nil {
+			a.EndsAt = timestamppb.New(*v.EndsAt)
 		}
 		alerts = append(alerts, a)
 	}
@@ -135,28 +121,28 @@ func toProtoAlerts(statuses []sreportalv1alpha1.AlertStatus, search, stateFilter
 	return alerts
 }
 
-func matchesSearch(s sreportalv1alpha1.AlertStatus, searchLower string) bool {
-	for _, v := range s.Labels {
-		if strings.Contains(strings.ToLower(v), searchLower) {
+func matchesAlertViewSearch(v domainalertmanager.AlertView, searchLower string) bool {
+	for _, val := range v.Labels {
+		if strings.Contains(strings.ToLower(val), searchLower) {
 			return true
 		}
 	}
-	for _, v := range s.Annotations {
-		if strings.Contains(strings.ToLower(v), searchLower) {
+	for _, val := range v.Annotations {
+		if strings.Contains(strings.ToLower(val), searchLower) {
 			return true
 		}
 	}
 	return false
 }
 
-func toProtoSilences(statuses []sreportalv1alpha1.SilenceStatus) []*alertmanagerv1.Silence {
-	if len(statuses) == 0 {
+func silenceViewsToProto(views []domainalertmanager.SilenceView) []*alertmanagerv1.Silence {
+	if len(views) == 0 {
 		return nil
 	}
-	silences := make([]*alertmanagerv1.Silence, 0, len(statuses))
-	for _, s := range statuses {
-		matchers := make([]*alertmanagerv1.Matcher, 0, len(s.Matchers))
-		for _, m := range s.Matchers {
+	silences := make([]*alertmanagerv1.Silence, 0, len(views))
+	for _, v := range views {
+		matchers := make([]*alertmanagerv1.Matcher, 0, len(v.Matchers))
+		for _, m := range v.Matchers {
 			matchers = append(matchers, &alertmanagerv1.Matcher{
 				Name:    m.Name,
 				Value:   m.Value,
@@ -164,14 +150,14 @@ func toProtoSilences(statuses []sreportalv1alpha1.SilenceStatus) []*alertmanager
 			})
 		}
 		silences = append(silences, &alertmanagerv1.Silence{
-			Id:        s.ID,
+			Id:        v.ID,
 			Matchers:  matchers,
-			StartsAt:  timestamppb.New(s.StartsAt.Time),
-			EndsAt:    timestamppb.New(s.EndsAt.Time),
-			Status:    s.Status,
-			CreatedBy: s.CreatedBy,
-			Comment:   s.Comment,
-			UpdatedAt: timestamppb.New(s.UpdatedAt.Time),
+			StartsAt:  timestamppb.New(v.StartsAt),
+			EndsAt:    timestamppb.New(v.EndsAt),
+			Status:    v.Status,
+			CreatedBy: v.CreatedBy,
+			Comment:   v.Comment,
+			UpdatedAt: timestamppb.New(v.UpdatedAt),
 		})
 	}
 	return silences

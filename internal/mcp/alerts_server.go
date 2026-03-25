@@ -23,24 +23,23 @@ import (
 	"net/http"
 	"strings"
 
-	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	domainalertmanager "github.com/golgoth31/sreportal/internal/domain/alertmanagerreadmodel"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/metrics"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // AlertsServer wraps the MCP server for Alertmanager alerts.
 // Mount at /mcp/alerts for Streamable HTTP.
 type AlertsServer struct {
 	mcpServer *server.MCPServer
-	client    client.Client
+	reader    domainalertmanager.AlertmanagerReader
 }
 
 // NewAlertsServer creates a new MCP server instance for alerts.
-func NewAlertsServer(k8sClient client.Client) *AlertsServer {
-	s := &AlertsServer{client: k8sClient}
+func NewAlertsServer(reader domainalertmanager.AlertmanagerReader) *AlertsServer {
+	s := &AlertsServer{reader: reader}
 
 	hooks := &server.Hooks{}
 	hooks.AddOnRegisterSession(func(ctx context.Context, session server.ClientSession) {
@@ -143,6 +142,8 @@ type AlertmanagerResult struct {
 	Silences          []SilenceResult `json:"silences,omitempty"`
 }
 
+const timeFormat = "2006-01-02T15:04:05Z07:00"
+
 // handleListAlerts handles the list_alerts tool call.
 func (s *AlertsServer) handleListAlerts(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	portal := request.GetString("portal", "")
@@ -150,27 +151,22 @@ func (s *AlertsServer) handleListAlerts(ctx context.Context, request mcp.CallToo
 	search := request.GetString("search", "")
 	stateFilter := request.GetString("state", "")
 
-	var amList sreportalv1alpha1.AlertmanagerList
-	listOpts := []client.ListOption{}
-
-	if namespace != "" {
-		listOpts = append(listOpts, client.InNamespace(namespace))
+	filters := domainalertmanager.AlertmanagerFilters{
+		Portal:    portal,
+		Namespace: namespace,
 	}
 
-	if err := s.client.List(ctx, &amList, listOpts...); err != nil {
+	views, err := s.reader.List(ctx, filters)
+	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to list Alertmanager resources: %v", err)), nil
 	}
 
-	results := make([]AlertmanagerResult, 0, len(amList.Items))
 	searchLower := strings.ToLower(search)
+	results := make([]AlertmanagerResult, 0, len(views))
 
-	for _, am := range amList.Items {
-		if portal != "" && am.Spec.PortalRef != portal {
-			continue
-		}
-
-		alerts := make([]AlertResult, 0, len(am.Status.ActiveAlerts))
-		for _, a := range am.Status.ActiveAlerts {
+	for _, v := range views {
+		alerts := make([]AlertResult, 0, len(v.Alerts))
+		for _, a := range v.Alerts {
 			if stateFilter != "" && a.State != stateFilter {
 				continue
 			}
@@ -180,15 +176,15 @@ func (s *AlertsServer) handleListAlerts(ctx context.Context, request mcp.CallToo
 
 			startsAt := ""
 			if !a.StartsAt.IsZero() {
-				startsAt = a.StartsAt.Format("2006-01-02T15:04:05Z07:00")
+				startsAt = a.StartsAt.Format(timeFormat)
 			}
 			endsAt := ""
 			if a.EndsAt != nil && !a.EndsAt.IsZero() {
-				endsAt = a.EndsAt.Format("2006-01-02T15:04:05Z07:00")
+				endsAt = a.EndsAt.Format(timeFormat)
 			}
 			updatedAt := ""
 			if !a.UpdatedAt.IsZero() {
-				updatedAt = a.UpdatedAt.Format("2006-01-02T15:04:05Z07:00")
+				updatedAt = a.UpdatedAt.Format(timeFormat)
 			}
 
 			alerts = append(alerts, AlertResult{
@@ -206,18 +202,14 @@ func (s *AlertsServer) handleListAlerts(ctx context.Context, request mcp.CallToo
 		}
 
 		lastReconcile := ""
-		if am.Status.LastReconcileTime != nil && !am.Status.LastReconcileTime.IsZero() {
-			lastReconcile = am.Status.LastReconcileTime.Format("2006-01-02T15:04:05Z07:00")
+		if v.LastReconcileTime != nil && !v.LastReconcileTime.IsZero() {
+			lastReconcile = v.LastReconcileTime.Format(timeFormat)
 		}
 
-		silences := make([]SilenceResult, 0, len(am.Status.Silences))
-		for _, s := range am.Status.Silences {
-			startsAt := s.StartsAt.Format("2006-01-02T15:04:05Z07:00")
-			endsAt := s.EndsAt.Format("2006-01-02T15:04:05Z07:00")
-			updatedAt := s.UpdatedAt.Format("2006-01-02T15:04:05Z07:00")
-
-			matchers := make([]MatcherResult, 0, len(s.Matchers))
-			for _, m := range s.Matchers {
+		silences := make([]SilenceResult, 0, len(v.Silences))
+		for _, sil := range v.Silences {
+			matchers := make([]MatcherResult, 0, len(sil.Matchers))
+			for _, m := range sil.Matchers {
 				matchers = append(matchers, MatcherResult{
 					Name:    m.Name,
 					Value:   m.Value,
@@ -226,24 +218,24 @@ func (s *AlertsServer) handleListAlerts(ctx context.Context, request mcp.CallToo
 			}
 
 			silences = append(silences, SilenceResult{
-				ID:        s.ID,
+				ID:        sil.ID,
 				Matchers:  matchers,
-				StartsAt:  startsAt,
-				EndsAt:    endsAt,
-				Status:    s.Status,
-				CreatedBy: s.CreatedBy,
-				Comment:   s.Comment,
-				UpdatedAt: updatedAt,
+				StartsAt:  sil.StartsAt.Format(timeFormat),
+				EndsAt:    sil.EndsAt.Format(timeFormat),
+				Status:    sil.Status,
+				CreatedBy: sil.CreatedBy,
+				Comment:   sil.Comment,
+				UpdatedAt: sil.UpdatedAt.Format(timeFormat),
 			})
 		}
 
 		results = append(results, AlertmanagerResult{
-			Name:              am.Name,
-			Namespace:         am.Namespace,
-			PortalRef:         am.Spec.PortalRef,
-			LocalURL:          am.Spec.URL.Local,
-			RemoteURL:         am.Spec.URL.Remote,
-			Ready:             isAlertmanagerReady(am),
+			Name:              v.Name,
+			Namespace:         v.Namespace,
+			PortalRef:         v.PortalRef,
+			LocalURL:          v.LocalURL,
+			RemoteURL:         v.RemoteURL,
+			Ready:             v.Ready,
 			LastReconcileTime: lastReconcile,
 			Alerts:            alerts,
 			Silences:          silences,
@@ -262,16 +254,7 @@ func (s *AlertsServer) handleListAlerts(ctx context.Context, request mcp.CallToo
 	return mcp.NewToolResultText(fmt.Sprintf("Found %d Alertmanager resource(s):\n\n%s", len(results), string(jsonBytes))), nil
 }
 
-func isAlertmanagerReady(am sreportalv1alpha1.Alertmanager) bool {
-	for _, c := range am.Status.Conditions {
-		if c.Type == "Ready" && c.Status == "True" {
-			return true
-		}
-	}
-	return false
-}
-
-func matchesAlertSearch(a sreportalv1alpha1.AlertStatus, searchLower string) bool {
+func matchesAlertSearch(a domainalertmanager.AlertView, searchLower string) bool {
 	for _, v := range a.Labels {
 		if strings.Contains(strings.ToLower(v), searchLower) {
 			return true

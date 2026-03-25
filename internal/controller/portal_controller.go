@@ -32,6 +32,7 @@ import (
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	alertmanagerctrl "github.com/golgoth31/sreportal/internal/controller/alertmanager"
+	domainportal "github.com/golgoth31/sreportal/internal/domain/portal"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/metrics"
 	"github.com/golgoth31/sreportal/internal/remoteclient"
@@ -46,6 +47,12 @@ type PortalReconciler struct {
 	client.Client
 	Scheme            *runtime.Scheme
 	remoteClientCache *remoteclient.Cache
+	portalWriter      domainportal.PortalWriter
+}
+
+// SetPortalWriter sets the optional PortalWriter used to push read models into the ReadStore.
+func (r *PortalReconciler) SetPortalWriter(w domainportal.PortalWriter) {
+	r.portalWriter = w
 }
 
 // NewPortalReconciler creates a new PortalReconciler
@@ -69,6 +76,9 @@ func (r *PortalReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	var portal sreportalv1alpha1.Portal
 	if err := r.Get(ctx, req.NamespacedName, &portal); err != nil {
+		if client.IgnoreNotFound(err) == nil && r.portalWriter != nil {
+			_ = r.portalWriter.Delete(ctx, req.Namespace+"/"+req.Name)
+		}
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
@@ -82,6 +92,14 @@ func (r *PortalReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		result, reconcileErr = r.reconcileRemotePortal(ctx, &portal)
 	} else {
 		reconcileErr = r.reconcileLocalPortal(ctx, &portal)
+	}
+
+	// Push portal view into the ReadStore
+	if r.portalWriter != nil {
+		resourceKey := portal.Namespace + "/" + portal.Name
+		if reconcileErr == nil {
+			_ = r.portalWriter.Replace(ctx, resourceKey, portalToView(&portal))
+		}
 	}
 
 	// Recount all portals by type only from the main portal reconciliation
@@ -352,6 +370,34 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 
 	// Requeue to periodically sync with remote
 	return ctrl.Result{RequeueAfter: DefaultRemoteSyncInterval}, nil
+}
+
+// portalToView converts a Portal CRD into a domain PortalView for the ReadStore.
+func portalToView(p *sreportalv1alpha1.Portal) domainportal.PortalView {
+	view := domainportal.PortalView{
+		Name:      p.Name,
+		Title:     p.Spec.Title,
+		Main:      p.Spec.Main,
+		SubPath:   p.Spec.SubPath,
+		Namespace: p.Namespace,
+		Ready:     p.Status.Ready,
+		IsRemote:  p.Spec.Remote != nil,
+	}
+	if p.Spec.Remote != nil {
+		view.URL = p.Spec.Remote.URL
+	}
+	if p.Status.RemoteSync != nil {
+		rs := &domainportal.RemoteSyncView{
+			LastSyncError: p.Status.RemoteSync.LastSyncError,
+			RemoteTitle:   p.Status.RemoteSync.RemoteTitle,
+			FQDNCount:     p.Status.RemoteSync.FQDNCount,
+		}
+		if p.Status.RemoteSync.LastSyncTime != nil {
+			rs.LastSyncTime = p.Status.RemoteSync.LastSyncTime.Format("2006-01-02T15:04:05Z07:00")
+		}
+		view.RemoteSync = rs
+	}
+	return view
 }
 
 // SetupWithManager sets up the controller with the Manager.

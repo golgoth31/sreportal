@@ -24,220 +24,58 @@ import (
 	"connectrpc.com/connect"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 	svcgrpc "github.com/golgoth31/sreportal/internal/grpc"
 	dnsv1 "github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1"
+	dnsstore "github.com/golgoth31/sreportal/internal/readstore/dns"
 )
 
-func newScheme(t *testing.T) *runtime.Scheme {
+func seedFQDNStore(t *testing.T) *dnsstore.FQDNStore {
 	t.Helper()
-	s := runtime.NewScheme()
-	require.NoError(t, sreportalv1alpha1.AddToScheme(s))
-	return s
+	store := dnsstore.NewFQDNStore()
+	ctx := context.Background()
+
+	now := time.Now()
+	ref, _ := domaindns.ParseResourceRef("service/production/api-svc")
+
+	err := store.Replace(ctx, "default/test-dns", []domaindns.FQDNView{
+		{
+			Name: "api.example.com", Source: domaindns.SourceExternalDNS,
+			Groups: []string{"Services"}, RecordType: "A",
+			Targets: []string{"10.0.0.1"}, LastSeen: now,
+			PortalName: "main", Namespace: "default", SyncStatus: "synced",
+			OriginRef: &ref,
+		},
+		{
+			Name: "web.example.com", Source: domaindns.SourceExternalDNS,
+			Groups: []string{"Services"}, RecordType: "A",
+			Targets: []string{"10.0.0.2"}, LastSeen: now,
+			PortalName: "main", Namespace: "default",
+		},
+		{
+			Name: "internal.example.com", Source: domaindns.SourceManual,
+			Groups: []string{"Internal"}, RecordType: "A",
+			Targets: []string{"10.0.0.3"}, LastSeen: now,
+			PortalName: "main", Namespace: "default",
+		},
+	})
+	require.NoError(t, err)
+
+	return store
 }
 
-func TestListFQDNs_NoDuplicateGroups_WhenDNSAndDNSRecordHaveSameData(t *testing.T) {
-	// Arrange: DNS with aggregated status AND DNSRecord with same endpoints.
-	// This is the normal steady-state: the DNS controller has already aggregated
-	// DNSRecord endpoints into DNS.Status.Groups.
-	scheme := newScheme(t)
-	now := metav1.NewTime(time.Now())
+func TestListFQDNs_ReturnsAllFQDNs(t *testing.T) {
+	store := seedFQDNStore(t)
+	svc := svcgrpc.NewDNSService(store)
 
-	dns := &sreportalv1alpha1.DNS{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-dns",
-			Namespace: "default",
-		},
-		Spec: sreportalv1alpha1.DNSSpec{
-			PortalRef: "main",
-		},
-		Status: sreportalv1alpha1.DNSStatus{
-			Groups: []sreportalv1alpha1.FQDNGroupStatus{
-				{
-					Name:   "Services",
-					Source: "external-dns",
-					FQDNs: []sreportalv1alpha1.FQDNStatus{
-						{
-							FQDN:       "api.example.com",
-							RecordType: "A",
-							Targets:    []string{"10.0.0.1"},
-							LastSeen:   now,
-						},
-						{
-							FQDN:       "web.example.com",
-							RecordType: "A",
-							Targets:    []string{"10.0.0.2"},
-							LastSeen:   now,
-						},
-					},
-				},
-			},
-		},
-	}
-
-	dnsRecord := &sreportalv1alpha1.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "main-service",
-			Namespace: "default",
-		},
-		Spec: sreportalv1alpha1.DNSRecordSpec{
-			SourceType: "service",
-			PortalRef:  "main",
-		},
-		Status: sreportalv1alpha1.DNSRecordStatus{
-			Endpoints: []sreportalv1alpha1.EndpointStatus{
-				{
-					DNSName:    "api.example.com",
-					RecordType: "A",
-					Targets:    []string{"10.0.0.1"},
-					LastSeen:   now,
-				},
-				{
-					DNSName:    "web.example.com",
-					RecordType: "A",
-					Targets:    []string{"10.0.0.2"},
-					LastSeen:   now,
-				},
-			},
-		},
-	}
-
-	k8sClient := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithObjects(dns, dnsRecord).
-		WithStatusSubresource(dns, dnsRecord).
-		Build()
-
-	svc := svcgrpc.NewDNSService(k8sClient)
-
-	// Act
 	resp, err := svc.ListFQDNs(
 		context.Background(),
 		connect.NewRequest(&dnsv1.ListFQDNsRequest{}),
 	)
 
-	// Assert: each FQDN should appear exactly once with no duplicate groups
 	require.NoError(t, err)
-	require.Len(t, resp.Msg.Fqdns, 2, "expected exactly 2 FQDNs, got duplicates")
-
-	for _, fqdn := range resp.Msg.Fqdns {
-		assert.Len(t, fqdn.Groups, 1,
-			"FQDN %q should have exactly 1 group, got %v", fqdn.Name, fqdn.Groups)
-		assert.Equal(t, "Services", fqdn.Groups[0],
-			"FQDN %q should be in group 'Services'", fqdn.Name)
-	}
-}
-
-func TestListFQDNs_NoDuplicateGroupNames_WhenFQDNAppearsMultipleTimesInSameGroup(t *testing.T) {
-	// Arrange: DNS with the same FQDN appearing twice in the same group
-	// (this can happen if EndpointStatusToGroups hasn't deduplicated yet)
-	scheme := newScheme(t)
-	now := metav1.NewTime(time.Now())
-
-	dns := &sreportalv1alpha1.DNS{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-dns",
-			Namespace: "default",
-		},
-		Spec: sreportalv1alpha1.DNSSpec{
-			PortalRef: "main",
-		},
-		Status: sreportalv1alpha1.DNSStatus{
-			Groups: []sreportalv1alpha1.FQDNGroupStatus{
-				{
-					Name:   "Services",
-					Source: "external-dns",
-					FQDNs: []sreportalv1alpha1.FQDNStatus{
-						{FQDN: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}, LastSeen: now},
-						{FQDN: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.2"}, LastSeen: now},
-						{FQDN: "web.example.com", RecordType: "A", Targets: []string{"10.0.0.3"}, LastSeen: now},
-					},
-				},
-			},
-		},
-	}
-
-	k8sClient := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithObjects(dns).
-		WithStatusSubresource(dns).
-		Build()
-
-	svc := svcgrpc.NewDNSService(k8sClient)
-
-	// Act
-	resp, err := svc.ListFQDNs(
-		context.Background(),
-		connect.NewRequest(&dnsv1.ListFQDNsRequest{}),
-	)
-
-	// Assert: api.example.com should appear once, and its Groups should not have duplicates
-	require.NoError(t, err)
-	require.Len(t, resp.Msg.Fqdns, 2, "expected 2 unique FQDNs")
-
-	for _, fqdn := range resp.Msg.Fqdns {
-		if fqdn.Name == "api.example.com" {
-			assert.Len(t, fqdn.Groups, 1,
-				"api.example.com should have exactly 1 group entry, got %v", fqdn.Groups)
-			assert.Equal(t, "Services", fqdn.Groups[0])
-		}
-	}
-}
-
-func TestListFQDNs_ReturnsAllFQDNs_FromDNSStatus(t *testing.T) {
-	// Arrange: DNS with groups from multiple sources, no DNSRecords
-	scheme := newScheme(t)
-	now := metav1.NewTime(time.Now())
-
-	dns := &sreportalv1alpha1.DNS{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-dns",
-			Namespace: "default",
-		},
-		Spec: sreportalv1alpha1.DNSSpec{
-			PortalRef: "main",
-		},
-		Status: sreportalv1alpha1.DNSStatus{
-			Groups: []sreportalv1alpha1.FQDNGroupStatus{
-				{
-					Name:   "Services",
-					Source: "external-dns",
-					FQDNs: []sreportalv1alpha1.FQDNStatus{
-						{FQDN: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}, LastSeen: now},
-					},
-				},
-				{
-					Name:   "Internal",
-					Source: "manual",
-					FQDNs: []sreportalv1alpha1.FQDNStatus{
-						{FQDN: "internal.example.com", RecordType: "A", Targets: []string{"10.0.0.2"}, LastSeen: now},
-					},
-				},
-			},
-		},
-	}
-
-	k8sClient := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithObjects(dns).
-		WithStatusSubresource(dns).
-		Build()
-
-	svc := svcgrpc.NewDNSService(k8sClient)
-
-	// Act
-	resp, err := svc.ListFQDNs(
-		context.Background(),
-		connect.NewRequest(&dnsv1.ListFQDNsRequest{}),
-	)
-
-	// Assert
-	require.NoError(t, err)
-	require.Len(t, resp.Msg.Fqdns, 2)
+	require.Len(t, resp.Msg.Fqdns, 3)
 
 	fqdnsByName := make(map[string]*dnsv1.FQDN, len(resp.Msg.Fqdns))
 	for _, f := range resp.Msg.Fqdns {
@@ -250,141 +88,84 @@ func TestListFQDNs_ReturnsAllFQDNs_FromDNSStatus(t *testing.T) {
 	assert.Equal(t, "manual", fqdnsByName["internal.example.com"].Source)
 }
 
-func TestListFQDNs_OriginRef_IsPopulated_WhenFQDNHasOriginRef(t *testing.T) {
-	// Arrange: a DNS FQDN with an OriginRef pointing to a Service resource
-	scheme := newScheme(t)
-	now := metav1.NewTime(time.Now())
+func TestListFQDNs_NoDuplicateGroups(t *testing.T) {
+	store := seedFQDNStore(t)
+	svc := svcgrpc.NewDNSService(store)
 
-	dns := &sreportalv1alpha1.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: "test-dns", Namespace: "default"},
-		Spec:       sreportalv1alpha1.DNSSpec{PortalRef: "main"},
-		Status: sreportalv1alpha1.DNSStatus{
-			Groups: []sreportalv1alpha1.FQDNGroupStatus{
-				{
-					Name:   "Services",
-					Source: "external-dns",
-					FQDNs: []sreportalv1alpha1.FQDNStatus{
-						{
-							FQDN:       "api.example.com",
-							RecordType: "A",
-							Targets:    []string{"10.0.0.1"},
-							LastSeen:   now,
-							OriginRef: &sreportalv1alpha1.OriginResourceRef{
-								Kind:      "service",
-								Namespace: "production",
-								Name:      "api-svc",
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	k8sClient := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithObjects(dns).
-		WithStatusSubresource(dns).
-		Build()
-
-	svc := svcgrpc.NewDNSService(k8sClient)
-
-	// Act
 	resp, err := svc.ListFQDNs(
 		context.Background(),
 		connect.NewRequest(&dnsv1.ListFQDNsRequest{}),
 	)
 
-	// Assert
 	require.NoError(t, err)
-	require.Len(t, resp.Msg.Fqdns, 1)
-	f := resp.Msg.Fqdns[0]
-	require.NotNil(t, f.OriginRef, "OriginRef must be set for external-dns FQDNs")
-	assert.Equal(t, "service", f.OriginRef.Kind)
-	assert.Equal(t, "production", f.OriginRef.Namespace)
-	assert.Equal(t, "api-svc", f.OriginRef.Name)
+	for _, fqdn := range resp.Msg.Fqdns {
+		if fqdn.Name == "api.example.com" {
+			assert.Len(t, fqdn.Groups, 1,
+				"api.example.com should have exactly 1 group, got %v", fqdn.Groups)
+			assert.Equal(t, "Services", fqdn.Groups[0])
+		}
+	}
+}
+
+func TestListFQDNs_OriginRef_IsPopulated(t *testing.T) {
+	store := seedFQDNStore(t)
+	svc := svcgrpc.NewDNSService(store)
+
+	resp, err := svc.ListFQDNs(
+		context.Background(),
+		connect.NewRequest(&dnsv1.ListFQDNsRequest{}),
+	)
+
+	require.NoError(t, err)
+
+	var apiFQDN *dnsv1.FQDN
+	for _, f := range resp.Msg.Fqdns {
+		if f.Name == "api.example.com" {
+			apiFQDN = f
+			break
+		}
+	}
+
+	require.NotNil(t, apiFQDN)
+	require.NotNil(t, apiFQDN.OriginRef, "OriginRef must be set for external-dns FQDNs")
+	assert.Equal(t, "service", apiFQDN.OriginRef.Kind)
+	assert.Equal(t, "production", apiFQDN.OriginRef.Namespace)
+	assert.Equal(t, "api-svc", apiFQDN.OriginRef.Name)
 }
 
 func TestListFQDNs_OriginRef_IsNil_ForManualEntries(t *testing.T) {
-	// Arrange: a manual FQDN — OriginRef should not be set
-	scheme := newScheme(t)
-	now := metav1.NewTime(time.Now())
+	store := seedFQDNStore(t)
+	svc := svcgrpc.NewDNSService(store)
 
-	dns := &sreportalv1alpha1.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: "test-dns", Namespace: "default"},
-		Spec:       sreportalv1alpha1.DNSSpec{PortalRef: "main"},
-		Status: sreportalv1alpha1.DNSStatus{
-			Groups: []sreportalv1alpha1.FQDNGroupStatus{
-				{
-					Name:   "Internal",
-					Source: "manual",
-					FQDNs: []sreportalv1alpha1.FQDNStatus{
-						{FQDN: "internal.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}, LastSeen: now},
-					},
-				},
-			},
-		},
-	}
-
-	k8sClient := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithObjects(dns).
-		WithStatusSubresource(dns).
-		Build()
-
-	svc := svcgrpc.NewDNSService(k8sClient)
-
-	// Act
 	resp, err := svc.ListFQDNs(
 		context.Background(),
 		connect.NewRequest(&dnsv1.ListFQDNsRequest{}),
 	)
 
-	// Assert
 	require.NoError(t, err)
-	require.Len(t, resp.Msg.Fqdns, 1)
-	assert.Nil(t, resp.Msg.Fqdns[0].OriginRef, "manual entries must not have OriginRef")
+
+	for _, f := range resp.Msg.Fqdns {
+		if f.Name == "internal.example.com" {
+			assert.Nil(t, f.OriginRef, "manual entries must not have OriginRef")
+		}
+	}
 }
 
-func TestListFQDNs_ReturnsBothRecordTypes_WhenSameFQDNHasAAndCNAME(t *testing.T) {
-	// Arrange: same hostname with A and CNAME records in the same group.
-	// Before the fix the second record type was silently dropped because the
-	// seen-map was keyed by DNS name alone.
-	scheme := newScheme(t)
-	now := metav1.NewTime(time.Now())
+func TestListFQDNs_ReturnsBothRecordTypes(t *testing.T) {
+	store := dnsstore.NewFQDNStore()
+	now := time.Now()
+	_ = store.Replace(context.Background(), "default/test-dns", []domaindns.FQDNView{
+		{Name: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}, LastSeen: now, PortalName: "main"},
+		{Name: "api.example.com", RecordType: "CNAME", Targets: []string{"lb.example.com"}, LastSeen: now, PortalName: "main"},
+	})
 
-	dns := &sreportalv1alpha1.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: "test-dns", Namespace: "default"},
-		Spec:       sreportalv1alpha1.DNSSpec{PortalRef: "main"},
-		Status: sreportalv1alpha1.DNSStatus{
-			Groups: []sreportalv1alpha1.FQDNGroupStatus{
-				{
-					Name:   "Services",
-					Source: "external-dns",
-					FQDNs: []sreportalv1alpha1.FQDNStatus{
-						{FQDN: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}, LastSeen: now},
-						{FQDN: "api.example.com", RecordType: "CNAME", Targets: []string{"lb.example.com"}, LastSeen: now},
-					},
-				},
-			},
-		},
-	}
+	svc := svcgrpc.NewDNSService(store)
 
-	k8sClient := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithObjects(dns).
-		WithStatusSubresource(dns).
-		Build()
-
-	svc := svcgrpc.NewDNSService(k8sClient)
-
-	// Act
 	resp, err := svc.ListFQDNs(
 		context.Background(),
 		connect.NewRequest(&dnsv1.ListFQDNsRequest{}),
 	)
 
-	// Assert: both A and CNAME must be returned as separate entries
 	require.NoError(t, err)
 	require.Len(t, resp.Msg.Fqdns, 2, "A and CNAME for the same hostname must both be returned")
 
@@ -393,50 +174,13 @@ func TestListFQDNs_ReturnsBothRecordTypes_WhenSameFQDNHasAAndCNAME(t *testing.T)
 		assert.Equal(t, "api.example.com", f.Name)
 		recordTypes[f.RecordType] = f.Targets[0]
 	}
-	assert.Equal(t, "10.0.0.1", recordTypes["A"], "A record must be preserved")
-	assert.Equal(t, "lb.example.com", recordTypes["CNAME"], "CNAME record must be preserved")
+	assert.Equal(t, "10.0.0.1", recordTypes["A"])
+	assert.Equal(t, "lb.example.com", recordTypes["CNAME"])
 }
 
 func TestListFQDNs_FiltersWork(t *testing.T) {
-	scheme := newScheme(t)
-	now := metav1.NewTime(time.Now())
-
-	dns := &sreportalv1alpha1.DNS{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-dns",
-			Namespace: "default",
-		},
-		Spec: sreportalv1alpha1.DNSSpec{
-			PortalRef: "main",
-		},
-		Status: sreportalv1alpha1.DNSStatus{
-			Groups: []sreportalv1alpha1.FQDNGroupStatus{
-				{
-					Name:   "Services",
-					Source: "external-dns",
-					FQDNs: []sreportalv1alpha1.FQDNStatus{
-						{FQDN: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}, LastSeen: now},
-						{FQDN: "web.example.com", RecordType: "A", Targets: []string{"10.0.0.2"}, LastSeen: now},
-					},
-				},
-				{
-					Name:   "Internal",
-					Source: "manual",
-					FQDNs: []sreportalv1alpha1.FQDNStatus{
-						{FQDN: "internal.example.com", RecordType: "A", Targets: []string{"10.0.0.3"}, LastSeen: now},
-					},
-				},
-			},
-		},
-	}
-
-	k8sClient := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithObjects(dns).
-		WithStatusSubresource(dns).
-		Build()
-
-	svc := svcgrpc.NewDNSService(k8sClient)
+	store := seedFQDNStore(t)
+	svc := svcgrpc.NewDNSService(store)
 
 	cases := []struct {
 		name     string
@@ -483,4 +227,17 @@ func TestListFQDNs_FiltersWork(t *testing.T) {
 			assert.True(t, found, "expected to find FQDN %q", tc.wantFQDN)
 		})
 	}
+}
+
+func TestListFQDNs_TotalSize_ReflectsFullCount(t *testing.T) {
+	store := seedFQDNStore(t)
+	svc := svcgrpc.NewDNSService(store)
+
+	resp, err := svc.ListFQDNs(
+		context.Background(),
+		connect.NewRequest(&dnsv1.ListFQDNsRequest{}),
+	)
+
+	require.NoError(t, err)
+	assert.Equal(t, int32(3), resp.Msg.TotalSize)
 }

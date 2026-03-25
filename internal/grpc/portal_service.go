@@ -20,9 +20,8 @@ import (
 	"context"
 
 	"connectrpc.com/connect"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	domainportal "github.com/golgoth31/sreportal/internal/domain/portal"
 	portalv1 "github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1"
 	"github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1/sreportalv1connect"
 )
@@ -30,12 +29,12 @@ import (
 // PortalService implements the PortalServiceHandler interface
 type PortalService struct {
 	sreportalv1connect.UnimplementedPortalServiceHandler
-	client client.Client
+	reader domainportal.PortalReader
 }
 
 // NewPortalService creates a new PortalService
-func NewPortalService(c client.Client) *PortalService {
-	return &PortalService{client: c}
+func NewPortalService(reader domainportal.PortalReader) *PortalService {
+	return &PortalService{reader: reader}
 }
 
 // ListPortals returns all available portals
@@ -43,55 +42,50 @@ func (s *PortalService) ListPortals(
 	ctx context.Context,
 	req *connect.Request[portalv1.ListPortalsRequest],
 ) (*connect.Response[portalv1.ListPortalsResponse], error) {
-	var portalList sreportalv1alpha1.PortalList
-	listOpts := []client.ListOption{}
-
-	if req.Msg.Namespace != "" {
-		listOpts = append(listOpts, client.InNamespace(req.Msg.Namespace))
+	filters := domainportal.PortalFilters{
+		Namespace: req.Msg.Namespace,
 	}
 
-	if err := s.client.List(ctx, &portalList, listOpts...); err != nil {
+	views, err := s.reader.List(ctx, filters)
+	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	portals := make([]*portalv1.Portal, 0, len(portalList.Items))
-	for _, p := range portalList.Items {
-		subPath := p.Spec.SubPath
-		if subPath == "" {
-			subPath = p.Name
-		}
-
-		portal := &portalv1.Portal{
-			Name:      p.Name,
-			Title:     p.Spec.Title,
-			Main:      p.Spec.Main,
-			SubPath:   subPath,
-			Namespace: p.Namespace,
-			Ready:     p.Status.Ready,
-			IsRemote:  p.Spec.Remote != nil,
-		}
-
-		// Include remote URL if available
-		if p.Spec.Remote != nil {
-			portal.Url = p.Spec.Remote.URL
-		}
-
-		// Include remote sync status if available
-		if p.Status.RemoteSync != nil {
-			portal.RemoteSync = &portalv1.RemoteSyncStatus{
-				LastSyncError: p.Status.RemoteSync.LastSyncError,
-				RemoteTitle:   p.Status.RemoteSync.RemoteTitle,
-				FqdnCount:     int32(p.Status.RemoteSync.FQDNCount),
-			}
-			if p.Status.RemoteSync.LastSyncTime != nil {
-				portal.RemoteSync.LastSyncTime = p.Status.RemoteSync.LastSyncTime.Format("2006-01-02T15:04:05Z07:00")
-			}
-		}
-
-		portals = append(portals, portal)
+	portals := make([]*portalv1.Portal, 0, len(views))
+	for _, v := range views {
+		portals = append(portals, portalViewToProto(v))
 	}
 
 	return connect.NewResponse(&portalv1.ListPortalsResponse{
 		Portals: portals,
 	}), nil
+}
+
+func portalViewToProto(v domainportal.PortalView) *portalv1.Portal {
+	subPath := v.SubPath
+	if subPath == "" {
+		subPath = v.Name
+	}
+
+	portal := &portalv1.Portal{
+		Name:      v.Name,
+		Title:     v.Title,
+		Main:      v.Main,
+		SubPath:   subPath,
+		Namespace: v.Namespace,
+		Ready:     v.Ready,
+		IsRemote:  v.IsRemote,
+		Url:       v.URL,
+	}
+
+	if v.RemoteSync != nil {
+		portal.RemoteSync = &portalv1.RemoteSyncStatus{
+			LastSyncTime:  v.RemoteSync.LastSyncTime,
+			LastSyncError: v.RemoteSync.LastSyncError,
+			RemoteTitle:   v.RemoteSync.RemoteTitle,
+			FqdnCount:     int32(v.RemoteSync.FQDNCount),
+		}
+	}
+
+	return portal
 }

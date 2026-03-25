@@ -53,6 +53,9 @@ import (
 	portalctrl "github.com/golgoth31/sreportal/internal/controller/portal"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/mcp"
+	alertmanagerreadstore "github.com/golgoth31/sreportal/internal/readstore/alertmanager"
+	dnsreadstore "github.com/golgoth31/sreportal/internal/readstore/dns"
+	portalreadstore "github.com/golgoth31/sreportal/internal/readstore/portal"
 	releaseservice "github.com/golgoth31/sreportal/internal/release"
 	"github.com/golgoth31/sreportal/internal/remoteclient"
 	"github.com/golgoth31/sreportal/internal/source"
@@ -320,13 +323,20 @@ func main() {
 
 	annotations.SetAnnotationPrefix("external-dns.alpha.kubernetes.io/")
 
+	// Create ReadStores: controllers write, gRPC/MCP read.
+	fqdnStore := dnsreadstore.NewFQDNStore()
+	portalStore := portalreadstore.NewPortalStore()
+	alertmanagerStore := alertmanagerreadstore.NewAlertmanagerStore()
+
 	sourceBuilders := source.DefaultBuilders()
-	if err := controller.NewDNSReconciler(
+	dnsReconciler := controller.NewDNSReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),
 		operatorConfig,
 		sourceBuilders,
-	).SetupWithManager(mgr); err != nil {
+	)
+	dnsReconciler.SetFQDNWriter(fqdnStore)
+	if err := dnsReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "DNS")
 		os.Exit(1)
 	}
@@ -359,11 +369,13 @@ func main() {
 		}
 	}
 	remoteCache := remoteclient.NewCache()
-	if err := controller.NewPortalReconciler(
+	portalReconciler := controller.NewPortalReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),
 		remoteCache,
-	).SetupWithManager(mgr); err != nil {
+	)
+	portalReconciler.SetPortalWriter(portalStore)
+	if err := portalReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Portal")
 		os.Exit(1)
 	}
@@ -389,13 +401,15 @@ func main() {
 		os.Exit(1)
 	}
 	amClient := alertmanagerclient.NewClient()
-	if err := controller.NewAlertmanagerReconciler(
+	amReconciler := controller.NewAlertmanagerReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),
 		amClient,
 		amClient,
 		remoteCache,
-	).SetupWithManager(mgr); err != nil {
+	)
+	amReconciler.SetAlertmanagerWriter(alertmanagerStore)
+	if err := amReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Alertmanager")
 		os.Exit(1)
 	}
@@ -452,6 +466,9 @@ func main() {
 		ReleaseService:      releaseSvc,
 		ReleaseTTL:          releaseTTL,
 		ReleaseAllowedTypes: operatorConfig.Release.Types,
+		FQDNReader:          fqdnStore,
+		PortalReader:        portalStore,
+		AlertmanagerReader:  alertmanagerStore,
 	}
 	if devMode {
 		setupLog.Info("dev mode enabled: serving web UI from filesystem", "web-root", webRoot)
@@ -480,17 +497,10 @@ func main() {
 	}
 	webServer := webserver.New(webCfg, mgr.GetClient(), operatorConfig, corsOrigins)
 
-	// Register the DNSService cache loop with the manager so it runs under the
-	// manager's context and is stopped cleanly on shutdown.
-	if err := mgr.Add(webServer.DNSService()); err != nil {
-		setupLog.Error(err, "unable to register DNS service cache loop with manager")
-		os.Exit(1)
-	}
-
 	// Start MCP servers if enabled
 	if enableMCP {
-		dnsMcpServer := mcp.NewDNSServer(mgr.GetClient(), &operatorConfig.GroupMapping)
-		alertsMcpServer := mcp.NewAlertsServer(mgr.GetClient())
+		dnsMcpServer := mcp.NewDNSServer(fqdnStore, portalStore)
+		alertsMcpServer := mcp.NewAlertsServer(alertmanagerStore)
 		metricsMcpServer := mcp.NewMetricsServer(ctrlmetrics.Registry)
 		releasesMcpServer := mcp.NewReleasesServer(releaseSvc)
 		netpolMcpServer := mcp.NewNetpolServer(mgr.GetClient())

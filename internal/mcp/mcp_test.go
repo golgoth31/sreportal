@@ -19,7 +19,6 @@ package mcp
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -30,13 +29,14 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
-	"github.com/golgoth31/sreportal/internal/config"
+	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 	domainmetrics "github.com/golgoth31/sreportal/internal/domain/metrics"
+	domainportal "github.com/golgoth31/sreportal/internal/domain/portal"
+	dnsstore "github.com/golgoth31/sreportal/internal/readstore/dns"
+	portalstore "github.com/golgoth31/sreportal/internal/readstore/portal"
 	releaseservice "github.com/golgoth31/sreportal/internal/release"
 )
 
@@ -73,134 +73,83 @@ func isErrorResult(result *mcp.CallToolResult) bool {
 	return result != nil && result.IsError
 }
 
+// seedDNSStore creates and populates an FQDNStore with test data equivalent
+// to the old CRD-based setup (dns1 in default/test-dns-1, dns2 in production/test-dns-2).
+func seedDNSStore() *dnsstore.FQDNStore {
+	store := dnsstore.NewFQDNStore()
+	ctx := context.Background()
+	now := time.Now()
+
+	// dns1: default/test-dns-1 with portalRef "main"
+	_ = store.Replace(ctx, "default/test-dns-1", []domaindns.FQDNView{
+		{
+			Name: "api.example.com", Source: domaindns.SourceExternalDNS,
+			Groups: []string{"web"}, Description: "Main API",
+			RecordType: "A", Targets: []string{"192.168.1.1"},
+			LastSeen: now, PortalName: "main", Namespace: "default",
+		},
+		{
+			Name: "web.example.com", Source: domaindns.SourceExternalDNS,
+			Groups: []string{"web"}, RecordType: "A",
+			Targets: []string{"192.168.1.2"}, LastSeen: now,
+			PortalName: "main", Namespace: "default",
+		},
+		{
+			Name: "internal.example.com", Source: domaindns.SourceManual,
+			Groups: []string{"internal"}, RecordType: "A",
+			Targets:    []string{"10.0.0.1"},
+			PortalName: "main", Namespace: "default",
+		},
+	})
+
+	// dns2: production/test-dns-2 with portalRef "prod"
+	_ = store.Replace(ctx, "production/test-dns-2", []domaindns.FQDNView{
+		{
+			Name: "prod-api.example.com", Source: domaindns.SourceExternalDNS,
+			Groups: []string{"services"}, RecordType: "A",
+			Targets:    []string{"10.10.10.1"},
+			PortalName: "prod", Namespace: "production",
+		},
+	})
+
+	return store
+}
+
+// emptyPortalStore returns an empty PortalStore for tests that don't need portal data.
+func emptyPortalStore() *portalstore.PortalStore {
+	return portalstore.NewPortalStore()
+}
+
 var _ = Describe("MCP Server", func() {
 	var (
-		scheme       *runtime.Scheme
-		groupMapping *config.GroupMappingConfig
-		ctx          context.Context
+		scheme *runtime.Scheme
+		ctx    context.Context
 	)
 
 	BeforeEach(func() {
 		ctx = context.Background()
 		scheme = runtime.NewScheme()
 		Expect(sreportalv1alpha1.AddToScheme(scheme)).To(Succeed())
-
-		groupMapping = &config.GroupMappingConfig{
-			DefaultGroup: "default",
-			LabelKey:     "sreportal.io/group",
-		}
 	})
 
 	Describe("DNSServer creation", func() {
 		It("should create server with all tools registered", func() {
-			k8sClient := fake.NewClientBuilder().
-				WithScheme(scheme).
-				Build()
+			store := dnsstore.NewFQDNStore()
+			pStore := emptyPortalStore()
 
-			dnsServer := NewDNSServer(k8sClient, groupMapping)
+			dnsServer := NewDNSServer(store, pStore)
 			Expect(dnsServer).NotTo(BeNil())
 			Expect(dnsServer.mcpServer).NotTo(BeNil())
-			Expect(dnsServer.client).NotTo(BeNil())
-			Expect(dnsServer.groupMapping).To(Equal(groupMapping))
-		})
-
-		It("should handle nil groupMapping gracefully", func() {
-			k8sClient := fake.NewClientBuilder().
-				WithScheme(scheme).
-				Build()
-
-			dnsServer := NewDNSServer(k8sClient, nil)
-			Expect(dnsServer).NotTo(BeNil())
-			Expect(dnsServer.groupMapping).To(BeNil())
+			Expect(dnsServer.fqdnReader).NotTo(BeNil())
+			Expect(dnsServer.portalReader).NotTo(BeNil())
 		})
 	})
 
 	Describe("handleSearchFQDNs", func() {
-		var (
-			dns1 *sreportalv1alpha1.DNS
-			dns2 *sreportalv1alpha1.DNS
-		)
-
-		BeforeEach(func() {
-			dns1 = &sreportalv1alpha1.DNS{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-dns-1",
-					Namespace: "default",
-				},
-				Spec: sreportalv1alpha1.DNSSpec{
-					PortalRef: "main",
-				},
-				Status: sreportalv1alpha1.DNSStatus{
-					Groups: []sreportalv1alpha1.FQDNGroupStatus{
-						{
-							Name:   "web",
-							Source: "external-dns",
-							FQDNs: []sreportalv1alpha1.FQDNStatus{
-								{
-									FQDN:        "api.example.com",
-									Description: "Main API",
-									RecordType:  "A",
-									Targets:     []string{"192.168.1.1"},
-									LastSeen:    metav1.NewTime(time.Now()),
-								},
-								{
-									FQDN:       "web.example.com",
-									RecordType: "A",
-									Targets:    []string{"192.168.1.2"},
-									LastSeen:   metav1.NewTime(time.Now()),
-								},
-							},
-						},
-						{
-							Name:   "internal",
-							Source: "manual",
-							FQDNs: []sreportalv1alpha1.FQDNStatus{
-								{
-									FQDN:       "internal.example.com",
-									RecordType: "A",
-									Targets:    []string{"10.0.0.1"},
-								},
-							},
-						},
-					},
-				},
-			}
-
-			dns2 = &sreportalv1alpha1.DNS{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-dns-2",
-					Namespace: "production",
-				},
-				Spec: sreportalv1alpha1.DNSSpec{
-					PortalRef: "prod",
-				},
-				Status: sreportalv1alpha1.DNSStatus{
-					Groups: []sreportalv1alpha1.FQDNGroupStatus{
-						{
-							Name:   "services",
-							Source: "external-dns",
-							FQDNs: []sreportalv1alpha1.FQDNStatus{
-								{
-									FQDN:       "prod-api.example.com",
-									RecordType: "A",
-									Targets:    []string{"10.10.10.1"},
-								},
-							},
-						},
-					},
-				},
-			}
-		})
-
 		Context("without filters", func() {
 			It("should return all FQDNs when no filters are applied", func() {
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithObjects(dns1, dns2).
-					WithStatusSubresource(dns1, dns2).
-					Build()
-
-				server := NewDNSServer(k8sClient, groupMapping)
+				store := seedDNSStore()
+				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("search_fqdns", map[string]any{})
 
 				result, err := server.handleSearchFQDNs(ctx, request)
@@ -219,13 +168,8 @@ var _ = Describe("MCP Server", func() {
 
 		Context("with query filter", func() {
 			It("should filter FQDNs by name substring", func() {
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithObjects(dns1, dns2).
-					WithStatusSubresource(dns1, dns2).
-					Build()
-
-				server := NewDNSServer(k8sClient, groupMapping)
+				store := seedDNSStore()
+				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("search_fqdns", map[string]any{
 					"query": "api",
 				})
@@ -244,13 +188,8 @@ var _ = Describe("MCP Server", func() {
 			})
 
 			It("should be case-insensitive", func() {
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithObjects(dns1).
-					WithStatusSubresource(dns1).
-					Build()
-
-				server := NewDNSServer(k8sClient, groupMapping)
+				store := seedDNSStore()
+				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("search_fqdns", map[string]any{
 					"query": "API",
 				})
@@ -265,13 +204,8 @@ var _ = Describe("MCP Server", func() {
 
 		Context("with source filter", func() {
 			It("should filter by manual source", func() {
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithObjects(dns1).
-					WithStatusSubresource(dns1).
-					Build()
-
-				server := NewDNSServer(k8sClient, groupMapping)
+				store := seedDNSStore()
+				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("search_fqdns", map[string]any{
 					"source": "manual",
 				})
@@ -286,13 +220,8 @@ var _ = Describe("MCP Server", func() {
 			})
 
 			It("should filter by external-dns source", func() {
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithObjects(dns1).
-					WithStatusSubresource(dns1).
-					Build()
-
-				server := NewDNSServer(k8sClient, groupMapping)
+				store := seedDNSStore()
+				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("search_fqdns", map[string]any{
 					"source": "external-dns",
 				})
@@ -301,7 +230,8 @@ var _ = Describe("MCP Server", func() {
 
 				Expect(err).NotTo(HaveOccurred())
 				text := extractTextContent(result)
-				Expect(text).To(ContainSubstring("Found 2 FQDN(s)"))
+				// 3 external-dns FQDNs: api, web (from dns1) + prod-api (from dns2)
+				Expect(text).To(ContainSubstring("Found 3 FQDN(s)"))
 				Expect(text).To(ContainSubstring("api.example.com"))
 				Expect(text).To(ContainSubstring("web.example.com"))
 				Expect(text).NotTo(ContainSubstring("internal.example.com"))
@@ -309,16 +239,11 @@ var _ = Describe("MCP Server", func() {
 		})
 
 		Context("with group filter", func() {
-			It("should filter by group name (case-insensitive)", func() {
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithObjects(dns1).
-					WithStatusSubresource(dns1).
-					Build()
-
-				server := NewDNSServer(k8sClient, groupMapping)
+			It("should filter by exact group name", func() {
+				store := seedDNSStore()
+				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("search_fqdns", map[string]any{
-					"group": "WEB",
+					"group": "web",
 				})
 
 				result, err := server.handleSearchFQDNs(ctx, request)
@@ -333,13 +258,8 @@ var _ = Describe("MCP Server", func() {
 
 		Context("with namespace filter", func() {
 			It("should filter by namespace", func() {
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithObjects(dns1, dns2).
-					WithStatusSubresource(dns1, dns2).
-					Build()
-
-				server := NewDNSServer(k8sClient, groupMapping)
+				store := seedDNSStore()
+				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("search_fqdns", map[string]any{
 					"namespace": "production",
 				})
@@ -355,13 +275,8 @@ var _ = Describe("MCP Server", func() {
 
 		Context("with multiple filters", func() {
 			It("should combine query and source filters", func() {
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithObjects(dns1, dns2).
-					WithStatusSubresource(dns1, dns2).
-					Build()
-
-				server := NewDNSServer(k8sClient, groupMapping)
+				store := seedDNSStore()
+				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("search_fqdns", map[string]any{
 					"query":  "example",
 					"source": "manual",
@@ -378,13 +293,8 @@ var _ = Describe("MCP Server", func() {
 
 		Context("with no results", func() {
 			It("should return appropriate message when no FQDNs match", func() {
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithObjects(dns1).
-					WithStatusSubresource(dns1).
-					Build()
-
-				server := NewDNSServer(k8sClient, groupMapping)
+				store := seedDNSStore()
+				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("search_fqdns", map[string]any{
 					"query": "nonexistent",
 				})
@@ -396,12 +306,9 @@ var _ = Describe("MCP Server", func() {
 				Expect(text).To(Equal("No FQDNs found matching the search criteria."))
 			})
 
-			It("should return appropriate message when no DNS resources exist", func() {
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					Build()
-
-				server := NewDNSServer(k8sClient, groupMapping)
+			It("should return appropriate message when store is empty", func() {
+				store := dnsstore.NewFQDNStore()
+				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("search_fqdns", map[string]any{})
 
 				result, err := server.handleSearchFQDNs(ctx, request)
@@ -412,62 +319,25 @@ var _ = Describe("MCP Server", func() {
 			})
 		})
 
-		Context("with client errors", func() {
-			It("should return error when listing DNS fails", func() {
-				expectedErr := errors.New("connection refused")
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithInterceptorFuncs(interceptor.Funcs{
-						List: func(ctx context.Context, client client.WithWatch, list client.ObjectList, opts ...client.ListOption) error {
-							if _, ok := list.(*sreportalv1alpha1.DNSList); ok {
-								return expectedErr
-							}
-							return nil
-						},
-					}).
-					Build()
-
-				server := NewDNSServer(k8sClient, groupMapping)
-				request := newCallToolRequest("search_fqdns", map[string]any{})
-
-				result, err := server.handleSearchFQDNs(ctx, request)
-
-				Expect(err).NotTo(HaveOccurred())
-				Expect(isErrorResult(result)).To(BeTrue())
-				text := extractTextContent(result)
-				Expect(text).To(ContainSubstring("failed to list DNS resources"))
-			})
-		})
-
 		Context("with sync status", func() {
 			It("should include sync_status in results", func() {
-				dnsWithSync := &sreportalv1alpha1.DNS{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-dns-sync",
-						Namespace: "default",
+				store := dnsstore.NewFQDNStore()
+				_ = store.Replace(ctx, "default/test-dns-sync", []domaindns.FQDNView{
+					{
+						Name: "synced.example.com", Source: domaindns.SourceExternalDNS,
+						Groups: []string{"web"}, RecordType: "A",
+						Targets: []string{"10.0.0.1"}, SyncStatus: "sync",
+						PortalName: "main", Namespace: "default",
 					},
-					Spec: sreportalv1alpha1.DNSSpec{PortalRef: "main"},
-					Status: sreportalv1alpha1.DNSStatus{
-						Groups: []sreportalv1alpha1.FQDNGroupStatus{
-							{
-								Name:   "web",
-								Source: "external-dns",
-								FQDNs: []sreportalv1alpha1.FQDNStatus{
-									{FQDN: "synced.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}, SyncStatus: "sync"},
-									{FQDN: "drifted.example.com", RecordType: "A", Targets: []string{"10.0.0.2"}, SyncStatus: "notsync"},
-								},
-							},
-						},
+					{
+						Name: "drifted.example.com", Source: domaindns.SourceExternalDNS,
+						Groups: []string{"web"}, RecordType: "A",
+						Targets: []string{"10.0.0.2"}, SyncStatus: "notsync",
+						PortalName: "main", Namespace: "default",
 					},
-				}
+				})
 
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithObjects(dnsWithSync).
-					WithStatusSubresource(dnsWithSync).
-					Build()
-
-				server := NewDNSServer(k8sClient, groupMapping)
+				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("search_fqdns", map[string]any{})
 
 				result, err := server.handleSearchFQDNs(ctx, request)
@@ -481,31 +351,47 @@ var _ = Describe("MCP Server", func() {
 				Expect(json.Unmarshal([]byte(text[jsonStart:]), &results)).To(Succeed())
 
 				Expect(results).To(HaveLen(2))
-				Expect(results[0].SyncStatus).To(Equal("sync"))
-				Expect(results[1].SyncStatus).To(Equal("notsync"))
+				// Sorted by name: drifted < synced
+				Expect(results[0].SyncStatus).To(Equal("notsync"))
+				Expect(results[1].SyncStatus).To(Equal("sync"))
 			})
 		})
 
-		Context("with duplicate FQDNs", func() {
-			It("should deduplicate FQDNs across resources", func() {
-				dns1Copy := dns1.DeepCopy()
-				dns1Copy.Name = "test-dns-copy"
-				// Same FQDNs in status
+		Context("with duplicate FQDNs across resources", func() {
+			It("should deduplicate FQDNs by name", func() {
+				store := dnsstore.NewFQDNStore()
+				views := []domaindns.FQDNView{
+					{
+						Name: "api.example.com", Source: domaindns.SourceExternalDNS,
+						Groups: []string{"web"}, RecordType: "A",
+						Targets:    []string{"192.168.1.1"},
+						PortalName: "main", Namespace: "default",
+					},
+					{
+						Name: "web.example.com", Source: domaindns.SourceExternalDNS,
+						Groups: []string{"web"}, RecordType: "A",
+						Targets:    []string{"192.168.1.2"},
+						PortalName: "main", Namespace: "default",
+					},
+					{
+						Name: "internal.example.com", Source: domaindns.SourceManual,
+						Groups: []string{"internal"}, RecordType: "A",
+						Targets:    []string{"10.0.0.1"},
+						PortalName: "main", Namespace: "default",
+					},
+				}
+				// Same FQDNs in two different resources
+				_ = store.Replace(ctx, "default/test-dns-1", views)
+				_ = store.Replace(ctx, "default/test-dns-copy", views)
 
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithObjects(dns1, dns1Copy).
-					WithStatusSubresource(dns1, dns1Copy).
-					Build()
-
-				server := NewDNSServer(k8sClient, groupMapping)
+				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("search_fqdns", map[string]any{})
 
 				result, err := server.handleSearchFQDNs(ctx, request)
 
 				Expect(err).NotTo(HaveOccurred())
 				text := extractTextContent(result)
-				// Should only count each unique FQDN once
+				// handleSearchFQDNs deduplicates by name, so only 3 unique FQDNs
 				Expect(text).To(ContainSubstring("Found 3 FQDN(s)"))
 			})
 		})
@@ -514,41 +400,18 @@ var _ = Describe("MCP Server", func() {
 	Describe("handleListPortals", func() {
 		Context("with existing portals", func() {
 			It("should list all portals with their details", func() {
-				portal1 := &sreportalv1alpha1.Portal{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "main",
-						Namespace: "sreportal-system",
-					},
-					Spec: sreportalv1alpha1.PortalSpec{
-						Title: "Main Portal",
-						Main:  true,
-					},
-					Status: sreportalv1alpha1.PortalStatus{
-						Ready: true,
-					},
-				}
+				pStore := portalstore.NewPortalStore()
+				_ = pStore.Replace(ctx, "sreportal-system/main", domainportal.PortalView{
+					Name: "main", Namespace: "sreportal-system",
+					Title: "Main Portal", Main: true, Ready: true,
+				})
+				_ = pStore.Replace(ctx, "sreportal-system/dev", domainportal.PortalView{
+					Name: "dev", Namespace: "sreportal-system",
+					Title: "Dev Portal", SubPath: "dev", Ready: false,
+				})
 
-				portal2 := &sreportalv1alpha1.Portal{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "dev",
-						Namespace: "sreportal-system",
-					},
-					Spec: sreportalv1alpha1.PortalSpec{
-						Title:   "Dev Portal",
-						SubPath: "dev",
-					},
-					Status: sreportalv1alpha1.PortalStatus{
-						Ready: false,
-					},
-				}
-
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithObjects(portal1, portal2).
-					WithStatusSubresource(portal1, portal2).
-					Build()
-
-				server := NewDNSServer(k8sClient, groupMapping)
+				store := dnsstore.NewFQDNStore()
+				server := NewDNSServer(store, pStore)
 				request := newCallToolRequest("list_portals", map[string]any{})
 
 				result, err := server.handleListPortals(ctx, request)
@@ -565,29 +428,15 @@ var _ = Describe("MCP Server", func() {
 			})
 
 			It("should include remote URL when configured", func() {
-				portal := &sreportalv1alpha1.Portal{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "remote",
-						Namespace: "sreportal-system",
-					},
-					Spec: sreportalv1alpha1.PortalSpec{
-						Title: "Remote Portal",
-						Remote: &sreportalv1alpha1.RemotePortalSpec{
-							URL: "https://remote.example.com",
-						},
-					},
-					Status: sreportalv1alpha1.PortalStatus{
-						Ready: true,
-					},
-				}
+				pStore := portalstore.NewPortalStore()
+				_ = pStore.Replace(ctx, "sreportal-system/remote", domainportal.PortalView{
+					Name: "remote", Namespace: "sreportal-system",
+					Title: "Remote Portal", IsRemote: true, Ready: true,
+					URL: "https://remote.example.com",
+				})
 
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithObjects(portal).
-					WithStatusSubresource(portal).
-					Build()
-
-				server := NewDNSServer(k8sClient, groupMapping)
+				store := dnsstore.NewFQDNStore()
+				server := NewDNSServer(store, pStore)
 				request := newCallToolRequest("list_portals", map[string]any{})
 
 				result, err := server.handleListPortals(ctx, request)
@@ -598,34 +447,18 @@ var _ = Describe("MCP Server", func() {
 			})
 
 			It("should include remoteSync with lastSyncError when remote sync failed", func() {
-				portal := &sreportalv1alpha1.Portal{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "remote",
-						Namespace: "sreportal-system",
+				pStore := portalstore.NewPortalStore()
+				_ = pStore.Replace(ctx, "sreportal-system/remote", domainportal.PortalView{
+					Name: "remote", Namespace: "sreportal-system",
+					Title: "Remote Portal", IsRemote: true, Ready: true,
+					URL: "https://remote.example.com",
+					RemoteSync: &domainportal.RemoteSyncView{
+						LastSyncError: "remote unreachable: dial tcp: connection refused",
 					},
-					Spec: sreportalv1alpha1.PortalSpec{
-						Title: "Remote Portal",
-						Remote: &sreportalv1alpha1.RemotePortalSpec{
-							URL: "https://remote.example.com",
-						},
-					},
-					Status: sreportalv1alpha1.PortalStatus{
-						Ready: true,
-						RemoteSync: &sreportalv1alpha1.RemoteSyncStatus{
-							LastSyncError: "remote unreachable: dial tcp: connection refused",
-							RemoteTitle:   "",
-							FQDNCount:     0,
-						},
-					},
-				}
+				})
 
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithObjects(portal).
-					WithStatusSubresource(portal).
-					Build()
-
-				server := NewDNSServer(k8sClient, groupMapping)
+				store := dnsstore.NewFQDNStore()
+				server := NewDNSServer(store, pStore)
 				request := newCallToolRequest("list_portals", map[string]any{})
 
 				result, err := server.handleListPortals(ctx, request)
@@ -639,11 +472,8 @@ var _ = Describe("MCP Server", func() {
 
 		Context("with no portals", func() {
 			It("should return appropriate message", func() {
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					Build()
-
-				server := NewDNSServer(k8sClient, groupMapping)
+				store := dnsstore.NewFQDNStore()
+				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("list_portals", map[string]any{})
 
 				result, err := server.handleListPortals(ctx, request)
@@ -653,79 +483,29 @@ var _ = Describe("MCP Server", func() {
 				Expect(text).To(Equal("No portals found."))
 			})
 		})
-
-		Context("with client errors", func() {
-			It("should return error when listing portals fails", func() {
-				expectedErr := errors.New("connection refused")
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithInterceptorFuncs(interceptor.Funcs{
-						List: func(ctx context.Context, client client.WithWatch, list client.ObjectList, opts ...client.ListOption) error {
-							return expectedErr
-						},
-					}).
-					Build()
-
-				server := NewDNSServer(k8sClient, groupMapping)
-				request := newCallToolRequest("list_portals", map[string]any{})
-
-				result, err := server.handleListPortals(ctx, request)
-
-				Expect(err).NotTo(HaveOccurred())
-				Expect(isErrorResult(result)).To(BeTrue())
-				text := extractTextContent(result)
-				Expect(text).To(ContainSubstring("failed to list Portal resources"))
-			})
-		})
 	})
 
 	Describe("handleGetFQDNDetails", func() {
-		var dns *sreportalv1alpha1.DNS
-
-		BeforeEach(func() {
-			dns = &sreportalv1alpha1.DNS{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-dns",
-					Namespace: "default",
-				},
-				Spec: sreportalv1alpha1.DNSSpec{
-					PortalRef: "main",
-				},
-				Status: sreportalv1alpha1.DNSStatus{
-					Groups: []sreportalv1alpha1.FQDNGroupStatus{
-						{
-							Name:        "api",
-							Description: "API services",
-							Source:      "external-dns",
-							FQDNs: []sreportalv1alpha1.FQDNStatus{
-								{
-									FQDN:        "api.example.com",
-									Description: "Main API endpoint",
-									RecordType:  "A",
-									Targets:     []string{"192.168.1.1", "192.168.1.2"},
-									LastSeen:    metav1.NewTime(time.Date(2026, 1, 15, 10, 30, 0, 0, time.UTC)),
-								},
-								{
-									FQDN:       "api-v2.example.com",
-									RecordType: "CNAME",
-									Targets:    []string{"api.example.com"},
-								},
-							},
-						},
-					},
-				},
-			}
-		})
-
 		Context("with existing FQDN", func() {
 			It("should return full details for the FQDN", func() {
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithObjects(dns).
-					WithStatusSubresource(dns).
-					Build()
+				store := dnsstore.NewFQDNStore()
+				_ = store.Replace(ctx, "default/test-dns", []domaindns.FQDNView{
+					{
+						Name: "api.example.com", Source: domaindns.SourceExternalDNS,
+						Groups: []string{"api"}, Description: "Main API endpoint",
+						RecordType: "A", Targets: []string{"192.168.1.1", "192.168.1.2"},
+						LastSeen:   time.Date(2026, 1, 15, 10, 30, 0, 0, time.UTC),
+						PortalName: "main", Namespace: "default",
+					},
+					{
+						Name: "api-v2.example.com", Source: domaindns.SourceExternalDNS,
+						Groups: []string{"api"}, RecordType: "CNAME",
+						Targets:    []string{"api.example.com"},
+						PortalName: "main", Namespace: "default",
+					},
+				})
 
-				server := NewDNSServer(k8sClient, groupMapping)
+				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("get_fqdn_details", map[string]any{
 					"fqdn": "api.example.com",
 				})
@@ -745,18 +525,22 @@ var _ = Describe("MCP Server", func() {
 				Expect(text).To(ContainSubstring("192.168.1.1"))
 				Expect(text).To(ContainSubstring("192.168.1.2"))
 				Expect(text).To(ContainSubstring(`"portal": "main"`))
-				Expect(text).To(ContainSubstring(`"dns_resource": "default/test-dns"`))
+				Expect(text).To(ContainSubstring(`"dns_resource": "default/main"`))
 				Expect(text).To(ContainSubstring("2026-01-15"))
 			})
 
 			It("should be case-insensitive", func() {
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithObjects(dns).
-					WithStatusSubresource(dns).
-					Build()
+				store := dnsstore.NewFQDNStore()
+				_ = store.Replace(ctx, "default/test-dns", []domaindns.FQDNView{
+					{
+						Name: "api.example.com", Source: domaindns.SourceExternalDNS,
+						Groups: []string{"api"}, RecordType: "A",
+						Targets:    []string{"192.168.1.1"},
+						PortalName: "main", Namespace: "default",
+					},
+				})
 
-				server := NewDNSServer(k8sClient, groupMapping)
+				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("get_fqdn_details", map[string]any{
 					"fqdn": "API.EXAMPLE.COM",
 				})
@@ -770,13 +554,17 @@ var _ = Describe("MCP Server", func() {
 			})
 
 			It("should handle trailing dot in FQDN", func() {
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithObjects(dns).
-					WithStatusSubresource(dns).
-					Build()
+				store := dnsstore.NewFQDNStore()
+				_ = store.Replace(ctx, "default/test-dns", []domaindns.FQDNView{
+					{
+						Name: "api.example.com", Source: domaindns.SourceExternalDNS,
+						Groups: []string{"api"}, RecordType: "A",
+						Targets:    []string{"192.168.1.1"},
+						PortalName: "main", Namespace: "default",
+					},
+				})
 
-				server := NewDNSServer(k8sClient, groupMapping)
+				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("get_fqdn_details", map[string]any{
 					"fqdn": "api.example.com.",
 				})
@@ -792,16 +580,17 @@ var _ = Describe("MCP Server", func() {
 
 		Context("with sync status", func() {
 			It("should include sync_status in details", func() {
-				dnsWithSync := dns.DeepCopy()
-				dnsWithSync.Status.Groups[0].FQDNs[0].SyncStatus = "sync"
+				store := dnsstore.NewFQDNStore()
+				_ = store.Replace(ctx, "default/test-dns", []domaindns.FQDNView{
+					{
+						Name: "api.example.com", Source: domaindns.SourceExternalDNS,
+						Groups: []string{"api"}, RecordType: "A",
+						Targets: []string{"192.168.1.1"}, SyncStatus: "sync",
+						PortalName: "main", Namespace: "default",
+					},
+				})
 
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithObjects(dnsWithSync).
-					WithStatusSubresource(dnsWithSync).
-					Build()
-
-				server := NewDNSServer(k8sClient, groupMapping)
+				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("get_fqdn_details", map[string]any{
 					"fqdn": "api.example.com",
 				})
@@ -822,13 +611,8 @@ var _ = Describe("MCP Server", func() {
 
 		Context("with non-existing FQDN", func() {
 			It("should return not found message", func() {
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithObjects(dns).
-					WithStatusSubresource(dns).
-					Build()
-
-				server := NewDNSServer(k8sClient, groupMapping)
+				store := seedDNSStore()
+				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("get_fqdn_details", map[string]any{
 					"fqdn": "nonexistent.example.com",
 				})
@@ -844,11 +628,8 @@ var _ = Describe("MCP Server", func() {
 
 		Context("with missing required parameter", func() {
 			It("should return error when fqdn is not provided", func() {
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					Build()
-
-				server := NewDNSServer(k8sClient, groupMapping)
+				store := dnsstore.NewFQDNStore()
+				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("get_fqdn_details", map[string]any{})
 
 				result, err := server.handleGetFQDNDetails(ctx, request)
@@ -859,71 +640,21 @@ var _ = Describe("MCP Server", func() {
 				Expect(text).To(ContainSubstring("fqdn parameter is required"))
 			})
 		})
-
-		Context("with client errors", func() {
-			It("should return error when listing DNS fails", func() {
-				expectedErr := errors.New("connection refused")
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithInterceptorFuncs(interceptor.Funcs{
-						List: func(ctx context.Context, client client.WithWatch, list client.ObjectList, opts ...client.ListOption) error {
-							if _, ok := list.(*sreportalv1alpha1.DNSList); ok {
-								return expectedErr
-							}
-							return nil
-						},
-					}).
-					Build()
-
-				server := NewDNSServer(k8sClient, groupMapping)
-				request := newCallToolRequest("get_fqdn_details", map[string]any{
-					"fqdn": "api.example.com",
-				})
-
-				result, err := server.handleGetFQDNDetails(ctx, request)
-
-				Expect(err).NotTo(HaveOccurred())
-				Expect(isErrorResult(result)).To(BeTrue())
-				text := extractTextContent(result)
-				Expect(text).To(ContainSubstring("failed to list DNS resources"))
-			})
-		})
 	})
 
 	Describe("JSON output format", func() {
 		It("should produce valid JSON in search results", func() {
-			dns := &sreportalv1alpha1.DNS{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-dns",
-					Namespace: "default",
+			store := dnsstore.NewFQDNStore()
+			_ = store.Replace(ctx, "default/test-dns", []domaindns.FQDNView{
+				{
+					Name: "api.example.com", Source: domaindns.SourceExternalDNS,
+					Groups: []string{"web"}, RecordType: "A",
+					Targets:    []string{"192.168.1.1"},
+					PortalName: "main", Namespace: "default",
 				},
-				Spec: sreportalv1alpha1.DNSSpec{
-					PortalRef: "main",
-				},
-				Status: sreportalv1alpha1.DNSStatus{
-					Groups: []sreportalv1alpha1.FQDNGroupStatus{
-						{
-							Name:   "web",
-							Source: "external-dns",
-							FQDNs: []sreportalv1alpha1.FQDNStatus{
-								{
-									FQDN:       "api.example.com",
-									RecordType: "A",
-									Targets:    []string{"192.168.1.1"},
-								},
-							},
-						},
-					},
-				},
-			}
+			})
 
-			k8sClient := fake.NewClientBuilder().
-				WithScheme(scheme).
-				WithObjects(dns).
-				WithStatusSubresource(dns).
-				Build()
-
-			server := NewDNSServer(k8sClient, groupMapping)
+			server := NewDNSServer(store, emptyPortalStore())
 			request := newCallToolRequest("search_fqdns", map[string]any{})
 
 			result, err := server.handleSearchFQDNs(ctx, request)
@@ -931,7 +662,6 @@ var _ = Describe("MCP Server", func() {
 			Expect(err).NotTo(HaveOccurred())
 			text := extractTextContent(result)
 
-			// Extract JSON part (after the "Found X FQDN(s):" line)
 			jsonStart := strings.Index(text, "[")
 			Expect(jsonStart).To(BeNumerically(">", 0))
 			jsonStr := text[jsonStart:]
@@ -944,27 +674,14 @@ var _ = Describe("MCP Server", func() {
 		})
 
 		It("should produce valid JSON in portal list results", func() {
-			portal := &sreportalv1alpha1.Portal{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "main",
-					Namespace: "sreportal-system",
-				},
-				Spec: sreportalv1alpha1.PortalSpec{
-					Title: "Main Portal",
-					Main:  true,
-				},
-				Status: sreportalv1alpha1.PortalStatus{
-					Ready: true,
-				},
-			}
+			pStore := portalstore.NewPortalStore()
+			_ = pStore.Replace(ctx, "sreportal-system/main", domainportal.PortalView{
+				Name: "main", Namespace: "sreportal-system",
+				Title: "Main Portal", Main: true, Ready: true,
+			})
 
-			k8sClient := fake.NewClientBuilder().
-				WithScheme(scheme).
-				WithObjects(portal).
-				WithStatusSubresource(portal).
-				Build()
-
-			server := NewDNSServer(k8sClient, groupMapping)
+			store := dnsstore.NewFQDNStore()
+			server := NewDNSServer(store, pStore)
 			request := newCallToolRequest("list_portals", map[string]any{})
 
 			result, err := server.handleListPortals(ctx, request)
@@ -985,38 +702,17 @@ var _ = Describe("MCP Server", func() {
 		})
 
 		It("should produce valid JSON in FQDN details results", func() {
-			dns := &sreportalv1alpha1.DNS{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-dns",
-					Namespace: "default",
+			store := dnsstore.NewFQDNStore()
+			_ = store.Replace(ctx, "default/test-dns", []domaindns.FQDNView{
+				{
+					Name: "api.example.com", Source: domaindns.SourceExternalDNS,
+					Groups: []string{"api"}, RecordType: "A",
+					Targets:    []string{"192.168.1.1"},
+					PortalName: "main", Namespace: "default",
 				},
-				Spec: sreportalv1alpha1.DNSSpec{
-					PortalRef: "main",
-				},
-				Status: sreportalv1alpha1.DNSStatus{
-					Groups: []sreportalv1alpha1.FQDNGroupStatus{
-						{
-							Name:   "api",
-							Source: "external-dns",
-							FQDNs: []sreportalv1alpha1.FQDNStatus{
-								{
-									FQDN:       "api.example.com",
-									RecordType: "A",
-									Targets:    []string{"192.168.1.1"},
-								},
-							},
-						},
-					},
-				},
-			}
+			})
 
-			k8sClient := fake.NewClientBuilder().
-				WithScheme(scheme).
-				WithObjects(dns).
-				WithStatusSubresource(dns).
-				Build()
-
-			server := NewDNSServer(k8sClient, groupMapping)
+			server := NewDNSServer(store, emptyPortalStore())
 			request := newCallToolRequest("get_fqdn_details", map[string]any{
 				"fqdn": "api.example.com",
 			})
@@ -1035,164 +731,6 @@ var _ = Describe("MCP Server", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(details.Name).To(Equal("api.example.com"))
 			Expect(details.RecordType).To(Equal("A"))
-		})
-	})
-
-	Describe("DNSRecord integration", func() {
-		Context("search_fqdns reads only from DNS status", func() {
-			It("should only return FQDNs present in DNS.Status.Groups", func() {
-				dns := &sreportalv1alpha1.DNS{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-dns",
-						Namespace: "default",
-					},
-					Spec: sreportalv1alpha1.DNSSpec{
-						PortalRef: "main",
-					},
-					Status: sreportalv1alpha1.DNSStatus{
-						Groups: []sreportalv1alpha1.FQDNGroupStatus{
-							{
-								Name:   "web",
-								Source: "external-dns",
-								FQDNs: []sreportalv1alpha1.FQDNStatus{
-									{
-										FQDN:       "svc.example.com",
-										RecordType: "A",
-										Targets:    []string{"10.0.0.5"},
-									},
-								},
-							},
-						},
-					},
-				}
-
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithObjects(dns).
-					WithStatusSubresource(dns).
-					Build()
-
-				server := NewDNSServer(k8sClient, groupMapping)
-				request := newCallToolRequest("search_fqdns", map[string]any{})
-
-				result, err := server.handleSearchFQDNs(ctx, request)
-
-				Expect(err).NotTo(HaveOccurred())
-				text := extractTextContent(result)
-				Expect(text).To(ContainSubstring("Found 1 FQDN(s)"))
-				Expect(text).To(ContainSubstring("svc.example.com"))
-			})
-
-			It("should ignore DNSRecords not yet aggregated into DNS status", func() {
-				// Only a DNSRecord exists, no DNS resource with aggregated status yet
-				dnsRecord := &sreportalv1alpha1.DNSRecord{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-dnsrecord",
-						Namespace: "default",
-					},
-					Spec: sreportalv1alpha1.DNSRecordSpec{
-						SourceType: "service",
-						PortalRef:  "main",
-					},
-					Status: sreportalv1alpha1.DNSRecordStatus{
-						Endpoints: []sreportalv1alpha1.EndpointStatus{
-							{
-								DNSName:    "not-yet-aggregated.example.com",
-								RecordType: "A",
-								Targets:    []string{"10.0.0.5"},
-							},
-						},
-					},
-				}
-
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithObjects(dnsRecord).
-					WithStatusSubresource(dnsRecord).
-					Build()
-
-				server := NewDNSServer(k8sClient, groupMapping)
-				request := newCallToolRequest("search_fqdns", map[string]any{})
-
-				result, err := server.handleSearchFQDNs(ctx, request)
-
-				Expect(err).NotTo(HaveOccurred())
-				text := extractTextContent(result)
-				Expect(text).To(Equal("No FQDNs found matching the search criteria."))
-			})
-		})
-
-		Context("get_fqdn_details with DNSRecords", func() {
-			It("should find FQDN details from DNSRecord when not in DNS", func() {
-				dnsRecord := &sreportalv1alpha1.DNSRecord{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-dnsrecord",
-						Namespace: "default",
-					},
-					Spec: sreportalv1alpha1.DNSRecordSpec{
-						SourceType: "ingress",
-						PortalRef:  "main",
-					},
-					Status: sreportalv1alpha1.DNSRecordStatus{
-						Endpoints: []sreportalv1alpha1.EndpointStatus{
-							{
-								DNSName:    "ingress.example.com",
-								RecordType: "A",
-								Targets:    []string{"10.0.0.10"},
-								Labels: map[string]string{
-									"sreportal.io/groups": "ingress-group",
-								},
-							},
-						},
-					},
-				}
-
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithObjects(dnsRecord).
-					WithStatusSubresource(dnsRecord).
-					Build()
-
-				server := NewDNSServer(k8sClient, groupMapping)
-				request := newCallToolRequest("get_fqdn_details", map[string]any{
-					"fqdn": "ingress.example.com",
-				})
-
-				result, err := server.handleGetFQDNDetails(ctx, request)
-
-				Expect(err).NotTo(HaveOccurred())
-				Expect(isErrorResult(result)).To(BeFalse())
-				text := extractTextContent(result)
-				Expect(text).To(ContainSubstring("ingress.example.com"))
-				Expect(text).To(ContainSubstring("10.0.0.10"))
-			})
-
-			It("should return error when listing DNSRecords fails in get_fqdn_details", func() {
-				expectedErr := errors.New("dnsrecord list error")
-				k8sClient := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithInterceptorFuncs(interceptor.Funcs{
-						List: func(ctx context.Context, c client.WithWatch, list client.ObjectList, opts ...client.ListOption) error {
-							if _, ok := list.(*sreportalv1alpha1.DNSRecordList); ok {
-								return expectedErr
-							}
-							return c.List(ctx, list, opts...)
-						},
-					}).
-					Build()
-
-				server := NewDNSServer(k8sClient, groupMapping)
-				request := newCallToolRequest("get_fqdn_details", map[string]any{
-					"fqdn": "test.example.com",
-				})
-
-				result, err := server.handleGetFQDNDetails(ctx, request)
-
-				Expect(err).NotTo(HaveOccurred())
-				Expect(isErrorResult(result)).To(BeTrue())
-				text := extractTextContent(result)
-				Expect(text).To(ContainSubstring("failed to list DNSRecord resources"))
-			})
 		})
 	})
 

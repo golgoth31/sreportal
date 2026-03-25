@@ -20,12 +20,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
+	"slices"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 )
 
 // FQDNResult represents a single FQDN in the search results
@@ -43,75 +42,58 @@ type FQDNResult struct {
 
 // handleSearchFQDNs handles the search_fqdns tool call
 func (s *DNSServer) handleSearchFQDNs(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	// Extract parameters using GetString helper methods
 	query := request.GetString("query", "")
 	source := request.GetString("source", "")
-	group := request.GetString("group", "")
 	portal := request.GetString("portal", "")
 	namespace := request.GetString("namespace", "")
 
-	// List all DNS resources
-	var dnsList sreportalv1alpha1.DNSList
-	listOpts := []client.ListOption{}
-
-	if namespace != "" {
-		listOpts = append(listOpts, client.InNamespace(namespace))
+	filters := domaindns.FQDNFilters{
+		Search:    query,
+		Source:    source,
+		Portal:    portal,
+		Namespace: namespace,
 	}
 
-	if portal != "" {
-		listOpts = append(listOpts, client.MatchingFields{"spec.portalRef": portal})
+	views, err := s.fqdnReader.List(ctx, filters)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to list FQDNs: %v", err)), nil
 	}
 
-	if err := s.client.List(ctx, &dnsList, listOpts...); err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("failed to list DNS resources: %v", err)), nil
-	}
+	// Apply group filter (not part of FQDNFilters since it's MCP-specific post-filter)
+	group := request.GetString("group", "")
 
-	// Collect FQDNs from DNS resources
 	var results []FQDNResult
 	seen := make(map[string]bool)
 
-	for _, dns := range dnsList.Items {
-		for _, grp := range dns.Status.Groups {
-			// Apply source filter
-			if source != "" && grp.Source != source {
-				continue
-			}
-
-			// Apply group filter
-			if group != "" && !strings.EqualFold(grp.Name, group) {
-				continue
-			}
-
-			for _, fqdnStatus := range grp.FQDNs {
-				// Apply search query filter
-				if query != "" && !strings.Contains(
-					strings.ToLower(fqdnStatus.FQDN),
-					strings.ToLower(query),
-				) {
-					continue
-				}
-
-				if seen[fqdnStatus.FQDN] {
-					continue
-				}
-				seen[fqdnStatus.FQDN] = true
-
-				results = append(results, FQDNResult{
-					Name:        fqdnStatus.FQDN,
-					Source:      grp.Source,
-					Group:       grp.Name,
-					Description: fqdnStatus.Description,
-					RecordType:  fqdnStatus.RecordType,
-					Targets:     fqdnStatus.Targets,
-					SyncStatus:  fqdnStatus.SyncStatus,
-					Portal:      dns.Spec.PortalRef,
-					Namespace:   dns.Namespace,
-				})
-			}
+	for _, v := range views {
+		if seen[v.Name] {
+			continue
 		}
+
+		if group != "" && !slices.Contains(v.Groups, group) {
+			continue
+		}
+
+		seen[v.Name] = true
+
+		groupName := ""
+		if len(v.Groups) > 0 {
+			groupName = v.Groups[0]
+		}
+
+		results = append(results, FQDNResult{
+			Name:        v.Name,
+			Source:      string(v.Source),
+			Group:       groupName,
+			Description: v.Description,
+			RecordType:  v.RecordType,
+			Targets:     v.Targets,
+			SyncStatus:  v.SyncStatus,
+			Portal:      v.PortalName,
+			Namespace:   v.Namespace,
+		})
 	}
 
-	// Format response
 	if len(results) == 0 {
 		return mcp.NewToolResultText("No FQDNs found matching the search criteria."), nil
 	}

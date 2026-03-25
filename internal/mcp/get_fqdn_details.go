@@ -19,13 +19,13 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
 
-	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
-	"github.com/golgoth31/sreportal/internal/adapter"
+	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 )
 
 // FQDNDetails represents detailed information about a specific FQDN
@@ -45,92 +45,48 @@ type FQDNDetails struct {
 
 // handleGetFQDNDetails handles the get_fqdn_details tool call
 func (s *DNSServer) handleGetFQDNDetails(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	// Extract required parameter
 	fqdn, err := request.RequireString("fqdn")
 	if err != nil {
 		return mcp.NewToolResultError("fqdn parameter is required"), nil
 	}
 
-	// Normalize the FQDN for comparison
-	fqdnLower := strings.ToLower(strings.TrimSuffix(fqdn, "."))
+	// Normalize the FQDN for lookup
+	fqdnNormalized := strings.ToLower(strings.TrimSuffix(fqdn, "."))
 
-	// Search in all DNS resources
-	var dnsList sreportalv1alpha1.DNSList
-	if err := s.client.List(ctx, &dnsList); err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("failed to list DNS resources: %v", err)), nil
-	}
-
-	// Look for the FQDN in DNS status
-	for _, dns := range dnsList.Items {
-		for _, grp := range dns.Status.Groups {
-			for _, fqdnStatus := range grp.FQDNs {
-				fqdnStatusLower := strings.ToLower(strings.TrimSuffix(fqdnStatus.FQDN, "."))
-				if fqdnStatusLower == fqdnLower {
-					details := FQDNDetails{
-						Name:        fqdnStatus.FQDN,
-						Source:      grp.Source,
-						Group:       grp.Name,
-						Description: fqdnStatus.Description,
-						RecordType:  fqdnStatus.RecordType,
-						Targets:     fqdnStatus.Targets,
-						SyncStatus:  fqdnStatus.SyncStatus,
-						Portal:      dns.Spec.PortalRef,
-						Namespace:   dns.Namespace,
-						DNSResource: fmt.Sprintf("%s/%s", dns.Namespace, dns.Name),
-					}
-					if !fqdnStatus.LastSeen.IsZero() {
-						details.LastSeen = fqdnStatus.LastSeen.Format("2006-01-02T15:04:05Z07:00")
-					}
-
-					jsonBytes, err := json.MarshalIndent(details, "", "  ")
-					if err != nil {
-						return mcp.NewToolResultError(fmt.Sprintf("failed to marshal details: %v", err)), nil
-					}
-
-					return mcp.NewToolResultText(fmt.Sprintf("FQDN details for '%s':\n\n%s", fqdn, string(jsonBytes))), nil
-				}
-			}
+	// Try to find via the reader (empty recordType matches first hit)
+	view, err := s.fqdnReader.Get(ctx, fqdnNormalized, "")
+	if err != nil {
+		if errors.Is(err, domaindns.ErrFQDNNotFound) {
+			return mcp.NewToolResultText(fmt.Sprintf("FQDN '%s' not found.", fqdn)), nil
 		}
+		return mcp.NewToolResultError(fmt.Sprintf("failed to get FQDN details: %v", err)), nil
 	}
 
-	// Also check DNSRecords directly
-	var dnsRecordList sreportalv1alpha1.DNSRecordList
-	if err := s.client.List(ctx, &dnsRecordList); err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("failed to list DNSRecord resources: %v", err)), nil
+	groupName := ""
+	if len(view.Groups) > 0 {
+		groupName = view.Groups[0]
 	}
 
-	var allEndpoints []sreportalv1alpha1.EndpointStatus
-	for _, rec := range dnsRecordList.Items {
-		allEndpoints = append(allEndpoints, rec.Status.Endpoints...)
+	details := FQDNDetails{
+		Name:        view.Name,
+		Source:      string(view.Source),
+		Group:       groupName,
+		Description: view.Description,
+		RecordType:  view.RecordType,
+		Targets:     view.Targets,
+		SyncStatus:  view.SyncStatus,
+		Portal:      view.PortalName,
+		Namespace:   view.Namespace,
+		DNSResource: fmt.Sprintf("%s/%s", view.Namespace, view.PortalName),
+	}
+	if !view.LastSeen.IsZero() {
+		details.LastSeen = view.LastSeen.Format("2006-01-02T15:04:05Z07:00")
 	}
 
-	if len(allEndpoints) > 0 {
-		groups := adapter.EndpointStatusToGroups(allEndpoints, s.groupMapping)
-		for _, grp := range groups {
-			for _, fqdnStatus := range grp.FQDNs {
-				fqdnStatusLower := strings.ToLower(strings.TrimSuffix(fqdnStatus.FQDN, "."))
-				if fqdnStatusLower == fqdnLower {
-					details := FQDNDetails{
-						Name:       fqdnStatus.FQDN,
-						Source:     grp.Source,
-						Group:      grp.Name,
-						RecordType: fqdnStatus.RecordType,
-						Targets:    fqdnStatus.Targets,
-					}
-					if !fqdnStatus.LastSeen.IsZero() {
-						details.LastSeen = fqdnStatus.LastSeen.Format("2006-01-02T15:04:05Z07:00")
-					}
-
-					jsonBytes, err := json.MarshalIndent(details, "", "  ")
-					if err != nil {
-						return mcp.NewToolResultError(fmt.Sprintf("failed to marshal details: %v", err)), nil
-					}
-
-					return mcp.NewToolResultText(fmt.Sprintf("FQDN details for '%s':\n\n%s", fqdn, string(jsonBytes))), nil
-				}
-			}
-		}
+	jsonBytes, err := json.MarshalIndent(details, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal details: %v", err)), nil
 	}
 
-	return mcp.NewToolResultText(fmt.Sprintf("FQDN '%s' not found.", fqdn)), nil
+	return mcp.NewToolResultText(fmt.Sprintf("FQDN details for '%s':\n\n%s", fqdn, string(jsonBytes))), nil
 }

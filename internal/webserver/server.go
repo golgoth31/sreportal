@@ -37,6 +37,9 @@ import (
 	"github.com/golgoth31/sreportal/internal/log"
 
 	"github.com/golgoth31/sreportal/internal/config"
+	domainalertmanager "github.com/golgoth31/sreportal/internal/domain/alertmanagerreadmodel"
+	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
+	domainportal "github.com/golgoth31/sreportal/internal/domain/portal"
 	"github.com/golgoth31/sreportal/internal/grpc"
 	"github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1/sreportalv1connect"
 	"github.com/golgoth31/sreportal/internal/metrics"
@@ -66,6 +69,15 @@ type Config struct {
 
 	// ReleaseAllowedTypes is the list of allowed release types with display config (empty means all allowed)
 	ReleaseAllowedTypes []config.ReleaseTypeConfig
+
+	// FQDNReader is the read-side interface for DNS data (provided by the ReadStore)
+	FQDNReader domaindns.FQDNReader
+
+	// PortalReader is the read-side interface for Portal data (provided by the ReadStore)
+	PortalReader domainportal.PortalReader
+
+	// AlertmanagerReader is the read-side interface for Alertmanager data (provided by the ReadStore)
+	AlertmanagerReader domainalertmanager.AlertmanagerReader
 }
 
 // Server is the web server for the SRE Portal
@@ -75,7 +87,6 @@ type Server struct {
 	client         client.Client
 	operatorConfig *config.OperatorConfig
 	httpServer     *http.Server
-	dnsService     *grpc.DNSService
 }
 
 // New creates a new web server.
@@ -106,12 +117,6 @@ func New(cfg Config, c client.Client, operatorConfig *config.OperatorConfig, all
 	return s
 }
 
-// DNSService returns the underlying DNSService so callers can register it with
-// a controller-runtime manager (mgr.Add) to run the shared FQDN cache loop.
-func (s *Server) DNSService() *grpc.DNSService {
-	return s.dnsService
-}
-
 // setupRoutes configures all routes
 func (s *Server) setupRoutes() {
 	// Shared Connect interceptor — logs handler errors at WARN level since
@@ -120,15 +125,15 @@ func (s *Server) setupRoutes() {
 	connectOpts := connect.WithInterceptors(grpc.LoggingInterceptor())
 
 	// Mount Connect handlers for gRPC/Connect protocol
-	s.dnsService = grpc.NewDNSService(s.client)
-	dnsPath, dnsHandler := sreportalv1connect.NewDNSServiceHandler(s.dnsService, connectOpts)
+	dnsService := grpc.NewDNSService(s.config.FQDNReader)
+	dnsPath, dnsHandler := sreportalv1connect.NewDNSServiceHandler(dnsService, connectOpts)
 	s.echo.Any(dnsPath+"*", echo.WrapHandler(dnsHandler))
 
-	portalService := grpc.NewPortalService(s.client)
+	portalService := grpc.NewPortalService(s.config.PortalReader)
 	portalPath, portalHandler := sreportalv1connect.NewPortalServiceHandler(portalService, connectOpts)
 	s.echo.Any(portalPath+"*", echo.WrapHandler(portalHandler))
 
-	alertmanagerService := grpc.NewAlertmanagerService(s.client)
+	alertmanagerService := grpc.NewAlertmanagerService(s.config.AlertmanagerReader)
 	amPath, amHandler := sreportalv1connect.NewAlertmanagerServiceHandler(alertmanagerService, connectOpts)
 	s.echo.Any(amPath+"*", echo.WrapHandler(amHandler))
 
