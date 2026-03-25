@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.21.1](https://github.com/golgoth31/sreportal/compare/v1.21.0...v1.21.1) (2026-03-25)
+
+
+### Bug Fixes
+
+* **netpol:** align remote ownership model with local chain ([4018f44](https://github.com/golgoth31/sreportal/commit/4018f44e20fc632d2a32fe9f1c020751ba6635bf))
+
 ## [1.21.0](https://github.com/golgoth31/sreportal/compare/v1.20.1...v1.21.0) (2026-03-24)
 
 
