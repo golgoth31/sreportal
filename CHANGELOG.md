@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.22.0](https://github.com/golgoth31/sreportal/compare/v1.21.2...v1.22.0) (2026-03-25)
+
+
+### Features
+
+* improve memory caching ([#155](https://github.com/golgoth31/sreportal/issues/155)) ([59911cf](https://github.com/golgoth31/sreportal/commit/59911cfd92ff13b1331c43df9d8273d64add6ffb))
+
 ## [1.21.2](https://github.com/golgoth31/sreportal/compare/v1.21.1...v1.21.2) (2026-03-25)
 
 
