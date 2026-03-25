@@ -384,6 +384,7 @@ func main() {
 	if err := controller.NewNetworkFlowDiscoveryReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),
+		remoteCache,
 	).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "NetworkFlowDiscovery")
 		os.Exit(1)

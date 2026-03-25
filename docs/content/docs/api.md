@@ -452,6 +452,8 @@ _Appears in:_
 | --- | --- | --- | --- |
 | `portalRef` _string_ | portalRef is the name of the Portal this resource is linked to |   |   |
 | `namespaces` _string array_ | namespaces is an optional list of namespaces to scan. When empty, all namespaces are scanned. |   |   |
+| `isRemote` _boolean_ | isRemote indicates that the corresponding portal is remote and the operator should fetch network flows from the remote portal Connect API instead of scanning local Kubernetes NetworkPolicies. |   |   |
+| `remoteURL` _string_ | remoteURL is the base URL of the remote SRE Portal to fetch network flows from. Only used when isRemote is true. |   |   |
 
 
 

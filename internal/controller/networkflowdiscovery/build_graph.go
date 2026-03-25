@@ -49,7 +49,12 @@ func NewBuildGraphHandler(c client.Client) *BuildGraphHandler {
 }
 
 // Handle implements reconciler.Handler.
+// This handler is a no-op for remote resources (data is populated by FetchRemoteGraphHandler).
 func (h *BuildGraphHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.NetworkFlowDiscovery, ChainData]) error {
+	if rc.Resource.Spec.IsRemote {
+		return nil
+	}
+
 	logger := log.FromContext(ctx).WithName("build-graph")
 
 	gb := &graphBuilder{

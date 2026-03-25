@@ -31,6 +31,17 @@ type NetworkFlowDiscoverySpec struct {
 	// When empty, all namespaces are scanned.
 	// +optional
 	Namespaces []string `json:"namespaces,omitempty"`
+
+	// isRemote indicates that the corresponding portal is remote and the operator
+	// should fetch network flows from the remote portal Connect API instead of
+	// scanning local Kubernetes NetworkPolicies.
+	// +optional
+	IsRemote bool `json:"isRemote,omitempty"`
+
+	// remoteURL is the base URL of the remote SRE Portal to fetch network flows from.
+	// Only used when isRemote is true.
+	// +optional
+	RemoteURL string `json:"remoteURL,omitempty"`
 }
 
 // NetworkFlowDiscoveryStatus defines the observed state of NetworkFlowDiscovery.

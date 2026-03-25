@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	"github.com/golgoth31/sreportal/internal/remoteclient"
 )
 
 var _ = Describe("NetworkFlowDiscovery Controller", func() {
@@ -72,6 +73,7 @@ var _ = Describe("NetworkFlowDiscovery Controller", func() {
 			controllerReconciler := NewNetworkFlowDiscoveryReconciler(
 				k8sClient,
 				k8sClient.Scheme(),
+				remoteclient.NewCache(),
 			)
 
 			result, err := controllerReconciler.Reconcile(ctx, reconcile.Request{

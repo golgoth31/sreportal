@@ -29,6 +29,7 @@ import (
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/metrics"
 	"github.com/golgoth31/sreportal/internal/reconciler"
+	"github.com/golgoth31/sreportal/internal/remoteclient"
 )
 
 const (
@@ -43,8 +44,9 @@ type NetworkFlowDiscoveryReconciler struct {
 }
 
 // NewNetworkFlowDiscoveryReconciler creates a new reconciler with the handler chain.
-func NewNetworkFlowDiscoveryReconciler(c client.Client, scheme *runtime.Scheme) *NetworkFlowDiscoveryReconciler {
+func NewNetworkFlowDiscoveryReconciler(c client.Client, scheme *runtime.Scheme, remoteClientCache *remoteclient.Cache) *NetworkFlowDiscoveryReconciler {
 	handlers := []reconciler.Handler[*sreportalv1alpha1.NetworkFlowDiscovery, nfdchain.ChainData]{
+		nfdchain.NewFetchRemoteGraphHandler(c, remoteClientCache),
 		nfdchain.NewBuildGraphHandler(c),
 		nfdchain.NewUpdateStatusHandler(c),
 	}

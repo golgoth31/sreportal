@@ -54,6 +54,12 @@ spec:
           spec:
             description: spec defines the desired state of NetworkFlowDiscovery
             properties:
+              isRemote:
+                description: |-
+                  isRemote indicates that the corresponding portal is remote and the operator
+                  should fetch network flows from the remote portal Connect API instead of
+                  scanning local Kubernetes NetworkPolicies.
+                type: boolean
               namespaces:
                 description: |-
                   namespaces is an optional list of namespaces to scan.
@@ -65,6 +71,11 @@ spec:
                 description: portalRef is the name of the Portal this resource is
                   linked to
                 minLength: 1
+                type: string
+              remoteURL:
+                description: |-
+                  remoteURL is the base URL of the remote SRE Portal to fetch network flows from.
+                  Only used when isRemote is true.
                 type: string
             required:
             - portalRef
