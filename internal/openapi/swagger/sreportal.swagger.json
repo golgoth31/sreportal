@@ -773,6 +773,10 @@
         "search": {
           "type": "string",
           "title": "search filters by policy or app name substring"
+        },
+        "portal": {
+          "type": "string",
+          "title": "portal filters by portal name (empty for all)"
         }
       },
       "title": "ListNetworkPoliciesRequest is the request for listing network policies"

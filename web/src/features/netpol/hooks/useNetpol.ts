@@ -4,12 +4,12 @@ import { useMemo, useState } from "react";
 import { listNetworkPolicies } from "../infrastructure/netpolApi";
 import { buildFlowMaps, type NetpolNode } from "../domain/netpol.types";
 
-export function useNetpol() {
+export function useNetpol(portalName: string) {
   const [search, setSearch] = useState("");
 
   const query = useQuery({
-    queryKey: ["netpol"],
-    queryFn: () => listNetworkPolicies(),
+    queryKey: ["netpol", portalName],
+    queryFn: () => listNetworkPolicies({ portal: portalName }),
     staleTime: 30_000,
   });
 

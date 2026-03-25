@@ -275,6 +275,23 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Add field indexer for NetworkFlowDiscovery.spec.portalRef
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&sreportalv1alpha1.NetworkFlowDiscovery{},
+		controller.FieldIndexPortalRef,
+		func(o client.Object) []string {
+			nfd := o.(*sreportalv1alpha1.NetworkFlowDiscovery)
+			if nfd.Spec.PortalRef == "" {
+				return nil
+			}
+			return []string{nfd.Spec.PortalRef}
+		},
+	); err != nil {
+		setupLog.Error(err, "unable to create field indexer", "field", controller.FieldIndexPortalRef, "kind", "NetworkFlowDiscovery")
+		os.Exit(1)
+	}
+
 	// Add field indexer for DNS.spec.portalRef
 	if err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),

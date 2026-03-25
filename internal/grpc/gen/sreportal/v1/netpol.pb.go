@@ -27,7 +27,9 @@ type ListNetworkPoliciesRequest struct {
 	// namespace filters by Kubernetes namespace (empty for all)
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// search filters by policy or app name substring
-	Search        string `protobuf:"bytes,2,opt,name=search,proto3" json:"search,omitempty"`
+	Search string `protobuf:"bytes,2,opt,name=search,proto3" json:"search,omitempty"`
+	// portal filters by portal name (empty for all)
+	Portal        string `protobuf:"bytes,3,opt,name=portal,proto3" json:"portal,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -72,6 +74,13 @@ func (x *ListNetworkPoliciesRequest) GetNamespace() string {
 func (x *ListNetworkPoliciesRequest) GetSearch() string {
 	if x != nil {
 		return x.Search
+	}
+	return ""
+}
+
+func (x *ListNetworkPoliciesRequest) GetPortal() string {
+	if x != nil {
+		return x.Portal
 	}
 	return ""
 }
@@ -281,10 +290,11 @@ var File_sreportal_v1_netpol_proto protoreflect.FileDescriptor
 
 const file_sreportal_v1_netpol_proto_rawDesc = "" +
 	"\n" +
-	"\x19sreportal/v1/netpol.proto\x12\fsreportal.v1\"R\n" +
+	"\x19sreportal/v1/netpol.proto\x12\fsreportal.v1\"j\n" +
 	"\x1aListNetworkPoliciesRequest\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x16\n" +
-	"\x06search\x18\x02 \x01(\tR\x06search\"}\n" +
+	"\x06search\x18\x02 \x01(\tR\x06search\x12\x16\n" +
+	"\x06portal\x18\x03 \x01(\tR\x06portal\"}\n" +
 	"\x1bListNetworkPoliciesResponse\x12.\n" +
 	"\x05nodes\x18\x01 \x03(\v2\x18.sreportal.v1.NetpolNodeR\x05nodes\x12.\n" +
 	"\x05edges\x18\x02 \x03(\v2\x18.sreportal.v1.NetpolEdgeR\x05edges\"\x83\x01\n" +

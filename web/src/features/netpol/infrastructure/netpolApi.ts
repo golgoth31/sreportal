@@ -34,6 +34,7 @@ function toDomainEdge(e: ProtoEdge): NetpolEdge {
 export interface ListNetpolParams {
   namespace?: string;
   search?: string;
+  portal?: string;
 }
 
 export async function listNetworkPolicies(
@@ -42,6 +43,7 @@ export async function listNetworkPolicies(
   const request = create(ListNetworkPoliciesRequestSchema, {
     namespace: params.namespace ?? "",
     search: params.search ?? "",
+    portal: params.portal ?? "",
   });
   const response = await client.listNetworkPolicies(request);
   return {

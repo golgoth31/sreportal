@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useParams } from "react-router";
 
 import { PageRefreshButton } from "@/components/PageRefreshButton";
 import { ErrorAlert } from "@/components/ErrorAlert";
@@ -16,6 +17,7 @@ const TABS: { value: ViewTab; label: string }[] = [
 ];
 
 export function NetpolPage() {
+  const { portalName = "main" } = useParams<{ portalName: string }>();
   const [activeTab, setActiveTab] = useState<ViewTab>("matrix");
   const {
     graph,
@@ -27,7 +29,7 @@ export function NetpolPage() {
     isFetching,
     error,
     refetch,
-  } = useNetpol();
+  } = useNetpol(portalName);
 
   return (
     <div className="max-w-screen-xl mx-auto px-4 py-6 space-y-6">

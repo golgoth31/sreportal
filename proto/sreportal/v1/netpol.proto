@@ -15,6 +15,9 @@ message ListNetworkPoliciesRequest {
 
   // search filters by policy or app name substring
   string search = 2;
+
+  // portal filters by portal name (empty for all)
+  string portal = 3;
 }
 
 // ListNetworkPoliciesResponse contains parsed network flow relations
