@@ -66,11 +66,6 @@ patches:
     target:
       kind: Deployment
 
-  # [AUTH] Uncomment to enable authentication on write endpoints.
-  # Requires auth_secret.yaml in ../manager/kustomization.yaml to be uncommented too.
-  - path: manager_auth_patch.yaml
-    target:
-      kind: Deployment
 
 # [CERTMANAGER] To enable cert-manager, uncomment all sections with 'CERTMANAGER' prefix.
 # Uncomment the following replacements to add the cert-manager CA injection annotations

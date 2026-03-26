@@ -383,6 +383,7 @@ _Appears in:_
 | `targets` _string array_ | targets is the list of target addresses for this endpoint |   |   |
 | `ttl` _integer_ | ttl is the DNS record TTL in seconds |   |   |
 | `labels` _[sreportal.io/v1alpha1.map[string]string](#sreportaliov1alpha1map[string]string)_ | labels contains the endpoint labels from external-dns |   |   |
+| `syncStatus` _string_ | syncStatus indicates whether the endpoint is correctly resolved in DNS. sync: the FQDN resolves to the expected type and targets. notavailable: the FQDN does not exist in DNS. notsync: the FQDN exists but resolves to different targets or type. |   | Enum: [sync notavailable notsync ] |
 | `lastSeen` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | lastSeen is the timestamp when this endpoint was last observed |   |   |
 
 

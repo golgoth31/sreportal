@@ -1,5 +1,3 @@
 resources:
   - manager.yaml
   - configmap.yaml
-  # [AUTH] Uncomment to create the auth Secret for write endpoint authentication.
-  - auth_secret.yaml

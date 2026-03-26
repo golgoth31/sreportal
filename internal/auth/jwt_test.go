@@ -31,6 +31,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/golgoth31/sreportal/internal/auth"
+	"github.com/golgoth31/sreportal/internal/config"
 )
 
 // staticKeyfunc implements keyfunc.Keyfunc for testing with a known RSA key.
@@ -78,7 +79,7 @@ func bearerHeader(token string) http.Header {
 	return h
 }
 
-func newTestJWTAuth(t *testing.T, key *rsa.PrivateKey, cfg auth.JWTConfig) *auth.JWTAuthenticator {
+func newTestJWTAuth(t *testing.T, key *rsa.PrivateKey, cfg config.JWTAuthConfig) *auth.JWTAuthenticator {
 	t.Helper()
 	kf := &staticKeyfunc{key: &key.PublicKey}
 	return auth.NewJWTAuthenticatorWithKeyfunc(cfg, kf)
@@ -86,9 +87,8 @@ func newTestJWTAuth(t *testing.T, key *rsa.PrivateKey, cfg auth.JWTConfig) *auth
 
 func TestJWT_ValidToken(t *testing.T) {
 	key := mustGenerateKey(t)
-	cfg := auth.JWTConfig{
-		Enabled: true,
-		Issuers: []auth.JWTIssuerConfig{{
+	cfg := config.JWTAuthConfig{
+		Issuers: []config.JWTIssuerConfig{{
 			Name:      "test",
 			IssuerURL: "https://issuer.example.com/",
 			Audience:  "sreportal",
@@ -108,9 +108,8 @@ func TestJWT_ValidToken(t *testing.T) {
 
 func TestJWT_ExpiredToken(t *testing.T) {
 	key := mustGenerateKey(t)
-	cfg := auth.JWTConfig{
-		Enabled: true,
-		Issuers: []auth.JWTIssuerConfig{{
+	cfg := config.JWTAuthConfig{
+		Issuers: []config.JWTIssuerConfig{{
 			Name:      "test",
 			IssuerURL: "https://issuer.example.com/",
 		}},
@@ -129,9 +128,8 @@ func TestJWT_ExpiredToken(t *testing.T) {
 
 func TestJWT_WrongIssuer(t *testing.T) {
 	key := mustGenerateKey(t)
-	cfg := auth.JWTConfig{
-		Enabled: true,
-		Issuers: []auth.JWTIssuerConfig{{
+	cfg := config.JWTAuthConfig{
+		Issuers: []config.JWTIssuerConfig{{
 			Name:      "test",
 			IssuerURL: "https://issuer.example.com/",
 		}},
@@ -150,9 +148,8 @@ func TestJWT_WrongIssuer(t *testing.T) {
 
 func TestJWT_WrongAudience(t *testing.T) {
 	key := mustGenerateKey(t)
-	cfg := auth.JWTConfig{
-		Enabled: true,
-		Issuers: []auth.JWTIssuerConfig{{
+	cfg := config.JWTAuthConfig{
+		Issuers: []config.JWTIssuerConfig{{
 			Name:      "test",
 			IssuerURL: "https://issuer.example.com/",
 			Audience:  "sreportal",
@@ -173,9 +170,8 @@ func TestJWT_WrongAudience(t *testing.T) {
 
 func TestJWT_MissingRequiredClaim(t *testing.T) {
 	key := mustGenerateKey(t)
-	cfg := auth.JWTConfig{
-		Enabled: true,
-		Issuers: []auth.JWTIssuerConfig{{
+	cfg := config.JWTAuthConfig{
+		Issuers: []config.JWTIssuerConfig{{
 			Name:           "test",
 			IssuerURL:      "https://issuer.example.com/",
 			RequiredClaims: map[string]string{"scope": "release:write"},
@@ -195,9 +191,8 @@ func TestJWT_MissingRequiredClaim(t *testing.T) {
 
 func TestJWT_RequiredClaimPresent(t *testing.T) {
 	key := mustGenerateKey(t)
-	cfg := auth.JWTConfig{
-		Enabled: true,
-		Issuers: []auth.JWTIssuerConfig{{
+	cfg := config.JWTAuthConfig{
+		Issuers: []config.JWTIssuerConfig{{
 			Name:           "test",
 			IssuerURL:      "https://issuer.example.com/",
 			RequiredClaims: map[string]string{"scope": "release:write"},
@@ -217,9 +212,8 @@ func TestJWT_RequiredClaimPresent(t *testing.T) {
 
 func TestJWT_RequiredClaimWrongValue(t *testing.T) {
 	key := mustGenerateKey(t)
-	cfg := auth.JWTConfig{
-		Enabled: true,
-		Issuers: []auth.JWTIssuerConfig{{
+	cfg := config.JWTAuthConfig{
+		Issuers: []config.JWTIssuerConfig{{
 			Name:           "test",
 			IssuerURL:      "https://issuer.example.com/",
 			RequiredClaims: map[string]string{"scope": "release:write"},
@@ -241,9 +235,8 @@ func TestJWT_RequiredClaimWrongValue(t *testing.T) {
 func TestJWT_InvalidSignature(t *testing.T) {
 	key := mustGenerateKey(t)
 	otherKey := mustGenerateKey(t)
-	cfg := auth.JWTConfig{
-		Enabled: true,
-		Issuers: []auth.JWTIssuerConfig{{
+	cfg := config.JWTAuthConfig{
+		Issuers: []config.JWTIssuerConfig{{
 			Name:      "test",
 			IssuerURL: "https://issuer.example.com/",
 		}},
@@ -263,9 +256,8 @@ func TestJWT_InvalidSignature(t *testing.T) {
 
 func TestJWT_MissingHeader(t *testing.T) {
 	key := mustGenerateKey(t)
-	cfg := auth.JWTConfig{
-		Enabled: true,
-		Issuers: []auth.JWTIssuerConfig{{
+	cfg := config.JWTAuthConfig{
+		Issuers: []config.JWTIssuerConfig{{
 			Name:      "test",
 			IssuerURL: "https://issuer.example.com/",
 		}},
@@ -279,9 +271,8 @@ func TestJWT_MissingHeader(t *testing.T) {
 
 func TestJWT_NotBearerScheme(t *testing.T) {
 	key := mustGenerateKey(t)
-	cfg := auth.JWTConfig{
-		Enabled: true,
-		Issuers: []auth.JWTIssuerConfig{{
+	cfg := config.JWTAuthConfig{
+		Issuers: []config.JWTIssuerConfig{{
 			Name:      "test",
 			IssuerURL: "https://issuer.example.com/",
 		}},

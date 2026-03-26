@@ -1,5 +1,11 @@
 auth:
-  configYaml: ""
+  # apiKeySecretRef: reference to an existing K8s Secret holding the API key value.
+  # apiKeySecretRef:
+  #   name: sreportal-api-key
+  #   key: api-key
+  # apiKeyEnvVar: env var name injected into the container (must match auth.apiKey.envVar in config).
+  # Defaults to SREPORTAL_API_KEY.
+  apiKeyEnvVar: SREPORTAL_API_KEY
 config:
   configYaml: |-
     sources:

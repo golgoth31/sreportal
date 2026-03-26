@@ -24,6 +24,8 @@ import (
 
 	"github.com/MicahParks/keyfunc/v3"
 	"github.com/golang-jwt/jwt/v5"
+
+	"github.com/golgoth31/sreportal/internal/config"
 )
 
 // JWTAuthenticator validates JWT Bearer tokens against multiple issuers.
@@ -33,13 +35,13 @@ type JWTAuthenticator struct {
 }
 
 type issuerProvider struct {
-	cfg  JWTIssuerConfig
+	cfg  config.JWTIssuerConfig
 	jwks keyfunc.Keyfunc
 }
 
 // NewJWTAuthenticator creates a JWTAuthenticator that fetches JWKS from each issuer.
 // The parent context controls the lifetime of background JWKS refresh goroutines.
-func NewJWTAuthenticator(ctx context.Context, cfg JWTConfig) (*JWTAuthenticator, error) {
+func NewJWTAuthenticator(ctx context.Context, cfg config.JWTAuthConfig) (*JWTAuthenticator, error) {
 	providers := make([]issuerProvider, 0, len(cfg.Issuers))
 	cancels := make([]context.CancelFunc, 0, len(cfg.Issuers))
 	for _, iss := range cfg.Issuers {
@@ -57,7 +59,7 @@ func NewJWTAuthenticator(ctx context.Context, cfg JWTConfig) (*JWTAuthenticator,
 
 // NewJWTAuthenticatorWithKeyfunc creates a JWTAuthenticator with a pre-built keyfunc
 // (useful for testing).
-func NewJWTAuthenticatorWithKeyfunc(cfg JWTConfig, kf keyfunc.Keyfunc) *JWTAuthenticator {
+func NewJWTAuthenticatorWithKeyfunc(cfg config.JWTAuthConfig, kf keyfunc.Keyfunc) *JWTAuthenticator {
 	providers := make([]issuerProvider, 0, len(cfg.Issuers))
 	for _, iss := range cfg.Issuers {
 		providers = append(providers, issuerProvider{cfg: iss, jwks: kf})
@@ -126,7 +128,7 @@ func (a *JWTAuthenticator) validateToken(tokenStr string, iss issuerProvider) er
 	return nil
 }
 
-func (a *JWTAuthenticator) validateClaims(token *jwt.Token, cfg JWTIssuerConfig) error {
+func (a *JWTAuthenticator) validateClaims(token *jwt.Token, cfg config.JWTIssuerConfig) error {
 	if len(cfg.RequiredClaims) == 0 {
 		return nil
 	}

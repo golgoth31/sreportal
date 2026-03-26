@@ -28,45 +28,40 @@ import (
 	"github.com/golgoth31/sreportal/internal/auth"
 )
 
-func apiKeyHeader(key string) http.Header {
+func apiKeyHeader(header, key string) http.Header {
 	h := http.Header{}
-	h.Set("X-API-Key", key)
+	h.Set(header, key)
 	return h
 }
 
 func TestAPIKey_ValidKey(t *testing.T) {
-	a := auth.NewAPIKeyAuthenticator(auth.APIKeyConfig{
-		Keys: []auth.APIKeyEntry{{Name: "ci", Key: "abc123"}},
-	})
-	err := a.Authenticate(context.Background(), apiKeyHeader("abc123"))
+	a := auth.NewAPIKeyAuthenticator("", "abc123")
+	err := a.Authenticate(context.Background(), apiKeyHeader("X-API-Key", "abc123"))
 	require.NoError(t, err)
 }
 
-func TestAPIKey_MultipleKeys_SecondMatches(t *testing.T) {
-	a := auth.NewAPIKeyAuthenticator(auth.APIKeyConfig{
-		Keys: []auth.APIKeyEntry{
-			{Name: "ci", Key: "key1"},
-			{Name: "cd", Key: "key2"},
-		},
-	})
-	err := a.Authenticate(context.Background(), apiKeyHeader("key2"))
+func TestAPIKey_CustomHeader(t *testing.T) {
+	a := auth.NewAPIKeyAuthenticator("X-Custom-Auth", "my-key")
+	err := a.Authenticate(context.Background(), apiKeyHeader("X-Custom-Auth", "my-key"))
 	require.NoError(t, err)
 }
 
 func TestAPIKey_InvalidKey(t *testing.T) {
-	a := auth.NewAPIKeyAuthenticator(auth.APIKeyConfig{
-		Keys: []auth.APIKeyEntry{{Name: "ci", Key: "abc123"}},
-	})
-	err := a.Authenticate(context.Background(), apiKeyHeader("wrong"))
+	a := auth.NewAPIKeyAuthenticator("", "abc123")
+	err := a.Authenticate(context.Background(), apiKeyHeader("X-API-Key", "wrong"))
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, auth.ErrInvalidCredentials))
 }
 
 func TestAPIKey_MissingHeader(t *testing.T) {
-	a := auth.NewAPIKeyAuthenticator(auth.APIKeyConfig{
-		Keys: []auth.APIKeyEntry{{Name: "ci", Key: "abc123"}},
-	})
+	a := auth.NewAPIKeyAuthenticator("", "abc123")
 	err := a.Authenticate(context.Background(), http.Header{})
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, auth.ErrUnauthenticated))
+}
+
+func TestAPIKey_DefaultHeader(t *testing.T) {
+	a := auth.NewAPIKeyAuthenticator("", "secret")
+	err := a.Authenticate(context.Background(), apiKeyHeader("X-API-Key", "secret"))
+	require.NoError(t, err)
 }

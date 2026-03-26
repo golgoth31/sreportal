@@ -18,7 +18,6 @@ package auth_test
 
 import (
 	"context"
-	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -67,7 +66,7 @@ func setupReleaseServer(t *testing.T, chain *auth.Chain) sreportalv1connect.Rele
 
 func TestInterceptor_ProtectedEndpoint_NoAuth_Rejected(t *testing.T) {
 	chain := auth.NewChain(
-		auth.NewBasicAuthenticator(auth.BasicAuthConfig{Username: "admin", Password: "secret"}),
+		auth.NewAPIKeyAuthenticator("", "my-secret-key"),
 	)
 	client := setupReleaseServer(t, chain)
 
@@ -84,7 +83,7 @@ func TestInterceptor_ProtectedEndpoint_NoAuth_Rejected(t *testing.T) {
 
 func TestInterceptor_ProtectedEndpoint_ValidAuth_Passes(t *testing.T) {
 	chain := auth.NewChain(
-		auth.NewBasicAuthenticator(auth.BasicAuthConfig{Username: "admin", Password: "secret"}),
+		auth.NewAPIKeyAuthenticator("", "my-secret-key"),
 	)
 	client := setupReleaseServer(t, chain)
 
@@ -94,8 +93,7 @@ func TestInterceptor_ProtectedEndpoint_ValidAuth_Passes(t *testing.T) {
 		Origin:  "ci",
 		Date:    timestamppb.New(time.Now()),
 	})
-	creds := base64.StdEncoding.EncodeToString([]byte("admin:secret"))
-	req.Header().Set("Authorization", "Basic "+creds)
+	req.Header().Set("X-API-Key", "my-secret-key")
 
 	resp, err := client.AddRelease(context.Background(), req)
 	require.NoError(t, err)
@@ -104,7 +102,7 @@ func TestInterceptor_ProtectedEndpoint_ValidAuth_Passes(t *testing.T) {
 
 func TestInterceptor_ReadEndpoint_NoAuth_Passes(t *testing.T) {
 	chain := auth.NewChain(
-		auth.NewBasicAuthenticator(auth.BasicAuthConfig{Username: "admin", Password: "secret"}),
+		auth.NewAPIKeyAuthenticator("", "my-secret-key"),
 	)
 	client := setupReleaseServer(t, chain)
 
@@ -131,9 +129,7 @@ func TestInterceptor_NoChain_NoProcedureProtection(t *testing.T) {
 
 func TestInterceptor_APIKey_OnProtectedEndpoint(t *testing.T) {
 	chain := auth.NewChain(
-		auth.NewAPIKeyAuthenticator(auth.APIKeyConfig{
-			Keys: []auth.APIKeyEntry{{Name: "ci", Key: "my-secret-key"}},
-		}),
+		auth.NewAPIKeyAuthenticator("X-Custom-Auth", "my-secret-key"),
 	)
 	client := setupReleaseServer(t, chain)
 
@@ -143,7 +139,7 @@ func TestInterceptor_APIKey_OnProtectedEndpoint(t *testing.T) {
 		Origin:  "ci",
 		Date:    timestamppb.New(time.Now()),
 	})
-	req.Header().Set("X-API-Key", "my-secret-key")
+	req.Header().Set("X-Custom-Auth", "my-secret-key")
 
 	resp, err := client.AddRelease(context.Background(), req)
 	require.NoError(t, err)
@@ -153,7 +149,7 @@ func TestInterceptor_APIKey_OnProtectedEndpoint(t *testing.T) {
 func TestInterceptor_ListReleases_NoAuth_Passes(t *testing.T) {
 	// Verify ListReleases (also a read endpoint) passes without auth
 	chain := auth.NewChain(
-		auth.NewBasicAuthenticator(auth.BasicAuthConfig{Username: "admin", Password: "secret"}),
+		auth.NewAPIKeyAuthenticator("", "my-secret-key"),
 	)
 	client := setupReleaseServer(t, chain)
 

@@ -36,6 +36,13 @@ spec:
               fieldPath: metadata.namespace
         - name: KUBERNETES_CLUSTER_DOMAIN
           value: {{ quote .Values.kubernetesClusterDomain }}
+        {{- if .Values.auth.apiKeySecretRef }}
+        - name: {{ .Values.auth.apiKeyEnvVar | default "SREPORTAL_API_KEY" }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.auth.apiKeySecretRef.name }}
+              key: {{ .Values.auth.apiKeySecretRef.key }}
+        {{- end }}
         image: {{ .Values.controllerManager.manager.image.repository }}:{{ .Values.controllerManager.manager.image.tag
           | default .Chart.AppVersion }}
         livenessProbe:
@@ -69,9 +76,6 @@ spec:
         - mountPath: /etc/sreportal
           name: operator-config
           readOnly: true
-        - mountPath: /etc/sreportal/auth
-          name: auth-config
-          readOnly: true
       nodeSelector: {{- toYaml .Values.controllerManager.nodeSelector | nindent 8 }}
       securityContext: {{- toYaml .Values.controllerManager.podSecurityContext | nindent
         8 }}
@@ -90,6 +94,3 @@ spec:
             path: config.yaml
           name: {{ include "helm.fullname" . }}-config
         name: operator-config
-      - name: auth-config
-        secret:
-          secretName: {{ include "helm.fullname" . }}-auth
