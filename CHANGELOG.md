@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.23.0](https://github.com/golgoth31/sreportal/compare/v1.22.0...v1.23.0) (2026-03-26)
+
+
+### Features
+
+* add auth ([#157](https://github.com/golgoth31/sreportal/issues/157)) ([085b6c6](https://github.com/golgoth31/sreportal/commit/085b6c66c3b784f468f1f1dfc938977b1d67902f))
+* refactor source controller, add helmify post-processor and hardcode auth env var ([be7c5c2](https://github.com/golgoth31/sreportal/commit/be7c5c2754dbbad404d74e15dceb16aa6ffa1a40))
+
 ## [1.22.0](https://github.com/golgoth31/sreportal/compare/v1.21.2...v1.22.0) (2026-03-25)
 
 
