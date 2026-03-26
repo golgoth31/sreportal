@@ -95,7 +95,7 @@ export function RootLayout() {
           </p>
         </footer>
 
-        <Toaster position="bottom-right" richColors />
+        <Toaster position="top-center" richColors />
       </div>
     </TooltipProvider>
   );

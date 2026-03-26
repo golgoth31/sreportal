@@ -11,6 +11,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 import type { ReleaseEntry, ReleaseTypeConfig } from "../domain/release.types";
 import { formatEntryTime } from "../domain/release.types";
 
@@ -140,8 +147,8 @@ export function ReleaseList({
               <TableCell className="text-muted-foreground text-xs">
                 {entry.origin}
               </TableCell>
-              <TableCell className="text-muted-foreground text-xs truncate max-w-xs">
-                {entry.message}
+              <TableCell className="text-muted-foreground text-xs max-w-xs">
+                <MessageCell message={entry.message} />
               </TableCell>
               <TableCell className="text-xs">{entry.author}</TableCell>
             </TableRow>
@@ -149,6 +156,31 @@ export function ReleaseList({
         )}
       </TableBody>
     </Table>
+  );
+}
+
+function MessageCell({ message }: { message: string }) {
+  const { copy } = useCopyToClipboard(message);
+
+  if (!message) return null;
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={() => void copy()}
+            className="truncate max-w-xs text-left cursor-pointer hover:text-foreground transition-colors"
+            aria-label="Click to copy message"
+          >
+            {message}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-sm whitespace-pre-wrap break-words">
+          {message}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 

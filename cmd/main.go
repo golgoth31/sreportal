@@ -47,6 +47,7 @@ import (
 	sreportal "github.com/golgoth31/sreportal"
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/alertmanagerclient"
+	"github.com/golgoth31/sreportal/internal/auth"
 	"github.com/golgoth31/sreportal/internal/config"
 	"github.com/golgoth31/sreportal/internal/controller"
 	dnspkg "github.com/golgoth31/sreportal/internal/controller/dns"
@@ -171,6 +172,40 @@ func main() {
 		os.Exit(1)
 	}
 	setupLog.Info("loaded configuration", "path", configPath, "config", operatorConfig.LogSummary())
+
+	// Build authentication chain from operator configuration.
+	// API key secret is read from an environment variable (populated by a K8s Secret).
+	var authChain *auth.Chain
+	if operatorConfig.Auth.Enabled() {
+		var authenticators []auth.Authenticator
+		if operatorConfig.Auth.APIKey != nil && operatorConfig.Auth.APIKey.Enabled {
+			apiKey := os.Getenv(operatorConfig.Auth.APIKey.EnvVar)
+			if apiKey == "" {
+				setupLog.Error(nil, "auth: API key env var is empty",
+					"envVar", operatorConfig.Auth.APIKey.EnvVar)
+				os.Exit(1)
+			}
+			authenticators = append(authenticators,
+				auth.NewAPIKeyAuthenticator(operatorConfig.Auth.APIKey.HeaderName, apiKey))
+			setupLog.Info("auth: API key auth enabled",
+				"header", operatorConfig.Auth.APIKey.HeaderName,
+				"envVar", operatorConfig.Auth.APIKey.EnvVar)
+		}
+		if operatorConfig.Auth.JWT != nil && operatorConfig.Auth.JWT.Enabled {
+			jwtAuth, err := auth.NewJWTAuthenticator(context.Background(), *operatorConfig.Auth.JWT)
+			if err != nil {
+				setupLog.Error(err, "failed to initialize JWT authenticator")
+				os.Exit(1)
+			}
+			defer jwtAuth.Close()
+			authenticators = append(authenticators, jwtAuth)
+			setupLog.Info("auth: JWT auth enabled", "issuers", len(operatorConfig.Auth.JWT.Issuers))
+		}
+		authChain = auth.NewChain(authenticators...)
+		setupLog.Info("auth: write endpoints protected", "methods", len(authenticators))
+	} else {
+		setupLog.Warn("auth: authentication is DISABLED — write endpoints are unprotected")
+	}
 
 	// if the enable-http2 flag is false (the default), http/2 should be disabled
 	// due to its vulnerabilities. More specifically, disabling http/2 will
@@ -496,6 +531,7 @@ func main() {
 		PortalReader:        portalStore,
 		AlertmanagerReader:  alertmanagerStore,
 		FlowGraphReader:     flowGraphStore,
+		AuthChain:           authChain,
 	}
 	if devMode {
 		setupLog.Info("dev mode enabled: serving web UI from filesystem", "web-root", webRoot)

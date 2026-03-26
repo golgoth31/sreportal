@@ -1,3 +1,11 @@
+auth:
+  # apiKeySecretRef: reference to an existing K8s Secret holding the API key value.
+  # apiKeySecretRef:
+  #   name: sreportal-api-key
+  #   key: api-key
+  # apiKeyEnvVar: env var name injected into the container (must match auth.apiKey.envVar in config).
+  # Defaults to SREPORTAL_API_KEY.
+  apiKeyEnvVar: SREPORTAL_API_KEY
 config:
   configYaml: |-
     sources:
@@ -66,11 +74,11 @@ config:
 controllerManager:
   manager:
     args:
-      - '--metrics-bind-address=:8443'
-      - '--leader-elect'
-      - '--health-probe-bind-address=:9090'
-      - '--webhook-cert-path=/tmp/k8s-webhook-server/serving-certs'
-      - '--enable-mcp'
+      - --metrics-bind-address=:8443
+      - --leader-elect
+      - --health-probe-bind-address=:9090
+      - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
+      - --enable-mcp
     containerSecurityContext:
       allowPrivilegeEscalation: false
       capabilities:
@@ -79,7 +87,7 @@ controllerManager:
       readOnlyRootFilesystem: true
     image:
       repository: ghcr.io/golgoth31/sreportal
-      tag: 1.22.0
+      tag: latest
     resources:
       limits:
         cpu: 500m
@@ -107,7 +115,7 @@ serviceAccount:
   annotations: {}
   automount: true
   create: true
-  name: ''
+  name: ""
 webMcpService:
   ports:
     - name: http

@@ -34,6 +34,7 @@ import (
 	"golang.org/x/net/http2/h2c"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/golgoth31/sreportal/internal/auth"
 	"github.com/golgoth31/sreportal/internal/log"
 
 	"github.com/golgoth31/sreportal/internal/config"
@@ -86,6 +87,8 @@ type Config struct {
 
 	// FlowGraphReader is the read-side interface for network flow graph data (provided by the ReadStore)
 	FlowGraphReader domainnetpol.FlowGraphReader
+	// AuthChain is the authentication chain for write endpoints (nil = no auth)
+	AuthChain *auth.Chain
 }
 
 // Server is the web server for the SRE Portal
@@ -161,7 +164,11 @@ func (s *Server) setupRoutes() {
 
 	if s.config.ReleaseReader != nil {
 		releaseGRPC := grpc.NewReleaseService(s.config.ReleaseReader, s.config.ReleaseService, s.config.ReleaseTTL, s.config.ReleaseAllowedTypes)
-		releasePath, releaseHandler := sreportalv1connect.NewReleaseServiceHandler(releaseGRPC, connectOpts)
+		releaseOpts := []connect.HandlerOption{connectOpts}
+		if s.config.AuthChain != nil {
+			releaseOpts = append(releaseOpts, connect.WithInterceptors(auth.AuthInterceptor(s.config.AuthChain)))
+		}
+		releasePath, releaseHandler := sreportalv1connect.NewReleaseServiceHandler(releaseGRPC, releaseOpts...)
 		s.echo.Any(releasePath+"*", echo.WrapHandler(releaseHandler))
 	}
 
