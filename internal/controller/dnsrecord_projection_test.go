@@ -28,7 +28,7 @@ import (
 
 var _ = Describe("dnsRecordToFQDNViews", func() {
 	Context("with endpoints", func() {
-		It("should convert endpoints to FQDNViews with PortalRef", func() {
+		It("should convert endpoints to FQDNViews with PortalRef and SourceType", func() {
 			record := &sreportalv1alpha1.DNSRecord{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "my-portal-service",
@@ -63,6 +63,7 @@ var _ = Describe("dnsRecordToFQDNViews", func() {
 				Expect(v.PortalName).To(Equal("my-portal"))
 				Expect(v.Namespace).To(Equal("test-ns"))
 				Expect(v.Source).To(Equal(domaindns.SourceExternalDNS))
+				Expect(v.SourceType).To(Equal("service"))
 			}
 		})
 	})

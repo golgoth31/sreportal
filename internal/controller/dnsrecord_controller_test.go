@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	"github.com/golgoth31/sreportal/internal/adapter"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 	dnsreadstore "github.com/golgoth31/sreportal/internal/readstore/dns"
 )
@@ -242,6 +243,97 @@ var _ = Describe("DNSRecord Controller", func() {
 				}
 				g.Expect(viewStatusByName["resolved.example.com"]).To(Equal("sync"))
 				g.Expect(viewStatusByName["missing.example.com"]).To(Equal("notavailable"))
+			}, timeout, interval).Should(Succeed())
+		})
+	})
+
+	Context("When a DNSRecord has a stale or missing EndpointsHash", func() {
+		const recordName = "test-dnsrecord-hash-resync"
+		ctx := context.Background()
+
+		recordNN := types.NamespacedName{Name: recordName, Namespace: "default"}
+
+		AfterEach(func() {
+			rec := &sreportalv1alpha1.DNSRecord{}
+			if err := k8sClient.Get(ctx, recordNN, rec); err == nil {
+				Expect(k8sClient.Delete(ctx, rec)).To(Succeed())
+			}
+		})
+
+		It("should recompute and persist the correct EndpointsHash", func() {
+			store := dnsreadstore.NewFQDNStore(nil)
+			reconciler := NewDNSRecordReconciler(k8sClient, k8sClient.Scheme(), nil, nil, true)
+			reconciler.SetFQDNWriter(store)
+
+			By("creating a DNSRecord with endpoints but no hash")
+			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.DNSRecord{
+				ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: "default"},
+				Spec: sreportalv1alpha1.DNSRecordSpec{
+					SourceType: "service",
+					PortalRef:  "main",
+				},
+			})).To(Succeed())
+
+			endpoints := []sreportalv1alpha1.EndpointStatus{
+				{DNSName: "hash.example.com", RecordType: "A", Targets: []string{"1.2.3.4"}, LastSeen: metav1.Now()},
+			}
+			expectedHash := adapter.EndpointStatusHash(endpoints)
+
+			Eventually(func(g Gomega) {
+				var r sreportalv1alpha1.DNSRecord
+				g.Expect(k8sClient.Get(ctx, recordNN, &r)).To(Succeed())
+				r.Status.Endpoints = endpoints
+				r.Status.EndpointsHash = "" // no hash set
+				g.Expect(k8sClient.Status().Update(ctx, &r)).To(Succeed())
+			}, timeout, interval).Should(Succeed())
+
+			By("reconciling — hash should be computed and persisted")
+			Eventually(func(g Gomega) {
+				_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: recordNN})
+				g.Expect(err).NotTo(HaveOccurred())
+
+				var updated sreportalv1alpha1.DNSRecord
+				g.Expect(k8sClient.Get(ctx, recordNN, &updated)).To(Succeed())
+				g.Expect(updated.Status.EndpointsHash).To(Equal(expectedHash))
+			}, timeout, interval).Should(Succeed())
+		})
+
+		It("should fix a wrong EndpointsHash after manual endpoint edit", func() {
+			store := dnsreadstore.NewFQDNStore(nil)
+			reconciler := NewDNSRecordReconciler(k8sClient, k8sClient.Scheme(), nil, nil, true)
+			reconciler.SetFQDNWriter(store)
+
+			By("creating a DNSRecord with a stale hash")
+			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.DNSRecord{
+				ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: "default"},
+				Spec: sreportalv1alpha1.DNSRecordSpec{
+					SourceType: "service",
+					PortalRef:  "main",
+				},
+			})).To(Succeed())
+
+			endpoints := []sreportalv1alpha1.EndpointStatus{
+				{DNSName: "edited.example.com", RecordType: "A", Targets: []string{"9.9.9.9"}, LastSeen: metav1.Now()},
+			}
+			expectedHash := adapter.EndpointStatusHash(endpoints)
+
+			Eventually(func(g Gomega) {
+				var r sreportalv1alpha1.DNSRecord
+				g.Expect(k8sClient.Get(ctx, recordNN, &r)).To(Succeed())
+				r.Status.Endpoints = endpoints
+				r.Status.EndpointsHash = "stale-wrong-hash"
+				g.Expect(k8sClient.Status().Update(ctx, &r)).To(Succeed())
+			}, timeout, interval).Should(Succeed())
+
+			By("reconciling — stale hash should be corrected")
+			Eventually(func(g Gomega) {
+				_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: recordNN})
+				g.Expect(err).NotTo(HaveOccurred())
+
+				var updated sreportalv1alpha1.DNSRecord
+				g.Expect(k8sClient.Get(ctx, recordNN, &updated)).To(Succeed())
+				g.Expect(updated.Status.EndpointsHash).To(Equal(expectedHash))
+				g.Expect(updated.Status.EndpointsHash).NotTo(Equal("stale-wrong-hash"))
 			}, timeout, interval).Should(Succeed())
 		})
 	})

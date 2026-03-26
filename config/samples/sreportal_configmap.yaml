@@ -98,7 +98,7 @@ data:
     #   apiKey:
     #     enabled: true
     #     headerName: "X-API-Key"        # HTTP header to check (default: "X-API-Key")
-    #     envVar: "SREPORTAL_API_KEY"     # Env var holding the secret key value
+    #     # The secret key value is read from the HEADER_API_KEY env var.
     #   # JWT Bearer token authentication
     #   jwt:
     #     enabled: true

@@ -31,6 +31,8 @@ import (
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/adapter"
 	"github.com/golgoth31/sreportal/internal/config"
+	sourcepkg "github.com/golgoth31/sreportal/internal/controller/source"
+	"github.com/golgoth31/sreportal/internal/reconciler"
 	"github.com/golgoth31/sreportal/internal/source/registry"
 	"github.com/golgoth31/sreportal/internal/source/service"
 )
@@ -78,6 +80,24 @@ func createTestPortal(name string) *sreportalv1alpha1.Portal {
 	return portal
 }
 
+// buildTestPortalIndex creates a PortalIndex for a single local main portal.
+func buildTestPortalIndex(portal *sreportalv1alpha1.Portal) *sourcepkg.PortalIndex {
+	return &sourcepkg.PortalIndex{
+		Main:   portal,
+		ByName: map[string]*sreportalv1alpha1.Portal{portal.Name: portal},
+		Local:  []*sreportalv1alpha1.Portal{portal},
+	}
+}
+
+// fakeEnabledLister implements sourcepkg.EnabledSourcesLister for tests.
+type fakeEnabledLister struct {
+	types []registry.SourceType
+}
+
+func (f *fakeEnabledLister) EnabledSourceTypes() []registry.SourceType {
+	return f.types
+}
+
 var _ = Describe("SourceReconciler", func() {
 	const (
 		timeout  = time.Second * 10
@@ -85,8 +105,8 @@ var _ = Describe("SourceReconciler", func() {
 	)
 
 	var (
-		reconciler *SourceReconciler
-		testConfig *config.OperatorConfig
+		sourceReconciler *SourceReconciler
+		testConfig       *config.OperatorConfig
 	)
 
 	BeforeEach(func() {
@@ -105,12 +125,13 @@ var _ = Describe("SourceReconciler", func() {
 			},
 		}
 
-		reconciler = NewSourceReconciler(
+		sourceReconciler = NewSourceReconciler(
 			k8sClient,
 			kubeClient,
 			cfg,
 			testConfig,
 			[]registry.Builder{service.NewBuilder()},
+			nil,
 		)
 	})
 
@@ -140,7 +161,7 @@ var _ = Describe("SourceReconciler", func() {
 		}
 	})
 
-	Context("reconcileDNSRecord", func() {
+	Context("ReconcileDNSRecordsHandler", func() {
 		It("should create DNSRecord for a portal and source type", func() {
 			// Create Portal
 			portalName := fmt.Sprintf("test-portal-%s", rand.String(5))
@@ -157,9 +178,17 @@ var _ = Describe("SourceReconciler", func() {
 				{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
 			}
 
-			// Reconcile DNSRecord
-			err := reconciler.reconcileDNSRecord(ctx, portal, service.SourceTypeService, endpoints)
-			Expect(err).NotTo(HaveOccurred())
+			// Reconcile DNSRecord via handler
+			handler := sourcepkg.NewReconcileDNSRecordsHandler(k8sClient)
+			rc := &reconciler.ReconcileContext[struct{}, sourcepkg.ChainData]{
+				Data: sourcepkg.ChainData{
+					Index: buildTestPortalIndex(portal),
+					EndpointsByPortalSource: map[sourcepkg.PortalSourceKey][]*endpoint.Endpoint{
+						{PortalName: portalName, SourceType: service.SourceTypeService}: endpoints,
+					},
+				},
+			}
+			Expect(handler.Handle(ctx, rc)).To(Succeed())
 
 			// Verify DNSRecord created
 			dnsRecordKey := types.NamespacedName{
@@ -186,20 +215,37 @@ var _ = Describe("SourceReconciler", func() {
 				return k8sClient.Get(ctx, portalKey, &sreportalv1alpha1.Portal{})
 			}, timeout, interval).Should(Succeed())
 
+			handler := sourcepkg.NewReconcileDNSRecordsHandler(k8sClient)
+			idx := buildTestPortalIndex(portal)
+
 			// First reconciliation with one endpoint
 			endpoints := []*endpoint.Endpoint{
 				{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
 			}
-			err := reconciler.reconcileDNSRecord(ctx, portal, service.SourceTypeService, endpoints)
-			Expect(err).NotTo(HaveOccurred())
+			rc := &reconciler.ReconcileContext[struct{}, sourcepkg.ChainData]{
+				Data: sourcepkg.ChainData{
+					Index: idx,
+					EndpointsByPortalSource: map[sourcepkg.PortalSourceKey][]*endpoint.Endpoint{
+						{PortalName: portalName, SourceType: service.SourceTypeService}: endpoints,
+					},
+				},
+			}
+			Expect(handler.Handle(ctx, rc)).To(Succeed())
 
 			// Second reconciliation with new endpoint
 			endpoints = []*endpoint.Endpoint{
 				{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
 				{DNSName: "web.example.com", RecordType: "A", Targets: []string{"10.0.0.2"}},
 			}
-			err = reconciler.reconcileDNSRecord(ctx, portal, service.SourceTypeService, endpoints)
-			Expect(err).NotTo(HaveOccurred())
+			rc2 := &reconciler.ReconcileContext[struct{}, sourcepkg.ChainData]{
+				Data: sourcepkg.ChainData{
+					Index: idx,
+					EndpointsByPortalSource: map[sourcepkg.PortalSourceKey][]*endpoint.Endpoint{
+						{PortalName: portalName, SourceType: service.SourceTypeService}: endpoints,
+					},
+				},
+			}
+			Expect(handler.Handle(ctx, rc2)).To(Succeed())
 
 			// Verify DNSRecord updated
 			dnsRecordKey := types.NamespacedName{
@@ -214,7 +260,7 @@ var _ = Describe("SourceReconciler", func() {
 		})
 	})
 
-	Context("deleteOrphanedDNSRecords", func() {
+	Context("DeleteOrphanedHandler", func() {
 		It("should delete DNSRecords for disabled sources", func() {
 			// Create Portal
 			portalName := fmt.Sprintf("orphan-portal-%s", rand.String(5))
@@ -225,12 +271,20 @@ var _ = Describe("SourceReconciler", func() {
 				return k8sClient.Get(ctx, portalKey, &sreportalv1alpha1.Portal{})
 			}, timeout, interval).Should(Succeed())
 
-			// Create a DNSRecord for this portal
+			// Create a DNSRecord via the reconcile handler
 			endpoints := []*endpoint.Endpoint{
 				{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
 			}
-			err := reconciler.reconcileDNSRecord(ctx, portal, service.SourceTypeService, endpoints)
-			Expect(err).NotTo(HaveOccurred())
+			reconcileHandler := sourcepkg.NewReconcileDNSRecordsHandler(k8sClient)
+			rc := &reconciler.ReconcileContext[struct{}, sourcepkg.ChainData]{
+				Data: sourcepkg.ChainData{
+					Index: buildTestPortalIndex(portal),
+					EndpointsByPortalSource: map[sourcepkg.PortalSourceKey][]*endpoint.Endpoint{
+						{PortalName: portalName, SourceType: service.SourceTypeService}: endpoints,
+					},
+				},
+			}
+			Expect(reconcileHandler.Handle(ctx, rc)).To(Succeed())
 
 			// Verify DNSRecord exists
 			dnsRecordKey := types.NamespacedName{
@@ -241,13 +295,15 @@ var _ = Describe("SourceReconciler", func() {
 				return k8sClient.Get(ctx, dnsRecordKey, &sreportalv1alpha1.DNSRecord{})
 			}, timeout, interval).Should(Succeed())
 
-			// Disable service source in config
-			testConfig.Sources.Service.Enabled = false
-
-			// Delete orphaned records (empty active keys means nothing is active)
-			activeKeys := make(map[portalSourceKey][]*endpoint.Endpoint)
-			err = reconciler.deleteOrphanedDNSRecords(ctx, portal, activeKeys)
-			Expect(err).NotTo(HaveOccurred())
+			// Delete orphaned records with no enabled sources and empty active keys
+			deleteHandler := sourcepkg.NewDeleteOrphanedHandler(k8sClient, &fakeEnabledLister{types: nil})
+			deleteRC := &reconciler.ReconcileContext[struct{}, sourcepkg.ChainData]{
+				Data: sourcepkg.ChainData{
+					Index:                   buildTestPortalIndex(portal),
+					EndpointsByPortalSource: make(map[sourcepkg.PortalSourceKey][]*endpoint.Endpoint),
+				},
+			}
+			Expect(deleteHandler.Handle(ctx, deleteRC)).To(Succeed())
 
 			// Verify DNSRecord deleted
 			Eventually(func(g Gomega) {
@@ -259,14 +315,14 @@ var _ = Describe("SourceReconciler", func() {
 		})
 	})
 
-	Context("rebuildSources", func() {
+	Context("RebuildSources", func() {
 		It("should build typed sources from config", func() {
-			err := reconciler.rebuildSources(ctx)
+			err := sourceReconciler.RebuildSources(ctx)
 			if err != nil {
-				Skip("rebuildSources requires cluster setup")
+				Skip("RebuildSources requires cluster setup")
 			}
 
-			typedSources := reconciler.GetTypedSources()
+			typedSources := sourceReconciler.GetTypedSources()
 			Expect(typedSources).To(HaveLen(1))
 			Expect(typedSources[0].Type).To(Equal(service.SourceTypeService))
 		})
@@ -280,7 +336,6 @@ var _ = Describe("SourceReconciler LoadBalancer Integration", func() {
 	)
 
 	var (
-		reconciler *SourceReconciler
 		testConfig *config.OperatorConfig
 	)
 
@@ -299,14 +354,6 @@ var _ = Describe("SourceReconciler LoadBalancer Integration", func() {
 				Interval: config.Duration(time.Second),
 			},
 		}
-
-		reconciler = NewSourceReconciler(
-			k8sClient,
-			kubeClient,
-			cfg,
-			testConfig,
-			[]registry.Builder{service.NewBuilder()},
-		)
 	})
 
 	AfterEach(func() {
@@ -349,9 +396,17 @@ var _ = Describe("SourceReconciler LoadBalancer Integration", func() {
 				newLoadBalancerEndpoint("api.example.com", "203.0.113.10", "production", "my-loadbalancer"),
 			}
 
-			// Reconcile
-			err := reconciler.reconcileDNSRecord(ctx, portal, service.SourceTypeService, endpoints)
-			Expect(err).NotTo(HaveOccurred())
+			// Reconcile via handler
+			handler := sourcepkg.NewReconcileDNSRecordsHandler(k8sClient)
+			rc := &reconciler.ReconcileContext[struct{}, sourcepkg.ChainData]{
+				Data: sourcepkg.ChainData{
+					Index: buildTestPortalIndex(portal),
+					EndpointsByPortalSource: map[sourcepkg.PortalSourceKey][]*endpoint.Endpoint{
+						{PortalName: portalName, SourceType: service.SourceTypeService}: endpoints,
+					},
+				},
+			}
+			Expect(handler.Handle(ctx, rc)).To(Succeed())
 
 			// Verify DNSRecord
 			dnsRecordKey := types.NamespacedName{
@@ -387,8 +442,16 @@ var _ = Describe("SourceReconciler LoadBalancer Integration", func() {
 				),
 			}
 
-			err := reconciler.reconcileDNSRecord(ctx, portal, service.SourceTypeService, endpoints)
-			Expect(err).NotTo(HaveOccurred())
+			handler := sourcepkg.NewReconcileDNSRecordsHandler(k8sClient)
+			rc := &reconciler.ReconcileContext[struct{}, sourcepkg.ChainData]{
+				Data: sourcepkg.ChainData{
+					Index: buildTestPortalIndex(portal),
+					EndpointsByPortalSource: map[sourcepkg.PortalSourceKey][]*endpoint.Endpoint{
+						{PortalName: portalName, SourceType: service.SourceTypeService}: endpoints,
+					},
+				},
+			}
+			Expect(handler.Handle(ctx, rc)).To(Succeed())
 
 			dnsRecordKey := types.NamespacedName{
 				Name:      fmt.Sprintf("%s-service", portalName),
@@ -445,10 +508,18 @@ var _ = Describe("SourceReconciler LoadBalancer Integration", func() {
 
 	Context("Factory configuration for LoadBalancer", func() {
 		It("should build service source with LoadBalancer filter", func() {
-			err := reconciler.rebuildSources(ctx)
+			r := NewSourceReconciler(
+				k8sClient,
+				kubeClient,
+				cfg,
+				testConfig,
+				[]registry.Builder{service.NewBuilder()},
+				nil,
+			)
+			err := r.RebuildSources(ctx)
 			Expect(err).NotTo(HaveOccurred())
 
-			typedSources := reconciler.GetTypedSources()
+			typedSources := r.GetTypedSources()
 			Expect(typedSources).To(HaveLen(1))
 			Expect(typedSources[0].Type).To(Equal(service.SourceTypeService))
 		})
@@ -462,9 +533,10 @@ var _ = Describe("SourceReconciler LoadBalancer Integration", func() {
 				cfg,
 				testConfig,
 				[]registry.Builder{service.NewBuilder()},
+				nil,
 			)
 
-			err := disabledReconciler.rebuildSources(ctx)
+			err := disabledReconciler.RebuildSources(ctx)
 			Expect(err).NotTo(HaveOccurred())
 
 			typedSources := disabledReconciler.GetTypedSources()

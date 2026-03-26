@@ -1,11 +1,3 @@
-auth:
-  # apiKeySecretRef: reference to an existing K8s Secret holding the API key value.
-  # apiKeySecretRef:
-  #   name: sreportal-api-key
-  #   key: api-key
-  # apiKeyEnvVar: env var name injected into the container (must match auth.apiKey.envVar in config).
-  # Defaults to SREPORTAL_API_KEY.
-  apiKeyEnvVar: SREPORTAL_API_KEY
 config:
   configYaml: |-
     sources:
@@ -71,19 +63,30 @@ config:
       interval: 5m
       retryOnError: 30s
       disableDNSCheck: false
+    # Authentication for write endpoints (e.g. AddRelease).
+    # Each method has an "enabled" flag. Multiple methods can coexist (chain).
+    auth:
+      # API key authentication — the secret value is read from an environment variable.
+      apiKey:
+        enabled: false
+        headerName: "X-API-Key"        # HTTP header to check (default: "X-API-Key")
+      # JWT Bearer token authentication
+      jwt:
+        enabled: false
+        issuers: []
 controllerManager:
   manager:
     args:
-      - --metrics-bind-address=:8443
-      - --leader-elect
-      - --health-probe-bind-address=:9090
-      - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
-      - --enable-mcp
+    - --metrics-bind-address=:8443
+    - --leader-elect
+    - --health-probe-bind-address=:9090
+    - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
+    - --enable-mcp
     containerSecurityContext:
       allowPrivilegeEscalation: false
       capabilities:
         drop:
-          - ALL
+        - ALL
       readOnlyRootFilesystem: true
     image:
       repository: ghcr.io/golgoth31/sreportal
@@ -106,10 +109,10 @@ controllerManager:
 kubernetesClusterDomain: cluster.local
 metricsService:
   ports:
-    - name: metrics
-      port: 8443
-      protocol: TCP
-      targetPort: 8443
+  - name: metrics
+    port: 8443
+    protocol: TCP
+    targetPort: 8443
   type: ClusterIP
 serviceAccount:
   annotations: {}
@@ -118,14 +121,18 @@ serviceAccount:
   name: ""
 webMcpService:
   ports:
-    - name: http
-      port: 8090
-      protocol: TCP
-      targetPort: 8090
+  - name: http
+    port: 8090
+    protocol: TCP
+    targetPort: 8090
   type: ClusterIP
 webhookService:
   ports:
-    - port: 443
-      protocol: TCP
-      targetPort: 9443
+  - port: 443
+    protocol: TCP
+    targetPort: 9443
   type: ClusterIP
+auth:
+  enabled: false
+  secretRef: ""
+  secretKey: ""

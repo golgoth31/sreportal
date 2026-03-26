@@ -141,21 +141,21 @@ func deduplicateBySourcePriority(views []domaindns.FQDNView, priority []string) 
 		rank[src] = i
 	}
 
-	// sourceRank returns the priority rank of an external-dns source type extracted
-	// from the FQDNView's labels/metadata. Since FQDNViews don't carry sourceType
-	// directly, we use the Source field. Manual/remote sources are excluded from
-	// dedup by assigning them max rank.
+	// sourceRank returns the priority rank based on SourceType.
+	// Non-external-dns sources (manual, remote) are excluded from dedup by
+	// assigning them a rank above any possible external-dns rank, so two entries
+	// with that sentinel rank are never considered duplicates of each other.
+	unlistedRank := len(priority)     // external-dns sources not in the priority list
+	excludedRank := len(priority) + 1 // manual/remote — never deduplicated
+
 	sourceRank := func(v domaindns.FQDNView) int {
 		if v.Source != domaindns.SourceExternalDNS {
-			return len(priority) // non-external sources are never deduplicated away
+			return excludedRank
 		}
-		// External-dns views carry the source type via the SourceType metadata
-		// which is not on FQDNView. Since each DNSRecord projects independently
-		// and we don't have sourceType on FQDNView, external-dns entries from
-		// different DNSRecords will have the same Source="external-dns".
-		// Dedup between external-dns entries happens when they share
-		// the same (Name, RecordType) — we keep the first one encountered.
-		return 0
+		if r, ok := rank[v.SourceType]; ok {
+			return r
+		}
+		return unlistedRank
 	}
 
 	type dedupKey = string
@@ -164,10 +164,21 @@ func deduplicateBySourcePriority(views []domaindns.FQDNView, priority []string) 
 
 	for _, v := range views {
 		key := v.Name + "/" + v.RecordType
+		newRank := sourceRank(v)
+
 		if idx, exists := seen[key]; exists {
 			existing := &result[idx]
 			existingRank := sourceRank(*existing)
-			newRank := sourceRank(v)
+
+			// Never deduplicate when either side is a non-external-dns source.
+			if existingRank == excludedRank || newRank == excludedRank {
+				uniqueKey := key + "/" + string(v.Source) + "/" + v.SourceType
+				if _, alreadySeen := seen[uniqueKey]; !alreadySeen {
+					seen[uniqueKey] = len(result)
+					result = append(result, v)
+				}
+				continue
+			}
 
 			if newRank < existingRank {
 				// New view has higher priority — replace but merge groups.

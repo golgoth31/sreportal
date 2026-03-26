@@ -34,15 +34,15 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        - name: KUBERNETES_CLUSTER_DOMAIN
-          value: {{ quote .Values.kubernetesClusterDomain }}
-        {{- if .Values.auth.apiKeySecretRef }}
-        - name: {{ .Values.auth.apiKeyEnvVar | default "SREPORTAL_API_KEY" }}
+        {{- if .Values.auth.enabled }}
+        - name: HEADER_API_KEY
           valueFrom:
             secretKeyRef:
-              name: {{ .Values.auth.apiKeySecretRef.name }}
-              key: {{ .Values.auth.apiKeySecretRef.key }}
+              key: {{ .Values.auth.secretKey | quote }}
+              name: {{ .Values.auth.secretRef | quote }}
         {{- end }}
+        - name: KUBERNETES_CLUSTER_DOMAIN
+          value: {{ quote .Values.kubernetesClusterDomain }}
         image: {{ .Values.controllerManager.manager.image.repository }}:{{ .Values.controllerManager.manager.image.tag
           | default .Chart.AppVersion }}
         livenessProbe:

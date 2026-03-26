@@ -123,20 +123,27 @@ The chain has four steps:
 
 | Step | Handler | Description |
 |------|---------|-------------|
-| 1 | **AggregateDNSRecords** | Fetch DNSRecord resources that match the portal via `spec.portalRef` and convert their endpoints to FQDN groups |
-| 2 | **CollectManualEntries** | Extract manual groups from `DNS.spec.groups` |
-| 3 | **AggregateFQDNs** | Merge external-dns groups with manual groups (manual entries win on conflict) |
-| 4 | **UpdateStatus** | Write the aggregated groups to `DNS.status` |
+| 1 | **CollectManualEntries** | Extract manual groups from `DNS.spec.groups` |
+| 2 | **AggregateFQDNs** | Convert to FQDNGroupStatus with source markers, sort by name |
+| 3 | **ResolveDNS** | Parallel DNS lookup per FQDN (10 workers, 5s timeout). Skipped if `disableDNSCheck: true` |
+| 4 | **UpdateStatus** | Write the aggregated groups to `DNS.status` and project to the ReadStore |
 
-### Source Controller (Runnable)
+See the [DNS Controller Flow]({{< relref "flows/dns-controller" >}}) for a detailed step-by-step diagram.
 
-The source controller implements `manager.Runnable` for periodic reconciliation (default: 5 minutes). On each tick it:
+### Source Controller (Chain of Responsibility, Runnable)
 
-1. Builds external-dns sources (Service, Ingress, DNSEndpoint, Istio Gateway, Istio VirtualService) based on operator configuration
-2. Fetches endpoints from each source
-3. Enriches endpoints with `sreportal.io/portal`, `sreportal.io/groups`, and `sreportal.io/ignore` annotations from the original K8s resources
-4. Routes endpoints to the appropriate portal (falls back to the main portal if the annotation is missing or references a non-existent portal)
-5. Creates or updates a DNSRecord CR per `(portal, sourceType)` pair
+The source controller implements `manager.Runnable` for periodic reconciliation (configurable interval). It uses the same Chain-of-Responsibility pattern as the DNS and Alertmanager controllers, with six sequential handlers:
+
+| Step | Handler | Description |
+|------|---------|-------------|
+| 1 | **RebuildSources** | Build external-dns sources from operator config (lazy — only if none exist) |
+| 2 | **BuildPortalIndex** | List Portal CRs and build a name→portal lookup index |
+| 3 | **CollectEndpoints** | Fetch endpoints from each source, enrich with `sreportal.io/*` annotations, route to (portal, sourceType) buckets |
+| 4 | **Deduplicate** | Remove duplicate FQDNs across source types using configured `sources.priority` order |
+| 5 | **ReconcileDNSRecords** | Create or update a DNSRecord CR per (portal, sourceType) pair. Computes SHA-256 hash of endpoints and skips status writes when unchanged |
+| 6 | **DeleteOrphaned** | Delete DNSRecord CRs for disabled sources or portals with no endpoints |
+
+See the [DNS Source Flow]({{< relref "flows/dns-source" >}}) for a detailed step-by-step diagram.
 
 ### Portal Controller
 
@@ -144,7 +151,7 @@ A simple controller that sets `status.ready = true` with a `Ready` condition. It
 
 ### Alertmanager Controller (Chain)
 
-Uses the same Chain-of-Responsibility pattern as the DNS controller. The chain has two steps: **FetchAlerts** (HTTP GET to `spec.url.local`, Alertmanager API v2) and **UpdateStatus** (write `activeAlerts`, conditions, `lastReconcileTime` to status). Reconciles periodically (default ~2 minutes).
+Uses the same Chain-of-Responsibility pattern as the DNS controller. The chain has two steps: **FetchAlerts** (HTTP GET to `spec.url.local`, Alertmanager API v2) and **UpdateStatus** (write `activeAlerts`, conditions, `lastReconcileTime` to status). Reconciles periodically (default ~2 minutes). See the [Alertmanager Flow]({{< relref "flows/alertmanager" >}}) for details.
 
 ### Release Controller (ReadStore + TTL Cleanup)
 

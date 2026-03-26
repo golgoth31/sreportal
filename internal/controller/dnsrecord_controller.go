@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	"github.com/golgoth31/sreportal/internal/adapter"
 	"github.com/golgoth31/sreportal/internal/config"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 	"github.com/golgoth31/sreportal/internal/log"
@@ -86,6 +87,21 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	logger.Info("reconciling DNSRecord resource", "name", record.Name, "namespace", record.Namespace,
 		"portal", record.Spec.PortalRef, "sourceType", record.Spec.SourceType)
+
+	// Recompute and resync the endpoints hash if it diverged (e.g. manual edit).
+	// This ensures the SourceReconciler's skip-if-unchanged logic stays correct.
+	if len(record.Status.Endpoints) > 0 {
+		computedHash := adapter.EndpointStatusHash(record.Status.Endpoints)
+		if record.Status.EndpointsHash != computedHash {
+			logger.Info("endpoints hash out of sync, resyncing",
+				"stored", record.Status.EndpointsHash, "computed", computedHash)
+			base := record.DeepCopy()
+			record.Status.EndpointsHash = computedHash
+			if err := r.Status().Patch(ctx, &record, client.MergeFrom(base)); err != nil {
+				return ctrl.Result{}, fmt.Errorf("patch EndpointsHash: %w", err)
+			}
+		}
+	}
 
 	// Resolve DNS and persist SyncStatus in the CR status
 	if !r.disableDNSCheck && r.resolver != nil && len(record.Status.Endpoints) > 0 {

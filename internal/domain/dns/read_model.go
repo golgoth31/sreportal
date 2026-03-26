@@ -7,6 +7,7 @@ import "time"
 type FQDNView struct {
 	Name        string
 	Source      Source
+	SourceType  string // external-dns source type (e.g. "service", "ingress", "dnsendpoint")
 	Groups      []string
 	Description string
 	RecordType  string

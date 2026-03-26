@@ -51,6 +51,7 @@ func dnsRecordToFQDNViews(
 				view := domaindns.FQDNView{
 					Name:        fqdn.FQDN,
 					Source:      domaindns.SourceExternalDNS,
+					SourceType:  record.Spec.SourceType,
 					Groups:      []string{group.Name},
 					Description: fqdn.Description,
 					RecordType:  fqdn.RecordType,

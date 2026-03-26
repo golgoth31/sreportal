@@ -39,6 +39,12 @@ type DNSRecordStatus struct {
 	// +optional
 	Endpoints []EndpointStatus `json:"endpoints,omitempty"`
 
+	// endpointsHash is a SHA-256 digest of the source-provided endpoint data
+	// (DNSName, RecordType, Targets, Labels). It is used by the SourceReconciler
+	// to skip status updates when endpoints have not changed between ticks.
+	// +optional
+	EndpointsHash string `json:"endpointsHash,omitempty"`
+
 	// lastReconcileTime is the timestamp of the last reconciliation
 	// +optional
 	LastReconcileTime *metav1.Time `json:"lastReconcileTime,omitempty"`

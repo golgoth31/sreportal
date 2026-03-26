@@ -82,14 +82,12 @@ func (c *AuthConfig) Enabled() bool {
 }
 
 // APIKeyAuthConfig configures header-based API key authentication.
-// The actual key value is read from the environment variable specified by EnvVar.
+// The actual key value is read from the HEADER_API_KEY environment variable.
 type APIKeyAuthConfig struct {
 	// Enabled controls whether API key authentication is active.
 	Enabled bool `json:"enabled" yaml:"enabled"`
 	// HeaderName is the HTTP header to check (default: "X-API-Key").
 	HeaderName string `json:"headerName,omitempty" yaml:"headerName,omitempty"`
-	// EnvVar is the environment variable that holds the secret key value.
-	EnvVar string `json:"envVar" yaml:"envVar"`
 }
 
 // JWTAuthConfig configures JWT Bearer token authentication.
@@ -332,11 +330,6 @@ func (c *OperatorConfig) Validate() error {
 }
 
 func (c *AuthConfig) validate() error {
-	if c.APIKey != nil && c.APIKey.Enabled {
-		if c.APIKey.EnvVar == "" {
-			return fmt.Errorf("apiKey.envVar is required")
-		}
-	}
 	if c.JWT != nil && c.JWT.Enabled {
 		if len(c.JWT.Issuers) == 0 {
 			return fmt.Errorf("jwt: at least one issuer is required")

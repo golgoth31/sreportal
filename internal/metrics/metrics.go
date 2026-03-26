@@ -95,6 +95,17 @@ var (
 		[]string{"source_type"},
 	)
 
+	// SourceSkippedUpdates counts status updates skipped because the endpoints hash was unchanged.
+	SourceSkippedUpdates = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: "source",
+			Name:      "skipped_updates_total",
+			Help:      "Total number of DNSRecord status updates skipped (endpoints unchanged) per source type.",
+		},
+		[]string{"source_type"},
+	)
+
 	// AlertsActive tracks the number of active alerts per portal and alertmanager.
 	AlertsActive = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -295,6 +306,7 @@ func init() {
 		// Source
 		SourceEndpointsCollected,
 		SourceErrorsTotal,
+		SourceSkippedUpdates,
 		// Alertmanager
 		AlertsActive,
 		AlertsFetchErrorsTotal,

@@ -221,7 +221,7 @@ undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.
 
 .PHONY: helm
 helm: manifests generate kustomize helmify
-	$(KUSTOMIZE) build config/default | $(HELMIFY) -generate-defaults helm
+	go run ./hack/helmify
 
 .PHONY: doc
 doc: manifests generate api2md screenshots

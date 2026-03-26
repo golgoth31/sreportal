@@ -186,3 +186,115 @@ func TestFQDNStore_Subscribe_NotifiesOnChange(t *testing.T) {
 		t.Fatal("expected notification after Replace")
 	}
 }
+
+func TestFQDNStore_List_DeduplicatesBySourcePriority(t *testing.T) {
+	// Priority: dnsendpoint > ingress > service
+	s := dnsstore.NewFQDNStore([]string{"dnsendpoint", "ingress", "service"})
+	ctx := context.Background()
+
+	// Same FQDN from two different source types (service and ingress)
+	_ = s.Replace(ctx, "ns/record-svc", []domaindns.FQDNView{
+		{
+			Name: "app.example.com", Source: domaindns.SourceExternalDNS,
+			SourceType: "service", RecordType: "A",
+			Targets: []string{"10.0.0.1"}, Groups: []string{"svc-group"},
+			PortalName: "main", Namespace: "ns",
+		},
+	})
+	_ = s.Replace(ctx, "ns/record-ing", []domaindns.FQDNView{
+		{
+			Name: "app.example.com", Source: domaindns.SourceExternalDNS,
+			SourceType: "ingress", RecordType: "A",
+			Targets: []string{"10.0.0.2"}, Groups: []string{"ing-group"},
+			PortalName: "main", Namespace: "ns",
+		},
+	})
+
+	fqdns, err := s.List(ctx, domaindns.FQDNFilters{})
+	require.NoError(t, err)
+	require.Len(t, fqdns, 1, "duplicate FQDN should be deduplicated")
+
+	// ingress has higher priority than service → ingress targets win
+	assert.Equal(t, []string{"10.0.0.2"}, fqdns[0].Targets)
+	assert.Equal(t, "ingress", fqdns[0].SourceType)
+	// Groups should be merged from both sources
+	assert.ElementsMatch(t, []string{"ing-group", "svc-group"}, fqdns[0].Groups)
+}
+
+func TestFQDNStore_List_DeduplicatesBySourcePriority_ManualNeverDeduplicated(t *testing.T) {
+	s := dnsstore.NewFQDNStore([]string{"dnsendpoint", "service"})
+	ctx := context.Background()
+
+	// Same FQDN from manual and external-dns
+	_ = s.Replace(ctx, "ns/record-svc", []domaindns.FQDNView{
+		{
+			Name: "app.example.com", Source: domaindns.SourceExternalDNS,
+			SourceType: "service", RecordType: "A",
+			Targets: []string{"10.0.0.1"}, PortalName: "main", Namespace: "ns",
+		},
+	})
+	_ = s.Replace(ctx, "ns/manual", []domaindns.FQDNView{
+		{
+			Name: "app.example.com", Source: domaindns.SourceManual,
+			RecordType: "A",
+			Targets:    []string{"10.0.0.99"}, PortalName: "main", Namespace: "ns",
+		},
+	})
+
+	fqdns, err := s.List(ctx, domaindns.FQDNFilters{})
+	require.NoError(t, err)
+	// Manual sources should never be deduplicated against external-dns
+	require.Len(t, fqdns, 2, "manual and external-dns should coexist")
+}
+
+func TestFQDNStore_List_DeduplicatesBySourcePriority_UnlistedSourceLowestPriority(t *testing.T) {
+	// Only "ingress" is in priority list; "service" is not listed
+	s := dnsstore.NewFQDNStore([]string{"ingress"})
+	ctx := context.Background()
+
+	_ = s.Replace(ctx, "ns/record-svc", []domaindns.FQDNView{
+		{
+			Name: "app.example.com", Source: domaindns.SourceExternalDNS,
+			SourceType: "service", RecordType: "A",
+			Targets: []string{"10.0.0.1"}, PortalName: "main", Namespace: "ns",
+		},
+	})
+	_ = s.Replace(ctx, "ns/record-ing", []domaindns.FQDNView{
+		{
+			Name: "app.example.com", Source: domaindns.SourceExternalDNS,
+			SourceType: "ingress", RecordType: "A",
+			Targets: []string{"10.0.0.2"}, PortalName: "main", Namespace: "ns",
+		},
+	})
+
+	fqdns, err := s.List(ctx, domaindns.FQDNFilters{})
+	require.NoError(t, err)
+	require.Len(t, fqdns, 1)
+	// ingress is listed, service is not → ingress wins
+	assert.Equal(t, []string{"10.0.0.2"}, fqdns[0].Targets)
+	assert.Equal(t, "ingress", fqdns[0].SourceType)
+}
+
+func TestFQDNStore_Count_DeduplicatesBySourcePriority(t *testing.T) {
+	s := dnsstore.NewFQDNStore([]string{"ingress", "service"})
+	ctx := context.Background()
+
+	_ = s.Replace(ctx, "ns/record-svc", []domaindns.FQDNView{
+		{
+			Name: "app.example.com", Source: domaindns.SourceExternalDNS,
+			SourceType: "service", RecordType: "A",
+			PortalName: "main", Namespace: "ns",
+		},
+	})
+	_ = s.Replace(ctx, "ns/record-ing", []domaindns.FQDNView{
+		{
+			Name: "app.example.com", Source: domaindns.SourceExternalDNS,
+			SourceType: "ingress", RecordType: "A",
+			PortalName: "main", Namespace: "ns",
+		},
+	})
+
+	count, err := s.Count(ctx, domaindns.FQDNFilters{})
+	require.NoError(t, err)
+	assert.Equal(t, 1, count, "duplicates should be deduplicated in count too")
+}

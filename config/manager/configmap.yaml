@@ -80,3 +80,15 @@ data:
       interval: 5m
       retryOnError: 30s
       disableDNSCheck: false
+
+    # Authentication for write endpoints (e.g. AddRelease).
+    # Each method has an "enabled" flag. Multiple methods can coexist (chain).
+    auth:
+      # API key authentication — the secret value is read from an environment variable.
+      apiKey:
+        enabled: false
+        headerName: "X-API-Key"        # HTTP header to check (default: "X-API-Key")
+      # JWT Bearer token authentication
+      jwt:
+        enabled: false
+        issuers: []

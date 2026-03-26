@@ -195,6 +195,12 @@ spec:
                   - lastSeen
                   type: object
                 type: array
+              endpointsHash:
+                description: |-
+                  endpointsHash is a SHA-256 digest of the source-provided endpoint data
+                  (DNSName, RecordType, Targets, Labels). It is used by the SourceReconciler
+                  to skip status updates when endpoints have not changed between ticks.
+                type: string
               lastReconcileTime:
                 description: lastReconcileTime is the timestamp of the last reconciliation
                 format: date-time

@@ -179,17 +179,16 @@ func main() {
 	if operatorConfig.Auth.Enabled() {
 		var authenticators []auth.Authenticator
 		if operatorConfig.Auth.APIKey != nil && operatorConfig.Auth.APIKey.Enabled {
-			apiKey := os.Getenv(operatorConfig.Auth.APIKey.EnvVar)
+			const headerAPIKeyEnv = "HEADER_API_KEY"
+			apiKey := os.Getenv(headerAPIKeyEnv)
 			if apiKey == "" {
-				setupLog.Error(nil, "auth: API key env var is empty",
-					"envVar", operatorConfig.Auth.APIKey.EnvVar)
+				setupLog.Error(nil, "auth: HEADER_API_KEY env var is empty")
 				os.Exit(1)
 			}
 			authenticators = append(authenticators,
 				auth.NewAPIKeyAuthenticator(operatorConfig.Auth.APIKey.HeaderName, apiKey))
 			setupLog.Info("auth: API key auth enabled",
-				"header", operatorConfig.Auth.APIKey.HeaderName,
-				"envVar", operatorConfig.Auth.APIKey.EnvVar)
+				"header", operatorConfig.Auth.APIKey.HeaderName)
 		}
 		if operatorConfig.Auth.JWT != nil && operatorConfig.Auth.JWT.Enabled {
 			jwtAuth, err := auth.NewJWTAuthenticator(context.Background(), *operatorConfig.Auth.JWT)
@@ -371,7 +370,7 @@ func main() {
 		disableDNSCheck = operatorConfig.Reconciliation.DisableDNSCheck
 		groupMapping = &operatorConfig.GroupMapping
 	}
-	fqdnStore := dnsreadstore.NewFQDNStore(sourcePriority)
+	fqdnStore := dnsreadstore.NewFQDNStore(nil) // priority dedup handled in SourceReconciler
 	portalStore := portalreadstore.NewPortalStore()
 	alertmanagerStore := alertmanagerreadstore.NewAlertmanagerStore()
 
@@ -405,6 +404,7 @@ func main() {
 		restConfig,
 		operatorConfig,
 		sourceBuilders,
+		sourcePriority,
 	)
 	if err := sourceReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Source")

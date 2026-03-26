@@ -364,6 +364,7 @@ _Appears in:_
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
 | `endpoints` _[sreportal.io/v1alpha1.EndpointStatus](#sreportaliov1alpha1endpointstatus) array_ | endpoints contains the DNS endpoints discovered from this source |   |   |
+| `endpointsHash` _string_ | endpointsHash is a SHA-256 digest of the source-provided endpoint data (DNSName, RecordType, Targets, Labels). It is used by the SourceReconciler to skip status updates when endpoints have not changed between ticks. |   |   |
 | `lastReconcileTime` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | lastReconcileTime is the timestamp of the last reconciliation |   |   |
 | `conditions` _[Condition](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#condition-v1-meta) array_ | conditions represent the current state of the DNSRecord resource |   |   |
 
