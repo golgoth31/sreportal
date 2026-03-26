@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.23.1](https://github.com/golgoth31/sreportal/compare/v1.23.0...v1.23.1) (2026-03-26)
+
+
+### Bug Fixes
+
+* **dns:** prevent DNS controller from overwriting remote DNS CR status ([b03c657](https://github.com/golgoth31/sreportal/commit/b03c657973240fc72dbf59c485d99ad803910c20))
+
 ## [1.23.0](https://github.com/golgoth31/sreportal/compare/v1.22.0...v1.23.0) (2026-03-26)
 
 
