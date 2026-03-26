@@ -242,6 +242,7 @@ _Appears in:_
 | --- | --- | --- | --- |
 | `portalRef` _string_ | portalRef is the name of the Portal this DNS resource is linked to |   |   |
 | `groups` _[sreportal.io/v1alpha1.DNSGroup](#sreportaliov1alpha1dnsgroup) array_ | groups is a list of DNS entry groups for organizing entries in the UI |   |   |
+| `isRemote` _boolean_ | isRemote indicates this DNS resource is managed by the portal controller for a remote portal. When true, the DNS controller skips reconciliation and the portal controller manages the status directly. |   |   |
 
 
 

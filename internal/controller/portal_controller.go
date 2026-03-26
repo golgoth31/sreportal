@@ -32,6 +32,7 @@ import (
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	alertmanagerctrl "github.com/golgoth31/sreportal/internal/controller/alertmanager"
+	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 	domainportal "github.com/golgoth31/sreportal/internal/domain/portal"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/metrics"
@@ -48,11 +49,17 @@ type PortalReconciler struct {
 	Scheme            *runtime.Scheme
 	remoteClientCache *remoteclient.Cache
 	portalWriter      domainportal.PortalWriter
+	fqdnWriter        domaindns.FQDNWriter
 }
 
 // SetPortalWriter sets the optional PortalWriter used to push read models into the ReadStore.
 func (r *PortalReconciler) SetPortalWriter(w domainportal.PortalWriter) {
 	r.portalWriter = w
+}
+
+// SetFQDNWriter sets the optional FQDNWriter used to project remote FQDNs into the ReadStore.
+func (r *PortalReconciler) SetFQDNWriter(w domaindns.FQDNWriter) {
+	r.fqdnWriter = w
 }
 
 // NewPortalReconciler creates a new PortalReconciler
@@ -76,8 +83,15 @@ func (r *PortalReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	var portal sreportalv1alpha1.Portal
 	if err := r.Get(ctx, req.NamespacedName, &portal); err != nil {
-		if client.IgnoreNotFound(err) == nil && r.portalWriter != nil {
-			_ = r.portalWriter.Delete(ctx, req.Namespace+"/"+req.Name)
+		if client.IgnoreNotFound(err) == nil {
+			if r.portalWriter != nil {
+				_ = r.portalWriter.Delete(ctx, req.Namespace+"/"+req.Name)
+			}
+			if r.fqdnWriter != nil {
+				// Clean up remote DNS FQDN projections from read store
+				remoteDNSKey := req.Namespace + "/" + remoteDNSName(req.Name)
+				_ = r.fqdnWriter.Delete(ctx, remoteDNSKey)
+			}
 		}
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
@@ -596,6 +610,7 @@ func (r *PortalReconciler) reconcileRemoteDNS(ctx context.Context, portal *srepo
 			},
 			Spec: sreportalv1alpha1.DNSSpec{
 				PortalRef: portal.Name,
+				IsRemote:  true,
 			},
 		}
 	}
@@ -611,8 +626,9 @@ func (r *PortalReconciler) reconcileRemoteDNS(ctx context.Context, portal *srepo
 		}
 		logger.Info("created DNS CR for remote portal", "dns", dnsName, "portal", portal.Name)
 	} else {
-		// Update spec if needed (portalRef might have changed)
+		// Update spec if needed (portalRef or isRemote might have changed)
 		dns.Spec.PortalRef = portal.Name
+		dns.Spec.IsRemote = true
 		if err := r.Update(ctx, dns); err != nil {
 			return fmt.Errorf("failed to update DNS: %w", err)
 		}
@@ -636,6 +652,15 @@ func (r *PortalReconciler) reconcileRemoteDNS(ctx context.Context, portal *srepo
 
 	if err := r.Status().Patch(ctx, dns, client.MergeFrom(dnsBase)); err != nil {
 		return fmt.Errorf("patch DNS status: %w", err)
+	}
+
+	// Project remote FQDNs into FQDN read store (DNS controller skips remote CRs)
+	if r.fqdnWriter != nil {
+		resourceKey := dns.Namespace + "/" + dns.Name
+		views := groupsToFQDNViews(dns)
+		if err := r.fqdnWriter.Replace(ctx, resourceKey, views); err != nil {
+			logger.Error(err, "failed to update FQDN read store for remote DNS")
+		}
 	}
 
 	logger.Info("updated DNS status with remote FQDNs",

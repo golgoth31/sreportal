@@ -30,6 +30,11 @@ type DNSSpec struct {
 	// groups is a list of DNS entry groups for organizing entries in the UI
 	// +optional
 	Groups []DNSGroup `json:"groups,omitempty"`
+
+	// isRemote indicates this DNS resource is managed by the portal controller for a remote portal.
+	// When true, the DNS controller skips reconciliation and the portal controller manages the status directly.
+	// +optional
+	IsRemote bool `json:"isRemote,omitempty"`
 }
 
 // DNSGroup represents a group of DNS entries

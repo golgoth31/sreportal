@@ -74,6 +74,11 @@ spec:
                   - name
                   type: object
                 type: array
+              isRemote:
+                description: |-
+                  isRemote indicates this DNS resource is managed by the portal controller for a remote portal.
+                  When true, the DNS controller skips reconciliation and the portal controller manages the status directly.
+                type: boolean
               portalRef:
                 description: portalRef is the name of the Portal this DNS resource is
                   linked to

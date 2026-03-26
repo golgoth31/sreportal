@@ -210,6 +210,101 @@ var _ = Describe("DNS Controller", func() {
 		})
 	})
 
+	Context("When reconciling a remote DNS resource", func() {
+		const resourceName = "remote-test-portal"
+		ctx := context.Background()
+
+		typeNamespacedName := types.NamespacedName{
+			Name:      resourceName,
+			Namespace: "default",
+		}
+
+		BeforeEach(func() {
+			By("creating a remote DNS resource with pre-populated status")
+			dns := &sreportalv1alpha1.DNS{}
+			err := k8sClient.Get(ctx, typeNamespacedName, dns)
+			if err != nil && errors.IsNotFound(err) {
+				resource := &sreportalv1alpha1.DNS{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      resourceName,
+						Namespace: "default",
+					},
+					Spec: sreportalv1alpha1.DNSSpec{
+						PortalRef: "test-portal",
+						IsRemote:  true,
+					},
+				}
+				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+
+				// Pre-populate status as the portal controller would
+				Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
+				resource.Status.Groups = []sreportalv1alpha1.FQDNGroupStatus{
+					{
+						Name:   "remote-group",
+						Source: "remote",
+						FQDNs: []sreportalv1alpha1.FQDNStatus{
+							{
+								FQDN:        "remote.example.com",
+								Description: "Remote FQDN",
+								LastSeen:    metav1.Now(),
+							},
+							{
+								FQDN:        "remote-resolved.example.com",
+								Description: "Remote FQDN with status",
+								RecordType:  "A",
+								Targets:     []string{"10.0.0.1"},
+								SyncStatus:  "sync",
+								LastSeen:    metav1.Now(),
+							},
+						},
+					},
+				}
+				Expect(k8sClient.Status().Update(ctx, resource)).To(Succeed())
+			}
+		})
+
+		AfterEach(func() {
+			resource := &sreportalv1alpha1.DNS{}
+			err := k8sClient.Get(ctx, typeNamespacedName, resource)
+			if err == nil {
+				By("Cleanup the DNS resource")
+				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+			}
+		})
+
+		It("should skip reconciliation and preserve status", func() {
+			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), true)
+
+			By("Reconciling and verifying status is NOT overwritten")
+			result, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.RequeueAfter).To(BeZero(), "remote DNS should not be requeued by DNS controller")
+
+			var dns sreportalv1alpha1.DNS
+			Expect(k8sClient.Get(ctx, typeNamespacedName, &dns)).To(Succeed())
+			Expect(dns.Status.Groups).To(HaveLen(1), "status should be preserved")
+			Expect(dns.Status.Groups[0].FQDNs).To(HaveLen(2), "FQDNs should not be wiped")
+			Expect(dns.Status.Groups[0].FQDNs[0].FQDN).To(Equal("remote.example.com"))
+		})
+
+		It("should not project into the FQDN read store", func() {
+			store := dnsreadstore.NewFQDNStore(nil)
+			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), true)
+			controllerReconciler.SetFQDNWriter(store)
+
+			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			views, err := store.List(ctx, domaindns.FQDNFilters{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(views).To(BeEmpty(), "DNS controller should not project remote FQDNs")
+		})
+	})
+
 	Context("When DNS CR name differs from PortalRef", func() {
 		const dnsName = "test-dns-custom-name"
 		ctx := context.Background()

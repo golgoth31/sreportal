@@ -100,6 +100,12 @@ func (r *DNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	// Remote DNS CRs are managed by the portal controller — skip reconciliation.
+	if resource.Spec.IsRemote {
+		logger.V(1).Info("skipping remote DNS resource (managed by portal controller)", "name", resource.Name)
+		return ctrl.Result{}, nil
+	}
+
 	logger.Info("reconciling DNS resource", "name", resource.Name, "namespace", resource.Namespace)
 
 	// Create reconcile context

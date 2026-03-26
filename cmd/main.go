@@ -433,6 +433,7 @@ func main() {
 		remoteCache,
 	)
 	portalReconciler.SetPortalWriter(portalStore)
+	portalReconciler.SetFQDNWriter(fqdnStore)
 	if err := portalReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Portal")
 		os.Exit(1)
