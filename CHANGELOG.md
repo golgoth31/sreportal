@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.23.2](https://github.com/golgoth31/sreportal/compare/v1.23.1...v1.23.2) (2026-03-27)
+
+
+### Bug Fixes
+
+* **web:** move remote portal button to nav bar and add beta badge on impact tab ([013b243](https://github.com/golgoth31/sreportal/commit/013b2438c57441f77f9b2fdf7956ad25ff5c9837))
+
 ## [1.23.1](https://github.com/golgoth31/sreportal/compare/v1.23.0...v1.23.1) (2026-03-26)
 
 
