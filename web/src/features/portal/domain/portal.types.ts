@@ -5,6 +5,13 @@ export interface RemoteSyncStatus {
   readonly fqdnCount: number;
 }
 
+export interface PortalFeatures {
+  readonly dns: boolean;
+  readonly releases: boolean;
+  readonly networkPolicy: boolean;
+  readonly alerts: boolean;
+}
+
 export interface Portal {
   readonly name: string;
   readonly title: string;
@@ -15,6 +22,7 @@ export interface Portal {
   readonly url: string;
   readonly isRemote: boolean;
   readonly remoteSync?: RemoteSyncStatus;
+  readonly features: PortalFeatures;
 }
 
 /** True when the controller reported a non-empty last sync error (stale remote data). */

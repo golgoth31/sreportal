@@ -685,6 +685,23 @@ _Appears in:_
 | `main` _boolean_ | main marks this portal as the default portal for unmatched FQDNs |   |   |
 | `subPath` _string_ | subPath is the URL subpath for this portal (defaults to metadata.name) |   |   |
 | `remote` _[sreportal.io/v1alpha1.RemotePortalSpec](#sreportaliov1alpha1remoteportalspec)_ | remote configures this portal to fetch data from a remote SRE Portal instance. When set, the operator will fetch DNS information from the remote portal instead of collecting data from the local cluster. This field cannot be set when main is true. |   |   |
+| `features` _[sreportal.io/v1alpha1.PortalFeatures](#sreportaliov1alpha1portalfeatures)_ | features controls which features are enabled for this portal. All features default to true when not specified. |   |   |
+
+
+
+#### sreportal.io/v1alpha1.PortalFeatures
+
+PortalFeatures controls which features are enabled for a portal. All features default to true when not specified.
+
+_Appears in:_
+- [sreportal.io/v1alpha1.PortalSpec](#sreportaliov1alpha1portalspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `dns` _boolean_ | dns enables DNS discovery (controllers, gRPC, MCP, web page) for this portal. |   |   |
+| `releases` _boolean_ | releases enables the releases page for this portal. |   |   |
+| `networkPolicy` _boolean_ | networkPolicy enables network policy visualization for this portal. |   |   |
+| `alerts` _boolean_ | alerts enables alertmanager integration for this portal. |   |   |
 
 
 

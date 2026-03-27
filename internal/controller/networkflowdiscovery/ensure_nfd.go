@@ -63,6 +63,22 @@ func (r *EnsureNFDRunnable) Start(ctx context.Context) error {
 	}
 	log.Info("cache synced successfully")
 
+	// Check if networkPolicy feature is enabled on the referenced portal.
+	var portal sreportalv1alpha1.Portal
+	if err := r.client.Get(ctx, client.ObjectKey{Name: r.portalRef, Namespace: r.namespace}, &portal); err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("portal not found, skipping NFD creation", "portalRef", r.portalRef)
+			return nil
+		}
+
+		return fmt.Errorf("get Portal: %w", err)
+	}
+
+	if !portal.Spec.Features.IsNetworkPolicyEnabled() {
+		log.Info("networkPolicy feature disabled for portal, skipping NFD creation", "portalRef", r.portalRef)
+		return nil
+	}
+
 	// Check if a NetworkFlowDiscovery already exists for this portal
 	nfdName := "netflow-" + r.portalRef
 	var existing sreportalv1alpha1.NetworkFlowDiscovery

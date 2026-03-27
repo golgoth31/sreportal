@@ -300,64 +300,76 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 	// Create or update DNS CR with fetched FQDNs. A failure here does not
 	// block the portal being marked Ready — the remote connection succeeded —
 	// but we surface it as a separate DNSSynced condition so operators can act.
-	if err := r.reconcileRemoteDNS(ctx, portal, result); err != nil {
-		remoteLog.Warn("failed to reconcile DNS for remote portal", "name", portal.Name, "namespace", portal.Namespace, "error", err.Error())
-		meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
-			Type:               "DNSSynced",
-			Status:             metav1.ConditionFalse,
-			Reason:             "DNSSyncFailed",
-			Message:            fmt.Sprintf("Failed to sync DNS from remote portal: %v", err),
-			LastTransitionTime: metav1.Now(),
-		})
+	if portal.Spec.Features.IsDNSEnabled() {
+		if err := r.reconcileRemoteDNS(ctx, portal, result); err != nil {
+			remoteLog.Warn("failed to reconcile DNS for remote portal", "name", portal.Name, "namespace", portal.Namespace, "error", err.Error())
+			meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
+				Type:               "DNSSynced",
+				Status:             metav1.ConditionFalse,
+				Reason:             "DNSSyncFailed",
+				Message:            fmt.Sprintf("Failed to sync DNS from remote portal: %v", err),
+				LastTransitionTime: metav1.Now(),
+			})
+		} else {
+			meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
+				Type:               "DNSSynced",
+				Status:             metav1.ConditionTrue,
+				Reason:             "DNSSyncSuccess",
+				Message:            fmt.Sprintf("Synced %d FQDNs from remote portal", result.FQDNCount),
+				LastTransitionTime: metav1.Now(),
+			})
+		}
 	} else {
-		meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
-			Type:               "DNSSynced",
-			Status:             metav1.ConditionTrue,
-			Reason:             "DNSSyncSuccess",
-			Message:            fmt.Sprintf("Synced %d FQDNs from remote portal", result.FQDNCount),
-			LastTransitionTime: metav1.Now(),
-		})
+		remoteLog.V(1).Info("DNS feature disabled, skipping remote DNS sync", "portal", portal.Name)
 	}
 
 	// Create or update Alertmanager CR for remote portal so the alertmanager
 	// controller can fetch alerts from the remote portal's API.
-	if err := r.reconcileRemoteAlertmanager(ctx, portal); err != nil {
-		remoteLog.Error(err, "failed to reconcile Alertmanager for remote portal")
-		meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
-			Type:               "AlertsSynced",
-			Status:             metav1.ConditionFalse,
-			Reason:             "AlertsSyncFailed",
-			Message:            fmt.Sprintf("Failed to sync Alertmanager resources for remote portal: %v", err),
-			LastTransitionTime: metav1.Now(),
-		})
+	if portal.Spec.Features.IsAlertsEnabled() {
+		if err := r.reconcileRemoteAlertmanager(ctx, portal); err != nil {
+			remoteLog.Error(err, "failed to reconcile Alertmanager for remote portal")
+			meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
+				Type:               "AlertsSynced",
+				Status:             metav1.ConditionFalse,
+				Reason:             "AlertsSyncFailed",
+				Message:            fmt.Sprintf("Failed to sync Alertmanager resources for remote portal: %v", err),
+				LastTransitionTime: metav1.Now(),
+			})
+		} else {
+			meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
+				Type:               "AlertsSynced",
+				Status:             metav1.ConditionTrue,
+				Reason:             "AlertsSyncSuccess",
+				Message:            "Alertmanager resources synced for remote portal",
+				LastTransitionTime: metav1.Now(),
+			})
+		}
 	} else {
-		meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
-			Type:               "AlertsSynced",
-			Status:             metav1.ConditionTrue,
-			Reason:             "AlertsSyncSuccess",
-			Message:            "Alertmanager resources synced for remote portal",
-			LastTransitionTime: metav1.Now(),
-		})
+		remoteLog.V(1).Info("alerts feature disabled, skipping remote alertmanager sync", "portal", portal.Name)
 	}
 
 	// Create or update FlowNodeSet/FlowEdgeSet CRs for remote network flows.
-	if err := r.reconcileRemoteNetworkFlows(ctx, portal); err != nil {
-		remoteLog.Warn("failed to reconcile network flows for remote portal", "name", portal.Name, "namespace", portal.Namespace, "error", err.Error())
-		meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
-			Type:               "NetworkFlowsSynced",
-			Status:             metav1.ConditionFalse,
-			Reason:             "NetworkFlowsSyncFailed",
-			Message:            fmt.Sprintf("Failed to sync network flows from remote portal: %v", err),
-			LastTransitionTime: metav1.Now(),
-		})
+	if portal.Spec.Features.IsNetworkPolicyEnabled() {
+		if err := r.reconcileRemoteNetworkFlows(ctx, portal); err != nil {
+			remoteLog.Warn("failed to reconcile network flows for remote portal", "name", portal.Name, "namespace", portal.Namespace, "error", err.Error())
+			meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
+				Type:               "NetworkFlowsSynced",
+				Status:             metav1.ConditionFalse,
+				Reason:             "NetworkFlowsSyncFailed",
+				Message:            fmt.Sprintf("Failed to sync network flows from remote portal: %v", err),
+				LastTransitionTime: metav1.Now(),
+			})
+		} else {
+			meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
+				Type:               "NetworkFlowsSynced",
+				Status:             metav1.ConditionTrue,
+				Reason:             "NetworkFlowsSyncSuccess",
+				Message:            "Network flows synced for remote portal",
+				LastTransitionTime: metav1.Now(),
+			})
+		}
 	} else {
-		meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
-			Type:               "NetworkFlowsSynced",
-			Status:             metav1.ConditionTrue,
-			Reason:             "NetworkFlowsSyncSuccess",
-			Message:            "Network flows synced for remote portal",
-			LastTransitionTime: metav1.Now(),
-		})
+		remoteLog.V(1).Info("networkPolicy feature disabled, skipping remote network flows sync", "portal", portal.Name)
 	}
 
 	readyCondition := metav1.Condition{
@@ -396,6 +408,12 @@ func portalToView(p *sreportalv1alpha1.Portal) domainportal.PortalView {
 		Namespace: p.Namespace,
 		Ready:     p.Status.Ready,
 		IsRemote:  p.Spec.Remote != nil,
+		Features: domainportal.PortalFeatures{
+			DNS:           p.Spec.Features.IsDNSEnabled(),
+			Releases:      p.Spec.Features.IsReleasesEnabled(),
+			NetworkPolicy: p.Spec.Features.IsNetworkPolicyEnabled(),
+			Alerts:        p.Spec.Features.IsAlertsEnabled(),
+		},
 	}
 	if p.Spec.Remote != nil {
 		view.URL = p.Spec.Remote.URL

@@ -106,6 +106,17 @@ func (r *DNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		return ctrl.Result{}, nil
 	}
 
+	// Skip reconciliation when DNS feature is disabled on the referenced portal.
+	if resource.Spec.PortalRef != "" {
+		var portal sreportalv1alpha1.Portal
+		if err := r.Get(ctx, client.ObjectKey{Name: resource.Spec.PortalRef, Namespace: resource.Namespace}, &portal); err == nil {
+			if !portal.Spec.Features.IsDNSEnabled() {
+				logger.V(1).Info("DNS feature disabled for portal, skipping", "portal", resource.Spec.PortalRef)
+				return ctrl.Result{}, nil
+			}
+		}
+	}
+
 	logger.Info("reconciling DNS resource", "name", resource.Name, "namespace", resource.Namespace)
 
 	// Create reconcile context

@@ -67,6 +67,11 @@ func (h *BuildPortalIndexHandler) Handle(ctx context.Context, rc *reconciler.Rec
 			continue
 		}
 
+		if !p.Spec.Features.IsDNSEnabled() {
+			logger.V(1).Info("skipping portal with DNS feature disabled", "name", p.Name)
+			continue
+		}
+
 		idx.Local = append(idx.Local, p)
 		if p.Spec.Main {
 			idx.Main = p

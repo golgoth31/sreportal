@@ -88,6 +88,17 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	logger.Info("reconciling DNSRecord resource", "name", record.Name, "namespace", record.Namespace,
 		"portal", record.Spec.PortalRef, "sourceType", record.Spec.SourceType)
 
+	// Skip reconciliation when DNS feature is disabled on the referenced portal.
+	if record.Spec.PortalRef != "" {
+		var portal sreportalv1alpha1.Portal
+		if err := r.Get(ctx, client.ObjectKey{Name: record.Spec.PortalRef, Namespace: record.Namespace}, &portal); err == nil {
+			if !portal.Spec.Features.IsDNSEnabled() {
+				logger.V(1).Info("DNS feature disabled for portal, skipping", "portal", record.Spec.PortalRef)
+				return ctrl.Result{}, nil
+			}
+		}
+	}
+
 	// Recompute and resync the endpoints hash if it diverged (e.g. manual edit).
 	// This ensures the SourceReconciler's skip-if-unchanged logic stays correct.
 	if len(record.Status.Endpoints) > 0 {

@@ -236,11 +236,11 @@ var _ = Describe("DNS Controller", func() {
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 
-				// Pre-populate status as the portal controller would
-				// Wait for cache to sync after Create before reading back
+				// Pre-populate status as the portal controller would.
+				// Wait for the cache to see the newly created resource.
 				Eventually(func() error {
 					return k8sClient.Get(ctx, typeNamespacedName, resource)
-				}, 5*time.Second, 200*time.Millisecond).Should(Succeed())
+				}, timeout, interval).Should(Succeed())
 				resource.Status.Groups = []sreportalv1alpha1.FQDNGroupStatus{
 					{
 						Name:   "remote-group",
@@ -276,6 +276,13 @@ var _ = Describe("DNS Controller", func() {
 
 		It("should skip reconciliation and preserve status", func() {
 			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), true)
+
+			By("Waiting for status to be visible in cache")
+			Eventually(func(g Gomega) {
+				var dns sreportalv1alpha1.DNS
+				g.Expect(k8sClient.Get(ctx, typeNamespacedName, &dns)).To(Succeed())
+				g.Expect(dns.Status.Groups).To(HaveLen(1), "status should be populated")
+			}, timeout, interval).Should(Succeed())
 
 			By("Reconciling and verifying status is NOT overwritten")
 			Eventually(func(g Gomega) {

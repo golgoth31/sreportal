@@ -1,5 +1,13 @@
 package portal
 
+// PortalFeatures contains the feature toggles for a portal.
+type PortalFeatures struct {
+	DNS           bool
+	Releases      bool
+	NetworkPolicy bool
+	Alerts        bool
+}
+
 // PortalView is the read-side projection of a Portal, pre-aggregated by the controller.
 type PortalView struct {
 	Name       string
@@ -11,6 +19,7 @@ type PortalView struct {
 	IsRemote   bool
 	URL        string          // Remote URL, empty for local portals
 	RemoteSync *RemoteSyncView // Non-nil only for remote portals with sync status
+	Features   PortalFeatures
 }
 
 // RemoteSyncView captures the last remote sync state.

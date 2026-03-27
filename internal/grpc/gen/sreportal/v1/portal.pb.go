@@ -133,7 +133,9 @@ type Portal struct {
 	// is_remote indicates if this portal fetches data from a remote source
 	IsRemote bool `protobuf:"varint,8,opt,name=is_remote,json=isRemote,proto3" json:"is_remote,omitempty"`
 	// remote_sync contains status information for remote portals
-	RemoteSync    *RemoteSyncStatus `protobuf:"bytes,9,opt,name=remote_sync,json=remoteSync,proto3" json:"remote_sync,omitempty"`
+	RemoteSync *RemoteSyncStatus `protobuf:"bytes,9,opt,name=remote_sync,json=remoteSync,proto3" json:"remote_sync,omitempty"`
+	// features contains the feature toggles for this portal
+	Features      *PortalFeatures `protobuf:"bytes,10,opt,name=features,proto3" json:"features,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -231,6 +233,86 @@ func (x *Portal) GetRemoteSync() *RemoteSyncStatus {
 	return nil
 }
 
+func (x *Portal) GetFeatures() *PortalFeatures {
+	if x != nil {
+		return x.Features
+	}
+	return nil
+}
+
+// PortalFeatures controls which features are enabled for a portal
+type PortalFeatures struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// dns enables DNS discovery for this portal
+	Dns bool `protobuf:"varint,1,opt,name=dns,proto3" json:"dns,omitempty"`
+	// releases enables the releases page for this portal
+	Releases bool `protobuf:"varint,2,opt,name=releases,proto3" json:"releases,omitempty"`
+	// network_policy enables network policy visualization for this portal
+	NetworkPolicy bool `protobuf:"varint,3,opt,name=network_policy,json=networkPolicy,proto3" json:"network_policy,omitempty"`
+	// alerts enables alertmanager integration for this portal
+	Alerts        bool `protobuf:"varint,4,opt,name=alerts,proto3" json:"alerts,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PortalFeatures) Reset() {
+	*x = PortalFeatures{}
+	mi := &file_sreportal_v1_portal_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PortalFeatures) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PortalFeatures) ProtoMessage() {}
+
+func (x *PortalFeatures) ProtoReflect() protoreflect.Message {
+	mi := &file_sreportal_v1_portal_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PortalFeatures.ProtoReflect.Descriptor instead.
+func (*PortalFeatures) Descriptor() ([]byte, []int) {
+	return file_sreportal_v1_portal_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *PortalFeatures) GetDns() bool {
+	if x != nil {
+		return x.Dns
+	}
+	return false
+}
+
+func (x *PortalFeatures) GetReleases() bool {
+	if x != nil {
+		return x.Releases
+	}
+	return false
+}
+
+func (x *PortalFeatures) GetNetworkPolicy() bool {
+	if x != nil {
+		return x.NetworkPolicy
+	}
+	return false
+}
+
+func (x *PortalFeatures) GetAlerts() bool {
+	if x != nil {
+		return x.Alerts
+	}
+	return false
+}
+
 // RemoteSyncStatus contains status information about remote portal synchronization
 type RemoteSyncStatus struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -248,7 +330,7 @@ type RemoteSyncStatus struct {
 
 func (x *RemoteSyncStatus) Reset() {
 	*x = RemoteSyncStatus{}
-	mi := &file_sreportal_v1_portal_proto_msgTypes[3]
+	mi := &file_sreportal_v1_portal_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -260,7 +342,7 @@ func (x *RemoteSyncStatus) String() string {
 func (*RemoteSyncStatus) ProtoMessage() {}
 
 func (x *RemoteSyncStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_portal_proto_msgTypes[3]
+	mi := &file_sreportal_v1_portal_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -273,7 +355,7 @@ func (x *RemoteSyncStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoteSyncStatus.ProtoReflect.Descriptor instead.
 func (*RemoteSyncStatus) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_portal_proto_rawDescGZIP(), []int{3}
+	return file_sreportal_v1_portal_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *RemoteSyncStatus) GetLastSyncTime() string {
@@ -312,7 +394,7 @@ const file_sreportal_v1_portal_proto_rawDesc = "" +
 	"\x12ListPortalsRequest\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\"E\n" +
 	"\x13ListPortalsResponse\x12.\n" +
-	"\aportals\x18\x01 \x03(\v2\x14.sreportal.v1.PortalR\aportals\"\x85\x02\n" +
+	"\aportals\x18\x01 \x03(\v2\x14.sreportal.v1.PortalR\aportals\"\xbf\x02\n" +
 	"\x06Portal\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x12\n" +
@@ -323,7 +405,14 @@ const file_sreportal_v1_portal_proto_rawDesc = "" +
 	"\x03url\x18\a \x01(\tR\x03url\x12\x1b\n" +
 	"\tis_remote\x18\b \x01(\bR\bisRemote\x12?\n" +
 	"\vremote_sync\x18\t \x01(\v2\x1e.sreportal.v1.RemoteSyncStatusR\n" +
-	"remoteSync\"\xa2\x01\n" +
+	"remoteSync\x128\n" +
+	"\bfeatures\x18\n" +
+	" \x01(\v2\x1c.sreportal.v1.PortalFeaturesR\bfeatures\"}\n" +
+	"\x0ePortalFeatures\x12\x10\n" +
+	"\x03dns\x18\x01 \x01(\bR\x03dns\x12\x1a\n" +
+	"\breleases\x18\x02 \x01(\bR\breleases\x12%\n" +
+	"\x0enetwork_policy\x18\x03 \x01(\bR\rnetworkPolicy\x12\x16\n" +
+	"\x06alerts\x18\x04 \x01(\bR\x06alerts\"\xa2\x01\n" +
 	"\x10RemoteSyncStatus\x12$\n" +
 	"\x0elast_sync_time\x18\x01 \x01(\tR\flastSyncTime\x12&\n" +
 	"\x0flast_sync_error\x18\x02 \x01(\tR\rlastSyncError\x12!\n" +
@@ -346,23 +435,25 @@ func file_sreportal_v1_portal_proto_rawDescGZIP() []byte {
 	return file_sreportal_v1_portal_proto_rawDescData
 }
 
-var file_sreportal_v1_portal_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_sreportal_v1_portal_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_sreportal_v1_portal_proto_goTypes = []any{
 	(*ListPortalsRequest)(nil),  // 0: sreportal.v1.ListPortalsRequest
 	(*ListPortalsResponse)(nil), // 1: sreportal.v1.ListPortalsResponse
 	(*Portal)(nil),              // 2: sreportal.v1.Portal
-	(*RemoteSyncStatus)(nil),    // 3: sreportal.v1.RemoteSyncStatus
+	(*PortalFeatures)(nil),      // 3: sreportal.v1.PortalFeatures
+	(*RemoteSyncStatus)(nil),    // 4: sreportal.v1.RemoteSyncStatus
 }
 var file_sreportal_v1_portal_proto_depIdxs = []int32{
 	2, // 0: sreportal.v1.ListPortalsResponse.portals:type_name -> sreportal.v1.Portal
-	3, // 1: sreportal.v1.Portal.remote_sync:type_name -> sreportal.v1.RemoteSyncStatus
-	0, // 2: sreportal.v1.PortalService.ListPortals:input_type -> sreportal.v1.ListPortalsRequest
-	1, // 3: sreportal.v1.PortalService.ListPortals:output_type -> sreportal.v1.ListPortalsResponse
-	3, // [3:4] is the sub-list for method output_type
-	2, // [2:3] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	4, // 1: sreportal.v1.Portal.remote_sync:type_name -> sreportal.v1.RemoteSyncStatus
+	3, // 2: sreportal.v1.Portal.features:type_name -> sreportal.v1.PortalFeatures
+	0, // 3: sreportal.v1.PortalService.ListPortals:input_type -> sreportal.v1.ListPortalsRequest
+	1, // 4: sreportal.v1.PortalService.ListPortals:output_type -> sreportal.v1.ListPortalsResponse
+	4, // [4:5] is the sub-list for method output_type
+	3, // [3:4] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_sreportal_v1_portal_proto_init() }
@@ -376,7 +467,7 @@ func file_sreportal_v1_portal_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_sreportal_v1_portal_proto_rawDesc), len(file_sreportal_v1_portal_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

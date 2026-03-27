@@ -1670,9 +1670,35 @@
         "remoteSync": {
           "$ref": "#/definitions/v1RemoteSyncStatus",
           "title": "remote_sync contains status information for remote portals"
+        },
+        "features": {
+          "$ref": "#/definitions/v1PortalFeatures",
+          "title": "features contains the feature toggles for this portal"
         }
       },
       "title": "Portal represents a portal with its metadata"
+    },
+    "v1PortalFeatures": {
+      "type": "object",
+      "properties": {
+        "dns": {
+          "type": "boolean",
+          "title": "dns enables DNS discovery for this portal"
+        },
+        "releases": {
+          "type": "boolean",
+          "title": "releases enables the releases page for this portal"
+        },
+        "networkPolicy": {
+          "type": "boolean",
+          "title": "network_policy enables network policy visualization for this portal"
+        },
+        "alerts": {
+          "type": "boolean",
+          "title": "alerts enables alertmanager integration for this portal"
+        }
+      },
+      "title": "PortalFeatures controls which features are enabled for a portal"
     },
     "v1ReleaseEntry": {
       "type": "object",

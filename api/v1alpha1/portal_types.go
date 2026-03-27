@@ -41,6 +41,55 @@ type PortalSpec struct {
 	// This field cannot be set when main is true.
 	// +optional
 	Remote *RemotePortalSpec `json:"remote,omitempty"`
+
+	// features controls which features are enabled for this portal.
+	// All features default to true when not specified.
+	// +optional
+	Features *PortalFeatures `json:"features,omitempty"`
+}
+
+// PortalFeatures controls which features are enabled for a portal.
+// All features default to true when not specified.
+type PortalFeatures struct {
+	// dns enables DNS discovery (controllers, gRPC, MCP, web page) for this portal.
+	// +optional
+	// +kubebuilder:default=true
+	DNS *bool `json:"dns,omitempty"`
+
+	// releases enables the releases page for this portal.
+	// +optional
+	// +kubebuilder:default=true
+	Releases *bool `json:"releases,omitempty"`
+
+	// networkPolicy enables network policy visualization for this portal.
+	// +optional
+	// +kubebuilder:default=true
+	NetworkPolicy *bool `json:"networkPolicy,omitempty"`
+
+	// alerts enables alertmanager integration for this portal.
+	// +optional
+	// +kubebuilder:default=true
+	Alerts *bool `json:"alerts,omitempty"`
+}
+
+// IsDNSEnabled returns true if DNS feature is enabled (nil-safe, defaults to true).
+func (f *PortalFeatures) IsDNSEnabled() bool {
+	return f == nil || f.DNS == nil || *f.DNS
+}
+
+// IsReleasesEnabled returns true if releases feature is enabled (nil-safe, defaults to true).
+func (f *PortalFeatures) IsReleasesEnabled() bool {
+	return f == nil || f.Releases == nil || *f.Releases
+}
+
+// IsNetworkPolicyEnabled returns true if network policy feature is enabled (nil-safe, defaults to true).
+func (f *PortalFeatures) IsNetworkPolicyEnabled() bool {
+	return f == nil || f.NetworkPolicy == nil || *f.NetworkPolicy
+}
+
+// IsAlertsEnabled returns true if alerts feature is enabled (nil-safe, defaults to true).
+func (f *PortalFeatures) IsAlertsEnabled() bool {
+	return f == nil || f.Alerts == nil || *f.Alerts
 }
 
 // RemotePortalSpec defines the configuration for fetching data from a remote portal.
