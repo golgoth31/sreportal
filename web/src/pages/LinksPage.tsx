@@ -1,9 +1,7 @@
-import { ExternalLinkIcon } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import { useParams } from "react-router";
 
 import { PageRefreshButton } from "@/components/PageRefreshButton";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -38,7 +36,6 @@ export function LinksPage() {
   } = useDns(portalName);
 
   const {
-    portals,
     refetch: refetchPortals,
     isFetching: portalsFetching,
   } = usePortals();
@@ -46,9 +43,6 @@ export function LinksPage() {
   const handleRefresh = useCallback(() => {
     void Promise.all([refetchDns(), refetchPortals()]);
   }, [refetchDns, refetchPortals]);
-  const currentPortal = portals.find(
-    (p) => (p.subPath || p.name) === portalName
-  );
   const hasFilters = searchTerm !== "" || groupFilter !== "";
 
   const activeFilters = useMemo((): ActiveFilter[] => {
@@ -74,21 +68,7 @@ export function LinksPage() {
     <div className="max-w-screen-xl mx-auto px-4 py-6 space-y-6">
       {/* Page header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-semibold tracking-tight">DNS Links</h1>
-          {currentPortal?.isRemote && currentPortal.url && (
-            <Button variant="outline" size="sm" asChild>
-              <a
-                href={currentPortal.url}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Remote portal
-                <ExternalLinkIcon className="size-3" />
-              </a>
-            </Button>
-          )}
-        </div>
+        <h1 className="text-xl font-semibold tracking-tight">DNS Links</h1>
 
         <div className="flex items-center gap-2 ml-auto flex-wrap justify-end">
           <PageRefreshButton

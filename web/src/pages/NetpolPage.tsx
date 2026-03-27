@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams } from "react-router";
 
+import { Badge } from "@/components/ui/badge";
 import { PageRefreshButton } from "@/components/PageRefreshButton";
 import { ErrorAlert } from "@/components/ErrorAlert";
 import { useNetpol } from "@/features/netpol/hooks/useNetpol";
@@ -58,6 +59,9 @@ export function NetpolPage() {
             }`}
           >
             {tab.label}
+            {tab.value === "impact" && (
+              <Badge variant="outline" className="ml-1.5 text-[10px] px-1.5 py-0">beta</Badge>
+            )}
           </button>
         ))}
       </div>

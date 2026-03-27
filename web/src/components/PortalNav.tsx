@@ -1,3 +1,4 @@
+import { ExternalLinkIcon } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import { NavLink, useNavigate, useParams } from "react-router";
 
@@ -69,8 +70,9 @@ export function PortalNav({ portals, isLoading }: PortalNavProps) {
 
   const activeLocalPortalName =
     localPortals.find((p) => (p.subPath || p.name) === portalName)?.name ?? "";
-  const activeRemotePortalName =
-    remotePortals.find((p) => (p.subPath || p.name) === portalName)?.name ?? "";
+  const activeRemotePortal =
+    remotePortals.find((p) => (p.subPath || p.name) === portalName);
+  const activeRemotePortalName = activeRemotePortal?.name ?? "";
 
   const handlePortalSelect = useCallback(
     (name: string) => {
@@ -122,6 +124,18 @@ export function PortalNav({ portals, isLoading }: PortalNavProps) {
         placeholder="Remote portals"
         onSelect={handlePortalSelect}
       />
+      {activeRemotePortal?.url && (
+        <Button variant="outline" size="sm" asChild>
+          <a
+            href={activeRemotePortal.url}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Remote portal
+            <ExternalLinkIcon className="size-3" />
+          </a>
+        </Button>
+      )}
     </nav>
   );
 }
