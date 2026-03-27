@@ -101,7 +101,7 @@ export function PortalNav({ portals, isLoading }: PortalNavProps) {
           size="sm"
           className={cn(
             (mainPortal.subPath || mainPortal.name) === portalName &&
-              "bg-primary/10 text-primary font-semibold shadow-primary"
+            "bg-primary/10 text-primary font-semibold shadow-primary"
           )}
           asChild
         >
@@ -131,7 +131,7 @@ export function PortalNav({ portals, isLoading }: PortalNavProps) {
             target="_blank"
             rel="noopener noreferrer"
           >
-            Remote portal
+            Go to portal UI
             <ExternalLinkIcon className="size-3" />
           </a>
         </Button>
