@@ -6,12 +6,12 @@ import "time"
 type ComponentStatus string
 
 const (
-	StatusOperational  ComponentStatus = "operational"
-	StatusDegraded     ComponentStatus = "degraded"
-	StatusPartialOut   ComponentStatus = "partial_outage"
-	StatusMajorOutage  ComponentStatus = "major_outage"
-	StatusUnknown      ComponentStatus = "unknown"
-	StatusMaintenance  ComponentStatus = "maintenance"
+	StatusOperational ComponentStatus = "operational"
+	StatusDegraded    ComponentStatus = "degraded"
+	StatusPartialOut  ComponentStatus = "partial_outage"
+	StatusMajorOutage ComponentStatus = "major_outage"
+	StatusUnknown     ComponentStatus = "unknown"
+	StatusMaintenance ComponentStatus = "maintenance"
 )
 
 // ComponentView is the read model for a platform component.

@@ -1,6 +1,9 @@
 package maintenance
 
-import "time"
+import (
+	"slices"
+	"time"
+)
 
 // MaintenancePhase describes the lifecycle phase of a maintenance window.
 type MaintenancePhase string
@@ -56,10 +59,5 @@ func (v MaintenanceView) AffectsComponent(portalRef, componentName string) bool 
 	if v.Phase != PhaseInProgress {
 		return false
 	}
-	for _, c := range v.Components {
-		if c == componentName {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(v.Components, componentName)
 }

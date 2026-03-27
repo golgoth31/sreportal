@@ -46,12 +46,12 @@ import (
 	domainnetpol "github.com/golgoth31/sreportal/internal/domain/netpol"
 	domainportal "github.com/golgoth31/sreportal/internal/domain/portal"
 	domainrelease "github.com/golgoth31/sreportal/internal/domain/release"
-	statuspagesvc "github.com/golgoth31/sreportal/internal/statuspage"
 	"github.com/golgoth31/sreportal/internal/grpc"
 	"github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1/sreportalv1connect"
 	"github.com/golgoth31/sreportal/internal/metrics"
 	"github.com/golgoth31/sreportal/internal/openapi"
 	releaseservice "github.com/golgoth31/sreportal/internal/release"
+	statuspagesvc "github.com/golgoth31/sreportal/internal/statuspage"
 )
 
 // Config holds the web server configuration

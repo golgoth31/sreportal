@@ -45,7 +45,6 @@ import (
 	"sigs.k8s.io/external-dns/source/annotations"
 
 	sreportal "github.com/golgoth31/sreportal"
-	sreportaliov1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/alertmanagerclient"
 	"github.com/golgoth31/sreportal/internal/auth"
@@ -64,10 +63,10 @@ import (
 	netpolreadstore "github.com/golgoth31/sreportal/internal/readstore/netpol"
 	portalreadstore "github.com/golgoth31/sreportal/internal/readstore/portal"
 	releasereadstore "github.com/golgoth31/sreportal/internal/readstore/release"
-	statuspagesvc "github.com/golgoth31/sreportal/internal/statuspage"
 	releaseservice "github.com/golgoth31/sreportal/internal/release"
 	"github.com/golgoth31/sreportal/internal/remoteclient"
 	"github.com/golgoth31/sreportal/internal/source"
+	statuspagesvc "github.com/golgoth31/sreportal/internal/statuspage"
 	"github.com/golgoth31/sreportal/internal/version"
 	webhookv1alpha1 "github.com/golgoth31/sreportal/internal/webhook/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/webserver"
@@ -85,7 +84,6 @@ func init() {
 	utilruntime.Must(externaldnsv1alpha1.AddToScheme(scheme))
 
 	utilruntime.Must(sreportalv1alpha1.AddToScheme(scheme))
-	utilruntime.Must(sreportaliov1alpha1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 

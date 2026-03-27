@@ -11,9 +11,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	"github.com/golgoth31/sreportal/internal/controller/statusutil"
 	domaincomponent "github.com/golgoth31/sreportal/internal/domain/component"
 	domainmaint "github.com/golgoth31/sreportal/internal/domain/maintenance"
-	"github.com/golgoth31/sreportal/internal/controller/statusutil"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 

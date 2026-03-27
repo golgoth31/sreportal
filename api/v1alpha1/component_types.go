@@ -37,12 +37,12 @@ const (
 type ComputedComponentStatus string
 
 const (
-	ComputedStatusOperational  ComputedComponentStatus = "operational"
-	ComputedStatusDegraded     ComputedComponentStatus = "degraded"
-	ComputedStatusPartialOut   ComputedComponentStatus = "partial_outage"
-	ComputedStatusMajorOutage  ComputedComponentStatus = "major_outage"
-	ComputedStatusUnknown      ComputedComponentStatus = "unknown"
-	ComputedStatusMaintenance  ComputedComponentStatus = "maintenance"
+	ComputedStatusOperational ComputedComponentStatus = "operational"
+	ComputedStatusDegraded    ComputedComponentStatus = "degraded"
+	ComputedStatusPartialOut  ComputedComponentStatus = "partial_outage"
+	ComputedStatusMajorOutage ComputedComponentStatus = "major_outage"
+	ComputedStatusUnknown     ComputedComponentStatus = "unknown"
+	ComputedStatusMaintenance ComputedComponentStatus = "maintenance"
 )
 
 // ComponentSpec defines the desired state of Component

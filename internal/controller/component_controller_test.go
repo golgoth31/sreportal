@@ -125,12 +125,14 @@ var _ = Describe("Component Controller", func() {
 				_ = k8sClient.Delete(ctx, badComp)
 			}()
 
-			result, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: types.NamespacedName{Name: "comp-bad-portal", Namespace: "default"},
-			})
-			// Chain error is swallowed, reconciler requeues
-			Expect(err).NotTo(HaveOccurred())
-			Expect(result.RequeueAfter).To(BeNumerically(">", 0), "should requeue on portal not found")
+			// Wait for cache to sync, then reconcile — the chain should requeue
+			Eventually(func(g Gomega) {
+				result, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: types.NamespacedName{Name: "comp-bad-portal", Namespace: "default"},
+				})
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(result.RequeueAfter).To(BeNumerically(">", 0), "should requeue on portal not found")
+			}, 10*time.Second, 500*time.Millisecond).Should(Succeed())
 		})
 	})
 })

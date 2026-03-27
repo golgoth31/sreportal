@@ -23,8 +23,8 @@ import (
 	"errors"
 
 	"connectrpc.com/connect"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	domaincomponent "github.com/golgoth31/sreportal/internal/domain/component"
@@ -386,7 +386,7 @@ func (s *StatusService) UpsertIncident(
 		Title:      req.Msg.Title,
 		PortalRef:  req.Msg.PortalRef,
 		Components: req.Msg.Components,
-		Severity:   sreportalv1alpha1.IncidentSeverity(incidentSeverityFromProto(req.Msg.Severity)),
+		Severity:   incidentSeverityFromProto(req.Msg.Severity),
 		Updates:    updates,
 	}
 

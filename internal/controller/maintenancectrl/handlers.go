@@ -10,23 +10,21 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
-	domainmaint "github.com/golgoth31/sreportal/internal/domain/maintenance"
 	"github.com/golgoth31/sreportal/internal/controller/statusutil"
+	domainmaint "github.com/golgoth31/sreportal/internal/domain/maintenance"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
 // ChainData holds shared state between handlers.
 type ChainData struct {
-	Phase          sreportalv1alpha1.MaintenancePhase
-	RequeueAfter   func() // populated by ComputePhaseHandler for result
+	Phase        sreportalv1alpha1.MaintenancePhase
+	RequeueAfter func() // populated by ComputePhaseHandler for result
 }
 
 // --- Handler 1: ComputePhase ---
 
 // ComputePhaseHandler determines the phase based on current time vs schedule.
-type ComputePhaseHandler struct {
-	now func() interface{ Now() interface{} } // unused — we use the injected now from reconciler
-}
+type ComputePhaseHandler struct{}
 
 // NewComputePhaseHandler creates a new ComputePhaseHandler.
 func NewComputePhaseHandler() *ComputePhaseHandler {
