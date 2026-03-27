@@ -304,7 +304,7 @@ _Appears in:_
 
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
-| `computedStatus` _[sreportal.io/v1alpha1.ComponentStatusValue](#sreportaliov1alpha1componentstatusvalue)_ | computedStatus is the effective status calculated by the controller. If a maintenance is in progress on this component, it is overridden to "maintenance". Otherwise it reflects spec.status. |   |   |
+| `computedStatus` _[sreportal.io/v1alpha1.ComputedComponentStatus](#sreportaliov1alpha1computedcomponentstatus)_ | computedStatus is the effective status calculated by the controller. If a maintenance is in progress on this component, it is overridden to "maintenance". Otherwise it reflects spec.status. |   |   |
 | `activeIncidents` _integer_ | activeIncidents is the number of active (non-resolved) incidents linked to this component |   |   |
 | `lastStatusChange` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | lastStatusChange is the timestamp of the last computedStatus transition |   |   |
 | `conditions` _[Condition](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#condition-v1-meta) array_ | conditions represent the current state of the Component resource. |   |   |

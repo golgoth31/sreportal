@@ -50,6 +50,19 @@ import {
 import {
   GetVersionResponseSchema,
 } from "../src/gen/sreportal/v1/version_pb.js";
+import {
+  ListComponentsResponseSchema,
+  ListMaintenancesResponseSchema,
+  ListIncidentsResponseSchema,
+  ComponentResourceSchema,
+  MaintenanceResourceSchema,
+  IncidentResourceSchema,
+  IncidentUpdateSchema,
+  ComponentStatus,
+  MaintenancePhase,
+  IncidentPhase,
+  IncidentSeverity,
+} from "../src/gen/sreportal/v1/status_pb.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
@@ -229,6 +242,56 @@ const versionResponse = create(GetVersionResponseSchema, {
   version: "1.20.0", commit: "5b58fdd", date: "2026-03-24T08:00:00Z",
 });
 
+// Status Page — Components
+const componentsResponse = create(ListComponentsResponseSchema, {
+  components: [
+    create(ComponentResourceSchema, { name: "api-server", displayName: "API Server", description: "Main REST API", group: "Backend", link: "https://api.example.com", portalRef: "main", declaredStatus: ComponentStatus.OPERATIONAL, computedStatus: ComponentStatus.OPERATIONAL, activeIncidents: 0, lastStatusChange: timestampFromDate(ago(86400)) }),
+    create(ComponentResourceSchema, { name: "auth-service", displayName: "Auth Service", description: "Authentication & SSO", group: "Backend", link: "", portalRef: "main", declaredStatus: ComponentStatus.DEGRADED, computedStatus: ComponentStatus.DEGRADED, activeIncidents: 1, lastStatusChange: timestampFromDate(ago(1800)) }),
+    create(ComponentResourceSchema, { name: "payments-worker", displayName: "Payments Worker", description: "Async payment processing", group: "Backend", link: "", portalRef: "main", declaredStatus: ComponentStatus.OPERATIONAL, computedStatus: ComponentStatus.OPERATIONAL, activeIncidents: 0, lastStatusChange: timestampFromDate(ago(172800)) }),
+    create(ComponentResourceSchema, { name: "web-frontend", displayName: "Web Frontend", description: "React SPA", group: "Frontend", link: "https://web.example.com", portalRef: "main", declaredStatus: ComponentStatus.OPERATIONAL, computedStatus: ComponentStatus.OPERATIONAL, activeIncidents: 0, lastStatusChange: timestampFromDate(ago(43200)) }),
+    create(ComponentResourceSchema, { name: "cdn", displayName: "CDN", description: "Static assets delivery", group: "Frontend", link: "", portalRef: "main", declaredStatus: ComponentStatus.OPERATIONAL, computedStatus: ComponentStatus.OPERATIONAL, activeIncidents: 0, lastStatusChange: timestampFromDate(ago(604800)) }),
+    create(ComponentResourceSchema, { name: "postgres-primary", displayName: "PostgreSQL Primary", description: "Primary database", group: "Data", link: "", portalRef: "main", declaredStatus: ComponentStatus.OPERATIONAL, computedStatus: ComponentStatus.MAINTENANCE, activeIncidents: 0, lastStatusChange: timestampFromDate(ago(600)) }),
+    create(ComponentResourceSchema, { name: "redis-cluster", displayName: "Redis Cluster", description: "Cache and sessions", group: "Data", link: "", portalRef: "main", declaredStatus: ComponentStatus.OPERATIONAL, computedStatus: ComponentStatus.OPERATIONAL, activeIncidents: 0, lastStatusChange: timestampFromDate(ago(259200)) }),
+    create(ComponentResourceSchema, { name: "rabbitmq", displayName: "RabbitMQ", description: "Message broker", group: "Data", link: "", portalRef: "main", declaredStatus: ComponentStatus.OPERATIONAL, computedStatus: ComponentStatus.OPERATIONAL, activeIncidents: 0, lastStatusChange: timestampFromDate(ago(432000)) }),
+  ],
+});
+
+// Status Page — Maintenances
+const maintenancesResponse = create(ListMaintenancesResponseSchema, {
+  maintenances: [
+    create(MaintenanceResourceSchema, { name: "db-upgrade", title: "PostgreSQL 16 Upgrade", description: "Upgrading primary database from PostgreSQL 15 to 16. Expect brief read-only period.", portalRef: "main", components: ["postgres-primary"], scheduledStart: timestampFromDate(ago(600)), scheduledEnd: timestampFromDate(new Date(now.getTime() + 3600 * 1000)), affectedStatus: "maintenance", phase: MaintenancePhase.IN_PROGRESS }),
+    create(MaintenanceResourceSchema, { name: "network-migration", title: "Network Subnet Migration", description: "Migrating backend services to new subnet range for improved isolation.", portalRef: "main", components: ["api-server", "auth-service", "payments-worker"], scheduledStart: timestampFromDate(new Date(now.getTime() + 86400 * 1000)), scheduledEnd: timestampFromDate(new Date(now.getTime() + 90000 * 1000)), affectedStatus: "maintenance", phase: MaintenancePhase.UPCOMING }),
+  ],
+});
+
+// Status Page — Incidents
+const incidentsResponse = create(ListIncidentsResponseSchema, {
+  incidents: [
+    create(IncidentResourceSchema, {
+      name: "auth-latency", title: "Elevated Auth Latency", portalRef: "main",
+      components: ["auth-service"], severity: IncidentSeverity.MAJOR,
+      currentPhase: IncidentPhase.IDENTIFIED, startedAt: timestampFromDate(ago(1800)),
+      resolvedAt: undefined, durationMinutes: 0,
+      updates: [
+        create(IncidentUpdateSchema, { timestamp: timestampFromDate(ago(1800)), phase: IncidentPhase.INVESTIGATING, message: "Monitoring detected elevated p99 latency on auth endpoints." }),
+        create(IncidentUpdateSchema, { timestamp: timestampFromDate(ago(1200)), phase: IncidentPhase.IDENTIFIED, message: "Root cause identified: connection pool exhaustion on auth-service replica set." }),
+      ],
+    }),
+    create(IncidentResourceSchema, {
+      name: "cdn-outage", title: "CDN Cache Invalidation Failure", portalRef: "main",
+      components: ["cdn", "web-frontend"], severity: IncidentSeverity.MINOR,
+      currentPhase: IncidentPhase.RESOLVED, startedAt: timestampFromDate(ago(7200)),
+      resolvedAt: timestampFromDate(ago(3600)), durationMinutes: 60,
+      updates: [
+        create(IncidentUpdateSchema, { timestamp: timestampFromDate(ago(7200)), phase: IncidentPhase.INVESTIGATING, message: "Reports of stale content being served from CDN edge nodes." }),
+        create(IncidentUpdateSchema, { timestamp: timestampFromDate(ago(5400)), phase: IncidentPhase.IDENTIFIED, message: "Cache invalidation API returned 503 due to upstream provider issue." }),
+        create(IncidentUpdateSchema, { timestamp: timestampFromDate(ago(4200)), phase: IncidentPhase.MONITORING, message: "Provider confirmed fix deployed. Monitoring cache freshness." }),
+        create(IncidentUpdateSchema, { timestamp: timestampFromDate(ago(3600)), phase: IncidentPhase.RESOLVED, message: "All edge nodes serving fresh content. Incident resolved." }),
+      ],
+    }),
+  ],
+});
+
 // ── Route matching ─────────────────────────────────────────────────────
 
 const API_ROUTES: Array<{ pattern: RegExp; schema: DescMessage; msg: MessageShape<DescMessage> }> = [
@@ -240,6 +303,9 @@ const API_ROUTES: Array<{ pattern: RegExp; schema: DescMessage; msg: MessageShap
   { pattern: /NetworkPolicyService\/ListNetworkPolicies/, schema: ListNetworkPoliciesResponseSchema, msg: netpolResponse },
   { pattern: /MetricsService\/ListMetrics/, schema: ListMetricsResponseSchema, msg: metricsResponse },
   { pattern: /VersionService\/GetVersion/, schema: GetVersionResponseSchema, msg: versionResponse },
+  { pattern: /StatusService\/ListComponents/, schema: ListComponentsResponseSchema, msg: componentsResponse },
+  { pattern: /StatusService\/ListMaintenances/, schema: ListMaintenancesResponseSchema, msg: maintenancesResponse },
+  { pattern: /StatusService\/ListIncidents/, schema: ListIncidentsResponseSchema, msg: incidentsResponse },
 ];
 
 // ── Pages to screenshot ────────────────────────────────────────────────
@@ -250,6 +316,7 @@ const PAGES = [
   { name: "dashboard", path: "/main/dashboard", waitFor: "text=Portal Statistics" },
   { name: "releases", path: "/main/releases", waitFor: "text=Releases" },
   { name: "netpol", path: "/main/netpol", waitFor: "text=Network Policies" },
+  { name: "status", path: "/main/status", waitFor: "text=API Server" },
 ];
 
 // ── Theme variants ─────────────────────────────────────────────────────
