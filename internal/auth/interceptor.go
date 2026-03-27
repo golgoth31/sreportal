@@ -24,7 +24,13 @@ import (
 
 // WriteProcedures lists the Connect procedures that require authentication.
 var WriteProcedures = map[string]bool{
-	"/sreportal.v1.ReleaseService/AddRelease": true,
+	"/sreportal.v1.ReleaseService/AddRelease":       true,
+	"/sreportal.v1.StatusService/UpsertComponent":    true,
+	"/sreportal.v1.StatusService/DeleteComponent":    true,
+	"/sreportal.v1.StatusService/UpsertMaintenance":  true,
+	"/sreportal.v1.StatusService/DeleteMaintenance":  true,
+	"/sreportal.v1.StatusService/UpsertIncident":     true,
+	"/sreportal.v1.StatusService/DeleteIncident":     true,
 }
 
 // AuthInterceptor returns a Connect unary interceptor that enforces authentication

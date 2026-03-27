@@ -8,10 +8,13 @@
 
 ### Resource Types
 - [sreportal.io/v1alpha1.Alertmanager](#sreportaliov1alpha1alertmanager)
+- [sreportal.io/v1alpha1.Component](#sreportaliov1alpha1component)
 - [sreportal.io/v1alpha1.DNS](#sreportaliov1alpha1dns)
 - [sreportal.io/v1alpha1.DNSRecord](#sreportaliov1alpha1dnsrecord)
 - [sreportal.io/v1alpha1.FlowEdgeSet](#sreportaliov1alpha1flowedgeset)
 - [sreportal.io/v1alpha1.FlowNodeSet](#sreportaliov1alpha1flownodeset)
+- [sreportal.io/v1alpha1.Incident](#sreportaliov1alpha1incident)
+- [sreportal.io/v1alpha1.Maintenance](#sreportaliov1alpha1maintenance)
 - [sreportal.io/v1alpha1.NetworkFlowDiscovery](#sreportaliov1alpha1networkflowdiscovery)
 - [sreportal.io/v1alpha1.Portal](#sreportaliov1alpha1portal)
 - [sreportal.io/v1alpha1.Release](#sreportaliov1alpha1release)
@@ -28,6 +31,20 @@ Alertmanager is the Schema for the alertmanagers API
 | `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#objectmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |   |   |
 | `spec` _[sreportal.io/v1alpha1.AlertmanagerSpec](#sreportaliov1alpha1alertmanagerspec)_ | spec defines the desired state of Alertmanager |   |   |
 | `status` _[sreportal.io/v1alpha1.AlertmanagerStatus](#sreportaliov1alpha1alertmanagerstatus)_ | status defines the observed state of Alertmanager |   |   |
+
+
+
+#### sreportal.io/v1alpha1.Component
+
+Component is the Schema for the components API
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `apiVersion` _string_ | `sreportal.io/v1alpha1` |   |   |
+| `kind` _string_ | `Component` |   |   |
+| `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#objectmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |   |   |
+| `spec` _[sreportal.io/v1alpha1.ComponentSpec](#sreportaliov1alpha1componentspec)_ | spec defines the desired state of Component |   |   |
+| `status` _[sreportal.io/v1alpha1.ComponentStatus](#sreportaliov1alpha1componentstatus)_ | status defines the observed state of Component |   |   |
 
 
 
@@ -84,6 +101,34 @@ FlowNodeSet stores the discovered flow nodes for a NetworkFlowDiscovery resource
 | `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#objectmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |   |   |
 | `spec` _[sreportal.io/v1alpha1.FlowNodeSetSpec](#sreportaliov1alpha1flownodesetspec)_ |   |   |   |
 | `status` _[sreportal.io/v1alpha1.FlowNodeSetStatus](#sreportaliov1alpha1flownodesetstatus)_ |   |   |   |
+
+
+
+#### sreportal.io/v1alpha1.Incident
+
+Incident is the Schema for the incidents API
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `apiVersion` _string_ | `sreportal.io/v1alpha1` |   |   |
+| `kind` _string_ | `Incident` |   |   |
+| `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#objectmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |   |   |
+| `spec` _[sreportal.io/v1alpha1.IncidentSpec](#sreportaliov1alpha1incidentspec)_ | spec defines the desired state of Incident |   |   |
+| `status` _[sreportal.io/v1alpha1.IncidentStatus](#sreportaliov1alpha1incidentstatus)_ | status defines the observed state of Incident |   |   |
+
+
+
+#### sreportal.io/v1alpha1.Maintenance
+
+Maintenance is the Schema for the maintenances API
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `apiVersion` _string_ | `sreportal.io/v1alpha1` |   |   |
+| `kind` _string_ | `Maintenance` |   |   |
+| `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#objectmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |   |   |
+| `spec` _[sreportal.io/v1alpha1.MaintenanceSpec](#sreportaliov1alpha1maintenancespec)_ | spec defines the desired state of Maintenance |   |   |
+| `status` _[sreportal.io/v1alpha1.MaintenanceStatus](#sreportaliov1alpha1maintenancestatus)_ | status defines the observed state of Maintenance |   |   |
 
 
 
@@ -228,6 +273,41 @@ _Appears in:_
 | `name` _string_ |   |   |   |
 | `value` _string_ |   |   |   |
 | `isRegex` _boolean_ |   |   |   |
+
+
+
+#### sreportal.io/v1alpha1.ComponentSpec
+
+ComponentSpec defines the desired state of Component
+
+_Appears in:_
+- [sreportal.io/v1alpha1.Component](#sreportaliov1alpha1component)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `displayName` _string_ | displayName is the human-readable name shown on the status page |   |   |
+| `description` _string_ | description is a short text displayed below the component name |   |   |
+| `group` _string_ | group is a logical grouping for the status page (e.g. "Infrastructure", "Applications") |   |   |
+| `link` _string_ | link is an optional external URL (e.g. GCP console, Grafana dashboard) |   | Pattern: `^https?://.*` |
+| `portalRef` _string_ | portalRef is the name of the Portal this component is linked to |   |   |
+| `status` _[sreportal.io/v1alpha1.ComponentStatusValue](#sreportaliov1alpha1componentstatusvalue)_ | status is the manually declared operational status |   |   |
+
+
+
+#### sreportal.io/v1alpha1.ComponentStatus
+
+ComponentStatus defines the observed state of Component.
+status is the manually declared operational status
+
+_Appears in:_
+- [sreportal.io/v1alpha1.Component](#sreportaliov1alpha1component)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `computedStatus` _[sreportal.io/v1alpha1.ComponentStatusValue](#sreportaliov1alpha1componentstatusvalue)_ | computedStatus is the effective status calculated by the controller. If a maintenance is in progress on this component, it is overridden to "maintenance". Otherwise it reflects spec.status. |   |   |
+| `activeIncidents` _integer_ | activeIncidents is the number of active (non-resolved) incidents linked to this component |   |   |
+| `lastStatusChange` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | lastStatusChange is the timestamp of the last computedStatus transition |   |   |
+| `conditions` _[Condition](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#condition-v1-meta) array_ | conditions represent the current state of the Component resource. |   |   |
 
 
 
@@ -441,6 +521,90 @@ _Appears in:_
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
 | `nodes` _[sreportal.io/v1alpha1.FlowNode](#sreportaliov1alpha1flownode) array_ | nodes are all discovered services, databases, crons, and external endpoints |   |   |
+
+
+
+#### sreportal.io/v1alpha1.IncidentUpdate
+
+IncidentUpdate represents a single timeline entry in the incident lifecycle.
+
+_Appears in:_
+- [sreportal.io/v1alpha1.IncidentSpec](#sreportaliov1alpha1incidentspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `timestamp` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | timestamp is the time of this update |   |   |
+| `phase` _[sreportal.io/v1alpha1.IncidentPhase](#sreportaliov1alpha1incidentphase)_ | phase is the incident phase at the time of this update |   |   |
+| `message` _string_ | message is a human-readable description of the update |   |   |
+
+
+
+#### sreportal.io/v1alpha1.IncidentSpec
+
+IncidentSpec defines the desired state of Incident
+message is a human-readable description of the update
+
+_Appears in:_
+- [sreportal.io/v1alpha1.Incident](#sreportaliov1alpha1incident)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `title` _string_ | title is the headline of the incident |   |   |
+| `portalRef` _string_ | portalRef is the name of the Portal this incident is linked to |   |   |
+| `components` _string array_ | components is the list of Component metadata.name values affected |   |   |
+| `severity` _[sreportal.io/v1alpha1.IncidentSeverity](#sreportaliov1alpha1incidentseverity)_ | severity indicates the impact level of the incident |   |   |
+| `updates` _[sreportal.io/v1alpha1.IncidentUpdate](#sreportaliov1alpha1incidentupdate) array_ | updates is the chronological timeline of the incident, appended via kubectl edit/patch |   |   |
+
+
+
+#### sreportal.io/v1alpha1.IncidentStatus
+
+IncidentStatus defines the observed state of Incident.
+
+_Appears in:_
+- [sreportal.io/v1alpha1.Incident](#sreportaliov1alpha1incident)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `currentPhase` _[sreportal.io/v1alpha1.IncidentPhase](#sreportaliov1alpha1incidentphase)_ | currentPhase is the phase from the most recent update (by timestamp) |   |   |
+| `startedAt` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | startedAt is the timestamp of the first update |   |   |
+| `resolvedAt` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | resolvedAt is the timestamp of the first update with phase=resolved |   |   |
+| `durationMinutes` _integer_ | durationMinutes is the incident duration in minutes (computed when resolved) |   |   |
+| `conditions` _[Condition](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#condition-v1-meta) array_ | conditions represent the current state of the Incident resource. |   |   |
+
+
+
+#### sreportal.io/v1alpha1.MaintenanceSpec
+
+MaintenanceSpec defines the desired state of Maintenance
+
+_Appears in:_
+- [sreportal.io/v1alpha1.Maintenance](#sreportaliov1alpha1maintenance)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `title` _string_ | title is the headline displayed on the status page |   |   |
+| `description` _string_ | description is a longer explanation (markdown supported in the UI) |   |   |
+| `portalRef` _string_ | portalRef is the name of the Portal this maintenance is linked to |   |   |
+| `components` _string array_ | components is the list of Component metadata.name values affected by this maintenance |   |   |
+| `scheduledStart` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | scheduledStart is the planned start time of the maintenance window |   |   |
+| `scheduledEnd` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | scheduledEnd is the planned end time of the maintenance window |   |   |
+| `affectedStatus` _[sreportal.io/v1alpha1.MaintenanceAffectedStatus](#sreportaliov1alpha1maintenanceaffectedstatus)_ | affectedStatus is the status applied to affected components during in_progress phase |   |   |
+
+
+
+#### sreportal.io/v1alpha1.MaintenanceStatus
+
+MaintenanceStatus defines the observed state of Maintenance.
+affectedStatus is the status applied to affected components during in_progress phase
+
+_Appears in:_
+- [sreportal.io/v1alpha1.Maintenance](#sreportaliov1alpha1maintenance)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `phase` _[sreportal.io/v1alpha1.MaintenancePhase](#sreportaliov1alpha1maintenancephase)_ | phase is the lifecycle phase computed by the controller (upcoming, in_progress, completed) |   |   |
+| `conditions` _[Condition](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#condition-v1-meta) array_ | conditions represent the current state of the Maintenance resource. |   |   |
 
 
 

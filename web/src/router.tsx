@@ -46,6 +46,9 @@ const McpPage = lazy(() =>
 const NetpolPage = lazy(() =>
   import("@/pages/NetpolPage").then((m) => ({ default: m.NetpolPage }))
 );
+const StatusPage = lazy(() =>
+  import("@/pages/StatusPage").then((m) => ({ default: m.StatusPage }))
+);
 
 export const router = createBrowserRouter([
   {
@@ -94,6 +97,15 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: ":portalName/status",
+        errorElement: <ErrorPage />,
+        element: (
+          <Suspense fallback={<PageSkeleton />}>
+            <StatusPage />
+          </Suspense>
+        ),
+      },
+      {
         path: ":portalName/alerts",
         errorElement: <ErrorPage />,
         element: (
@@ -112,5 +124,14 @@ export const router = createBrowserRouter([
         ),
       },
     ],
+  },
+  {
+    path: "status/:portalName",
+    errorElement: <ErrorPage />,
+    element: (
+      <Suspense fallback={<PageSkeleton />}>
+        <StatusPage />
+      </Suspense>
+    ),
   },
 ]);

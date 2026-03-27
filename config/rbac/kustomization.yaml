@@ -52,3 +52,12 @@ resources:
   # - flowedgeset_admin_role.yaml
   # - flowedgeset_editor_role.yaml
   # - flowedgeset_viewer_role.yaml
+  # - component_admin_role.yaml
+  # - component_editor_role.yaml
+  # - component_viewer_role.yaml
+  # - maintenance_admin_role.yaml
+  # - maintenance_editor_role.yaml
+  # - maintenance_viewer_role.yaml
+  # - incident_admin_role.yaml
+  # - incident_editor_role.yaml
+  # - incident_viewer_role.yaml

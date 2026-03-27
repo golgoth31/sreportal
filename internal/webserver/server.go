@@ -39,10 +39,14 @@ import (
 
 	"github.com/golgoth31/sreportal/internal/config"
 	domainalertmanager "github.com/golgoth31/sreportal/internal/domain/alertmanagerreadmodel"
+	domaincomponent "github.com/golgoth31/sreportal/internal/domain/component"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
+	domainincident "github.com/golgoth31/sreportal/internal/domain/incident"
+	domainmaint "github.com/golgoth31/sreportal/internal/domain/maintenance"
 	domainnetpol "github.com/golgoth31/sreportal/internal/domain/netpol"
 	domainportal "github.com/golgoth31/sreportal/internal/domain/portal"
 	domainrelease "github.com/golgoth31/sreportal/internal/domain/release"
+	statuspagesvc "github.com/golgoth31/sreportal/internal/statuspage"
 	"github.com/golgoth31/sreportal/internal/grpc"
 	"github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1/sreportalv1connect"
 	"github.com/golgoth31/sreportal/internal/metrics"
@@ -87,6 +91,19 @@ type Config struct {
 
 	// FlowGraphReader is the read-side interface for network flow graph data (provided by the ReadStore)
 	FlowGraphReader domainnetpol.FlowGraphReader
+
+	// ComponentReader is the read-side interface for Component data (provided by the ReadStore)
+	ComponentReader domaincomponent.ComponentReader
+
+	// MaintenanceReader is the read-side interface for Maintenance data (provided by the ReadStore)
+	MaintenanceReader domainmaint.MaintenanceReader
+
+	// IncidentReader is the read-side interface for Incident data (provided by the ReadStore)
+	IncidentReader domainincident.IncidentReader
+
+	// StatusPageService is the write-path service for status page CRs (nil = read-only)
+	StatusPageService *statuspagesvc.Service
+
 	// AuthChain is the authentication chain for write endpoints (nil = no auth)
 	AuthChain *auth.Chain
 }
@@ -170,6 +187,22 @@ func (s *Server) setupRoutes() {
 		}
 		releasePath, releaseHandler := sreportalv1connect.NewReleaseServiceHandler(releaseGRPC, releaseOpts...)
 		s.echo.Any(releasePath+"*", echo.WrapHandler(releaseHandler))
+	}
+
+	// Status page service (read + write, write endpoints are auth-protected)
+	if s.config.ComponentReader != nil {
+		statusService := grpc.NewStatusService(
+			s.config.ComponentReader,
+			s.config.MaintenanceReader,
+			s.config.IncidentReader,
+			s.config.StatusPageService,
+		)
+		statusOpts := []connect.HandlerOption{connectOpts}
+		if s.config.AuthChain != nil {
+			statusOpts = append(statusOpts, connect.WithInterceptors(auth.AuthInterceptor(s.config.AuthChain)))
+		}
+		statusPath, statusHandler := sreportalv1connect.NewStatusServiceHandler(statusService, statusOpts...)
+		s.echo.Any(statusPath+"*", echo.WrapHandler(statusHandler))
 	}
 
 	// Swagger UI — serve embedded OpenAPI files at /swagger
