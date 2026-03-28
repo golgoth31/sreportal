@@ -23,7 +23,9 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/metrics"
@@ -80,6 +82,7 @@ func NewDNSReconciler(c client.Client, scheme *runtime.Scheme, disableDNSCheck b
 // +kubebuilder:rbac:groups=sreportal.io,resources=dnsrecords,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=sreportal.io,resources=dnsrecords/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=dnsrecords/finalizers,verbs=update
+// +kubebuilder:rbac:groups=sreportal.io,resources=portals,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -104,6 +107,19 @@ func (r *DNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	if resource.Spec.IsRemote {
 		logger.V(1).Info("skipping remote DNS resource (managed by portal controller)", "name", resource.Name)
 		return ctrl.Result{}, nil
+	}
+
+	// Skip reconciliation when DNS feature is disabled on the referenced portal.
+	// Cleanup of read store entries and DNSRecord resources is handled by the
+	// portal controller when the toggle changes.
+	if resource.Spec.PortalRef != "" {
+		var portal sreportalv1alpha1.Portal
+		if err := r.Get(ctx, client.ObjectKey{Name: resource.Spec.PortalRef, Namespace: resource.Namespace}, &portal); err == nil {
+			if !portal.Spec.Features.IsDNSEnabled() {
+				logger.V(1).Info("DNS feature disabled for portal, skipping", "portal", resource.Spec.PortalRef)
+				return ctrl.Result{}, nil
+			}
+		}
 	}
 
 	logger.Info("reconciling DNS resource", "name", resource.Name, "namespace", resource.Namespace)
@@ -202,6 +218,17 @@ func groupsToFQDNViews(resource *sreportalv1alpha1.DNS) []domaindns.FQDNView {
 func (r *DNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&sreportalv1alpha1.DNS{}).
+		Watches(
+			&sreportalv1alpha1.Portal{},
+			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []ctrl.Request {
+				portal, ok := obj.(*sreportalv1alpha1.Portal)
+				if !ok {
+					return nil
+				}
+				return dnsReconcileRequestsForPortal(ctx, r.Client, portal)
+			}),
+			builder.WithPredicates(PortalDNSEnabledWakeupPredicate()),
+		).
 		Named("dns").
 		Complete(r)
 }

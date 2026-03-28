@@ -22,7 +22,9 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	alertmanagerchain "github.com/golgoth31/sreportal/internal/controller/alertmanager"
@@ -78,6 +80,7 @@ func NewAlertmanagerReconciler(
 // +kubebuilder:rbac:groups=sreportal.io,resources=alertmanagers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=sreportal.io,resources=alertmanagers/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=alertmanagers/finalizers,verbs=update
+// +kubebuilder:rbac:groups=sreportal.io,resources=portals,verbs=get;list;watch
 
 // Reconcile fetches active alerts from Alertmanager and updates the resource status.
 func (r *AlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -93,6 +96,17 @@ func (r *AlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	logger.V(1).Info("reconciling Alertmanager", "name", resource.Name, "portalRef", resource.Spec.PortalRef, "isRemote", resource.Spec.IsRemote)
+
+	// Skip reconciliation when alerts feature is disabled on the referenced portal.
+	if resource.Spec.PortalRef != "" {
+		var portal sreportalv1alpha1.Portal
+		if err := r.Get(ctx, client.ObjectKey{Name: resource.Spec.PortalRef, Namespace: resource.Namespace}, &portal); err == nil {
+			if !portal.Spec.Features.IsAlertsEnabled() {
+				logger.V(1).Info("alerts feature disabled for portal, skipping", "portal", resource.Spec.PortalRef)
+				return ctrl.Result{}, nil
+			}
+		}
+	}
 
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager, alertmanagerchain.ChainData]{
 		Resource: &resource,
@@ -199,6 +213,17 @@ func alertmanagerToView(am *sreportalv1alpha1.Alertmanager) domainalertmanagerre
 func (r *AlertmanagerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&sreportalv1alpha1.Alertmanager{}).
+		Watches(
+			&sreportalv1alpha1.Portal{},
+			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []ctrl.Request {
+				portal, ok := obj.(*sreportalv1alpha1.Portal)
+				if !ok {
+					return nil
+				}
+				return alertmanagerReconcileRequestsForPortal(ctx, r.Client, portal)
+			}),
+			builder.WithPredicates(PortalAlertsEnabledWakeupPredicate()),
+		).
 		Named("alertmanager").
 		Complete(r)
 }

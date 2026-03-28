@@ -24,7 +24,9 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/adapter"
@@ -68,6 +70,8 @@ func (r *DNSRecordReconciler) SetFQDNWriter(w domaindns.FQDNWriter) {
 	r.fqdnWriter = w
 }
 
+// +kubebuilder:rbac:groups=sreportal.io,resources=portals,verbs=get;list;watch
+
 // Reconcile resolves DNS for each endpoint, persists SyncStatus in the CR,
 // and projects endpoints into the FQDN read store.
 func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -87,6 +91,19 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	logger.Info("reconciling DNSRecord resource", "name", record.Name, "namespace", record.Namespace,
 		"portal", record.Spec.PortalRef, "sourceType", record.Spec.SourceType)
+
+	// Skip reconciliation when DNS feature is disabled on the referenced portal.
+	// Cleanup of read store entries and DNSRecord resources is handled by the
+	// portal controller when the toggle changes.
+	if record.Spec.PortalRef != "" {
+		var portal sreportalv1alpha1.Portal
+		if err := r.Get(ctx, client.ObjectKey{Name: record.Spec.PortalRef, Namespace: record.Namespace}, &portal); err == nil {
+			if !portal.Spec.Features.IsDNSEnabled() {
+				logger.V(1).Info("DNS feature disabled for portal, skipping", "portal", record.Spec.PortalRef)
+				return ctrl.Result{}, nil
+			}
+		}
+	}
 
 	// Recompute and resync the endpoints hash if it diverged (e.g. manual edit).
 	// This ensures the SourceReconciler's skip-if-unchanged logic stays correct.
@@ -164,6 +181,17 @@ func (r *DNSRecordReconciler) resolveEndpoints(ctx context.Context, endpoints []
 func (r *DNSRecordReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&sreportalv1alpha1.DNSRecord{}).
+		Watches(
+			&sreportalv1alpha1.Portal{},
+			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []ctrl.Request {
+				portal, ok := obj.(*sreportalv1alpha1.Portal)
+				if !ok {
+					return nil
+				}
+				return dnsRecordReconcileRequestsForPortal(ctx, r.Client, portal)
+			}),
+			builder.WithPredicates(PortalDNSEnabledWakeupPredicate()),
+		).
 		Named("dnsrecord").
 		Complete(r)
 }

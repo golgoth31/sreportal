@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file sreportal/v1/release.proto.
  */
 export const file_sreportal_v1_release: GenFile = /*@__PURE__*/
-  fileDesc("ChpzcmVwb3J0YWwvdjEvcmVsZWFzZS5wcm90bxIMc3JlcG9ydGFsLnYxIpYBCgxSZWxlYXNlRW50cnkSDAoEdHlwZRgBIAEoCRIPCgd2ZXJzaW9uGAIgASgJEg4KBm9yaWdpbhgDIAEoCRIoCgRkYXRlGAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIOCgZhdXRob3IYBSABKAkSDwoHbWVzc2FnZRgGIAEoCRIMCgRsaW5rGAcgASgJIjYKEkFkZFJlbGVhc2VSZXNwb25zZRILCgNkYXkYASABKAkSEwoLZW50cnlfY291bnQYAiABKAUiSQoTTGlzdFJlbGVhc2VzUmVxdWVzdBILCgNkYXkYASABKAkSEQoJcGFnZV9zaXplGAIgASgFEhIKCnBhZ2VfdG9rZW4YAyABKAkikQEKFExpc3RSZWxlYXNlc1Jlc3BvbnNlEgsKA2RheRgBIAEoCRIrCgdlbnRyaWVzGAIgAygLMhouc3JlcG9ydGFsLnYxLlJlbGVhc2VFbnRyeRIXCg9uZXh0X3BhZ2VfdG9rZW4YAyABKAkSFAoMcHJldmlvdXNfZGF5GAQgASgJEhAKCG5leHRfZGF5GAUgASgJIhgKFkxpc3RSZWxlYXNlRGF5c1JlcXVlc3QiaQoXTGlzdFJlbGVhc2VEYXlzUmVzcG9uc2USDAoEZGF5cxgBIAMoCRIQCgh0dGxfZGF5cxgCIAEoBRIuCgV0eXBlcxgDIAMoCzIfLnNyZXBvcnRhbC52MS5SZWxlYXNlVHlwZUNvbmZpZyIwChFSZWxlYXNlVHlwZUNvbmZpZxIMCgRuYW1lGAEgASgJEg0KBWNvbG9yGAIgASgJMpMCCg5SZWxlYXNlU2VydmljZRJKCgpBZGRSZWxlYXNlEhouc3JlcG9ydGFsLnYxLlJlbGVhc2VFbnRyeRogLnNyZXBvcnRhbC52MS5BZGRSZWxlYXNlUmVzcG9uc2USVQoMTGlzdFJlbGVhc2VzEiEuc3JlcG9ydGFsLnYxLkxpc3RSZWxlYXNlc1JlcXVlc3QaIi5zcmVwb3J0YWwudjEuTGlzdFJlbGVhc2VzUmVzcG9uc2USXgoPTGlzdFJlbGVhc2VEYXlzEiQuc3JlcG9ydGFsLnYxLkxpc3RSZWxlYXNlRGF5c1JlcXVlc3QaJS5zcmVwb3J0YWwudjEuTGlzdFJlbGVhc2VEYXlzUmVzcG9uc2VCvAEKEGNvbS5zcmVwb3J0YWwudjFCDFJlbGVhc2VQcm90b1ABWklnaXRodWIuY29tL2dvbGdvdGgzMS9zcmVwb3J0YWwvaW50ZXJuYWwvZ3JwYy9nZW4vc3JlcG9ydGFsL3YxO3NyZXBvcnRhbHYxogIDU1hYqgIMU3JlcG9ydGFsLlYxygIMU3JlcG9ydGFsXFYx4gIYU3JlcG9ydGFsXFYxXEdQQk1ldGFkYXRh6gINU3JlcG9ydGFsOjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp]);
+  fileDesc("ChpzcmVwb3J0YWwvdjEvcmVsZWFzZS5wcm90bxIMc3JlcG9ydGFsLnYxIqYBCgxSZWxlYXNlRW50cnkSDAoEdHlwZRgBIAEoCRIPCgd2ZXJzaW9uGAIgASgJEg4KBm9yaWdpbhgDIAEoCRIoCgRkYXRlGAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIOCgZhdXRob3IYBSABKAkSDwoHbWVzc2FnZRgGIAEoCRIMCgRsaW5rGAcgASgJEg4KBnBvcnRhbBgIIAEoCSI2ChJBZGRSZWxlYXNlUmVzcG9uc2USCwoDZGF5GAEgASgJEhMKC2VudHJ5X2NvdW50GAIgASgFIlkKE0xpc3RSZWxlYXNlc1JlcXVlc3QSCwoDZGF5GAEgASgJEhEKCXBhZ2Vfc2l6ZRgCIAEoBRISCgpwYWdlX3Rva2VuGAMgASgJEg4KBnBvcnRhbBgEIAEoCSKRAQoUTGlzdFJlbGVhc2VzUmVzcG9uc2USCwoDZGF5GAEgASgJEisKB2VudHJpZXMYAiADKAsyGi5zcmVwb3J0YWwudjEuUmVsZWFzZUVudHJ5EhcKD25leHRfcGFnZV90b2tlbhgDIAEoCRIUCgxwcmV2aW91c19kYXkYBCABKAkSEAoIbmV4dF9kYXkYBSABKAkiKAoWTGlzdFJlbGVhc2VEYXlzUmVxdWVzdBIOCgZwb3J0YWwYASABKAkiaQoXTGlzdFJlbGVhc2VEYXlzUmVzcG9uc2USDAoEZGF5cxgBIAMoCRIQCgh0dGxfZGF5cxgCIAEoBRIuCgV0eXBlcxgDIAMoCzIfLnNyZXBvcnRhbC52MS5SZWxlYXNlVHlwZUNvbmZpZyIwChFSZWxlYXNlVHlwZUNvbmZpZxIMCgRuYW1lGAEgASgJEg0KBWNvbG9yGAIgASgJMpMCCg5SZWxlYXNlU2VydmljZRJKCgpBZGRSZWxlYXNlEhouc3JlcG9ydGFsLnYxLlJlbGVhc2VFbnRyeRogLnNyZXBvcnRhbC52MS5BZGRSZWxlYXNlUmVzcG9uc2USVQoMTGlzdFJlbGVhc2VzEiEuc3JlcG9ydGFsLnYxLkxpc3RSZWxlYXNlc1JlcXVlc3QaIi5zcmVwb3J0YWwudjEuTGlzdFJlbGVhc2VzUmVzcG9uc2USXgoPTGlzdFJlbGVhc2VEYXlzEiQuc3JlcG9ydGFsLnYxLkxpc3RSZWxlYXNlRGF5c1JlcXVlc3QaJS5zcmVwb3J0YWwudjEuTGlzdFJlbGVhc2VEYXlzUmVzcG9uc2VCvAEKEGNvbS5zcmVwb3J0YWwudjFCDFJlbGVhc2VQcm90b1ABWklnaXRodWIuY29tL2dvbGdvdGgzMS9zcmVwb3J0YWwvaW50ZXJuYWwvZ3JwYy9nZW4vc3JlcG9ydGFsL3YxO3NyZXBvcnRhbHYxogIDU1hYqgIMU3JlcG9ydGFsLlYxygIMU3JlcG9ydGFsXFYx4gIYU3JlcG9ydGFsXFYxXEdQQk1ldGFkYXRh6gINU3JlcG9ydGFsOjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp]);
 
 /**
  * ReleaseEntry represents a single release event
@@ -68,6 +68,13 @@ export type ReleaseEntry = Message<"sreportal.v1.ReleaseEntry"> & {
    * @generated from field: string link = 7;
    */
   link: string;
+
+  /**
+   * portal is the Portal metadata.name this entry belongs to (defaults to main if unset)
+   *
+   * @generated from field: string portal = 8;
+   */
+  portal: string;
 };
 
 /**
@@ -131,6 +138,13 @@ export type ListReleasesRequest = Message<"sreportal.v1.ListReleasesRequest"> & 
    * @generated from field: string page_token = 3;
    */
   pageToken: string;
+
+  /**
+   * portal filters to a Portal metadata.name (defaults to main if unset)
+   *
+   * @generated from field: string portal = 4;
+   */
+  portal: string;
 };
 
 /**
@@ -195,6 +209,12 @@ export const ListReleasesResponseSchema: GenMessage<ListReleasesResponse> = /*@_
  * @generated from message sreportal.v1.ListReleaseDaysRequest
  */
 export type ListReleaseDaysRequest = Message<"sreportal.v1.ListReleaseDaysRequest"> & {
+  /**
+   * portal filters to a Portal metadata.name (defaults to main if unset)
+   *
+   * @generated from field: string portal = 1;
+   */
+  portal: string;
 };
 
 /**

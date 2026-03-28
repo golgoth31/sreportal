@@ -37,6 +37,8 @@ type Entry struct {
 	Author  string // optional
 	Message string // optional
 	Link    string // optional
+	// PortalRef is the Portal metadata.name; empty means use the service default at write time.
+	PortalRef string
 }
 
 // NewEntry creates a validated Entry. Date is normalized to UTC.

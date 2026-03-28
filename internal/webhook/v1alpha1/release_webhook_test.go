@@ -22,6 +22,9 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 )
@@ -30,17 +33,27 @@ const testDisallowedType = "hotfix"
 
 var _ = Describe("Release Webhook", func() {
 	var (
-		obj    *sreportalv1alpha1.Release
-		oldObj *sreportalv1alpha1.Release
+		k8sClient client.Client
+		obj       *sreportalv1alpha1.Release
+		oldObj    *sreportalv1alpha1.Release
 	)
 
 	BeforeEach(func() {
+		scheme := runtime.NewScheme()
+		Expect(sreportalv1alpha1.AddToScheme(scheme)).To(Succeed())
+		portal := &sreportalv1alpha1.Portal{
+			ObjectMeta: metav1.ObjectMeta{Name: "main", Namespace: "default"},
+			Spec:       sreportalv1alpha1.PortalSpec{Title: "Main Portal"},
+		}
+		k8sClient = fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
+
 		obj = &sreportalv1alpha1.Release{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "release-2026-03-22",
 				Namespace: "default",
 			},
 			Spec: sreportalv1alpha1.ReleaseSpec{
+				PortalRef: "main",
 				Entries: []sreportalv1alpha1.ReleaseEntry{
 					{
 						Type:    "deployment",
@@ -54,11 +67,36 @@ var _ = Describe("Release Webhook", func() {
 		oldObj = obj.DeepCopy()
 	})
 
+	Context("portal reference validation", func() {
+		It("Should reject creation when portalRef is missing", func() {
+			obj.Spec.PortalRef = ""
+			v := ReleaseCustomValidator{client: k8sClient, allowedTypes: nil}
+			_, err := v.ValidateCreate(context.Background(), obj)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("portalRef"))
+		})
+
+		It("Should reject creation when portal does not exist", func() {
+			obj.Spec.PortalRef = "missing-portal"
+			v := ReleaseCustomValidator{client: k8sClient, allowedTypes: nil}
+			_, err := v.ValidateCreate(context.Background(), obj)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("not found"))
+		})
+
+		It("Should accept creation when portal exists", func() {
+			v := ReleaseCustomValidator{client: k8sClient, allowedTypes: nil}
+			warnings, err := v.ValidateCreate(context.Background(), obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(warnings).To(BeNil())
+		})
+	})
+
 	Context("When allowedTypes is empty (no restriction)", func() {
 		var validator ReleaseCustomValidator
 
 		BeforeEach(func() {
-			validator = ReleaseCustomValidator{allowedTypes: nil}
+			validator = ReleaseCustomValidator{client: k8sClient, allowedTypes: nil}
 		})
 
 		It("Should allow creation with any type", func() {
@@ -79,7 +117,7 @@ var _ = Describe("Release Webhook", func() {
 		var validator ReleaseCustomValidator
 
 		BeforeEach(func() {
-			validator = ReleaseCustomValidator{allowedTypes: []string{"deployment", "rollback"}}
+			validator = ReleaseCustomValidator{client: k8sClient, allowedTypes: []string{"deployment", "rollback"}}
 		})
 
 		It("Should allow creation with allowed type", func() {

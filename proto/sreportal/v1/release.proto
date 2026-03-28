@@ -38,6 +38,9 @@ message ReleaseEntry {
 
   // link is a URL to the release (e.g., PR, pipeline, changelog)
   string link = 7;
+
+  // portal is the Portal metadata.name this entry belongs to (defaults to main if unset)
+  string portal = 8;
 }
 
 // AddReleaseResponse is the response after adding a release entry
@@ -59,6 +62,9 @@ message ListReleasesRequest {
 
   // page_token is the opaque cursor for pagination within a day
   string page_token = 3;
+
+  // portal filters to a Portal metadata.name (defaults to main if unset)
+  string portal = 4;
 }
 
 // ListReleasesResponse contains the list of release entries for a day
@@ -80,7 +86,10 @@ message ListReleasesResponse {
 }
 
 // ListReleaseDaysRequest is the request for listing all release days
-message ListReleaseDaysRequest {}
+message ListReleaseDaysRequest {
+  // portal filters to a Portal metadata.name (defaults to main if unset)
+  string portal = 1;
+}
 
 // ListReleaseDaysResponse contains the list of days with releases and TTL info
 message ListReleaseDaysResponse {

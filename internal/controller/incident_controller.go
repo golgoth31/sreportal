@@ -23,7 +23,9 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	incidentctrl "github.com/golgoth31/sreportal/internal/controller/incidentctrl"
@@ -57,6 +59,7 @@ func NewIncidentReconciler(c client.Client, incidentWriter domainincident.Incide
 // +kubebuilder:rbac:groups=sreportal.io,resources=incidents,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=sreportal.io,resources=incidents/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=incidents/finalizers,verbs=update
+// +kubebuilder:rbac:groups=sreportal.io,resources=portals,verbs=get;list;watch
 
 // Reconcile computes the incident phase and duration and projects to the ReadStore.
 func (r *IncidentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -84,7 +87,7 @@ func (r *IncidentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		logger.Error(err, "reconciliation chain failed")
 		metrics.ReconcileTotal.WithLabelValues("incident", "error").Inc()
 		metrics.ReconcileDuration.WithLabelValues("incident").Observe(time.Since(start).Seconds())
-		return ctrl.Result{}, nil
+		return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
 	}
 
 	metrics.ReconcileTotal.WithLabelValues("incident", "success").Inc()
@@ -97,6 +100,17 @@ func (r *IncidentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 func (r *IncidentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&sreportalv1alpha1.Incident{}).
+		Watches(
+			&sreportalv1alpha1.Portal{},
+			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []ctrl.Request {
+				portal, ok := obj.(*sreportalv1alpha1.Portal)
+				if !ok {
+					return nil
+				}
+				return incidentReconcileRequestsForPortal(ctx, r.Client, portal)
+			}),
+			builder.WithPredicates(PortalStatusPageEnabledWakeupPredicate()),
+		).
 		Named("incident").
 		Complete(r)
 }

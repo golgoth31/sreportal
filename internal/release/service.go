@@ -36,13 +36,15 @@ const maxRetries = 5
 type Service struct {
 	client    client.Client
 	namespace string
+	portalRef string // default Portal metadata.name when Entry.PortalRef is empty
 }
 
 // NewService creates a new release Service.
-func NewService(c client.Client, namespace string) *Service {
+func NewService(c client.Client, namespace, defaultPortalRef string) *Service {
 	return &Service{
 		client:    c,
 		namespace: namespace,
+		portalRef: defaultPortalRef,
 	}
 }
 
@@ -53,6 +55,11 @@ func (s *Service) AddEntry(ctx context.Context, entry domainrelease.Entry) (stri
 	day := entry.DateKey()
 	crName := entry.CRName()
 	nn := types.NamespacedName{Name: crName, Namespace: s.namespace}
+
+	portalRef := entry.PortalRef
+	if portalRef == "" {
+		portalRef = s.portalRef
+	}
 
 	k8sEntry := sreportalv1alpha1.ReleaseEntry{
 		Type:    entry.Type,
@@ -78,7 +85,8 @@ func (s *Service) AddEntry(ctx context.Context, entry domainrelease.Entry) (stri
 					Namespace: s.namespace,
 				},
 				Spec: sreportalv1alpha1.ReleaseSpec{
-					Entries: []sreportalv1alpha1.ReleaseEntry{k8sEntry},
+					PortalRef: portalRef,
+					Entries:   []sreportalv1alpha1.ReleaseEntry{k8sEntry},
 				},
 			}
 			if createErr := s.client.Create(ctx, &rel); createErr != nil {
@@ -93,6 +101,9 @@ func (s *Service) AddEntry(ctx context.Context, entry domainrelease.Entry) (stri
 			return "", 0, false, fmt.Errorf("get release CR: %w", err)
 		} else {
 			// Append to existing CR
+			if rel.Spec.PortalRef == "" {
+				rel.Spec.PortalRef = portalRef
+			}
 			rel.Spec.Entries = append(rel.Spec.Entries, k8sEntry)
 			if updateErr := s.client.Update(ctx, &rel); updateErr != nil {
 				if apierrors.IsConflict(updateErr) && attempt < maxRetries-1 {

@@ -38,6 +38,12 @@ var statusSeverityOrder = map[ComponentStatus]int{
 	StatusOperational: 1,
 }
 
+// StatusSeverityRank returns the numeric severity rank of a component status string.
+// Higher values mean worse status. Unknown values return 0.
+func StatusSeverityRank(status string) int {
+	return statusSeverityOrder[ComponentStatus(status)]
+}
+
 // ComputeGlobalStatus returns the worst status across all components.
 func ComputeGlobalStatus(components []ComponentView) ComponentStatus {
 	if len(components) == 0 {

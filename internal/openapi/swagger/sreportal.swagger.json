@@ -1381,6 +1381,12 @@
     },
     "v1ListReleaseDaysRequest": {
       "type": "object",
+      "properties": {
+        "portal": {
+          "type": "string",
+          "title": "portal filters to a Portal metadata.name (defaults to main if unset)"
+        }
+      },
       "title": "ListReleaseDaysRequest is the request for listing all release days"
     },
     "v1ListReleaseDaysResponse": {
@@ -1424,6 +1430,10 @@
         "pageToken": {
           "type": "string",
           "title": "page_token is the opaque cursor for pagination within a day"
+        },
+        "portal": {
+          "type": "string",
+          "title": "portal filters to a Portal metadata.name (defaults to main if unset)"
         }
       },
       "title": "ListReleasesRequest is the request for listing releases"
@@ -1670,9 +1680,39 @@
         "remoteSync": {
           "$ref": "#/definitions/v1RemoteSyncStatus",
           "title": "remote_sync contains status information for remote portals"
+        },
+        "features": {
+          "$ref": "#/definitions/v1PortalFeatures",
+          "title": "features contains the feature toggles for this portal"
         }
       },
       "title": "Portal represents a portal with its metadata"
+    },
+    "v1PortalFeatures": {
+      "type": "object",
+      "properties": {
+        "dns": {
+          "type": "boolean",
+          "title": "dns enables DNS discovery for this portal"
+        },
+        "releases": {
+          "type": "boolean",
+          "title": "releases enables the releases page for this portal"
+        },
+        "networkPolicy": {
+          "type": "boolean",
+          "title": "network_policy enables network policy visualization for this portal"
+        },
+        "alerts": {
+          "type": "boolean",
+          "title": "alerts enables alertmanager integration for this portal"
+        },
+        "statusPage": {
+          "type": "boolean",
+          "title": "status_page enables the status page (components, incidents, maintenances) for this portal"
+        }
+      },
+      "title": "PortalFeatures controls which features are enabled for a portal"
     },
     "v1ReleaseEntry": {
       "type": "object",
@@ -1705,6 +1745,10 @@
         "link": {
           "type": "string",
           "title": "link is a URL to the release (e.g., PR, pipeline, changelog)"
+        },
+        "portal": {
+          "type": "string",
+          "title": "portal is the Portal metadata.name this entry belongs to (defaults to main if unset)"
         }
       },
       "title": "ReleaseEntry represents a single release event"

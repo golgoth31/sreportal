@@ -30,6 +30,13 @@ function toDomainPortal(p: ProtoPortal): Portal {
           fqdnCount: p.remoteSync.fqdnCount,
         }
       : undefined,
+    features: {
+      dns: p.features?.dns ?? true,
+      releases: p.features?.releases ?? true,
+      networkPolicy: p.features?.networkPolicy ?? true,
+      alerts: p.features?.alerts ?? true,
+      statusPage: p.features?.statusPage ?? true,
+    },
   };
 }
 

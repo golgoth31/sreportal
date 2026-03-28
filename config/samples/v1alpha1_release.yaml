@@ -4,6 +4,7 @@ metadata:
   labels:
     app.kubernetes.io/name: sreportal
     app.kubernetes.io/managed-by: kustomize
-  name: release-sample
+  name: release-2026-03-28
 spec:
-  # TODO(user): Add fields here
+  portalRef: main
+  entries: []

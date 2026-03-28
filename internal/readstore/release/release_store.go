@@ -11,7 +11,7 @@ import (
 )
 
 // ReleaseStore is the in-memory implementation of ReleaseReader and ReleaseWriter.
-// Keys are day strings (e.g. "2026-03-25").
+// Keys are namespace/name of the Release CR; each EntryView carries PortalRef and Day for queries.
 type ReleaseStore struct {
 	store *readstore.Store[domainrelease.EntryView]
 }
@@ -27,32 +27,64 @@ var (
 	_ domainrelease.ReleaseWriter = (*ReleaseStore)(nil)
 )
 
-// Replace stores entries for the given day.
-func (s *ReleaseStore) Replace(_ context.Context, day string, entries []domainrelease.EntryView) error {
-	s.store.Replace(day, entries)
+// Replace stores entries under the given resource key (namespace/name).
+func (s *ReleaseStore) Replace(_ context.Context, resourceKey string, entries []domainrelease.EntryView) error {
+	s.store.Replace(resourceKey, entries)
 	return nil
 }
 
-// Delete removes the entries for the given day.
-func (s *ReleaseStore) Delete(_ context.Context, day string) error {
-	s.store.Delete(day)
+// Delete removes the entries for the given resource key.
+func (s *ReleaseStore) Delete(_ context.Context, resourceKey string) error {
+	s.store.Delete(resourceKey)
 	return nil
 }
 
-// ListEntries returns entries for a specific day. Returns empty slice if day not found.
-func (s *ReleaseStore) ListEntries(_ context.Context, day string) ([]domainrelease.EntryView, error) {
-	items := s.store.Get(day)
-	if items == nil {
-		return []domainrelease.EntryView{}, nil
+// ListEntries returns entries for a specific day, optionally scoped to a portal name.
+// When portal is empty, entries from all portals for that day are merged and sorted by time.
+func (s *ReleaseStore) ListEntries(_ context.Context, day, portal string) ([]domainrelease.EntryView, error) {
+	all := s.store.All()
+	var out []domainrelease.EntryView
+	for i := range all {
+		e := all[i]
+		if e.Day != day {
+			continue
+		}
+		if portal != "" && e.PortalRef != portal {
+			continue
+		}
+		out = append(out, e)
 	}
-	return items, nil
+	sort.Slice(out, func(i, j int) bool {
+		di := out[i].Date
+		dj := out[j].Date
+		if !di.Equal(dj) {
+			return di.Before(dj)
+		}
+		return out[i].Origin < out[j].Origin
+	})
+	return out, nil
 }
 
-// ListDays returns all days that have entries, sorted ascending.
-func (s *ReleaseStore) ListDays(_ context.Context) ([]string, error) {
-	keys := s.store.Keys()
-	sort.Strings(keys)
-	return keys, nil
+// ListDays returns all days that have entries for the given portal, sorted ascending.
+// When portal is empty, returns unique days across all portals.
+func (s *ReleaseStore) ListDays(_ context.Context, portal string) ([]string, error) {
+	all := s.store.All()
+	seen := make(map[string]struct{})
+	for i := range all {
+		e := all[i]
+		if portal != "" && e.PortalRef != portal {
+			continue
+		}
+		if e.Day != "" {
+			seen[e.Day] = struct{}{}
+		}
+	}
+	days := make([]string, 0, len(seen))
+	for d := range seen {
+		days = append(days, d)
+	}
+	sort.Strings(days)
+	return days, nil
 }
 
 // Subscribe returns a channel that is closed on the next mutation.

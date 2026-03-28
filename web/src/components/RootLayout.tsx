@@ -3,10 +3,8 @@ import { NavLink, Outlet, useParams } from "react-router";
 
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { usePortalsWithAlerts } from "@/features/alertmanager/hooks/usePortalsWithAlerts";
 import { hasRemoteSyncError } from "@/features/portal/domain/portal.types";
 import { usePortals } from "@/features/portal/hooks/usePortals";
-import { useHasReleases } from "@/features/release/hooks/useHasReleases";
 import { RemoteSyncStaleBanner } from "@/features/portal/ui/RemoteSyncStaleBanner";
 import { useVersion } from "@/features/version/hooks/useVersion";
 import { cn } from "@/lib/utils";
@@ -18,8 +16,6 @@ import { ThemeToggle } from "./ThemeToggle";
 export function RootLayout() {
   const { portals, isLoading } = usePortals();
   const { version } = useVersion();
-  const { portalNamesWithAlerts } = usePortalsWithAlerts();
-  const { hasReleases } = useHasReleases();
 
   const { portalName } = useParams<{ portalName?: string }>();
   const showSidebar = portalName != null;
@@ -72,8 +68,6 @@ export function RootLayout() {
             <PortalSidebar
               portalName={portalName}
               portals={portals}
-              portalNamesWithAlerts={portalNamesWithAlerts}
-              hasReleases={hasReleases}
             />
           )}
           <main className="flex-1 min-w-0 overflow-auto flex flex-col">

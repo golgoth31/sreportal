@@ -24,6 +24,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/golgoth31/sreportal/internal/config"
+	portalctrl "github.com/golgoth31/sreportal/internal/controller/portal"
 	domainrelease "github.com/golgoth31/sreportal/internal/domain/release"
 	releasev1 "github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1"
 	"github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1/sreportalv1connect"
@@ -76,6 +77,10 @@ func (s *ReleaseService) AddRelease(
 	entry.Author = e.Author
 	entry.Message = e.Message
 	entry.Link = e.Link
+	entry.PortalRef = e.GetPortal()
+	if entry.PortalRef == "" {
+		entry.PortalRef = portalctrl.MainPortalName
+	}
 
 	day, count, created, err := s.writer.AddEntry(ctx, entry)
 	if err != nil {
@@ -99,10 +104,14 @@ func (s *ReleaseService) ListReleases(
 	req *connect.Request[releasev1.ListReleasesRequest],
 ) (*connect.Response[releasev1.ListReleasesResponse], error) {
 	day := req.Msg.Day
+	portal := req.Msg.GetPortal()
+	if portal == "" {
+		portal = portalctrl.MainPortalName
+	}
 
 	// If no day specified, use the latest available day
 	if day == "" {
-		days, err := s.reader.ListDays(ctx)
+		days, err := s.reader.ListDays(ctx, portal)
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
@@ -112,7 +121,7 @@ func (s *ReleaseService) ListReleases(
 		day = days[len(days)-1]
 	}
 
-	entries, err := s.reader.ListEntries(ctx, day)
+	entries, err := s.reader.ListEntries(ctx, day, portal)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -124,7 +133,7 @@ func (s *ReleaseService) ListReleases(
 	}
 
 	// Determine previous/next day navigation
-	days, err := s.reader.ListDays(ctx)
+	days, err := s.reader.ListDays(ctx, portal)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -153,9 +162,13 @@ func (s *ReleaseService) ListReleases(
 // ListReleaseDays returns all days that have releases and the TTL window.
 func (s *ReleaseService) ListReleaseDays(
 	ctx context.Context,
-	_ *connect.Request[releasev1.ListReleaseDaysRequest],
+	req *connect.Request[releasev1.ListReleaseDaysRequest],
 ) (*connect.Response[releasev1.ListReleaseDaysResponse], error) {
-	days, err := s.reader.ListDays(ctx)
+	portal := req.Msg.GetPortal()
+	if portal == "" {
+		portal = portalctrl.MainPortalName
+	}
+	days, err := s.reader.ListDays(ctx, portal)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}

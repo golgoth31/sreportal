@@ -57,6 +57,33 @@ func (d *PortalCustomDefaulter) Default(_ context.Context, obj *sreportalv1alpha
 		obj.Spec.SubPath = obj.Name
 	}
 
+	// Default all feature flags to true
+	if obj.Spec.Features == nil {
+		obj.Spec.Features = &sreportalv1alpha1.PortalFeatures{}
+	}
+
+	trueVal := true
+
+	if obj.Spec.Features.DNS == nil {
+		obj.Spec.Features.DNS = &trueVal
+	}
+
+	if obj.Spec.Features.Releases == nil {
+		obj.Spec.Features.Releases = &trueVal
+	}
+
+	if obj.Spec.Features.NetworkPolicy == nil {
+		obj.Spec.Features.NetworkPolicy = &trueVal
+	}
+
+	if obj.Spec.Features.Alerts == nil {
+		obj.Spec.Features.Alerts = &trueVal
+	}
+
+	if obj.Spec.Features.StatusPage == nil {
+		obj.Spec.Features.StatusPage = &trueVal
+	}
+
 	return nil
 }
 

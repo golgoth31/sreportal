@@ -22,8 +22,11 @@ import (
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	domainrelease "github.com/golgoth31/sreportal/internal/domain/release"
@@ -58,6 +61,7 @@ func (r *ReleaseReconciler) SetReleaseWriter(w domainrelease.ReleaseWriter) {
 // +kubebuilder:rbac:groups=sreportal.io,resources=releases,verbs=get;list;watch;delete;create;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=releases/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=releases/finalizers,verbs=update
+// +kubebuilder:rbac:groups=sreportal.io,resources=portals,verbs=get;list;watch
 
 // Reconcile pushes release entries into the read store and deletes expired CRs.
 func (r *ReleaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -69,13 +73,15 @@ func (r *ReleaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, nil
 	}
 
+	resourceKey := req.Namespace + "/" + req.Name
+
 	// Check if the CR still exists (may have been deleted)
 	var rel sreportalv1alpha1.Release
 	if err := r.Get(ctx, req.NamespacedName, &rel); err != nil {
 		if apierrors.IsNotFound(err) {
-			logger.V(1).Info("release CR deleted, removing from store", "day", day)
+			logger.V(1).Info("release CR deleted, removing from store", "day", day, "key", resourceKey)
 			if r.releaseWriter != nil {
-				_ = r.releaseWriter.Delete(ctx, day)
+				_ = r.releaseWriter.Delete(ctx, resourceKey)
 			}
 			return ctrl.Result{}, nil
 		}
@@ -99,29 +105,44 @@ func (r *ReleaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, nil
 	}
 
-	// Not expired — push entries to store and requeue for periodic TTL re-check
-	if r.releaseWriter != nil {
-		views := releaseEntriesToViews(rel.Spec.Entries)
-		if err := r.releaseWriter.Replace(ctx, day, views); err != nil {
-			return ctrl.Result{}, fmt.Errorf("write release store: %w", err)
-		}
+	if r.releaseWriter == nil {
+		return ctrl.Result{RequeueAfter: releaseRequeueInterval}, nil
+	}
+
+	var portal sreportalv1alpha1.Portal
+	if err := r.Get(ctx, types.NamespacedName{
+		Name: rel.Spec.PortalRef, Namespace: rel.Namespace,
+	}, &portal); err != nil {
+		return ctrl.Result{}, fmt.Errorf("get portal %q: %w", rel.Spec.PortalRef, err)
+	}
+	if !portal.Spec.Features.IsReleasesEnabled() {
+		logger.V(1).Info("releases feature disabled, skipping store projection",
+			"day", day, "portal", rel.Spec.PortalRef)
+		return ctrl.Result{RequeueAfter: releaseRequeueInterval}, nil
+	}
+
+	views := releaseEntriesToViews(rel.Spec.Entries, rel.Spec.PortalRef, day)
+	if err := r.releaseWriter.Replace(ctx, resourceKey, views); err != nil {
+		return ctrl.Result{}, fmt.Errorf("write release store: %w", err)
 	}
 
 	return ctrl.Result{RequeueAfter: releaseRequeueInterval}, nil
 }
 
 // releaseEntriesToViews converts CRD entries to domain read model views.
-func releaseEntriesToViews(entries []sreportalv1alpha1.ReleaseEntry) []domainrelease.EntryView {
+func releaseEntriesToViews(entries []sreportalv1alpha1.ReleaseEntry, portalRef, day string) []domainrelease.EntryView {
 	views := make([]domainrelease.EntryView, 0, len(entries))
 	for _, e := range entries {
 		views = append(views, domainrelease.EntryView{
-			Type:    e.Type,
-			Version: e.Version,
-			Origin:  e.Origin,
-			Date:    e.Date.Time,
-			Author:  e.Author,
-			Message: e.Message,
-			Link:    e.Link,
+			PortalRef: portalRef,
+			Day:       day,
+			Type:      e.Type,
+			Version:   e.Version,
+			Origin:    e.Origin,
+			Date:      e.Date.Time,
+			Author:    e.Author,
+			Message:   e.Message,
+			Link:      e.Link,
 		})
 	}
 	return views
@@ -131,6 +152,17 @@ func releaseEntriesToViews(entries []sreportalv1alpha1.ReleaseEntry) []domainrel
 func (r *ReleaseReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&sreportalv1alpha1.Release{}).
+		Watches(
+			&sreportalv1alpha1.Portal{},
+			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []ctrl.Request {
+				portal, ok := obj.(*sreportalv1alpha1.Portal)
+				if !ok {
+					return nil
+				}
+				return releaseReconcileRequestsForPortal(ctx, r.Client, portal)
+			}),
+			builder.WithPredicates(PortalReleasesFeatureWakeupPredicate()),
+		).
 		Named("release").
 		Complete(r)
 }

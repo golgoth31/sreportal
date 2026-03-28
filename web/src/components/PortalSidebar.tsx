@@ -9,15 +9,11 @@ import { cn } from "@/lib/utils";
 interface PortalSidebarProps {
   portalName: string;
   portals: Portal[];
-  portalNamesWithAlerts: ReadonlySet<string>;
-  hasReleases: boolean;
 }
 
 export function PortalSidebar({
   portalName,
   portals,
-  portalNamesWithAlerts,
-  hasReleases,
 }: PortalSidebarProps) {
   const currentPortal = portals.find(
     (p) => (p.subPath || p.name) === portalName
@@ -25,9 +21,11 @@ export function PortalSidebar({
   const basePath = currentPortal
     ? `/${currentPortal.subPath || currentPortal.name}`
     : `/${portalName}`;
-  const showAlerts =
-    currentPortal != null && portalNamesWithAlerts.has(currentPortal.name);
-  const showReleases = currentPortal?.main === true && hasReleases;
+  const showDNS = currentPortal?.features.dns !== false;
+  const showReleases = currentPortal?.features.releases === true;
+  const showNetworkPolicy = currentPortal?.features.networkPolicy !== false;
+  const showAlerts = currentPortal?.features.alerts === true;
+  const showStatusPage = currentPortal?.features.statusPage !== false;
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
@@ -43,31 +41,58 @@ export function PortalSidebar({
       aria-label="Portal menu"
     >
       <nav className="flex flex-col gap-0.5 px-2" aria-label="Links and Alerts">
-        <NavLink to={`${basePath}/links`} end className={linkClass}>
-          <LinkIcon className="size-4 shrink-0" aria-hidden="true" />
-          <span>DNS</span>
-        </NavLink>
+        {showDNS && (
+          <NavLink
+            to={`${basePath}/links`}
+            end
+            className={({ isActive }) =>
+              cn(
+                "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                isActive
+                  ? "bg-accent text-accent-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )
+            }
+          >
+            <LinkIcon className="size-4 shrink-0" aria-hidden="true" />
+            <span>DNS</span>
+          </NavLink>
+        )}
         {showReleases && (
           <NavLink to={`${basePath}/releases`} className={linkClass}>
             <RocketIcon className="size-4 shrink-0" aria-hidden="true" />
             <span>Releases</span>
           </NavLink>
         )}
-        <NavLink to={`${basePath}/netpol`} className={linkClass}>
-          <ShieldIcon className="size-4 shrink-0" aria-hidden="true" />
-          <span>Network Policies</span>
-        </NavLink>
+        {showNetworkPolicy && (
+          <NavLink
+            to={`${basePath}/netpol`}
+            className={({ isActive }) =>
+              cn(
+                "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                isActive
+                  ? "bg-accent text-accent-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )
+            }
+          >
+            <ShieldIcon className="size-4 shrink-0" aria-hidden="true" />
+            <span>Network Policies</span>
+          </NavLink>
+        )}
         {showAlerts && (
           <NavLink to={`${basePath}/alerts`} className={linkClass}>
             <AlertTriangleIcon className="size-4 shrink-0" aria-hidden="true" />
             <span>Alerts</span>
           </NavLink>
         )}
-        <NavLink to={`${basePath}/status`} className={linkClass}>
-          <ActivityIcon className="size-4 shrink-0" aria-hidden="true" />
-          <span>Status</span>
-          <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0">alpha</Badge>
-        </NavLink>
+        {showStatusPage && (
+          <NavLink to={`${basePath}/status`} className={linkClass}>
+            <ActivityIcon className="size-4 shrink-0" aria-hidden="true" />
+            <span>Status</span>
+            <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0">alpha</Badge>
+          </NavLink>
+        )}
       </nav>
       <nav className="mt-auto px-2" aria-label="Portal statistics">
         <NavLink to={`${basePath}/dashboard`} className={linkClass}>

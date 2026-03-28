@@ -17,8 +17,7 @@ import (
 
 // ChainData holds shared state between handlers.
 type ChainData struct {
-	Phase        sreportalv1alpha1.MaintenancePhase
-	RequeueAfter func() // populated by ComputePhaseHandler for result
+	Phase sreportalv1alpha1.MaintenancePhase
 }
 
 // --- Handler 1: ComputePhase ---

@@ -34,6 +34,7 @@ import (
 	alertmanagerctrl "github.com/golgoth31/sreportal/internal/controller/alertmanager"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 	domainportal "github.com/golgoth31/sreportal/internal/domain/portal"
+	domainrelease "github.com/golgoth31/sreportal/internal/domain/release"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/metrics"
 	"github.com/golgoth31/sreportal/internal/remoteclient"
@@ -50,6 +51,7 @@ type PortalReconciler struct {
 	remoteClientCache *remoteclient.Cache
 	portalWriter      domainportal.PortalWriter
 	fqdnWriter        domaindns.FQDNWriter
+	releaseWriter     domainrelease.ReleaseWriter
 }
 
 // SetPortalWriter sets the optional PortalWriter used to push read models into the ReadStore.
@@ -62,6 +64,11 @@ func (r *PortalReconciler) SetFQDNWriter(w domaindns.FQDNWriter) {
 	r.fqdnWriter = w
 }
 
+// SetReleaseWriter sets the optional ReleaseWriter used to flush release projections when the feature is disabled.
+func (r *PortalReconciler) SetReleaseWriter(w domainrelease.ReleaseWriter) {
+	r.releaseWriter = w
+}
+
 // NewPortalReconciler creates a new PortalReconciler
 func NewPortalReconciler(c client.Client, scheme *runtime.Scheme, cache *remoteclient.Cache) *PortalReconciler {
 	return &PortalReconciler{
@@ -71,6 +78,7 @@ func NewPortalReconciler(c client.Client, scheme *runtime.Scheme, cache *remotec
 	}
 }
 
+// +kubebuilder:rbac:groups=sreportal.io,resources=releases,verbs=list
 // +kubebuilder:rbac:groups=sreportal.io,resources=portals,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=sreportal.io,resources=portals/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=portals/finalizers,verbs=update
@@ -97,6 +105,22 @@ func (r *PortalReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	logger.Info("reconciling Portal", "name", portal.Name, "namespace", portal.Namespace)
+
+	// When DNS feature is disabled, purge all associated data from the read store
+	// and delete DNSRecord K8s resources. Data is recovered automatically when the
+	// feature is re-enabled: DNS controllers resume, source reconciler recreates
+	// DNSRecords, and portal controller resumes remote DNS sync.
+	if !portal.Spec.Features.IsDNSEnabled() {
+		if err := r.cleanupDNSData(ctx, &portal); err != nil {
+			logger.Error(err, "failed to clean up DNS data for disabled feature")
+		}
+	}
+
+	if !portal.Spec.Features.IsReleasesEnabled() {
+		if err := r.cleanupReleaseData(ctx, &portal); err != nil {
+			logger.Error(err, "failed to clean up release data for disabled feature")
+		}
+	}
 
 	var result ctrl.Result
 	var reconcileErr error
@@ -300,64 +324,76 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 	// Create or update DNS CR with fetched FQDNs. A failure here does not
 	// block the portal being marked Ready — the remote connection succeeded —
 	// but we surface it as a separate DNSSynced condition so operators can act.
-	if err := r.reconcileRemoteDNS(ctx, portal, result); err != nil {
-		remoteLog.Warn("failed to reconcile DNS for remote portal", "name", portal.Name, "namespace", portal.Namespace, "error", err.Error())
-		meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
-			Type:               "DNSSynced",
-			Status:             metav1.ConditionFalse,
-			Reason:             "DNSSyncFailed",
-			Message:            fmt.Sprintf("Failed to sync DNS from remote portal: %v", err),
-			LastTransitionTime: metav1.Now(),
-		})
+	if portal.Spec.Features.IsDNSEnabled() {
+		if err := r.reconcileRemoteDNS(ctx, portal, result); err != nil {
+			remoteLog.Warn("failed to reconcile DNS for remote portal", "name", portal.Name, "namespace", portal.Namespace, "error", err.Error())
+			meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
+				Type:               "DNSSynced",
+				Status:             metav1.ConditionFalse,
+				Reason:             "DNSSyncFailed",
+				Message:            fmt.Sprintf("Failed to sync DNS from remote portal: %v", err),
+				LastTransitionTime: metav1.Now(),
+			})
+		} else {
+			meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
+				Type:               "DNSSynced",
+				Status:             metav1.ConditionTrue,
+				Reason:             "DNSSyncSuccess",
+				Message:            fmt.Sprintf("Synced %d FQDNs from remote portal", result.FQDNCount),
+				LastTransitionTime: metav1.Now(),
+			})
+		}
 	} else {
-		meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
-			Type:               "DNSSynced",
-			Status:             metav1.ConditionTrue,
-			Reason:             "DNSSyncSuccess",
-			Message:            fmt.Sprintf("Synced %d FQDNs from remote portal", result.FQDNCount),
-			LastTransitionTime: metav1.Now(),
-		})
+		remoteLog.V(1).Info("DNS feature disabled, skipping remote DNS sync", "portal", portal.Name)
 	}
 
 	// Create or update Alertmanager CR for remote portal so the alertmanager
 	// controller can fetch alerts from the remote portal's API.
-	if err := r.reconcileRemoteAlertmanager(ctx, portal); err != nil {
-		remoteLog.Error(err, "failed to reconcile Alertmanager for remote portal")
-		meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
-			Type:               "AlertsSynced",
-			Status:             metav1.ConditionFalse,
-			Reason:             "AlertsSyncFailed",
-			Message:            fmt.Sprintf("Failed to sync Alertmanager resources for remote portal: %v", err),
-			LastTransitionTime: metav1.Now(),
-		})
+	if portal.Spec.Features.IsAlertsEnabled() {
+		if err := r.reconcileRemoteAlertmanager(ctx, portal); err != nil {
+			remoteLog.Error(err, "failed to reconcile Alertmanager for remote portal")
+			meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
+				Type:               "AlertsSynced",
+				Status:             metav1.ConditionFalse,
+				Reason:             "AlertsSyncFailed",
+				Message:            fmt.Sprintf("Failed to sync Alertmanager resources for remote portal: %v", err),
+				LastTransitionTime: metav1.Now(),
+			})
+		} else {
+			meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
+				Type:               "AlertsSynced",
+				Status:             metav1.ConditionTrue,
+				Reason:             "AlertsSyncSuccess",
+				Message:            "Alertmanager resources synced for remote portal",
+				LastTransitionTime: metav1.Now(),
+			})
+		}
 	} else {
-		meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
-			Type:               "AlertsSynced",
-			Status:             metav1.ConditionTrue,
-			Reason:             "AlertsSyncSuccess",
-			Message:            "Alertmanager resources synced for remote portal",
-			LastTransitionTime: metav1.Now(),
-		})
+		remoteLog.V(1).Info("alerts feature disabled, skipping remote alertmanager sync", "portal", portal.Name)
 	}
 
 	// Create or update FlowNodeSet/FlowEdgeSet CRs for remote network flows.
-	if err := r.reconcileRemoteNetworkFlows(ctx, portal); err != nil {
-		remoteLog.Warn("failed to reconcile network flows for remote portal", "name", portal.Name, "namespace", portal.Namespace, "error", err.Error())
-		meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
-			Type:               "NetworkFlowsSynced",
-			Status:             metav1.ConditionFalse,
-			Reason:             "NetworkFlowsSyncFailed",
-			Message:            fmt.Sprintf("Failed to sync network flows from remote portal: %v", err),
-			LastTransitionTime: metav1.Now(),
-		})
+	if portal.Spec.Features.IsNetworkPolicyEnabled() {
+		if err := r.reconcileRemoteNetworkFlows(ctx, portal); err != nil {
+			remoteLog.Warn("failed to reconcile network flows for remote portal", "name", portal.Name, "namespace", portal.Namespace, "error", err.Error())
+			meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
+				Type:               "NetworkFlowsSynced",
+				Status:             metav1.ConditionFalse,
+				Reason:             "NetworkFlowsSyncFailed",
+				Message:            fmt.Sprintf("Failed to sync network flows from remote portal: %v", err),
+				LastTransitionTime: metav1.Now(),
+			})
+		} else {
+			meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
+				Type:               "NetworkFlowsSynced",
+				Status:             metav1.ConditionTrue,
+				Reason:             "NetworkFlowsSyncSuccess",
+				Message:            "Network flows synced for remote portal",
+				LastTransitionTime: metav1.Now(),
+			})
+		}
 	} else {
-		meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
-			Type:               "NetworkFlowsSynced",
-			Status:             metav1.ConditionTrue,
-			Reason:             "NetworkFlowsSyncSuccess",
-			Message:            "Network flows synced for remote portal",
-			LastTransitionTime: metav1.Now(),
-		})
+		remoteLog.V(1).Info("networkPolicy feature disabled, skipping remote network flows sync", "portal", portal.Name)
 	}
 
 	readyCondition := metav1.Condition{
@@ -396,6 +432,13 @@ func portalToView(p *sreportalv1alpha1.Portal) domainportal.PortalView {
 		Namespace: p.Namespace,
 		Ready:     p.Status.Ready,
 		IsRemote:  p.Spec.Remote != nil,
+		Features: domainportal.PortalFeatures{
+			DNS:           p.Spec.Features.IsDNSEnabled(),
+			Releases:      p.Spec.Features.IsReleasesEnabled(),
+			NetworkPolicy: p.Spec.Features.IsNetworkPolicyEnabled(),
+			Alerts:        p.Spec.Features.IsAlertsEnabled(),
+			StatusPage:    p.Spec.Features.IsStatusPageEnabled(),
+		},
 	}
 	if p.Spec.Remote != nil {
 		view.URL = p.Spec.Remote.URL
@@ -412,6 +455,92 @@ func portalToView(p *sreportalv1alpha1.Portal) domainportal.PortalView {
 		view.RemoteSync = rs
 	}
 	return view
+}
+
+// cleanupDNSData removes all DNS-related data for a portal from the FQDN read store
+// and deletes DNSRecord K8s resources. DNS CRs are preserved (they hold spec data
+// needed for recovery). Called when the DNS feature toggle is disabled.
+func (r *PortalReconciler) cleanupDNSData(ctx context.Context, portal *sreportalv1alpha1.Portal) error {
+	logger := log.FromContext(ctx)
+
+	if r.fqdnWriter == nil {
+		return nil
+	}
+
+	// Delete read store entries for all DNS CRs belonging to this portal.
+	var dnsList sreportalv1alpha1.DNSList
+	if err := r.List(ctx, &dnsList,
+		client.InNamespace(portal.Namespace),
+		client.MatchingFields{FieldIndexPortalRef: portal.Name},
+	); err != nil {
+		return fmt.Errorf("list DNS resources: %w", err)
+	}
+
+	for i := range dnsList.Items {
+		resourceKey := dnsList.Items[i].Namespace + "/" + dnsList.Items[i].Name
+		if err := r.fqdnWriter.Delete(ctx, resourceKey); err != nil {
+			logger.Error(err, "failed to delete DNS FQDN views from read store", "key", resourceKey)
+		}
+	}
+
+	// Delete read store entries for all DNSRecord CRs belonging to this portal,
+	// then delete the DNSRecord K8s resources themselves. The source reconciler
+	// will recreate them when DNS is re-enabled.
+	var dnsRecordList sreportalv1alpha1.DNSRecordList
+	if err := r.List(ctx, &dnsRecordList,
+		client.InNamespace(portal.Namespace),
+		client.MatchingFields{FieldIndexPortalRef: portal.Name},
+	); err != nil {
+		return fmt.Errorf("list DNSRecord resources: %w", err)
+	}
+
+	for i := range dnsRecordList.Items {
+		rec := &dnsRecordList.Items[i]
+		resourceKey := rec.Namespace + "/" + rec.Name
+		if err := r.fqdnWriter.Delete(ctx, resourceKey); err != nil {
+			logger.Error(err, "failed to delete DNSRecord FQDN views from read store", "key", resourceKey)
+		}
+		if err := r.Delete(ctx, rec); err != nil && !errors.IsNotFound(err) {
+			logger.Error(err, "failed to delete DNSRecord", "name", rec.Name)
+		} else if err == nil {
+			logger.Info("deleted DNSRecord (DNS feature disabled)", "name", rec.Name)
+		}
+	}
+
+	logger.Info("cleaned up DNS data for disabled feature",
+		"portal", portal.Name,
+		"dnsCount", len(dnsList.Items),
+		"dnsRecordCount", len(dnsRecordList.Items))
+
+	return nil
+}
+
+// cleanupReleaseData removes release read-store projections for this portal without
+// deleting Release CRs (they are owned by CI/CD or other external processes).
+func (r *PortalReconciler) cleanupReleaseData(ctx context.Context, portal *sreportalv1alpha1.Portal) error {
+	if r.releaseWriter == nil {
+		return nil
+	}
+	logger := log.FromContext(ctx)
+
+	var releaseList sreportalv1alpha1.ReleaseList
+	if err := r.List(ctx, &releaseList,
+		client.InNamespace(portal.Namespace),
+		client.MatchingFields{FieldIndexPortalRef: portal.Name},
+	); err != nil {
+		return fmt.Errorf("list Release resources: %w", err)
+	}
+
+	for i := range releaseList.Items {
+		resourceKey := releaseList.Items[i].Namespace + "/" + releaseList.Items[i].Name
+		if err := r.releaseWriter.Delete(ctx, resourceKey); err != nil {
+			logger.Error(err, "failed to delete Release views from read store", "key", resourceKey)
+		}
+	}
+
+	logger.Info("cleaned up release data for disabled feature",
+		"portal", portal.Name, "releaseCount", len(releaseList.Items))
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

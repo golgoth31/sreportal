@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file sreportal/v1/portal.proto.
  */
 export const file_sreportal_v1_portal: GenFile = /*@__PURE__*/
-  fileDesc("ChlzcmVwb3J0YWwvdjEvcG9ydGFsLnByb3RvEgxzcmVwb3J0YWwudjEiJwoSTGlzdFBvcnRhbHNSZXF1ZXN0EhEKCW5hbWVzcGFjZRgBIAEoCSI8ChNMaXN0UG9ydGFsc1Jlc3BvbnNlEiUKB3BvcnRhbHMYASADKAsyFC5zcmVwb3J0YWwudjEuUG9ydGFsIrwBCgZQb3J0YWwSDAoEbmFtZRgBIAEoCRINCgV0aXRsZRgCIAEoCRIMCgRtYWluGAMgASgIEhAKCHN1Yl9wYXRoGAQgASgJEhEKCW5hbWVzcGFjZRgFIAEoCRINCgVyZWFkeRgGIAEoCBILCgN1cmwYByABKAkSEQoJaXNfcmVtb3RlGAggASgIEjMKC3JlbW90ZV9zeW5jGAkgASgLMh4uc3JlcG9ydGFsLnYxLlJlbW90ZVN5bmNTdGF0dXMibQoQUmVtb3RlU3luY1N0YXR1cxIWCg5sYXN0X3N5bmNfdGltZRgBIAEoCRIXCg9sYXN0X3N5bmNfZXJyb3IYAiABKAkSFAoMcmVtb3RlX3RpdGxlGAMgASgJEhIKCmZxZG5fY291bnQYBCABKAUyYwoNUG9ydGFsU2VydmljZRJSCgtMaXN0UG9ydGFscxIgLnNyZXBvcnRhbC52MS5MaXN0UG9ydGFsc1JlcXVlc3QaIS5zcmVwb3J0YWwudjEuTGlzdFBvcnRhbHNSZXNwb25zZUK7AQoQY29tLnNyZXBvcnRhbC52MUILUG9ydGFsUHJvdG9QAVpJZ2l0aHViLmNvbS9nb2xnb3RoMzEvc3JlcG9ydGFsL2ludGVybmFsL2dycGMvZ2VuL3NyZXBvcnRhbC92MTtzcmVwb3J0YWx2MaICA1NYWKoCDFNyZXBvcnRhbC5WMcoCDFNyZXBvcnRhbFxWMeICGFNyZXBvcnRhbFxWMVxHUEJNZXRhZGF0YeoCDVNyZXBvcnRhbDo6VjFiBnByb3RvMw");
+  fileDesc("ChlzcmVwb3J0YWwvdjEvcG9ydGFsLnByb3RvEgxzcmVwb3J0YWwudjEiJwoSTGlzdFBvcnRhbHNSZXF1ZXN0EhEKCW5hbWVzcGFjZRgBIAEoCSI8ChNMaXN0UG9ydGFsc1Jlc3BvbnNlEiUKB3BvcnRhbHMYASADKAsyFC5zcmVwb3J0YWwudjEuUG9ydGFsIuwBCgZQb3J0YWwSDAoEbmFtZRgBIAEoCRINCgV0aXRsZRgCIAEoCRIMCgRtYWluGAMgASgIEhAKCHN1Yl9wYXRoGAQgASgJEhEKCW5hbWVzcGFjZRgFIAEoCRINCgVyZWFkeRgGIAEoCBILCgN1cmwYByABKAkSEQoJaXNfcmVtb3RlGAggASgIEjMKC3JlbW90ZV9zeW5jGAkgASgLMh4uc3JlcG9ydGFsLnYxLlJlbW90ZVN5bmNTdGF0dXMSLgoIZmVhdHVyZXMYCiABKAsyHC5zcmVwb3J0YWwudjEuUG9ydGFsRmVhdHVyZXMibAoOUG9ydGFsRmVhdHVyZXMSCwoDZG5zGAEgASgIEhAKCHJlbGVhc2VzGAIgASgIEhYKDm5ldHdvcmtfcG9saWN5GAMgASgIEg4KBmFsZXJ0cxgEIAEoCBITCgtzdGF0dXNfcGFnZRgFIAEoCCJtChBSZW1vdGVTeW5jU3RhdHVzEhYKDmxhc3Rfc3luY190aW1lGAEgASgJEhcKD2xhc3Rfc3luY19lcnJvchgCIAEoCRIUCgxyZW1vdGVfdGl0bGUYAyABKAkSEgoKZnFkbl9jb3VudBgEIAEoBTJjCg1Qb3J0YWxTZXJ2aWNlElIKC0xpc3RQb3J0YWxzEiAuc3JlcG9ydGFsLnYxLkxpc3RQb3J0YWxzUmVxdWVzdBohLnNyZXBvcnRhbC52MS5MaXN0UG9ydGFsc1Jlc3BvbnNlQrsBChBjb20uc3JlcG9ydGFsLnYxQgtQb3J0YWxQcm90b1ABWklnaXRodWIuY29tL2dvbGdvdGgzMS9zcmVwb3J0YWwvaW50ZXJuYWwvZ3JwYy9nZW4vc3JlcG9ydGFsL3YxO3NyZXBvcnRhbHYxogIDU1hYqgIMU3JlcG9ydGFsLlYxygIMU3JlcG9ydGFsXFYx4gIYU3JlcG9ydGFsXFYxXEdQQk1ldGFkYXRh6gINU3JlcG9ydGFsOjpWMWIGcHJvdG8z");
 
 /**
  * ListPortalsRequest is the request for listing portals
@@ -122,6 +122,13 @@ export type Portal = Message<"sreportal.v1.Portal"> & {
    * @generated from field: sreportal.v1.RemoteSyncStatus remote_sync = 9;
    */
   remoteSync?: RemoteSyncStatus;
+
+  /**
+   * features contains the feature toggles for this portal
+   *
+   * @generated from field: sreportal.v1.PortalFeatures features = 10;
+   */
+  features?: PortalFeatures;
 };
 
 /**
@@ -130,6 +137,55 @@ export type Portal = Message<"sreportal.v1.Portal"> & {
  */
 export const PortalSchema: GenMessage<Portal> = /*@__PURE__*/
   messageDesc(file_sreportal_v1_portal, 2);
+
+/**
+ * PortalFeatures controls which features are enabled for a portal
+ *
+ * @generated from message sreportal.v1.PortalFeatures
+ */
+export type PortalFeatures = Message<"sreportal.v1.PortalFeatures"> & {
+  /**
+   * dns enables DNS discovery for this portal
+   *
+   * @generated from field: bool dns = 1;
+   */
+  dns: boolean;
+
+  /**
+   * releases enables the releases page for this portal
+   *
+   * @generated from field: bool releases = 2;
+   */
+  releases: boolean;
+
+  /**
+   * network_policy enables network policy visualization for this portal
+   *
+   * @generated from field: bool network_policy = 3;
+   */
+  networkPolicy: boolean;
+
+  /**
+   * alerts enables alertmanager integration for this portal
+   *
+   * @generated from field: bool alerts = 4;
+   */
+  alerts: boolean;
+
+  /**
+   * status_page enables the status page (components, incidents, maintenances) for this portal
+   *
+   * @generated from field: bool status_page = 5;
+   */
+  statusPage: boolean;
+};
+
+/**
+ * Describes the message sreportal.v1.PortalFeatures.
+ * Use `create(PortalFeaturesSchema)` to create a new message.
+ */
+export const PortalFeaturesSchema: GenMessage<PortalFeatures> = /*@__PURE__*/
+  messageDesc(file_sreportal_v1_portal, 3);
 
 /**
  * RemoteSyncStatus contains status information about remote portal synchronization
@@ -171,7 +227,7 @@ export type RemoteSyncStatus = Message<"sreportal.v1.RemoteSyncStatus"> & {
  * Use `create(RemoteSyncStatusSchema)` to create a new message.
  */
 export const RemoteSyncStatusSchema: GenMessage<RemoteSyncStatus> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_portal, 3);
+  messageDesc(file_sreportal_v1_portal, 4);
 
 /**
  * PortalService provides portal management

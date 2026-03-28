@@ -4,13 +4,13 @@ import { useCallback, useMemo, useState } from "react";
 import { filterEntries, sortEntriesByDate } from "../domain/release.types";
 import { listReleases } from "../infrastructure/releaseApi";
 
-export function useReleases() {
+export function useReleases(portal: string) {
   const [day, setDay] = useState("");
   const [search, setSearch] = useState("");
 
   const query = useQuery({
-    queryKey: ["releases", day],
-    queryFn: () => listReleases(day),
+    queryKey: ["releases", portal, day],
+    queryFn: () => listReleases(day, portal),
     staleTime: 10_000,
   });
 

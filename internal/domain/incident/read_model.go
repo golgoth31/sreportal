@@ -1,6 +1,7 @@
 package incident
 
 import (
+	"slices"
 	"sort"
 	"time"
 )
@@ -43,6 +44,39 @@ type IncidentView struct {
 	StartedAt       time.Time
 	ResolvedAt      time.Time
 	DurationMinutes int
+}
+
+// severityToStatus maps incident severity to the component status it implies.
+var severityToStatus = map[IncidentSeverity]string{
+	SeverityCritical: "major_outage",
+	SeverityMajor:    "partial_outage",
+	SeverityMinor:    "degraded",
+}
+
+// SeverityToComponentStatus returns the component status implied by the given severity.
+// Unknown severities default to "degraded".
+func SeverityToComponentStatus(severity IncidentSeverity) string {
+	if s, ok := severityToStatus[severity]; ok {
+		return s
+	}
+	return "degraded"
+}
+
+// AffectsComponent returns true if the incident is active (non-resolved) and
+// targets the given component name for the given portal.
+func (v IncidentView) AffectsComponent(portalRef, componentName string) bool {
+	if v.PortalRef != portalRef {
+		return false
+	}
+	if v.CurrentPhase == PhaseResolved {
+		return false
+	}
+	return slices.Contains(v.Components, componentName)
+}
+
+// ComponentStatus returns the component status implied by this incident's severity.
+func (v IncidentView) ComponentStatus() string {
+	return SeverityToComponentStatus(v.Severity)
 }
 
 // ComputedStatus holds the derived fields from the updates timeline.

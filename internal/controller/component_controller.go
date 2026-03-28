@@ -24,6 +24,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	ctrlreconcile "sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -31,6 +32,7 @@ import (
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	componentchain "github.com/golgoth31/sreportal/internal/controller/component"
 	domaincomponent "github.com/golgoth31/sreportal/internal/domain/component"
+	domainincident "github.com/golgoth31/sreportal/internal/domain/incident"
 	domainmaint "github.com/golgoth31/sreportal/internal/domain/maintenance"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/metrics"
@@ -48,11 +50,12 @@ type ComponentReconciler struct {
 func NewComponentReconciler(
 	c client.Client,
 	maintenanceReader domainmaint.MaintenanceReader,
+	incidentReader domainincident.IncidentReader,
 	componentWriter domaincomponent.ComponentWriter,
 ) *ComponentReconciler {
 	chain := reconciler.NewChain(
 		componentchain.NewValidatePortalRefHandler(c),
-		componentchain.NewComputeStatusHandler(maintenanceReader),
+		componentchain.NewComputeStatusHandler(maintenanceReader, incidentReader),
 		componentchain.NewUpdateStatusHandler(c, componentWriter),
 	)
 
@@ -66,6 +69,7 @@ func NewComponentReconciler(
 // +kubebuilder:rbac:groups=sreportal.io,resources=components,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=sreportal.io,resources=components/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=components/finalizers,verbs=update
+// +kubebuilder:rbac:groups=sreportal.io,resources=portals,verbs=get;list;watch
 
 // Reconcile computes the component's effective status and projects to the ReadStore.
 func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -128,6 +132,35 @@ func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				return requests
 			},
 		)).
+		Watches(&sreportalv1alpha1.Incident{}, handler.EnqueueRequestsFromMapFunc(
+			func(ctx context.Context, obj client.Object) []ctrlreconcile.Request {
+				inc, ok := obj.(*sreportalv1alpha1.Incident)
+				if !ok {
+					return nil
+				}
+				var requests []ctrlreconcile.Request
+				for _, compName := range inc.Spec.Components {
+					requests = append(requests, ctrlreconcile.Request{
+						NamespacedName: types.NamespacedName{
+							Namespace: inc.Namespace,
+							Name:      compName,
+						},
+					})
+				}
+				return requests
+			},
+		)).
+		Watches(
+			&sreportalv1alpha1.Portal{},
+			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []ctrl.Request {
+				portal, ok := obj.(*sreportalv1alpha1.Portal)
+				if !ok {
+					return nil
+				}
+				return componentReconcileRequestsForPortal(ctx, r.Client, portal)
+			}),
+			builder.WithPredicates(PortalStatusPageEnabledWakeupPredicate()),
+		).
 		Named("component").
 		Complete(r)
 }

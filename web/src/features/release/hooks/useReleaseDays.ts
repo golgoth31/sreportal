@@ -7,10 +7,10 @@ import { listReleaseDays } from "../infrastructure/releaseApi";
 
 const DAY_FORMAT = "yyyy-MM-dd";
 
-export function useReleaseDays() {
+export function useReleaseDays(portal: string) {
   const query = useQuery({
-    queryKey: ["releaseDays"],
-    queryFn: listReleaseDays,
+    queryKey: ["releaseDays", portal],
+    queryFn: () => listReleaseDays(portal),
     staleTime: 30_000,
   });
 

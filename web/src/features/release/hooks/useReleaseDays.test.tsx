@@ -35,7 +35,7 @@ describe("useReleaseDays", () => {
       ),
     );
 
-    const { result } = renderHook(() => useReleaseDays(), {
+    const { result } = renderHook(() => useReleaseDays("main"), {
       wrapper: createTestQueryWrapper(),
     });
 
@@ -54,7 +54,7 @@ describe("useReleaseDays", () => {
       ),
     );
 
-    const { result } = renderHook(() => useReleaseDays(), {
+    const { result } = renderHook(() => useReleaseDays("main"), {
       wrapper: createTestQueryWrapper(),
     });
 
@@ -73,7 +73,7 @@ describe("useReleaseDays", () => {
       ),
     );
 
-    const { result } = renderHook(() => useReleaseDays(), {
+    const { result } = renderHook(() => useReleaseDays("main"), {
       wrapper: createTestQueryWrapper(),
     });
 

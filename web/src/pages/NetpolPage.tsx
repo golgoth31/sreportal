@@ -1,7 +1,8 @@
-import { useState } from "react";
 import { useParams } from "react-router";
+import { NetworkIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageRefreshButton } from "@/components/PageRefreshButton";
 import { ErrorAlert } from "@/components/ErrorAlert";
 import { useNetpol } from "@/features/netpol/hooks/useNetpol";
@@ -9,17 +10,8 @@ import { FlowMatrixView } from "@/features/netpol/ui/FlowMatrixView";
 import { ImpactView } from "@/features/netpol/ui/ImpactView";
 import { CrossNamespaceView } from "@/features/netpol/ui/CrossNamespaceView";
 
-type ViewTab = "matrix" | "cross-pl" | "impact";
-
-const TABS: { value: ViewTab; label: string }[] = [
-  { value: "matrix", label: "Flow Matrix" },
-  { value: "cross-pl", label: "Cross-Namespace" },
-  { value: "impact", label: "Impact" },
-];
-
 export function NetpolPage() {
   const { portalName = "main" } = useParams<{ portalName: string }>();
-  const [activeTab, setActiveTab] = useState<ViewTab>("matrix");
   const {
     graph,
     nodeMap,
@@ -46,35 +38,35 @@ export function NetpolPage() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 border-b pb-px">
-        {TABS.map((tab) => (
-          <button
-            key={tab.value}
-            onClick={() => setActiveTab(tab.value)}
-            className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
-              activeTab === tab.value
-                ? "bg-accent text-accent-foreground border-b-2 border-primary"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted"
-            }`}
-          >
-            {tab.label}
-            {tab.value === "impact" && (
-              <Badge variant="outline" className="ml-1.5 text-[10px] px-1.5 py-0">beta</Badge>
-            )}
-          </button>
-        ))}
-      </div>
-
       {error && <ErrorAlert title="Failed to load network policies" error={error} />}
 
       {isLoading && (
         <div className="py-16 text-center text-muted-foreground">Loading network policies...</div>
       )}
 
-      {graph && !error && (
-        <>
-          {activeTab === "matrix" && (
+      {!isLoading && !error && !graph?.nodes.length && (
+        <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
+          <NetworkIcon className="size-8 text-muted-foreground" />
+          <p className="text-muted-foreground text-sm">
+            No network policies found for this portal.
+          </p>
+        </div>
+      )}
+
+      {graph && graph.nodes.length > 0 && !error && (
+        <Tabs defaultValue="matrix">
+          <TabsList variant="line">
+            <TabsTrigger value="matrix">Flow Matrix</TabsTrigger>
+            <TabsTrigger value="cross-pl">Cross-Namespace</TabsTrigger>
+            <TabsTrigger value="impact">
+              Impact
+              <Badge variant="outline" className="ml-1.5 text-[10px] px-1.5 py-0">
+                beta
+              </Badge>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="matrix">
             <FlowMatrixView
               nodes={graph.nodes}
               nodeMap={nodeMap}
@@ -82,22 +74,22 @@ export function NetpolPage() {
               callsFrom={callsFrom}
               allGroups={allGroups}
             />
-          )}
-          {activeTab === "cross-pl" && (
+          </TabsContent>
+          <TabsContent value="cross-pl">
             <CrossNamespaceView
               nodes={graph.nodes}
               edges={graph.edges}
               nodeMap={nodeMap}
             />
-          )}
-          {activeTab === "impact" && (
+          </TabsContent>
+          <TabsContent value="impact">
             <ImpactView
               nodes={graph.nodes}
               nodeMap={nodeMap}
               callsFrom={callsFrom}
             />
-          )}
-        </>
+          </TabsContent>
+        </Tabs>
       )}
     </div>
   );

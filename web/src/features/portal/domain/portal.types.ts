@@ -5,6 +5,14 @@ export interface RemoteSyncStatus {
   readonly fqdnCount: number;
 }
 
+export interface PortalFeatures {
+  readonly dns: boolean;
+  readonly releases: boolean;
+  readonly networkPolicy: boolean;
+  readonly alerts: boolean;
+  readonly statusPage: boolean;
+}
+
 export interface Portal {
   readonly name: string;
   readonly title: string;
@@ -15,10 +23,23 @@ export interface Portal {
   readonly url: string;
   readonly isRemote: boolean;
   readonly remoteSync?: RemoteSyncStatus;
+  readonly features: PortalFeatures;
 }
 
 /** True when the controller reported a non-empty last sync error (stale remote data). */
 export function hasRemoteSyncError(portal: Portal | undefined): boolean {
   const err = portal?.remoteSync?.lastSyncError?.trim();
   return Boolean(err);
+}
+
+/**
+ * Maps the route segment (subPath when set, else metadata name) to Portal metadata.name
+ * for gRPC filters (releases, alerts, etc.).
+ */
+export function portalRefForRoute(
+  portals: readonly Portal[],
+  routeSegment: string,
+): string {
+  const match = portals.find((p) => (p.subPath || p.name) === routeSegment);
+  return match?.name ?? routeSegment;
 }

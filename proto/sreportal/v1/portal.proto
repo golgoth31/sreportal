@@ -48,6 +48,27 @@ message Portal {
 
   // remote_sync contains status information for remote portals
   RemoteSyncStatus remote_sync = 9;
+
+  // features contains the feature toggles for this portal
+  PortalFeatures features = 10;
+}
+
+// PortalFeatures controls which features are enabled for a portal
+message PortalFeatures {
+  // dns enables DNS discovery for this portal
+  bool dns = 1;
+
+  // releases enables the releases page for this portal
+  bool releases = 2;
+
+  // network_policy enables network policy visualization for this portal
+  bool network_policy = 3;
+
+  // alerts enables alertmanager integration for this portal
+  bool alerts = 4;
+
+  // status_page enables the status page (components, incidents, maintenances) for this portal
+  bool status_page = 5;
 }
 
 // RemoteSyncStatus contains status information about remote portal synchronization

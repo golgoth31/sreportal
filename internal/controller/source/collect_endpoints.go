@@ -111,25 +111,28 @@ func resolveEndpointPortal(
 	var target *sreportalv1alpha1.Portal
 
 	if portalName == "" {
+		// No annotation → route to main portal (if available)
+		if idx.Main == nil {
+			logger.Info("discarding endpoint: no annotation and no main portal available",
+				"endpoint", ep.DNSName)
+			return "", nil
+		}
 		portalName = idx.Main.Name
 		target = idx.Main
 	} else if p := idx.ByName[portalName]; p == nil {
-		logger.V(1).Info("portal not found, routing to main portal",
+		logger.Info("discarding endpoint: annotated portal not found",
 			"annotatedPortal", portalName, "endpoint", ep.DNSName)
-		portalName = idx.Main.Name
-		target = idx.Main
+		return "", nil
 	} else if p.Spec.Remote != nil {
-		logger.V(1).Info("portal is remote, routing to main portal",
+		logger.Info("discarding endpoint: annotated portal is remote",
 			"annotatedPortal", portalName, "endpoint", ep.DNSName)
-		portalName = idx.Main.Name
-		target = idx.Main
+		return "", nil
+	} else if !p.Spec.Features.IsDNSEnabled() {
+		logger.Info("discarding endpoint: annotated portal has DNS feature disabled",
+			"annotatedPortal", portalName, "endpoint", ep.DNSName)
+		return "", nil
 	} else {
 		target = p
-	}
-
-	if target == nil || target.Spec.Remote != nil {
-		logger.V(1).Info("no valid local portal for endpoint, skipping", "endpoint", ep.DNSName)
-		return "", nil
 	}
 
 	return portalName, target

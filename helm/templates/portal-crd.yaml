@@ -57,6 +57,35 @@ spec:
           spec:
             description: spec defines the desired state of Portal
             properties:
+              features:
+                description: |-
+                  features controls which features are enabled for this portal.
+                  All features default to true when not specified.
+                properties:
+                  alerts:
+                    default: true
+                    description: alerts enables alertmanager integration for this portal.
+                    type: boolean
+                  dns:
+                    default: true
+                    description: dns enables DNS discovery (controllers, gRPC, MCP,
+                      web page) for this portal.
+                    type: boolean
+                  networkPolicy:
+                    default: true
+                    description: networkPolicy enables network policy visualization
+                      for this portal.
+                    type: boolean
+                  releases:
+                    default: true
+                    description: releases enables the releases page for this portal.
+                    type: boolean
+                  statusPage:
+                    default: true
+                    description: statusPage enables the status page (components, incidents,
+                      maintenances) for this portal.
+                    type: boolean
+                type: object
               main:
                 description: main marks this portal as the default portal for unmatched
                   FQDNs
