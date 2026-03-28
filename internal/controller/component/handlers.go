@@ -105,7 +105,8 @@ func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 	// Detect status change
 	oldStatus := comp.Status.ComputedStatus
 	comp.Status.ComputedStatus = rc.Data.ComputedStatus
-	if oldStatus != rc.Data.ComputedStatus {
+	statusChanged := oldStatus != rc.Data.ComputedStatus
+	if statusChanged {
 		now := metav1.Now()
 		comp.Status.LastStatusChange = &now
 	}
@@ -113,6 +114,14 @@ func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 	// Set Ready condition + patch status
 	if err := statusutil.SetConditionAndPatch(ctx, h.client, comp, "Ready", metav1.ConditionTrue, "Reconciled", "component reconciled"); err != nil {
 		return err
+	}
+
+	// If ComputedStatus changed but condition didn't (already Ready), the status
+	// subresource was not patched above. Persist it explicitly.
+	if statusChanged {
+		if err := h.client.Status().Update(ctx, comp); err != nil {
+			return fmt.Errorf("update component computed status: %w", err)
+		}
 	}
 
 	// Re-fetch to get fresh resourceVersion after status patch

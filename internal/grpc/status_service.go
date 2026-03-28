@@ -21,6 +21,7 @@ import (
 	"sort"
 
 	"errors"
+	"fmt"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -285,6 +286,11 @@ func (s *StatusService) UpsertComponent(
 	ctx context.Context,
 	req *connect.Request[sreportalv1.UpsertComponentRequest],
 ) (*connect.Response[sreportalv1.UpsertComponentResponse], error) {
+	status, err := componentStatusFromProto(req.Msg.Status)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
 	in := statuspage.ComponentInput{
 		Name:        req.Msg.Name,
 		DisplayName: req.Msg.DisplayName,
@@ -292,7 +298,7 @@ func (s *StatusService) UpsertComponent(
 		Group:       req.Msg.Group,
 		Link:        req.Msg.Link,
 		PortalRef:   req.Msg.PortalRef,
-		Status:      componentStatusFromProto(req.Msg.Status),
+		Status:      status,
 	}
 
 	name, created, err := s.writer.UpsertComponent(ctx, in)
@@ -330,6 +336,11 @@ func (s *StatusService) UpsertMaintenance(
 		scheduledEnd = metav1.NewTime(req.Msg.ScheduledEnd.AsTime())
 	}
 
+	affectedStatus, err := maintenanceAffectedStatusFromProto(req.Msg.AffectedStatus)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
 	in := statuspage.MaintenanceInput{
 		Name:           req.Msg.Name,
 		Title:          req.Msg.Title,
@@ -338,7 +349,7 @@ func (s *StatusService) UpsertMaintenance(
 		Components:     req.Msg.Components,
 		ScheduledStart: scheduledStart,
 		ScheduledEnd:   scheduledEnd,
-		AffectedStatus: sreportalv1alpha1.MaintenanceAffectedStatus(req.Msg.AffectedStatus),
+		AffectedStatus: affectedStatus,
 	}
 
 	name, created, err := s.writer.UpsertMaintenance(ctx, in)
@@ -369,16 +380,26 @@ func (s *StatusService) UpsertIncident(
 	req *connect.Request[sreportalv1.UpsertIncidentRequest],
 ) (*connect.Response[sreportalv1.UpsertIncidentResponse], error) {
 	updates := make([]sreportalv1alpha1.IncidentUpdate, 0, len(req.Msg.Updates))
-	for _, u := range req.Msg.Updates {
+	for i, u := range req.Msg.Updates {
+		phase := incidentPhaseFromProto(u.Phase)
+		if phase == "" {
+			return nil, connect.NewError(connect.CodeInvalidArgument,
+				fmt.Errorf("updates[%d].phase: unsupported value %q", i, u.Phase.String()))
+		}
 		var ts metav1.Time
 		if u.Timestamp != nil {
 			ts = metav1.NewTime(u.Timestamp.AsTime())
 		}
 		updates = append(updates, sreportalv1alpha1.IncidentUpdate{
 			Timestamp: ts,
-			Phase:     sreportalv1alpha1.IncidentPhase(incidentPhaseFromProto(u.Phase)),
+			Phase:     sreportalv1alpha1.IncidentPhase(phase),
 			Message:   u.Message,
 		})
+	}
+
+	severity, err := incidentSeverityFromProto(req.Msg.Severity)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	in := statuspage.IncidentInput{
@@ -386,7 +407,7 @@ func (s *StatusService) UpsertIncident(
 		Title:      req.Msg.Title,
 		PortalRef:  req.Msg.PortalRef,
 		Components: req.Msg.Components,
-		Severity:   incidentSeverityFromProto(req.Msg.Severity),
+		Severity:   severity,
 		Updates:    updates,
 	}
 
@@ -414,31 +435,46 @@ func (s *StatusService) DeleteIncident(
 
 // --- Proto → CRD enum converters ---
 
-func componentStatusFromProto(s sreportalv1.ComponentStatus) sreportalv1alpha1.ComponentStatusValue {
+func componentStatusFromProto(s sreportalv1.ComponentStatus) (sreportalv1alpha1.ComponentStatusValue, error) {
 	switch s {
 	case sreportalv1.ComponentStatus_COMPONENT_STATUS_OPERATIONAL:
-		return sreportalv1alpha1.ComponentStatusOperational
+		return sreportalv1alpha1.ComponentStatusOperational, nil
 	case sreportalv1.ComponentStatus_COMPONENT_STATUS_DEGRADED:
-		return sreportalv1alpha1.ComponentStatusDegraded
+		return sreportalv1alpha1.ComponentStatusDegraded, nil
 	case sreportalv1.ComponentStatus_COMPONENT_STATUS_PARTIAL_OUTAGE:
-		return sreportalv1alpha1.ComponentStatusPartialOut
+		return sreportalv1alpha1.ComponentStatusPartialOut, nil
 	case sreportalv1.ComponentStatus_COMPONENT_STATUS_MAJOR_OUTAGE:
-		return sreportalv1alpha1.ComponentStatusMajorOutage
+		return sreportalv1alpha1.ComponentStatusMajorOutage, nil
+	case sreportalv1.ComponentStatus_COMPONENT_STATUS_UNKNOWN:
+		return sreportalv1alpha1.ComponentStatusUnknown, nil
 	default:
-		return sreportalv1alpha1.ComponentStatusUnknown
+		return "", fmt.Errorf("status: unsupported value %q", s.String())
 	}
 }
 
-func incidentSeverityFromProto(s sreportalv1.IncidentSeverity) sreportalv1alpha1.IncidentSeverity {
+func incidentSeverityFromProto(s sreportalv1.IncidentSeverity) (sreportalv1alpha1.IncidentSeverity, error) {
 	switch s {
 	case sreportalv1.IncidentSeverity_INCIDENT_SEVERITY_CRITICAL:
-		return sreportalv1alpha1.IncidentSeverityCritical
+		return sreportalv1alpha1.IncidentSeverityCritical, nil
 	case sreportalv1.IncidentSeverity_INCIDENT_SEVERITY_MAJOR:
-		return sreportalv1alpha1.IncidentSeverityMajor
+		return sreportalv1alpha1.IncidentSeverityMajor, nil
 	case sreportalv1.IncidentSeverity_INCIDENT_SEVERITY_MINOR:
-		return sreportalv1alpha1.IncidentSeverityMinor
+		return sreportalv1alpha1.IncidentSeverityMinor, nil
 	default:
-		return sreportalv1alpha1.IncidentSeverityMinor
+		return "", fmt.Errorf("severity: unsupported value %q", s.String())
+	}
+}
+
+func maintenanceAffectedStatusFromProto(s string) (sreportalv1alpha1.MaintenanceAffectedStatus, error) {
+	v := sreportalv1alpha1.MaintenanceAffectedStatus(s)
+	switch v {
+	case sreportalv1alpha1.MaintenanceAffectedMaintenance,
+		sreportalv1alpha1.MaintenanceAffectedDegraded,
+		sreportalv1alpha1.MaintenanceAffectedPartialOut,
+		sreportalv1alpha1.MaintenanceAffectedMajorOutage:
+		return v, nil
+	default:
+		return "", fmt.Errorf("affected_status: unsupported value %q", s)
 	}
 }
 

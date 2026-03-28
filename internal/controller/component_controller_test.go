@@ -106,6 +106,69 @@ var _ = Describe("Component Controller", func() {
 			}, 10*time.Second, 500*time.Millisecond).Should(Succeed())
 		})
 
+		It("should update computedStatus when spec.status changes", func() {
+			const statusChangeComp = "comp-status-change"
+			const statusChangePortal = "portal-status-change"
+			statusChangeNN := types.NamespacedName{Name: statusChangeComp, Namespace: "default"}
+
+			By("creating dedicated Portal and Component")
+			portal := &sreportalv1alpha1.Portal{
+				ObjectMeta: metav1.ObjectMeta{Name: statusChangePortal, Namespace: "default"},
+				Spec:       sreportalv1alpha1.PortalSpec{Title: "Status Change Portal"},
+			}
+			Expect(k8sClient.Create(ctx, portal)).To(Succeed())
+			defer func() { _ = k8sClient.Delete(ctx, portal) }()
+
+			comp := &sreportalv1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{Name: statusChangeComp, Namespace: "default"},
+				Spec: sreportalv1alpha1.ComponentSpec{
+					DisplayName: "Status Change Comp",
+					Group:       "Test",
+					PortalRef:   statusChangePortal,
+					Status:      sreportalv1alpha1.ComponentStatusOperational,
+				},
+			}
+			Expect(k8sClient.Create(ctx, comp)).To(Succeed())
+			defer func() { _ = k8sClient.Delete(ctx, comp) }()
+
+			maintStore := maintenancereadstore.NewMaintenanceStore()
+			compStore := componentreadstore.NewComponentStore()
+			controllerReconciler := NewComponentReconciler(k8sClient, maintStore, compStore)
+
+			// First reconcile — sets condition Ready=True and computedStatus=operational
+			Eventually(func(g Gomega) {
+				_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: statusChangeNN,
+				})
+				g.Expect(err).NotTo(HaveOccurred())
+
+				var fetched sreportalv1alpha1.Component
+				g.Expect(k8sClient.Get(ctx, statusChangeNN, &fetched)).To(Succeed())
+				g.Expect(fetched.Status.ComputedStatus).To(Equal(sreportalv1alpha1.ComputedStatusOperational))
+			}, 10*time.Second, 500*time.Millisecond).Should(Succeed())
+
+			// Update spec.status to degraded
+			Eventually(func(g Gomega) {
+				var fetched sreportalv1alpha1.Component
+				g.Expect(k8sClient.Get(ctx, statusChangeNN, &fetched)).To(Succeed())
+				fetched.Spec.Status = sreportalv1alpha1.ComponentStatusDegraded
+				g.Expect(k8sClient.Update(ctx, &fetched)).To(Succeed())
+			}, 10*time.Second, 500*time.Millisecond).Should(Succeed())
+
+			// Second reconcile — computedStatus must reflect the new spec.status
+			Eventually(func(g Gomega) {
+				_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: statusChangeNN,
+				})
+				g.Expect(err).NotTo(HaveOccurred())
+
+				var fetched sreportalv1alpha1.Component
+				g.Expect(k8sClient.Get(ctx, statusChangeNN, &fetched)).To(Succeed())
+				g.Expect(fetched.Status.ComputedStatus).To(Equal(sreportalv1alpha1.ComputedStatusDegraded))
+				g.Expect(fetched.Status.LastStatusChange).NotTo(BeNil())
+			}, 10*time.Second, 500*time.Millisecond).Should(Succeed())
+		})
+
 		It("should requeue when portalRef does not exist", func() {
 			maintStore := maintenancereadstore.NewMaintenanceStore()
 			compStore := componentreadstore.NewComponentStore()

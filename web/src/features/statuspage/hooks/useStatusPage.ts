@@ -101,12 +101,24 @@ export function useStatusPage({ portal }: UseStatusPageParams) {
     incidentsQuery.refetch();
   }, [componentsQuery, maintenancesQuery, incidentsQuery]);
 
+  const openIncidentCount = useMemo(
+    () => incidents.filter((i) => i.currentPhase !== "resolved").length,
+    [incidents]
+  );
+
+  const ongoingMaintenanceCount = useMemo(
+    () => maintenances.filter((m) => m.phase === "in_progress").length,
+    [maintenances]
+  );
+
   return {
     components,
     groupedComponents,
     maintenances: sortedMaintenances,
     incidents,
     globalStatus,
+    openIncidentCount,
+    ongoingMaintenanceCount,
     isLoading,
     isFetching,
     error,

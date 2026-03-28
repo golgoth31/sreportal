@@ -66,6 +66,7 @@ export function PortalSidebar({
         <NavLink to={`${basePath}/status`} className={linkClass}>
           <ActivityIcon className="size-4 shrink-0" aria-hidden="true" />
           <span>Status</span>
+          <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0">alpha</Badge>
         </NavLink>
       </nav>
       <nav className="mt-auto px-2" aria-label="Portal statistics">

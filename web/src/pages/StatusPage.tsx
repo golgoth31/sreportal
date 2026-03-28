@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useParams } from "react-router";
 
+import { Badge } from "@/components/ui/badge";
 import { ErrorAlert } from "@/components/ErrorAlert";
 import { PageRefreshButton } from "@/components/PageRefreshButton";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,13 +11,18 @@ import { ComponentSection } from "@/features/statuspage/ui/ComponentSection";
 import { MaintenanceSection } from "@/features/statuspage/ui/MaintenanceSection";
 import { IncidentSection } from "@/features/statuspage/ui/IncidentSection";
 
+type StatusTab = "components" | "incidents" | "maintenance";
+
 export function StatusPage() {
   const { portalName = "main" } = useParams<{ portalName: string }>();
+  const [activeTab, setActiveTab] = useState<StatusTab>("components");
   const {
     groupedComponents,
     maintenances,
     incidents,
     globalStatus,
+    openIncidentCount,
+    ongoingMaintenanceCount,
     isLoading,
     isFetching,
     error,
@@ -49,11 +56,73 @@ export function StatusPage() {
       ) : (
         <>
           <StatusBanner status={globalStatus} />
-          <ComponentSection groupedComponents={groupedComponents} />
-          <MaintenanceSection maintenances={maintenances} />
-          <IncidentSection incidents={incidents} />
+
+          {/* Tabs */}
+          <div className="flex gap-1 border-b pb-px">
+            <TabButton
+              active={activeTab === "components"}
+              onClick={() => setActiveTab("components")}
+            >
+              Components
+            </TabButton>
+            <TabButton
+              active={activeTab === "incidents"}
+              onClick={() => setActiveTab("incidents")}
+            >
+              Incidents
+              {openIncidentCount > 0 && (
+                <Badge variant="destructive" className="ml-1.5 text-[10px] px-1.5 py-0">
+                  {openIncidentCount}
+                </Badge>
+              )}
+            </TabButton>
+            <TabButton
+              active={activeTab === "maintenance"}
+              onClick={() => setActiveTab("maintenance")}
+            >
+              Maintenance
+              {ongoingMaintenanceCount > 0 && (
+                <Badge variant="outline" className="ml-1.5 text-[10px] px-1.5 py-0 border-blue-500 text-blue-500">
+                  {ongoingMaintenanceCount}
+                </Badge>
+              )}
+            </TabButton>
+          </div>
+
+          {activeTab === "components" && (
+            <ComponentSection groupedComponents={groupedComponents} />
+          )}
+          {activeTab === "incidents" && (
+            <IncidentSection incidents={incidents} />
+          )}
+          {activeTab === "maintenance" && (
+            <MaintenanceSection maintenances={maintenances} />
+          )}
         </>
       )}
     </div>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
+        active
+          ? "bg-accent text-accent-foreground border-b-2 border-primary"
+          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
