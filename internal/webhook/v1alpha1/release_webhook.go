@@ -65,8 +65,8 @@ type ReleaseCustomValidator struct {
 func (v *ReleaseCustomValidator) ValidateCreate(ctx context.Context, obj *sreportalv1alpha1.Release) (admission.Warnings, error) {
 	releaselog.Info("Validation for Release upon creation", "name", obj.GetName())
 
-	if w, err := v.validatePortalRef(ctx, obj); err != nil {
-		return w, err
+	if err := v.validatePortalRef(ctx, obj); err != nil {
+		return nil, err
 	}
 	return v.validateEntryTypes(obj)
 }
@@ -75,8 +75,8 @@ func (v *ReleaseCustomValidator) ValidateCreate(ctx context.Context, obj *srepor
 func (v *ReleaseCustomValidator) ValidateUpdate(ctx context.Context, _, newObj *sreportalv1alpha1.Release) (admission.Warnings, error) {
 	releaselog.Info("Validation for Release upon update", "name", newObj.GetName())
 
-	if w, err := v.validatePortalRef(ctx, newObj); err != nil {
-		return w, err
+	if err := v.validatePortalRef(ctx, newObj); err != nil {
+		return nil, err
 	}
 	return v.validateEntryTypes(newObj)
 }
@@ -89,9 +89,9 @@ func (v *ReleaseCustomValidator) ValidateDelete(_ context.Context, obj *sreporta
 }
 
 // validatePortalRef checks that the referenced portal exists.
-func (v *ReleaseCustomValidator) validatePortalRef(ctx context.Context, obj *sreportalv1alpha1.Release) (admission.Warnings, error) {
+func (v *ReleaseCustomValidator) validatePortalRef(ctx context.Context, obj *sreportalv1alpha1.Release) error {
 	if obj.Spec.PortalRef == "" {
-		return nil, fmt.Errorf("spec.portalRef is required")
+		return fmt.Errorf("spec.portalRef is required")
 	}
 
 	var portal sreportalv1alpha1.Portal
@@ -102,12 +102,12 @@ func (v *ReleaseCustomValidator) validatePortalRef(ctx context.Context, obj *sre
 
 	if err := v.client.Get(ctx, key, &portal); err != nil {
 		if apierrors.IsNotFound(err) {
-			return nil, fmt.Errorf("referenced portal %q not found in namespace %q", obj.Spec.PortalRef, obj.Namespace)
+			return fmt.Errorf("referenced portal %q not found in namespace %q", obj.Spec.PortalRef, obj.Namespace)
 		}
-		return nil, fmt.Errorf("failed to check portal reference: %w", err)
+		return fmt.Errorf("failed to check portal reference: %w", err)
 	}
 
-	return nil, nil
+	return nil
 }
 
 // validateEntryTypes checks that all entry types are in the allowed types list.

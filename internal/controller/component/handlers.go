@@ -13,13 +13,15 @@ import (
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/controller/statusutil"
 	domaincomponent "github.com/golgoth31/sreportal/internal/domain/component"
+	domainincident "github.com/golgoth31/sreportal/internal/domain/incident"
 	domainmaint "github.com/golgoth31/sreportal/internal/domain/maintenance"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
 // ChainData holds shared state between handlers.
 type ChainData struct {
-	ComputedStatus sreportalv1alpha1.ComputedComponentStatus
+	ComputedStatus  sreportalv1alpha1.ComputedComponentStatus
+	ActiveIncidents int
 }
 
 // --- Handler 1: ValidatePortalRef ---
@@ -50,14 +52,15 @@ func (h *ValidatePortalRefHandler) Handle(ctx context.Context, rc *reconciler.Re
 
 // --- Handler 2: ComputeStatus ---
 
-// ComputeStatusHandler computes the effective status considering active maintenances.
+// ComputeStatusHandler computes the effective status considering active maintenances and incidents.
 type ComputeStatusHandler struct {
 	maintenanceReader domainmaint.MaintenanceReader
+	incidentReader    domainincident.IncidentReader
 }
 
 // NewComputeStatusHandler creates a new ComputeStatusHandler.
-func NewComputeStatusHandler(maintenanceReader domainmaint.MaintenanceReader) *ComputeStatusHandler {
-	return &ComputeStatusHandler{maintenanceReader: maintenanceReader}
+func NewComputeStatusHandler(maintenanceReader domainmaint.MaintenanceReader, incidentReader domainincident.IncidentReader) *ComputeStatusHandler {
+	return &ComputeStatusHandler{maintenanceReader: maintenanceReader, incidentReader: incidentReader}
 }
 
 func (h *ComputeStatusHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.Component, ChainData]) error {
@@ -83,6 +86,35 @@ func (h *ComputeStatusHandler) Handle(ctx context.Context, rc *reconciler.Reconc
 		}
 	}
 
+	// Check active incidents — incidents take precedence over maintenance
+	if h.incidentReader != nil {
+		incidents, err := h.incidentReader.List(ctx, domainincident.ListOptions{
+			PortalRef: comp.Spec.PortalRef,
+		})
+		if err != nil {
+			return fmt.Errorf("list incidents: %w", err)
+		}
+
+		var activeCount int
+		worstStatus := string(rc.Data.ComputedStatus)
+
+		for _, inc := range incidents {
+			if !inc.AffectsComponent(comp.Spec.PortalRef, comp.Name) {
+				continue
+			}
+			activeCount++
+			incStatus := inc.ComponentStatus()
+			if domaincomponent.StatusSeverityRank(incStatus) > domaincomponent.StatusSeverityRank(worstStatus) {
+				worstStatus = incStatus
+			}
+		}
+
+		if activeCount > 0 {
+			rc.Data.ComputedStatus = sreportalv1alpha1.ComputedComponentStatus(worstStatus)
+		}
+		rc.Data.ActiveIncidents = activeCount
+	}
+
 	return nil
 }
 
@@ -105,6 +137,7 @@ func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 	// Detect status change
 	oldStatus := comp.Status.ComputedStatus
 	comp.Status.ComputedStatus = rc.Data.ComputedStatus
+	comp.Status.ActiveIncidents = rc.Data.ActiveIncidents
 	statusChanged := oldStatus != rc.Data.ComputedStatus
 	if statusChanged {
 		now := metav1.Now()

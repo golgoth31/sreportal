@@ -32,6 +32,7 @@ import (
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	componentchain "github.com/golgoth31/sreportal/internal/controller/component"
 	domaincomponent "github.com/golgoth31/sreportal/internal/domain/component"
+	domainincident "github.com/golgoth31/sreportal/internal/domain/incident"
 	domainmaint "github.com/golgoth31/sreportal/internal/domain/maintenance"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/metrics"
@@ -49,11 +50,12 @@ type ComponentReconciler struct {
 func NewComponentReconciler(
 	c client.Client,
 	maintenanceReader domainmaint.MaintenanceReader,
+	incidentReader domainincident.IncidentReader,
 	componentWriter domaincomponent.ComponentWriter,
 ) *ComponentReconciler {
 	chain := reconciler.NewChain(
 		componentchain.NewValidatePortalRefHandler(c),
-		componentchain.NewComputeStatusHandler(maintenanceReader),
+		componentchain.NewComputeStatusHandler(maintenanceReader, incidentReader),
 		componentchain.NewUpdateStatusHandler(c, componentWriter),
 	)
 
@@ -123,6 +125,24 @@ func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					requests = append(requests, ctrlreconcile.Request{
 						NamespacedName: types.NamespacedName{
 							Namespace: maint.Namespace,
+							Name:      compName,
+						},
+					})
+				}
+				return requests
+			},
+		)).
+		Watches(&sreportalv1alpha1.Incident{}, handler.EnqueueRequestsFromMapFunc(
+			func(ctx context.Context, obj client.Object) []ctrlreconcile.Request {
+				inc, ok := obj.(*sreportalv1alpha1.Incident)
+				if !ok {
+					return nil
+				}
+				var requests []ctrlreconcile.Request
+				for _, compName := range inc.Spec.Components {
+					requests = append(requests, ctrlreconcile.Request{
+						NamespacedName: types.NamespacedName{
+							Namespace: inc.Namespace,
 							Name:      compName,
 						},
 					})

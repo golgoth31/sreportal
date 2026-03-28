@@ -32,8 +32,6 @@ import (
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 )
 
-func boolPtr(b bool) *bool { return &b }
-
 func TestPortalReleasesFeatureWakeupPredicate_Create(t *testing.T) {
 	p := PortalReleasesFeatureWakeupPredicate()
 
@@ -50,7 +48,7 @@ func TestPortalReleasesFeatureWakeupPredicate_Create(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "p", Namespace: "ns"},
 			Spec: sreportalv1alpha1.PortalSpec{
 				Title:    "t",
-				Features: &sreportalv1alpha1.PortalFeatures{Releases: boolPtr(true)},
+				Features: &sreportalv1alpha1.PortalFeatures{Releases: new(true)},
 			},
 		}
 		assert.True(t, p.Create(event.CreateEvent{Object: portal}))
@@ -61,7 +59,7 @@ func TestPortalReleasesFeatureWakeupPredicate_Create(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "p", Namespace: "ns"},
 			Spec: sreportalv1alpha1.PortalSpec{
 				Title:    "t",
-				Features: &sreportalv1alpha1.PortalFeatures{Releases: boolPtr(false)},
+				Features: &sreportalv1alpha1.PortalFeatures{Releases: new(false)},
 			},
 		}
 		assert.False(t, p.Create(event.CreateEvent{Object: portal}))
@@ -79,12 +77,12 @@ func TestPortalReleasesFeatureWakeupPredicate_Update(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "p", Namespace: "ns", ResourceVersion: "1"},
 		Spec: sreportalv1alpha1.PortalSpec{
 			Title:    "t",
-			Features: &sreportalv1alpha1.PortalFeatures{Releases: boolPtr(false)},
+			Features: &sreportalv1alpha1.PortalFeatures{Releases: new(false)},
 		},
 	}
 	baseNew := baseOld.DeepCopy()
 	baseNew.ResourceVersion = "2"
-	baseNew.Spec.Features = &sreportalv1alpha1.PortalFeatures{Releases: boolPtr(true)}
+	baseNew.Spec.Features = &sreportalv1alpha1.PortalFeatures{Releases: new(true)}
 
 	t.Run("disabled to enabled", func(t *testing.T) {
 		assert.True(t, p.Update(event.UpdateEvent{ObjectOld: baseOld, ObjectNew: baseNew}))
@@ -117,7 +115,7 @@ func TestPortalReleasesFeatureWakeupPredicate_Update(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "p", Namespace: "ns"},
 			Spec: sreportalv1alpha1.PortalSpec{
 				Title:    "t",
-				Features: &sreportalv1alpha1.PortalFeatures{Releases: boolPtr(false)},
+				Features: &sreportalv1alpha1.PortalFeatures{Releases: new(false)},
 			},
 		}
 		newP := &sreportalv1alpha1.Portal{
@@ -134,12 +132,12 @@ func TestPortalDNSEnabledWakeupPredicate_Update_DisabledToEnabled(t *testing.T) 
 		ObjectMeta: metav1.ObjectMeta{Name: "p", Namespace: "ns", ResourceVersion: "1"},
 		Spec: sreportalv1alpha1.PortalSpec{
 			Title:    "t",
-			Features: &sreportalv1alpha1.PortalFeatures{DNS: boolPtr(false)},
+			Features: &sreportalv1alpha1.PortalFeatures{DNS: new(false)},
 		},
 	}
 	newP := oldP.DeepCopy()
 	newP.ResourceVersion = "2"
-	newP.Spec.Features = &sreportalv1alpha1.PortalFeatures{DNS: boolPtr(true)}
+	newP.Spec.Features = &sreportalv1alpha1.PortalFeatures{DNS: new(true)}
 	assert.True(t, p.Update(event.UpdateEvent{ObjectOld: oldP, ObjectNew: newP}))
 }
 
@@ -189,7 +187,7 @@ func TestReleaseReconcileRequestsForPortal_ReleasesDisabled_ReturnsNil(t *testin
 		ObjectMeta: metav1.ObjectMeta{Name: "main", Namespace: "default"},
 		Spec: sreportalv1alpha1.PortalSpec{
 			Title:    "Main",
-			Features: &sreportalv1alpha1.PortalFeatures{Releases: boolPtr(false)},
+			Features: &sreportalv1alpha1.PortalFeatures{Releases: new(false)},
 		},
 	}
 	c := fake.NewClientBuilder().WithScheme(s).WithObjects(portal).Build()
