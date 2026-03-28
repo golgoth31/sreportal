@@ -702,6 +702,7 @@ _Appears in:_
 | `releases` _boolean_ | releases enables the releases page for this portal. |   |   |
 | `networkPolicy` _boolean_ | networkPolicy enables network policy visualization for this portal. |   |   |
 | `alerts` _boolean_ | alerts enables alertmanager integration for this portal. |   |   |
+| `statusPage` _boolean_ | statusPage enables the status page (components, incidents, maintenances) for this portal. |   |   |
 
 
 

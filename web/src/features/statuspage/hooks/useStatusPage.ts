@@ -95,11 +95,21 @@ export function useStatusPage({ portal }: UseStatusPageParams) {
   const error: Error | null =
     componentsQuery.error ?? maintenancesQuery.error ?? incidentsQuery.error ?? null;
 
+  const {
+    refetch: refetchComponents,
+  } = componentsQuery;
+  const {
+    refetch: refetchMaintenances,
+  } = maintenancesQuery;
+  const {
+    refetch: refetchIncidents,
+  } = incidentsQuery;
+
   const refetch = useCallback(() => {
-    componentsQuery.refetch();
-    maintenancesQuery.refetch();
-    incidentsQuery.refetch();
-  }, [componentsQuery, maintenancesQuery, incidentsQuery]);
+    refetchComponents();
+    refetchMaintenances();
+    refetchIncidents();
+  }, [refetchComponents, refetchMaintenances, refetchIncidents]);
 
   const openIncidentCount = useMemo(
     () => incidents.filter((i) => i.currentPhase !== "resolved").length,
@@ -109,6 +119,12 @@ export function useStatusPage({ portal }: UseStatusPageParams) {
   const ongoingMaintenanceCount = useMemo(
     () => maintenances.filter((m) => m.phase === "in_progress").length,
     [maintenances]
+  );
+
+  const dataUpdatedAt = Math.max(
+    componentsQuery.dataUpdatedAt,
+    maintenancesQuery.dataUpdatedAt,
+    incidentsQuery.dataUpdatedAt
   );
 
   return {
@@ -123,5 +139,6 @@ export function useStatusPage({ portal }: UseStatusPageParams) {
     isFetching,
     error,
     refetch,
+    dataUpdatedAt,
   };
 }

@@ -1,6 +1,8 @@
 import { useMemo, useState, useCallback } from "react";
 
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -10,33 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import type { NetpolNode, NetpolEdge } from "../domain/netpol.types";
-
-const GROUP_PALETTE = [
-  "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-  "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-  "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-  "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200",
-  "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200",
-  "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200",
-  "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-  "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
-];
-
-function groupColor(group: string): string {
-  let hash = 0;
-  for (let i = 0; i < group.length; i++) hash = (hash * 31 + group.charCodeAt(i)) | 0;
-  return GROUP_PALETTE[Math.abs(hash) % GROUP_PALETTE.length]!;
-}
-
-const TYPE_COLORS: Record<string, string> = {
-  service: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-  database: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-  messaging: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300",
-  cron: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
-  external: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
-};
+import { groupColor, NODE_TYPE_COLORS, dedup } from "../domain/utils";
 
 interface Props {
   nodes: readonly NetpolNode[];
@@ -154,12 +130,9 @@ export function FlowMatrixView({ nodes, nodeMap, callsTo, callsFrom, allGroups }
             ))}
           </SelectContent>
         </Select>
-        <button
-          onClick={copyMarkdown}
-          className="text-xs px-3 py-1.5 rounded-md border border-border bg-muted hover:bg-accent transition-colors"
-        >
+        <Button variant="outline" size="sm" onClick={copyMarkdown}>
           Copy as Markdown
-        </button>
+        </Button>
         <span className="text-muted-foreground text-sm ml-auto">
           {services.length} services across {byNs.size} namespaces
         </span>
@@ -171,6 +144,7 @@ export function FlowMatrixView({ nodes, nodeMap, callsTo, callsFrom, allGroups }
           <div key={ns} className="space-y-2">
             <button
               onClick={() => toggleNs(ns)}
+              aria-expanded={!nsCollapsed}
               className="flex items-center gap-2 w-full text-left text-lg font-semibold border-b pb-1 hover:text-accent-foreground transition-colors"
             >
               <span className="text-muted-foreground text-sm">{nsCollapsed ? "▶" : "▼"}</span>
@@ -202,16 +176,6 @@ export function FlowMatrixView({ nodes, nodeMap, callsTo, callsFrom, allGroups }
   );
 }
 
-function dedup(edges: readonly NetpolEdge[]): NetpolEdge[] {
-  const seen = new Set<string>();
-  return edges.filter((e) => {
-    const key = `${e.from}|${e.to}|${e.edgeType}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
 function ServiceCard({
   svc,
   collapsed,
@@ -231,6 +195,7 @@ function ServiceCard({
     <div className="rounded-lg border bg-card overflow-hidden">
       <button
         onClick={onToggle}
+        aria-expanded={!collapsed}
         className="flex items-center gap-2 w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors"
       >
         <span className="text-muted-foreground text-xs">{collapsed ? "▶" : "▼"}</span>
@@ -248,10 +213,10 @@ function ServiceCard({
               Calls to ({callsTo.length})
             </p>
             {callsTo.length === 0 && <p className="text-xs text-muted-foreground pl-3 italic">No outgoing flows</p>}
-            {callsTo.map((e, i) => {
+            {callsTo.map((e) => {
               const n = nodeMap.get(e.to);
               if (!n) return null;
-              return <FlowRow key={i} node={n} edgeType={e.edgeType} svcGroup={svc.group} />;
+              return <FlowRow key={`${e.from}|${e.to}|${e.edgeType}`} node={n} edgeType={e.edgeType} svcGroup={svc.group} />;
             })}
           </div>
 
@@ -260,10 +225,10 @@ function ServiceCard({
               Called from ({calledFrom.length})
             </p>
             {calledFrom.length === 0 && <p className="text-xs text-muted-foreground pl-3 italic">No incoming flows</p>}
-            {calledFrom.map((e, i) => {
+            {calledFrom.map((e) => {
               const n = nodeMap.get(e.from);
               if (!n) return null;
-              return <FlowRow key={i} node={n} edgeType={e.edgeType} svcGroup={svc.group} />;
+              return <FlowRow key={`${e.from}|${e.to}|${e.edgeType}`} node={n} edgeType={e.edgeType} svcGroup={svc.group} />;
             })}
           </div>
         </div>
@@ -275,7 +240,7 @@ function ServiceCard({
 function FlowRow({ node, edgeType, svcGroup }: { node: NetpolNode; edgeType: string; svcGroup: string }) {
   return (
     <div className="flex items-center gap-2 pl-3 py-0.5 text-sm">
-      <Badge variant="outline" className={TYPE_COLORS[node.nodeType] ?? ""}>
+      <Badge variant="outline" className={cn(NODE_TYPE_COLORS[node.nodeType])}>
         {node.nodeType}
       </Badge>
       <span className="font-medium">{node.label}</span>

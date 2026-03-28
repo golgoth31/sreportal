@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
+import { ChevronDownIcon, ChevronRightIcon, InfoIcon } from "lucide-react";
+
+import { cn } from "@/lib/utils";
 
 import type { Incident, IncidentPhase, IncidentSeverity } from "../domain/types";
 
@@ -8,7 +10,16 @@ interface IncidentSectionProps {
 }
 
 export function IncidentSection({ incidents }: IncidentSectionProps) {
-  if (incidents.length === 0) return null;
+  if (incidents.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
+        <InfoIcon className="size-8 text-muted-foreground" />
+        <p className="text-muted-foreground text-sm">
+          No incidents reported for this portal.
+        </p>
+      </div>
+    );
+  }
 
   const active = incidents.filter((i) => i.currentPhase !== "resolved");
   const resolved = incidents
@@ -43,18 +54,22 @@ function IncidentCard({
 
   return (
     <div
-      className={`rounded-lg border p-4 ${
+      className={cn(
+        "rounded-lg border p-4",
         isActive
           ? "border-red-300 bg-red-50/50 dark:border-red-700 dark:bg-red-950/30"
           : "bg-card"
-      }`}
+      )}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h4 className="font-medium text-sm">{incident.title}</h4>
             <span
-              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${severityColor}`}
+              className={cn(
+                "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                severityColor
+              )}
             >
               {incident.severity.toUpperCase()}
             </span>
@@ -76,6 +91,7 @@ function IncidentCard({
             onClick={() => setOpen(!open)}
             className="p-1 hover:bg-muted rounded"
             aria-label={open ? "Collapse timeline" : "Expand timeline"}
+            aria-expanded={open}
           >
             {open ? (
               <ChevronDownIcon className="size-4" />
@@ -87,8 +103,8 @@ function IncidentCard({
       </div>
       {open && incident.updates.length > 0 && (
         <div className="mt-3 ml-1 border-l-2 border-muted pl-4 space-y-2">
-          {incident.updates.map((update, i) => (
-            <div key={i} className="text-xs">
+          {incident.updates.map((update) => (
+            <div key={`${update.timestamp}-${update.phase}`} className="text-xs">
               <span className="text-muted-foreground">
                 {formatTime(update.timestamp)}
               </span>
@@ -118,7 +134,10 @@ function IncidentPhaseBadge({ phase }: { phase: IncidentPhase }) {
 
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap ${styles[phase]}`}
+      className={cn(
+        "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap",
+        styles[phase]
+      )}
     >
       {phase.toUpperCase()}
     </span>
@@ -148,7 +167,7 @@ function formatDate(iso: string): string {
 
 function formatTime(iso: string): string {
   if (!iso) return "";
-  return new Date(iso).toLocaleTimeString(undefined, {
+  return new Date(iso).toLocaleString(undefined, {
     hour: "2-digit",
     minute: "2-digit",
   });

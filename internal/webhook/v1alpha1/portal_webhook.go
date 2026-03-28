@@ -80,6 +80,10 @@ func (d *PortalCustomDefaulter) Default(_ context.Context, obj *sreportalv1alpha
 		obj.Spec.Features.Alerts = &trueVal
 	}
 
+	if obj.Spec.Features.StatusPage == nil {
+		obj.Spec.Features.StatusPage = &trueVal
+	}
+
 	return nil
 }
 

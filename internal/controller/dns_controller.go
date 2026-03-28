@@ -107,6 +107,8 @@ func (r *DNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	}
 
 	// Skip reconciliation when DNS feature is disabled on the referenced portal.
+	// Cleanup of read store entries and DNSRecord resources is handled by the
+	// portal controller when the toggle changes.
 	if resource.Spec.PortalRef != "" {
 		var portal sreportalv1alpha1.Portal
 		if err := r.Get(ctx, client.ObjectKey{Name: resource.Spec.PortalRef, Namespace: resource.Namespace}, &portal); err == nil {

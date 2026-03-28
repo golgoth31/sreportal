@@ -6,6 +6,7 @@ type PortalFeatures struct {
 	Releases      bool
 	NetworkPolicy bool
 	Alerts        bool
+	StatusPage    bool
 }
 
 // PortalView is the read-side projection of a Portal, pre-aggregated by the controller.

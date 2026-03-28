@@ -10,6 +10,7 @@ export interface PortalFeatures {
   readonly releases: boolean;
   readonly networkPolicy: boolean;
   readonly alerts: boolean;
+  readonly statusPage: boolean;
 }
 
 export interface Portal {

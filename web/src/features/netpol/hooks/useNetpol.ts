@@ -1,11 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { listNetworkPolicies } from "../infrastructure/netpolApi";
 import { buildFlowMaps, type NetpolNode } from "../domain/netpol.types";
 
 export function useNetpol(portalName: string) {
-  const [search, setSearch] = useState("");
 
   const query = useQuery({
     queryKey: ["netpol", portalName],
@@ -46,7 +45,5 @@ export function useNetpol(portalName: string) {
     isFetching: query.isFetching,
     error: query.error,
     refetch: query.refetch,
-    search,
-    setSearch,
   };
 }

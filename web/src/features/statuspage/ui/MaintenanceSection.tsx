@@ -1,4 +1,6 @@
-import { WrenchIcon } from "lucide-react";
+import { CalendarIcon, WrenchIcon } from "lucide-react";
+
+import { cn } from "@/lib/utils";
 
 import type { Maintenance, MaintenancePhase } from "../domain/types";
 
@@ -7,7 +9,16 @@ interface MaintenanceSectionProps {
 }
 
 export function MaintenanceSection({ maintenances }: MaintenanceSectionProps) {
-  if (maintenances.length === 0) return null;
+  if (maintenances.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
+        <CalendarIcon className="size-8 text-muted-foreground" />
+        <p className="text-muted-foreground text-sm">
+          No maintenances scheduled for this portal.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
@@ -26,11 +37,12 @@ function MaintenanceCard({ maintenance }: { maintenance: Maintenance }) {
 
   return (
     <div
-      className={`rounded-lg border p-4 ${
+      className={cn(
+        "rounded-lg border p-4",
         isActive
           ? "border-blue-300 bg-blue-50/50 dark:border-blue-700 dark:bg-blue-950/30"
           : "bg-card"
-      }`}
+      )}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-2 min-w-0">
@@ -76,7 +88,10 @@ function PhaseBadge({ phase }: { phase: MaintenancePhase }) {
 
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap ${styles[phase]}`}
+      className={cn(
+        "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap",
+        styles[phase]
+      )}
     >
       {labels[phase]}
     </span>

@@ -1696,6 +1696,10 @@
         "alerts": {
           "type": "boolean",
           "title": "alerts enables alertmanager integration for this portal"
+        },
+        "statusPage": {
+          "type": "boolean",
+          "title": "status_page enables the status page (components, incidents, maintenances) for this portal"
         }
       },
       "title": "PortalFeatures controls which features are enabled for a portal"

@@ -70,6 +70,11 @@ type PortalFeatures struct {
 	// +optional
 	// +kubebuilder:default=true
 	Alerts *bool `json:"alerts,omitempty"`
+
+	// statusPage enables the status page (components, incidents, maintenances) for this portal.
+	// +optional
+	// +kubebuilder:default=true
+	StatusPage *bool `json:"statusPage,omitempty"`
 }
 
 // IsDNSEnabled returns true if DNS feature is enabled (nil-safe, defaults to true).
@@ -90,6 +95,11 @@ func (f *PortalFeatures) IsNetworkPolicyEnabled() bool {
 // IsAlertsEnabled returns true if alerts feature is enabled (nil-safe, defaults to true).
 func (f *PortalFeatures) IsAlertsEnabled() bool {
 	return f == nil || f.Alerts == nil || *f.Alerts
+}
+
+// IsStatusPageEnabled returns true if status page feature is enabled (nil-safe, defaults to true).
+func (f *PortalFeatures) IsStatusPageEnabled() bool {
+	return f == nil || f.StatusPage == nil || *f.StatusPage
 }
 
 // RemotePortalSpec defines the configuration for fetching data from a remote portal.

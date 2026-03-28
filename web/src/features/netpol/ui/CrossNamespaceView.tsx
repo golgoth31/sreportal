@@ -1,26 +1,18 @@
 import { useMemo } from "react";
+import { GitBranchIcon } from "lucide-react";
 
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import type { NetpolNode, NetpolEdge } from "../domain/netpol.types";
-
-const GROUP_PALETTE = [
-  "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-  "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-  "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-  "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200",
-  "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200",
-  "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200",
-  "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-  "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
-];
-
-function groupColor(group: string): string {
-  let hash = 0;
-  for (let i = 0; i < group.length; i++) hash = (hash * 31 + group.charCodeAt(i)) | 0;
-  return GROUP_PALETTE[Math.abs(hash) % GROUP_PALETTE.length]!;
-}
+import { groupColor, MAX_TOP_FLOWS } from "../domain/utils";
 
 interface Props {
   nodes: readonly NetpolNode[];
@@ -45,7 +37,7 @@ export function CrossNamespaceView({ edges, nodeMap }: Props) {
       const tgt = nodeMap.get(e.to);
       if (!src || !tgt || src.group === tgt.group) continue;
 
-      const key = `${src.group}→${tgt.group}`;
+      const key = `${src.group}\u2192${tgt.group}`;
       const existing = map.get(key);
       if (existing) {
         existing.count++;
@@ -68,7 +60,6 @@ export function CrossNamespaceView({ edges, nodeMap }: Props) {
     [flows]
   );
 
-  // Build matrix
   const matrix = useMemo(() => {
     const m = new Map<string, Map<string, number>>();
     for (const pl of allPls) {
@@ -79,6 +70,17 @@ export function CrossNamespaceView({ edges, nodeMap }: Props) {
     }
     return m;
   }, [flows, allPls]);
+
+  if (flows.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
+        <GitBranchIcon className="size-8 text-muted-foreground" />
+        <p className="text-muted-foreground text-sm">
+          No cross-namespace flows detected.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -91,51 +93,53 @@ export function CrossNamespaceView({ edges, nodeMap }: Props) {
 
       {/* Matrix table */}
       <div className="overflow-x-auto">
-        <table className="text-sm border-collapse">
-          <thead>
-            <tr>
-              <th className="p-2 text-left text-muted-foreground text-xs">From ↓ / To →</th>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-xs">From \u2193 / To \u2192</TableHead>
               {allPls.map((pl) => (
-                <th key={pl} className="p-2 text-center">
+                <TableHead key={pl} className="text-center">
                   <Badge variant="outline" className={groupColor(pl)}>{pl}</Badge>
-                </th>
+                </TableHead>
               ))}
-            </tr>
-          </thead>
-          <tbody>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {allPls.map((srcPl) => (
-              <tr key={srcPl} className="border-t border-border">
-                <td className="p-2">
+              <TableRow key={srcPl}>
+                <TableCell>
                   <Badge variant="outline" className={groupColor(srcPl)}>{srcPl}</Badge>
-                </td>
+                </TableCell>
                 {allPls.map((tgtPl) => {
                   const count = matrix.get(srcPl)?.get(tgtPl) ?? 0;
                   return (
-                    <td key={tgtPl} className="p-2 text-center">
+                    <TableCell key={tgtPl} className="text-center">
                       {srcPl === tgtPl ? (
-                        <span className="text-muted-foreground">—</span>
+                        <span className="text-muted-foreground">\u2014</span>
                       ) : count > 0 ? (
                         <span className="font-medium">{count}</span>
                       ) : (
                         <span className="text-muted-foreground/30">0</span>
                       )}
-                    </td>
+                    </TableCell>
                   );
                 })}
-              </tr>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       {/* Top flows */}
       <div className="space-y-2">
-        <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Top flows</h3>
-        {flows.slice(0, 20).map((f, i) => (
-          <div key={i} className="flex items-center gap-2 text-sm">
-            <Badge variant="outline" className={groupColor(f.sourcePl)}>{f.sourcePl}</Badge>
-            <span className="text-muted-foreground">→</span>
-            <Badge variant="outline" className={groupColor(f.targetPl)}>{f.targetPl}</Badge>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Top flows
+        </h3>
+        {flows.slice(0, MAX_TOP_FLOWS).map((f) => (
+          <div key={`${f.sourcePl}\u2192${f.targetPl}`} className="flex items-center gap-2 text-sm">
+            <Badge variant="outline" className={cn(groupColor(f.sourcePl))}>{f.sourcePl}</Badge>
+            <span className="text-muted-foreground">\u2192</span>
+            <Badge variant="outline" className={cn(groupColor(f.targetPl))}>{f.targetPl}</Badge>
             <span className="font-medium">{f.count} flows</span>
           </div>
         ))}

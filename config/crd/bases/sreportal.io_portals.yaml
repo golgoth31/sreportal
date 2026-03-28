@@ -80,6 +80,11 @@ spec:
                     default: true
                     description: releases enables the releases page for this portal.
                     type: boolean
+                  statusPage:
+                    default: true
+                    description: statusPage enables the status page (components, incidents,
+                      maintenances) for this portal.
+                    type: boolean
                 type: object
               main:
                 description: main marks this portal as the default portal for unmatched

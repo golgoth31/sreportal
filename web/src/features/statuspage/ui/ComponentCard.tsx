@@ -3,6 +3,14 @@ import { ExternalLinkIcon } from "lucide-react";
 import type { PlatformComponent } from "../domain/types";
 import { getStatusColor, getStatusLabel } from "../domain/utils";
 
+function safeHostname(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+}
+
 interface ComponentCardProps {
   component: PlatformComponent;
 }
@@ -40,7 +48,7 @@ export function ComponentCard({ component }: ComponentCardProps) {
         >
           <ExternalLinkIcon className="size-3" />
           <span className="truncate max-w-48">
-            {new URL(component.link).hostname}
+            {safeHostname(component.link)}
           </span>
         </a>
       )}

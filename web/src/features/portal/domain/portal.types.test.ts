@@ -11,6 +11,13 @@ function portal(p: Partial<Portal> & Pick<Portal, "name" | "title">): Portal {
     url: "",
     isRemote: false,
     remoteSync: undefined,
+    features: {
+      dns: true,
+      releases: true,
+      networkPolicy: true,
+      alerts: true,
+      statusPage: true,
+    },
     ...p,
   };
 }

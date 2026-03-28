@@ -84,7 +84,7 @@ func (r *MaintenanceReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		logger.Error(err, "reconciliation chain failed")
 		metrics.ReconcileTotal.WithLabelValues("maintenance", "error").Inc()
 		metrics.ReconcileDuration.WithLabelValues("maintenance").Observe(time.Since(start).Seconds())
-		return ctrl.Result{}, nil
+		return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
 	}
 
 	metrics.ReconcileTotal.WithLabelValues("maintenance", "success").Inc()

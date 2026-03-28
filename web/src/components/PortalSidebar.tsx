@@ -25,6 +25,7 @@ export function PortalSidebar({
   const showReleases = currentPortal?.features.releases === true;
   const showNetworkPolicy = currentPortal?.features.networkPolicy !== false;
   const showAlerts = currentPortal?.features.alerts === true;
+  const showStatusPage = currentPortal?.features.statusPage !== false;
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
@@ -85,11 +86,13 @@ export function PortalSidebar({
             <span>Alerts</span>
           </NavLink>
         )}
-        <NavLink to={`${basePath}/status`} className={linkClass}>
-          <ActivityIcon className="size-4 shrink-0" aria-hidden="true" />
-          <span>Status</span>
-          <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0">alpha</Badge>
-        </NavLink>
+        {showStatusPage && (
+          <NavLink to={`${basePath}/status`} className={linkClass}>
+            <ActivityIcon className="size-4 shrink-0" aria-hidden="true" />
+            <span>Status</span>
+            <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0">alpha</Badge>
+          </NavLink>
+        )}
       </nav>
       <nav className="mt-auto px-2" aria-label="Portal statistics">
         <NavLink to={`${basePath}/dashboard`} className={linkClass}>

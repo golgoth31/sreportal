@@ -66,6 +66,9 @@ message PortalFeatures {
 
   // alerts enables alertmanager integration for this portal
   bool alerts = 4;
+
+  // status_page enables the status page (components, incidents, maintenances) for this portal
+  bool status_page = 5;
 }
 
 // RemoteSyncStatus contains status information about remote portal synchronization

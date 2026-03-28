@@ -98,6 +98,16 @@ func (r *PortalReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	logger.Info("reconciling Portal", "name", portal.Name, "namespace", portal.Namespace)
 
+	// When DNS feature is disabled, purge all associated data from the read store
+	// and delete DNSRecord K8s resources. Data is recovered automatically when the
+	// feature is re-enabled: DNS controllers resume, source reconciler recreates
+	// DNSRecords, and portal controller resumes remote DNS sync.
+	if !portal.Spec.Features.IsDNSEnabled() {
+		if err := r.cleanupDNSData(ctx, &portal); err != nil {
+			logger.Error(err, "failed to clean up DNS data for disabled feature")
+		}
+	}
+
 	var result ctrl.Result
 	var reconcileErr error
 
@@ -413,6 +423,7 @@ func portalToView(p *sreportalv1alpha1.Portal) domainportal.PortalView {
 			Releases:      p.Spec.Features.IsReleasesEnabled(),
 			NetworkPolicy: p.Spec.Features.IsNetworkPolicyEnabled(),
 			Alerts:        p.Spec.Features.IsAlertsEnabled(),
+			StatusPage:    p.Spec.Features.IsStatusPageEnabled(),
 		},
 	}
 	if p.Spec.Remote != nil {
@@ -430,6 +441,64 @@ func portalToView(p *sreportalv1alpha1.Portal) domainportal.PortalView {
 		view.RemoteSync = rs
 	}
 	return view
+}
+
+// cleanupDNSData removes all DNS-related data for a portal from the FQDN read store
+// and deletes DNSRecord K8s resources. DNS CRs are preserved (they hold spec data
+// needed for recovery). Called when the DNS feature toggle is disabled.
+func (r *PortalReconciler) cleanupDNSData(ctx context.Context, portal *sreportalv1alpha1.Portal) error {
+	logger := log.FromContext(ctx)
+
+	if r.fqdnWriter == nil {
+		return nil
+	}
+
+	// Delete read store entries for all DNS CRs belonging to this portal.
+	var dnsList sreportalv1alpha1.DNSList
+	if err := r.List(ctx, &dnsList,
+		client.InNamespace(portal.Namespace),
+		client.MatchingFields{FieldIndexPortalRef: portal.Name},
+	); err != nil {
+		return fmt.Errorf("list DNS resources: %w", err)
+	}
+
+	for i := range dnsList.Items {
+		resourceKey := dnsList.Items[i].Namespace + "/" + dnsList.Items[i].Name
+		if err := r.fqdnWriter.Delete(ctx, resourceKey); err != nil {
+			logger.Error(err, "failed to delete DNS FQDN views from read store", "key", resourceKey)
+		}
+	}
+
+	// Delete read store entries for all DNSRecord CRs belonging to this portal,
+	// then delete the DNSRecord K8s resources themselves. The source reconciler
+	// will recreate them when DNS is re-enabled.
+	var dnsRecordList sreportalv1alpha1.DNSRecordList
+	if err := r.List(ctx, &dnsRecordList,
+		client.InNamespace(portal.Namespace),
+		client.MatchingFields{FieldIndexPortalRef: portal.Name},
+	); err != nil {
+		return fmt.Errorf("list DNSRecord resources: %w", err)
+	}
+
+	for i := range dnsRecordList.Items {
+		rec := &dnsRecordList.Items[i]
+		resourceKey := rec.Namespace + "/" + rec.Name
+		if err := r.fqdnWriter.Delete(ctx, resourceKey); err != nil {
+			logger.Error(err, "failed to delete DNSRecord FQDN views from read store", "key", resourceKey)
+		}
+		if err := r.Delete(ctx, rec); err != nil && !errors.IsNotFound(err) {
+			logger.Error(err, "failed to delete DNSRecord", "name", rec.Name)
+		} else if err == nil {
+			logger.Info("deleted DNSRecord (DNS feature disabled)", "name", rec.Name)
+		}
+	}
+
+	logger.Info("cleaned up DNS data for disabled feature",
+		"portal", portal.Name,
+		"dnsCount", len(dnsList.Items),
+		"dnsRecordCount", len(dnsRecordList.Items))
+
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
