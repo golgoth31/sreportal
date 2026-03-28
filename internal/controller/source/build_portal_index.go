@@ -80,8 +80,7 @@ func (h *BuildPortalIndexHandler) Handle(ctx context.Context, rc *reconciler.Rec
 
 	if idx.Main == nil {
 		if len(idx.Local) > 0 {
-			idx.Main = idx.Local[0]
-			logger.Info("no main portal found, using first local portal as fallback", "name", idx.Main.Name)
+			logger.Info("WARNING: no main portal found (spec.main=true); unannotated sources will be discarded")
 		} else {
 			logger.Info("no local portals found, skipping source reconciliation")
 			return nil
