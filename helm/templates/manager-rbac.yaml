@@ -82,8 +82,11 @@ rules:
   - sreportal.io
   resources:
   - alertmanagers
+  - components
   - dns
   - dnsrecords
+  - incidents
+  - maintenances
   - networkflowdiscoveries
   - portals
   - releases
@@ -99,8 +102,11 @@ rules:
   - sreportal.io
   resources:
   - alertmanagers/finalizers
+  - components/finalizers
   - dns/finalizers
   - dnsrecords/finalizers
+  - incidents/finalizers
+  - maintenances/finalizers
   - networkflowdiscoveries/finalizers
   - portals/finalizers
   - releases/finalizers
@@ -110,10 +116,13 @@ rules:
   - sreportal.io
   resources:
   - alertmanagers/status
+  - components/status
   - dns/status
   - dnsrecords/status
   - flowedgesets/status
   - flownodesets/status
+  - incidents/status
+  - maintenances/status
   - networkflowdiscoveries/status
   - portals/status
   - releases/status

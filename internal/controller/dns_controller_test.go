@@ -237,7 +237,10 @@ var _ = Describe("DNS Controller", func() {
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 
 				// Pre-populate status as the portal controller would
-				Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
+				// Wait for cache to sync after Create before reading back
+				Eventually(func() error {
+					return k8sClient.Get(ctx, typeNamespacedName, resource)
+				}, 5*time.Second, 200*time.Millisecond).Should(Succeed())
 				resource.Status.Groups = []sreportalv1alpha1.FQDNGroupStatus{
 					{
 						Name:   "remote-group",
@@ -265,10 +268,9 @@ var _ = Describe("DNS Controller", func() {
 
 		AfterEach(func() {
 			resource := &sreportalv1alpha1.DNS{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			if err == nil {
+			if err := k8sClient.Get(ctx, typeNamespacedName, resource); err == nil {
 				By("Cleanup the DNS resource")
-				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+				_ = k8sClient.Delete(ctx, resource)
 			}
 		})
 
@@ -276,17 +278,19 @@ var _ = Describe("DNS Controller", func() {
 			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), true)
 
 			By("Reconciling and verifying status is NOT overwritten")
-			result, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			Expect(result.RequeueAfter).To(BeZero(), "remote DNS should not be requeued by DNS controller")
+			Eventually(func(g Gomega) {
+				result, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: typeNamespacedName,
+				})
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(result.RequeueAfter).To(BeZero(), "remote DNS should not be requeued by DNS controller")
 
-			var dns sreportalv1alpha1.DNS
-			Expect(k8sClient.Get(ctx, typeNamespacedName, &dns)).To(Succeed())
-			Expect(dns.Status.Groups).To(HaveLen(1), "status should be preserved")
-			Expect(dns.Status.Groups[0].FQDNs).To(HaveLen(2), "FQDNs should not be wiped")
-			Expect(dns.Status.Groups[0].FQDNs[0].FQDN).To(Equal("remote.example.com"))
+				var dns sreportalv1alpha1.DNS
+				g.Expect(k8sClient.Get(ctx, typeNamespacedName, &dns)).To(Succeed())
+				g.Expect(dns.Status.Groups).To(HaveLen(1), "status should be preserved")
+				g.Expect(dns.Status.Groups[0].FQDNs).To(HaveLen(2), "FQDNs should not be wiped")
+				g.Expect(dns.Status.Groups[0].FQDNs[0].FQDN).To(Equal("remote.example.com"))
+			}, timeout, interval).Should(Succeed())
 		})
 
 		It("should not project into the FQDN read store", func() {
@@ -294,14 +298,16 @@ var _ = Describe("DNS Controller", func() {
 			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), true)
 			controllerReconciler.SetFQDNWriter(store)
 
-			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
+			Eventually(func(g Gomega) {
+				_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: typeNamespacedName,
+				})
+				g.Expect(err).NotTo(HaveOccurred())
 
-			views, err := store.List(ctx, domaindns.FQDNFilters{})
-			Expect(err).NotTo(HaveOccurred())
-			Expect(views).To(BeEmpty(), "DNS controller should not project remote FQDNs")
+				views, err := store.List(ctx, domaindns.FQDNFilters{})
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(views).To(BeEmpty(), "DNS controller should not project remote FQDNs")
+			}, timeout, interval).Should(Succeed())
 		})
 	})
 

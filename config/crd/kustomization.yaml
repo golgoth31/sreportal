@@ -10,9 +10,12 @@ resources:
   - bases/sreportal.io_networkflowdiscoveries.yaml
   - bases/sreportal.io_flownodesets.yaml
   - bases/sreportal.io_flowedgesets.yaml
+  - bases/sreportal.io_components.yaml
+  - bases/sreportal.io_maintenances.yaml
+  - bases/sreportal.io_incidents.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
-patches:
+patches: []
 # [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix.
 # patches here are for enabling the conversion webhook for each CRD
 # +kubebuilder:scaffold:crdkustomizewebhookpatch

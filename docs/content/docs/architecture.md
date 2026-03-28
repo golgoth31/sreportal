@@ -27,17 +27,17 @@ graph TB
     WebUI --> API
 ```
 
-The five components share the same process:
+The six components share the same process:
 
 - **Controllers** reconcile CRDs using controller-runtime and push projections into the ReadStore
 - **ReadStore** holds pre-aggregated read models in-memory, decoupling reads from the Kubernetes API
 - **Connect API** serves gRPC-compatible endpoints over HTTP/2 (h2c), reading from the ReadStore
 - **Web UI** serves the React SPA as static files via Echo v5
-- **MCP Servers** expose [Model Context Protocol](https://modelcontextprotocol.io/) at `/mcp` and `/mcp/dns` (DNS/portals), `/mcp/alerts` (alerts), `/mcp/metrics` (Prometheus metrics), `/mcp/releases` (release tracking), and `/mcp/netpol` (network flows) for AI assistant integration
+- **MCP Servers** expose [Model Context Protocol](https://modelcontextprotocol.io/) at `/mcp` and `/mcp/dns` (DNS/portals), `/mcp/alerts` (alerts), `/mcp/metrics` (Prometheus metrics), `/mcp/releases` (release tracking), `/mcp/netpol` (network flows), and `/mcp/status` (status page) for AI assistant integration
 
 ## Custom Resource Definitions
 
-SRE Portal defines five CRDs that work together:
+SRE Portal defines eight CRDs that work together:
 
 ```mermaid
 graph TD
@@ -47,6 +47,14 @@ graph TD
     (auto-discovered)"]
     Portal -->|portalRef| Alertmanager["Alertmanager
     (alert source)"]
+    Portal -->|portalRef| Component["Component
+    (platform status)"]
+    Portal -->|portalRef| Maintenance["Maintenance
+    (scheduled windows)"]
+    Portal -->|portalRef| Incident["Incident
+    (declared incidents)"]
+    Maintenance -->|"components[]"| Component
+    Incident -->|"components[]"| Component
     Release["Release
     (release events per day)"]
 ```
@@ -74,6 +82,18 @@ Links an Alertmanager instance to a portal via `spec.portalRef`. The spec define
 Stores release events (deployments, rollbacks, hotfixes, feature flags, etc.) organized by day. Each Release CR is named `release-YYYY-MM-DD` and holds an array of entries with type, version, origin, date, and optional author, message, and link fields. Release CRs are not linked to a portal — they are global and shown on the main portal's Releases page.
 
 The Release controller automatically deletes CRs older than the configured TTL (default: 30 days).
+
+### Component
+
+Represents a monitored platform component (e.g., GKE cluster, Cloud SQL, API Gateway) linked to a portal via `spec.portalRef`. The user declares the operational status in `spec.status` (`operational`, `degraded`, `partial_outage`, `major_outage`, `unknown`). The controller computes `status.computedStatus`, which may be overridden to `maintenance` when an active Maintenance targets this component.
+
+### Maintenance
+
+Represents a scheduled maintenance window linked to a portal. The spec defines `scheduledStart`, `scheduledEnd`, a list of affected `components[]`, and the `affectedStatus` to apply during the window. The controller automatically computes the phase (`upcoming` → `in_progress` → `completed`) and uses strategic `RequeueAfter` to transition at the exact scheduled times.
+
+### Incident
+
+Represents a declared incident linked to a portal. The spec contains `severity` (`critical`, `major`, `minor`), affected `components[]`, and a timeline of `updates[]` appended via `kubectl edit/patch`. The controller derives `status.currentPhase` from the latest update, and computes `startedAt`, `resolvedAt`, and `durationMinutes` when resolved.
 
 ## Design Principles
 
@@ -110,6 +130,9 @@ Each bounded context has its own domain interfaces (`internal/domain/<ctx>/reade
 | Alertmanager | `AlertmanagerStore` | Alertmanager resource key | `AlertmanagerReader` | `AlertmanagerWriter` |
 | Network Policy | `FlowGraphStore` | NFD name (dual node/edge stores + portalRef mapping) | `FlowGraphReader` | `FlowGraphWriter` |
 | Release | `ReleaseStore` | Day string (`2026-03-25`) | `ReleaseReader` | `ReleaseWriter` |
+| Component | `ComponentStore` | Component resource key | `ComponentReader` | `ComponentWriter` |
+| Maintenance | `MaintenanceStore` | Maintenance resource key | `MaintenanceReader` | `MaintenanceWriter` |
+| Incident | `IncidentStore` | Incident resource key | `IncidentReader` | `IncidentWriter` |
 
 Mutations broadcast to subscribers via a channel-close pattern, enabling event-driven streams (e.g. `StreamFQDNs`) without polling.
 
@@ -161,6 +184,18 @@ The Release controller watches Release CRs and performs two duties:
 
 2. **TTL cleanup**: checks whether the CR's day is older than the configured TTL (default: 30 days). Expired CRs are automatically deleted. Each CR is re-checked every 12 hours via `RequeueAfter`.
 
+### Component Controller (Chain)
+
+Uses the Chain-of-Responsibility pattern with three steps: **ValidatePortalRef** (verify Portal exists), **ComputeStatus** (read MaintenanceReader for active maintenance override), **UpdateStatus** (patch computedStatus, label, project to ReadStore). Also watches Maintenance CRs to re-enqueue affected components. See the [Component Flow]({{< relref "flows/component" >}}) for details.
+
+### Maintenance Controller (Chain)
+
+Uses two chain steps: **ComputePhase** (upcoming/in_progress/completed from current time) and **UpdateStatus** (patch phase, project to ReadStore, set strategic RequeueAfter). No fixed polling — requeues at exact transition times (`scheduledStart`, `scheduledEnd`). See the [Maintenance Flow]({{< relref "flows/maintenance" >}}) for details.
+
+### Incident Controller (Chain)
+
+Uses two chain steps: **ComputeStatus** (derive currentPhase from latest update, compute duration if resolved) and **UpdateStatus** (patch status fields, project to ReadStore). Uses the domain function `incident.ComputeStatus()` for all phase/duration computation.
+
 ## Connect API
 
 The API uses the [Connect protocol](https://connectrpc.com) (gRPC-compatible over HTTP/1.1 and HTTP/2) with protobuf definitions in `proto/sreportal/v1/`.
@@ -193,6 +228,14 @@ All Connect handlers share a unary interceptor (`internal/grpc/interceptor.go`) 
 | `AddRelease` | Append a release entry to the day’s Release CR (type validated against configured allowlist when `release.types` is set) |
 | `ListReleases` | List release entries for a day (pagination within the day; `previous_day` / `next_day` for adjacent days with data) |
 | `ListReleaseDays` | Return all days that have Release CRs and the TTL window (`ttl_days`) for the UI |
+
+### StatusService
+
+| RPC | Description |
+|-----|-------------|
+| `ListComponents` | Lists platform components with status (filters: `portal_ref`, `group`) |
+| `ListMaintenances` | Lists maintenance windows (filters: `portal_ref`, `phase`) |
+| `ListIncidents` | Lists incidents (filters: `portal_ref`, `phase`) |
 
 ### VersionService
 
@@ -243,6 +286,15 @@ The operator includes five built-in [Model Context Protocol](https://modelcontex
 | `list_network_flows` | List network flow nodes and edges (optional filters: portal, namespace, search with 1-hop expansion) |
 | `get_service_flows` | Get all incoming and outgoing flows for a specific service |
 | `impact_analysis` | BFS blast radius analysis — which services are impacted if a resource goes down |
+
+**Status Page** (mounted at `/mcp/status`):
+
+| Tool | Description |
+|------|-------------|
+| `list_components` | List platform components with operational status (filters: portal, group) |
+| `list_maintenances` | List maintenance windows (filters: portal, phase) |
+| `list_incidents` | List incidents (filters: portal, phase) |
+| `get_platform_status` | Aggregated platform health summary with status counts |
 
 ## Data Flow
 

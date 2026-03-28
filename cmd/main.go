@@ -56,13 +56,17 @@ import (
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/mcp"
 	alertmanagerreadstore "github.com/golgoth31/sreportal/internal/readstore/alertmanager"
+	componentreadstore "github.com/golgoth31/sreportal/internal/readstore/component"
 	dnsreadstore "github.com/golgoth31/sreportal/internal/readstore/dns"
+	incidentreadstore "github.com/golgoth31/sreportal/internal/readstore/incident"
+	maintenancereadstore "github.com/golgoth31/sreportal/internal/readstore/maintenance"
 	netpolreadstore "github.com/golgoth31/sreportal/internal/readstore/netpol"
 	portalreadstore "github.com/golgoth31/sreportal/internal/readstore/portal"
 	releasereadstore "github.com/golgoth31/sreportal/internal/readstore/release"
 	releaseservice "github.com/golgoth31/sreportal/internal/release"
 	"github.com/golgoth31/sreportal/internal/remoteclient"
 	"github.com/golgoth31/sreportal/internal/source"
+	statuspagesvc "github.com/golgoth31/sreportal/internal/statuspage"
 	"github.com/golgoth31/sreportal/internal/version"
 	webhookv1alpha1 "github.com/golgoth31/sreportal/internal/webhook/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/webserver"
@@ -483,6 +487,28 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "NetworkFlowDiscovery")
 		os.Exit(1)
 	}
+	// Status page stores and controllers
+	componentStore := componentreadstore.NewComponentStore()
+	maintenanceStore := maintenancereadstore.NewMaintenanceStore()
+	incidentStore := incidentreadstore.NewIncidentStore()
+
+	componentReconciler := controller.NewComponentReconciler(mgr.GetClient(), maintenanceStore, componentStore)
+	if err := componentReconciler.SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Component")
+		os.Exit(1)
+	}
+
+	maintenanceReconciler := controller.NewMaintenanceReconciler(mgr.GetClient(), maintenanceStore)
+	if err := maintenanceReconciler.SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Maintenance")
+		os.Exit(1)
+	}
+
+	incidentReconciler := controller.NewIncidentReconciler(mgr.GetClient(), incidentStore)
+	if err := incidentReconciler.SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Incident")
+		os.Exit(1)
+	}
 	// +kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
@@ -532,6 +558,10 @@ func main() {
 		PortalReader:        portalStore,
 		AlertmanagerReader:  alertmanagerStore,
 		FlowGraphReader:     flowGraphStore,
+		ComponentReader:     componentStore,
+		MaintenanceReader:   maintenanceStore,
+		IncidentReader:      incidentStore,
+		StatusPageService:   statuspagesvc.NewService(mgr.GetClient(), portalNamespace),
 		AuthChain:           authChain,
 	}
 	if devMode {
@@ -568,6 +598,7 @@ func main() {
 		metricsMcpServer := mcp.NewMetricsServer(ctrlmetrics.Registry)
 		releasesMcpServer := mcp.NewReleasesServer(releaseStore)
 		netpolMcpServer := mcp.NewNetpolServer(flowGraphStore)
+		statusMcpServer := mcp.NewStatusServer(componentStore, maintenanceStore, incidentStore)
 
 		switch mcpTransport {
 		case "stdio":
@@ -585,6 +616,7 @@ func main() {
 				"metrics", "/mcp/metrics",
 				"releases", "/mcp/releases",
 				"netpol", "/mcp/netpol",
+				"status", "/mcp/status",
 			)
 			webServer.MountHandler("/mcp", dnsMcpServer.Handler())
 			webServer.MountHandler("/mcp/dns", dnsMcpServer.Handler())
@@ -592,6 +624,7 @@ func main() {
 			webServer.MountHandler("/mcp/metrics", metricsMcpServer.Handler())
 			webServer.MountHandler("/mcp/releases", releasesMcpServer.Handler())
 			webServer.MountHandler("/mcp/netpol", netpolMcpServer.Handler())
+			webServer.MountHandler("/mcp/status", statusMcpServer.Handler())
 		default:
 			setupLog.Error(nil, "unknown MCP transport", "transport", mcpTransport)
 			os.Exit(1)

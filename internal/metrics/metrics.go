@@ -207,6 +207,43 @@ var (
 	)
 )
 
+// --- Status page metrics ---
+
+var (
+	// ComponentsTotal tracks the number of components by portal, group, and status.
+	ComponentsTotal = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: "statuspage",
+			Name:      "components_total",
+			Help:      "Number of components by portal, group, and computed status.",
+		},
+		[]string{"portal", "group", "status"},
+	)
+
+	// MaintenancesTotal tracks the number of maintenances by portal and phase.
+	MaintenancesTotal = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: "statuspage",
+			Name:      "maintenances_total",
+			Help:      "Number of maintenances by portal and phase.",
+		},
+		[]string{"portal", "phase"},
+	)
+
+	// IncidentsTotal tracks the number of incidents by portal, phase, and severity.
+	IncidentsTotal = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: "statuspage",
+			Name:      "incidents_total",
+			Help:      "Number of incidents by portal, phase, and severity.",
+		},
+		[]string{"portal", "phase", "severity"},
+	)
+)
+
 // --- HTTP server metrics ---
 
 var (
@@ -319,6 +356,10 @@ func init() {
 		ReleaseAddTotal,
 		ReleaseAddErrorsTotal,
 		ReleaseCleanupDeletedTotal,
+		// Status page
+		ComponentsTotal,
+		MaintenancesTotal,
+		IncidentsTotal,
 		// HTTP
 		HTTPRequestsTotal,
 		HTTPRequestDuration,

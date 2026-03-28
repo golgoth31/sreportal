@@ -13,4 +13,6 @@ Detailed step-by-step diagrams showing how data flows through each controller, f
   {{< card link="portal" title="Portal Flow" subtitle="Local status, remote sync (DNS, alerts, network flows), child CR lifecycle." icon="view-grid" >}}
   {{< card link="release" title="Release Flow" subtitle="Daily release tracking with TTL cleanup and ReadStore projection." icon="calendar" >}}
   {{< card link="network-flow-discovery" title="Network Flow Discovery Flow" subtitle="NetworkPolicy parsing, graph building, and FlowNodeSet/FlowEdgeSet management." icon="switch-horizontal" >}}
+  {{< card link="component" title="Component Flow" subtitle="Platform component status computation with maintenance override via ReadStore." icon="check-circle" >}}
+  {{< card link="maintenance" title="Maintenance Flow" subtitle="Phase lifecycle (upcoming → in_progress → completed) with strategic RequeueAfter." icon="clock" >}}
 {{< /cards >}}
