@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -43,11 +44,29 @@ func releaseScheme() *runtime.Scheme {
 	return s
 }
 
+func mainPortalCR() *sreportalv1alpha1.Portal {
+	return &sreportalv1alpha1.Portal{
+		ObjectMeta: metav1.ObjectMeta{Name: "main", Namespace: "default"},
+		Spec:       sreportalv1alpha1.PortalSpec{Title: "Main"},
+	}
+}
+
+func releaseView(day, typ, ver string, ts time.Time) domainrelease.EntryView {
+	return domainrelease.EntryView{
+		PortalRef: "main",
+		Day:       day,
+		Type:      typ,
+		Version:   ver,
+		Origin:    "ci",
+		Date:      ts,
+	}
+}
+
 func TestAddRelease_CreatesEntry(t *testing.T) {
 	ctx := context.Background()
 	scheme := releaseScheme()
-	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&sreportalv1alpha1.Release{}).Build()
-	svc := releaseservice.NewService(k8sClient, "default")
+	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mainPortalCR()).WithStatusSubresource(&sreportalv1alpha1.Release{}).Build()
+	svc := releaseservice.NewService(k8sClient, "default", "main")
 	store := releasereadstore.NewReleaseStore()
 	grpcSvc := svcgrpc.NewReleaseService(store, svc, 30*24*time.Hour, nil)
 
@@ -68,7 +87,7 @@ func TestAddRelease_EmptyType(t *testing.T) {
 	ctx := context.Background()
 	scheme := releaseScheme()
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).Build()
-	svc := releaseservice.NewService(k8sClient, "default")
+	svc := releaseservice.NewService(k8sClient, "default", "main")
 	store := releasereadstore.NewReleaseStore()
 	grpcSvc := svcgrpc.NewReleaseService(store, svc, 30*24*time.Hour, nil)
 
@@ -86,8 +105,8 @@ func TestAddRelease_EmptyType(t *testing.T) {
 func TestAddRelease_WithOptionalFields(t *testing.T) {
 	ctx := context.Background()
 	scheme := releaseScheme()
-	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&sreportalv1alpha1.Release{}).Build()
-	svc := releaseservice.NewService(k8sClient, "default")
+	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mainPortalCR()).WithStatusSubresource(&sreportalv1alpha1.Release{}).Build()
+	svc := releaseservice.NewService(k8sClient, "default", "main")
 	store := releasereadstore.NewReleaseStore()
 	grpcSvc := svcgrpc.NewReleaseService(store, svc, 30*24*time.Hour, nil)
 
@@ -110,9 +129,9 @@ func TestAddRelease_WithOptionalFields(t *testing.T) {
 func TestListReleases_ReturnsEntries(t *testing.T) {
 	ctx := context.Background()
 	store := releasereadstore.NewReleaseStore()
-	_ = store.Replace(ctx, "2026-03-21", []domainrelease.EntryView{
-		{Type: "deployment", Version: "v1.0.0", Origin: "ci/cd", Date: time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC)},
-		{Type: "rollback", Version: "v0.9.0", Origin: "manual", Date: time.Date(2026, 3, 21, 14, 0, 0, 0, time.UTC)},
+	_ = store.Replace(ctx, "default/release-2026-03-21", []domainrelease.EntryView{
+		releaseView("2026-03-21", "deployment", "v1.0.0", time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC)),
+		{PortalRef: "main", Day: "2026-03-21", Type: "rollback", Version: "v0.9.0", Origin: "manual", Date: time.Date(2026, 3, 21, 14, 0, 0, 0, time.UTC)},
 	})
 	grpcSvc := svcgrpc.NewReleaseService(store, nil, 30*24*time.Hour, nil)
 
@@ -130,11 +149,11 @@ func TestListReleases_ReturnsEntries(t *testing.T) {
 func TestListReleases_EmptyDayReturnsLatest(t *testing.T) {
 	ctx := context.Background()
 	store := releasereadstore.NewReleaseStore()
-	_ = store.Replace(ctx, "2026-03-20", []domainrelease.EntryView{
-		{Type: "deployment", Version: "v1.0.0", Origin: "ci", Date: time.Date(2026, 3, 20, 10, 0, 0, 0, time.UTC)},
+	_ = store.Replace(ctx, "default/release-2026-03-20", []domainrelease.EntryView{
+		releaseView("2026-03-20", "deployment", "v1.0.0", time.Date(2026, 3, 20, 10, 0, 0, 0, time.UTC)),
 	})
-	_ = store.Replace(ctx, "2026-03-21", []domainrelease.EntryView{
-		{Type: "hotfix", Version: "v1.0.1", Origin: "manual", Date: time.Date(2026, 3, 21, 8, 0, 0, 0, time.UTC)},
+	_ = store.Replace(ctx, "default/release-2026-03-21", []domainrelease.EntryView{
+		releaseView("2026-03-21", "hotfix", "v1.0.1", time.Date(2026, 3, 21, 8, 0, 0, 0, time.UTC)),
 	})
 	grpcSvc := svcgrpc.NewReleaseService(store, nil, 30*24*time.Hour, nil)
 
@@ -150,14 +169,14 @@ func TestListReleases_EmptyDayReturnsLatest(t *testing.T) {
 func TestListReleases_DayNavigation(t *testing.T) {
 	ctx := context.Background()
 	store := releasereadstore.NewReleaseStore()
-	_ = store.Replace(ctx, "2026-03-19", []domainrelease.EntryView{
-		{Type: "deploy", Version: "v1", Origin: "ci", Date: time.Date(2026, 3, 19, 10, 0, 0, 0, time.UTC)},
+	_ = store.Replace(ctx, "default/release-2026-03-19", []domainrelease.EntryView{
+		releaseView("2026-03-19", "deploy", "v1", time.Date(2026, 3, 19, 10, 0, 0, 0, time.UTC)),
 	})
-	_ = store.Replace(ctx, "2026-03-20", []domainrelease.EntryView{
-		{Type: "deploy", Version: "v2", Origin: "ci", Date: time.Date(2026, 3, 20, 10, 0, 0, 0, time.UTC)},
+	_ = store.Replace(ctx, "default/release-2026-03-20", []domainrelease.EntryView{
+		releaseView("2026-03-20", "deploy", "v2", time.Date(2026, 3, 20, 10, 0, 0, 0, time.UTC)),
 	})
-	_ = store.Replace(ctx, "2026-03-21", []domainrelease.EntryView{
-		{Type: "deploy", Version: "v3", Origin: "ci", Date: time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC)},
+	_ = store.Replace(ctx, "default/release-2026-03-21", []domainrelease.EntryView{
+		releaseView("2026-03-21", "deploy", "v3", time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC)),
 	})
 	grpcSvc := svcgrpc.NewReleaseService(store, nil, 30*24*time.Hour, nil)
 
@@ -174,8 +193,8 @@ func TestListReleases_DayNavigation(t *testing.T) {
 func TestAddRelease_WithoutVersion(t *testing.T) {
 	ctx := context.Background()
 	scheme := releaseScheme()
-	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&sreportalv1alpha1.Release{}).Build()
-	svc := releaseservice.NewService(k8sClient, "default")
+	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mainPortalCR()).WithStatusSubresource(&sreportalv1alpha1.Release{}).Build()
+	svc := releaseservice.NewService(k8sClient, "default", "main")
 	store := releasereadstore.NewReleaseStore()
 	grpcSvc := svcgrpc.NewReleaseService(store, svc, 30*24*time.Hour, nil)
 
@@ -195,7 +214,7 @@ func TestAddRelease_TypeNotAllowed(t *testing.T) {
 	ctx := context.Background()
 	scheme := releaseScheme()
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).Build()
-	svc := releaseservice.NewService(k8sClient, "default")
+	svc := releaseservice.NewService(k8sClient, "default", "main")
 	store := releasereadstore.NewReleaseStore()
 	grpcSvc := svcgrpc.NewReleaseService(store, svc, 30*24*time.Hour, []config.ReleaseTypeConfig{
 		{Name: "deployment"}, {Name: "rollback"},
@@ -216,8 +235,8 @@ func TestAddRelease_TypeNotAllowed(t *testing.T) {
 func TestAddRelease_TypeAllowed(t *testing.T) {
 	ctx := context.Background()
 	scheme := releaseScheme()
-	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&sreportalv1alpha1.Release{}).Build()
-	svc := releaseservice.NewService(k8sClient, "default")
+	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mainPortalCR()).WithStatusSubresource(&sreportalv1alpha1.Release{}).Build()
+	svc := releaseservice.NewService(k8sClient, "default", "main")
 	store := releasereadstore.NewReleaseStore()
 	grpcSvc := svcgrpc.NewReleaseService(store, svc, 30*24*time.Hour, []config.ReleaseTypeConfig{
 		{Name: "deployment"}, {Name: "rollback"},
@@ -238,11 +257,11 @@ func TestAddRelease_TypeAllowed(t *testing.T) {
 func TestListReleaseDays_ReturnsDaysAndTTL(t *testing.T) {
 	ctx := context.Background()
 	store := releasereadstore.NewReleaseStore()
-	_ = store.Replace(ctx, "2026-03-19", []domainrelease.EntryView{
-		{Type: "deploy", Origin: "ci", Date: time.Date(2026, 3, 19, 10, 0, 0, 0, time.UTC)},
+	_ = store.Replace(ctx, "default/release-2026-03-19", []domainrelease.EntryView{
+		releaseView("2026-03-19", "deploy", "", time.Date(2026, 3, 19, 10, 0, 0, 0, time.UTC)),
 	})
-	_ = store.Replace(ctx, "2026-03-21", []domainrelease.EntryView{
-		{Type: "deploy", Origin: "ci", Date: time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC)},
+	_ = store.Replace(ctx, "default/release-2026-03-21", []domainrelease.EntryView{
+		releaseView("2026-03-21", "deploy", "", time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC)),
 	})
 	grpcSvc := svcgrpc.NewReleaseService(store, nil, 30*24*time.Hour, nil)
 

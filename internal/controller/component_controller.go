@@ -24,6 +24,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	ctrlreconcile "sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -66,6 +67,7 @@ func NewComponentReconciler(
 // +kubebuilder:rbac:groups=sreportal.io,resources=components,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=sreportal.io,resources=components/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=components/finalizers,verbs=update
+// +kubebuilder:rbac:groups=sreportal.io,resources=portals,verbs=get;list;watch
 
 // Reconcile computes the component's effective status and projects to the ReadStore.
 func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -128,6 +130,17 @@ func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				return requests
 			},
 		)).
+		Watches(
+			&sreportalv1alpha1.Portal{},
+			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []ctrl.Request {
+				portal, ok := obj.(*sreportalv1alpha1.Portal)
+				if !ok {
+					return nil
+				}
+				return componentReconcileRequestsForPortal(ctx, r.Client, portal)
+			}),
+			builder.WithPredicates(PortalStatusPageEnabledWakeupPredicate()),
+		).
 		Named("component").
 		Complete(r)
 }

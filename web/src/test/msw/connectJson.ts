@@ -132,14 +132,17 @@ export function samplePortal(
   });
 }
 
-export function sampleReleaseEntry(
-  overrides: Partial<ReleaseEntry> & Pick<ReleaseEntry, "type" | "version" | "origin">,
-): ReleaseEntry {
+/** Proto field overrides only — avoid `Partial<ReleaseEntry>` (pulls in `$typeName` and breaks `create()`). */
+export type SampleReleaseEntryOverrides = Pick<ReleaseEntry, "type" | "version" | "origin"> &
+  Partial<Pick<ReleaseEntry, "date" | "author" | "message" | "link" | "portal">>;
+
+export function sampleReleaseEntry(overrides: SampleReleaseEntryOverrides): ReleaseEntry {
   return create(ReleaseEntrySchema, {
     date: timestampFromDate(new Date("2026-03-21T10:00:00Z")),
     author: "",
     message: "",
     link: "",
+    portal: "",
     ...overrides,
   });
 }

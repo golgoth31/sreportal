@@ -39,11 +39,18 @@ func newScheme() *runtime.Scheme {
 	return s
 }
 
+func mainPortal() *sreportalv1alpha1.Portal {
+	return &sreportalv1alpha1.Portal{
+		ObjectMeta: metav1.ObjectMeta{Name: "main", Namespace: "default"},
+		Spec:       sreportalv1alpha1.PortalSpec{Title: "Main"},
+	}
+}
+
 func TestAddEntry_CreatesNewCR(t *testing.T) {
 	ctx := context.Background()
 	scheme := newScheme()
-	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&sreportalv1alpha1.Release{}).Build()
-	svc := releaseservice.NewService(k8sClient, "default")
+	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mainPortal()).WithStatusSubresource(&sreportalv1alpha1.Release{}).Build()
+	svc := releaseservice.NewService(k8sClient, "default", "main")
 
 	entry, err := domainrelease.NewEntry("deployment", "v1.0.0", "ci/cd", time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC))
 	require.NoError(t, err)
@@ -59,6 +66,7 @@ func TestAddEntry_CreatesNewCR(t *testing.T) {
 	var rel sreportalv1alpha1.Release
 	err = k8sClient.Get(ctx, types.NamespacedName{Name: "release-2026-03-21", Namespace: "default"}, &rel)
 	require.NoError(t, err)
+	assert.Equal(t, "main", rel.Spec.PortalRef)
 	assert.Len(t, rel.Spec.Entries, 1)
 	assert.Equal(t, "deployment", rel.Spec.Entries[0].Type)
 	assert.Equal(t, "v1.0.0", rel.Spec.Entries[0].Version)
@@ -74,6 +82,7 @@ func TestAddEntry_AppendsToExistingCR(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: sreportalv1alpha1.ReleaseSpec{
+			PortalRef: "main",
 			Entries: []sreportalv1alpha1.ReleaseEntry{
 				{
 					Type:    "deployment",
@@ -84,8 +93,8 @@ func TestAddEntry_AppendsToExistingCR(t *testing.T) {
 			},
 		},
 	}
-	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(existing).WithStatusSubresource(&sreportalv1alpha1.Release{}).Build()
-	svc := releaseservice.NewService(k8sClient, "default")
+	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mainPortal(), existing).WithStatusSubresource(&sreportalv1alpha1.Release{}).Build()
+	svc := releaseservice.NewService(k8sClient, "default", "main")
 
 	entry, err := domainrelease.NewEntry("rollback", "v0.9.0", "manual", time.Date(2026, 3, 21, 14, 0, 0, 0, time.UTC))
 	require.NoError(t, err)

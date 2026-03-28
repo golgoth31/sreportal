@@ -4,13 +4,15 @@ import "time"
 
 // EntryView is the read model for a single release event.
 type EntryView struct {
-	Type    string
-	Version string
-	Origin  string
-	Date    time.Time
-	Author  string
-	Message string
-	Link    string
+	PortalRef string
+	Day       string // YYYY-MM-DD (logical day of the Release CR)
+	Type      string
+	Version   string
+	Origin    string
+	Date      time.Time
+	Author    string
+	Message   string
+	Link      string
 }
 
 // DayView groups release entries by day.

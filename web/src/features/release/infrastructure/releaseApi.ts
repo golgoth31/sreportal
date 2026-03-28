@@ -37,8 +37,8 @@ function toDomainEntry(e: ProtoEntry): ReleaseEntry {
   };
 }
 
-export async function listReleaseDays(): Promise<ReleaseDays> {
-  const request = create(ListReleaseDaysRequestSchema, {});
+export async function listReleaseDays(portal: string): Promise<ReleaseDays> {
+  const request = create(ListReleaseDaysRequestSchema, { portal });
   const response = await client.listReleaseDays(request);
   return {
     days: [...response.days],
@@ -47,9 +47,12 @@ export async function listReleaseDays(): Promise<ReleaseDays> {
   };
 }
 
-export async function listReleases(day = ""): Promise<ReleasesDay> {
+export async function listReleases(
+  day = "",
+  portal: string,
+): Promise<ReleasesDay> {
   try {
-    const request = create(ListReleasesRequestSchema, { day });
+    const request = create(ListReleasesRequestSchema, { day, portal });
     const response = await client.listReleases(request);
     return {
       day: response.day,

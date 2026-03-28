@@ -17,7 +17,7 @@ limitations under the License.
 package controller
 
 const (
-	// FieldIndexPortalRef is the field index name used to look up DNSRecord and DNS
+	// FieldIndexPortalRef is the field index name used to look up DNSRecord, DNS, Release, etc.
 	// resources by their spec.portalRef field. Must match the index registered in main.go.
 	FieldIndexPortalRef = "spec.portalRef"
 )

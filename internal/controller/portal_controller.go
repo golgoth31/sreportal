@@ -34,6 +34,7 @@ import (
 	alertmanagerctrl "github.com/golgoth31/sreportal/internal/controller/alertmanager"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 	domainportal "github.com/golgoth31/sreportal/internal/domain/portal"
+	domainrelease "github.com/golgoth31/sreportal/internal/domain/release"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/metrics"
 	"github.com/golgoth31/sreportal/internal/remoteclient"
@@ -50,6 +51,7 @@ type PortalReconciler struct {
 	remoteClientCache *remoteclient.Cache
 	portalWriter      domainportal.PortalWriter
 	fqdnWriter        domaindns.FQDNWriter
+	releaseWriter     domainrelease.ReleaseWriter
 }
 
 // SetPortalWriter sets the optional PortalWriter used to push read models into the ReadStore.
@@ -62,6 +64,11 @@ func (r *PortalReconciler) SetFQDNWriter(w domaindns.FQDNWriter) {
 	r.fqdnWriter = w
 }
 
+// SetReleaseWriter sets the optional ReleaseWriter used to flush release projections when the feature is disabled.
+func (r *PortalReconciler) SetReleaseWriter(w domainrelease.ReleaseWriter) {
+	r.releaseWriter = w
+}
+
 // NewPortalReconciler creates a new PortalReconciler
 func NewPortalReconciler(c client.Client, scheme *runtime.Scheme, cache *remoteclient.Cache) *PortalReconciler {
 	return &PortalReconciler{
@@ -71,6 +78,7 @@ func NewPortalReconciler(c client.Client, scheme *runtime.Scheme, cache *remotec
 	}
 }
 
+// +kubebuilder:rbac:groups=sreportal.io,resources=releases,verbs=list
 // +kubebuilder:rbac:groups=sreportal.io,resources=portals,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=sreportal.io,resources=portals/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=portals/finalizers,verbs=update
@@ -105,6 +113,12 @@ func (r *PortalReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if !portal.Spec.Features.IsDNSEnabled() {
 		if err := r.cleanupDNSData(ctx, &portal); err != nil {
 			logger.Error(err, "failed to clean up DNS data for disabled feature")
+		}
+	}
+
+	if !portal.Spec.Features.IsReleasesEnabled() {
+		if err := r.cleanupReleaseData(ctx, &portal); err != nil {
+			logger.Error(err, "failed to clean up release data for disabled feature")
 		}
 	}
 
@@ -498,6 +512,34 @@ func (r *PortalReconciler) cleanupDNSData(ctx context.Context, portal *sreportal
 		"dnsCount", len(dnsList.Items),
 		"dnsRecordCount", len(dnsRecordList.Items))
 
+	return nil
+}
+
+// cleanupReleaseData removes release read-store projections for this portal without
+// deleting Release CRs (they are owned by CI/CD or other external processes).
+func (r *PortalReconciler) cleanupReleaseData(ctx context.Context, portal *sreportalv1alpha1.Portal) error {
+	if r.releaseWriter == nil {
+		return nil
+	}
+	logger := log.FromContext(ctx)
+
+	var releaseList sreportalv1alpha1.ReleaseList
+	if err := r.List(ctx, &releaseList,
+		client.InNamespace(portal.Namespace),
+		client.MatchingFields{FieldIndexPortalRef: portal.Name},
+	); err != nil {
+		return fmt.Errorf("list Release resources: %w", err)
+	}
+
+	for i := range releaseList.Items {
+		resourceKey := releaseList.Items[i].Namespace + "/" + releaseList.Items[i].Name
+		if err := r.releaseWriter.Delete(ctx, resourceKey); err != nil {
+			logger.Error(err, "failed to delete Release views from read store", "key", resourceKey)
+		}
+	}
+
+	logger.Info("cleaned up release data for disabled feature",
+		"portal", portal.Name, "releaseCount", len(releaseList.Items))
 	return nil
 }
 

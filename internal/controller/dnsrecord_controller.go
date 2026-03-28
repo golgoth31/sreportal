@@ -24,7 +24,9 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/adapter"
@@ -67,6 +69,8 @@ func NewDNSRecordReconciler(
 func (r *DNSRecordReconciler) SetFQDNWriter(w domaindns.FQDNWriter) {
 	r.fqdnWriter = w
 }
+
+// +kubebuilder:rbac:groups=sreportal.io,resources=portals,verbs=get;list;watch
 
 // Reconcile resolves DNS for each endpoint, persists SyncStatus in the CR,
 // and projects endpoints into the FQDN read store.
@@ -177,6 +181,17 @@ func (r *DNSRecordReconciler) resolveEndpoints(ctx context.Context, endpoints []
 func (r *DNSRecordReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&sreportalv1alpha1.DNSRecord{}).
+		Watches(
+			&sreportalv1alpha1.Portal{},
+			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []ctrl.Request {
+				portal, ok := obj.(*sreportalv1alpha1.Portal)
+				if !ok {
+					return nil
+				}
+				return dnsRecordReconcileRequestsForPortal(ctx, r.Client, portal)
+			}),
+			builder.WithPredicates(PortalDNSEnabledWakeupPredicate()),
+		).
 		Named("dnsrecord").
 		Complete(r)
 }

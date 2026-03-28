@@ -30,7 +30,9 @@ import (
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
+	domainrelease "github.com/golgoth31/sreportal/internal/domain/release"
 	dnsreadstore "github.com/golgoth31/sreportal/internal/readstore/dns"
+	releasereadstore "github.com/golgoth31/sreportal/internal/readstore/release"
 	"github.com/golgoth31/sreportal/internal/remoteclient"
 )
 
@@ -249,6 +251,76 @@ var _ = Describe("Portal Controller", func() {
 				g.Expect(views).To(HaveLen(1), "FQDN should be recovered after re-enabling DNS")
 				g.Expect(views[0].Name).To(Equal("recover.example.com"))
 			}, 10*time.Second, 250*time.Millisecond).Should(Succeed())
+		})
+	})
+
+	Context("When releases feature is disabled on a portal", func() {
+		const (
+			portalRelName = "portal-release-toggle"
+			releaseCRName = "release-2026-03-21"
+		)
+		ctx := context.Background()
+		portalRelNN := types.NamespacedName{Name: portalRelName, Namespace: "default"}
+		releaseNN := types.NamespacedName{Name: releaseCRName, Namespace: "default"}
+
+		AfterEach(func() {
+			rel := &sreportalv1alpha1.Release{}
+			if err := k8sClient.Get(ctx, releaseNN, rel); err == nil {
+				_ = k8sClient.Delete(ctx, rel)
+			}
+			p := &sreportalv1alpha1.Portal{}
+			if err := k8sClient.Get(ctx, portalRelNN, p); err == nil {
+				_ = k8sClient.Delete(ctx, p)
+			}
+		})
+
+		It("should flush read store entries and not delete Release CRs", func() {
+			store := releasereadstore.NewReleaseStore()
+			portalReconciler := NewPortalReconciler(k8sClient, k8sClient.Scheme(), remoteclient.NewCache())
+			portalReconciler.SetReleaseWriter(store)
+
+			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.Portal{
+				ObjectMeta: metav1.ObjectMeta{Name: portalRelName, Namespace: "default"},
+				Spec:       sreportalv1alpha1.PortalSpec{Title: "Release Toggle Portal"},
+			})).To(Succeed())
+
+			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.Release{
+				ObjectMeta: metav1.ObjectMeta{Name: releaseCRName, Namespace: "default"},
+				Spec: sreportalv1alpha1.ReleaseSpec{
+					PortalRef: portalRelName,
+					Entries: []sreportalv1alpha1.ReleaseEntry{
+						{Type: "deployment", Origin: "ci", Date: metav1.Now()},
+					},
+				},
+			})).To(Succeed())
+
+			resourceKey := "default/" + releaseCRName
+			Expect(store.Replace(ctx, resourceKey, []domainrelease.EntryView{
+				{PortalRef: portalRelName, Day: "2026-03-21", Type: "deployment", Origin: "ci", Date: time.Now().UTC()},
+			})).To(Succeed())
+
+			entries, err := store.ListEntries(ctx, "2026-03-21", portalRelName)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(entries).NotTo(BeEmpty())
+
+			releasesOff := false
+			Eventually(func(g Gomega) {
+				var portal sreportalv1alpha1.Portal
+				g.Expect(k8sClient.Get(ctx, portalRelNN, &portal)).To(Succeed())
+				portal.Spec.Features = &sreportalv1alpha1.PortalFeatures{Releases: &releasesOff}
+				g.Expect(k8sClient.Update(ctx, &portal)).To(Succeed())
+			}, 10*time.Second, 250*time.Millisecond).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				_, err := portalReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: portalRelNN})
+				g.Expect(err).NotTo(HaveOccurred())
+				got, err := store.ListEntries(ctx, "2026-03-21", portalRelName)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(got).To(BeEmpty())
+			}, 10*time.Second, 250*time.Millisecond).Should(Succeed())
+
+			var rel sreportalv1alpha1.Release
+			Expect(k8sClient.Get(ctx, releaseNN, &rel)).To(Succeed(), "Release CR must remain when feature is disabled")
 		})
 	})
 })

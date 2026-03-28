@@ -1381,6 +1381,12 @@
     },
     "v1ListReleaseDaysRequest": {
       "type": "object",
+      "properties": {
+        "portal": {
+          "type": "string",
+          "title": "portal filters to a Portal metadata.name (defaults to main if unset)"
+        }
+      },
       "title": "ListReleaseDaysRequest is the request for listing all release days"
     },
     "v1ListReleaseDaysResponse": {
@@ -1424,6 +1430,10 @@
         "pageToken": {
           "type": "string",
           "title": "page_token is the opaque cursor for pagination within a day"
+        },
+        "portal": {
+          "type": "string",
+          "title": "portal filters to a Portal metadata.name (defaults to main if unset)"
         }
       },
       "title": "ListReleasesRequest is the request for listing releases"
@@ -1735,6 +1745,10 @@
         "link": {
           "type": "string",
           "title": "link is a URL to the release (e.g., PR, pipeline, changelog)"
+        },
+        "portal": {
+          "type": "string",
+          "title": "portal is the Portal metadata.name this entry belongs to (defaults to main if unset)"
         }
       },
       "title": "ReleaseEntry represents a single release event"

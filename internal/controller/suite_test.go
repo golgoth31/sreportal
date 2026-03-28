@@ -102,7 +102,7 @@ var _ = BeforeSuite(func() {
 	err = mgr.GetFieldIndexer().IndexField(
 		context.Background(),
 		&sreportalv1alpha1.DNSRecord{},
-		"spec.portalRef",
+		FieldIndexPortalRef,
 		func(o client.Object) []string {
 			dnsRecord := o.(*sreportalv1alpha1.DNSRecord)
 			if dnsRecord.Spec.PortalRef == "" {
@@ -117,13 +117,103 @@ var _ = BeforeSuite(func() {
 	err = mgr.GetFieldIndexer().IndexField(
 		context.Background(),
 		&sreportalv1alpha1.DNS{},
-		"spec.portalRef",
+		FieldIndexPortalRef,
 		func(o client.Object) []string {
 			dns := o.(*sreportalv1alpha1.DNS)
 			if dns.Spec.PortalRef == "" {
 				return nil
 			}
 			return []string{dns.Spec.PortalRef}
+		},
+	)
+	Expect(err).NotTo(HaveOccurred())
+
+	// Add field indexer for Release.spec.portalRef
+	err = mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&sreportalv1alpha1.Release{},
+		FieldIndexPortalRef,
+		func(o client.Object) []string {
+			rel := o.(*sreportalv1alpha1.Release)
+			if rel.Spec.PortalRef == "" {
+				return nil
+			}
+			return []string{rel.Spec.PortalRef}
+		},
+	)
+	Expect(err).NotTo(HaveOccurred())
+
+	// Add field indexer for NetworkFlowDiscovery.spec.portalRef
+	err = mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&sreportalv1alpha1.NetworkFlowDiscovery{},
+		FieldIndexPortalRef,
+		func(o client.Object) []string {
+			nfd := o.(*sreportalv1alpha1.NetworkFlowDiscovery)
+			if nfd.Spec.PortalRef == "" {
+				return nil
+			}
+			return []string{nfd.Spec.PortalRef}
+		},
+	)
+	Expect(err).NotTo(HaveOccurred())
+
+	// Add field indexer for Alertmanager.spec.portalRef
+	err = mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&sreportalv1alpha1.Alertmanager{},
+		FieldIndexPortalRef,
+		func(o client.Object) []string {
+			am := o.(*sreportalv1alpha1.Alertmanager)
+			if am.Spec.PortalRef == "" {
+				return nil
+			}
+			return []string{am.Spec.PortalRef}
+		},
+	)
+	Expect(err).NotTo(HaveOccurred())
+
+	// Add field indexer for Component.spec.portalRef
+	err = mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&sreportalv1alpha1.Component{},
+		FieldIndexPortalRef,
+		func(o client.Object) []string {
+			comp := o.(*sreportalv1alpha1.Component)
+			if comp.Spec.PortalRef == "" {
+				return nil
+			}
+			return []string{comp.Spec.PortalRef}
+		},
+	)
+	Expect(err).NotTo(HaveOccurred())
+
+	// Add field indexer for Incident.spec.portalRef
+	err = mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&sreportalv1alpha1.Incident{},
+		FieldIndexPortalRef,
+		func(o client.Object) []string {
+			inc := o.(*sreportalv1alpha1.Incident)
+			if inc.Spec.PortalRef == "" {
+				return nil
+			}
+			return []string{inc.Spec.PortalRef}
+		},
+	)
+	Expect(err).NotTo(HaveOccurred())
+
+	// Add field indexer for Maintenance.spec.portalRef
+	err = mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&sreportalv1alpha1.Maintenance{},
+		FieldIndexPortalRef,
+		func(o client.Object) []string {
+			maint := o.(*sreportalv1alpha1.Maintenance)
+			if maint.Spec.PortalRef == "" {
+				return nil
+			}
+			return []string{maint.Spec.PortalRef}
 		},
 	)
 	Expect(err).NotTo(HaveOccurred())

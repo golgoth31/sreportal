@@ -15,6 +15,9 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
+    - jsonPath: .spec.portalRef
+      name: Portal
+      type: string
     - jsonPath: .status.entryCount
       name: Entries
       type: integer
@@ -86,6 +89,13 @@ spec:
                   - type
                   type: object
                 type: array
+              portalRef:
+                description: portalRef is the name of the Portal this release is linked
+                  to
+                minLength: 1
+                type: string
+            required:
+            - portalRef
             type: object
           status:
             description: status defines the observed state of Release

@@ -22,7 +22,9 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 
@@ -82,6 +84,7 @@ func (r *NetworkFlowDiscoveryReconciler) SetFlowGraphWriter(w domainnetpol.FlowG
 // +kubebuilder:rbac:groups=sreportal.io,resources=flowedgesets/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch
 // +kubebuilder:rbac:groups=networking.gke.io,resources=fqdnnetworkpolicies,verbs=get;list;watch
+// +kubebuilder:rbac:groups=sreportal.io,resources=portals,verbs=get;list;watch
 
 // Reconcile builds the network flow graph and updates the resource status.
 func (r *NetworkFlowDiscoveryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -138,6 +141,17 @@ func (r *NetworkFlowDiscoveryReconciler) Reconcile(ctx context.Context, req ctrl
 func (r *NetworkFlowDiscoveryReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&sreportalv1alpha1.NetworkFlowDiscovery{}).
+		Watches(
+			&sreportalv1alpha1.Portal{},
+			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []ctrl.Request {
+				portal, ok := obj.(*sreportalv1alpha1.Portal)
+				if !ok {
+					return nil
+				}
+				return networkFlowDiscoveryReconcileRequestsForPortal(ctx, r.Client, portal)
+			}),
+			builder.WithPredicates(PortalNetworkPolicyEnabledWakeupPredicate()),
+		).
 		Named("networkflowdiscovery").
 		Complete(r)
 }

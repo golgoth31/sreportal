@@ -23,7 +23,9 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/metrics"
@@ -80,6 +82,7 @@ func NewDNSReconciler(c client.Client, scheme *runtime.Scheme, disableDNSCheck b
 // +kubebuilder:rbac:groups=sreportal.io,resources=dnsrecords,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=sreportal.io,resources=dnsrecords/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=dnsrecords/finalizers,verbs=update
+// +kubebuilder:rbac:groups=sreportal.io,resources=portals,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -215,6 +218,17 @@ func groupsToFQDNViews(resource *sreportalv1alpha1.DNS) []domaindns.FQDNView {
 func (r *DNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&sreportalv1alpha1.DNS{}).
+		Watches(
+			&sreportalv1alpha1.Portal{},
+			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []ctrl.Request {
+				portal, ok := obj.(*sreportalv1alpha1.Portal)
+				if !ok {
+					return nil
+				}
+				return dnsReconcileRequestsForPortal(ctx, r.Client, portal)
+			}),
+			builder.WithPredicates(PortalDNSEnabledWakeupPredicate()),
+		).
 		Named("dns").
 		Complete(r)
 }

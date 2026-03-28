@@ -791,6 +791,7 @@ _Appears in:_
 
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
+| `portalRef` _string_ | portalRef is the name of the Portal this release is linked to |   |   |
 | `entries` _[sreportal.io/v1alpha1.ReleaseEntry](#sreportaliov1alpha1releaseentry) array_ | entries is the list of release events for this day |   |   |
 
 

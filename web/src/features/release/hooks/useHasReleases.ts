@@ -6,11 +6,11 @@ import { listReleases } from "../infrastructure/releaseApi";
  * Returns whether releases exist at all.
  * Used to conditionally show the "Releases" sidebar link on the main portal.
  */
-export function useHasReleases() {
+export function useHasReleases(portal: string) {
   const query = useQuery({
-    queryKey: ["has-releases"],
+    queryKey: ["has-releases", portal],
     queryFn: async () => {
-      const data = await listReleases();
+      const data = await listReleases("", portal);
       return data.day !== "";
     },
     staleTime: 60_000,

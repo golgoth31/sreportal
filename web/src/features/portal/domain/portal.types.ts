@@ -31,3 +31,15 @@ export function hasRemoteSyncError(portal: Portal | undefined): boolean {
   const err = portal?.remoteSync?.lastSyncError?.trim();
   return Boolean(err);
 }
+
+/**
+ * Maps the route segment (subPath when set, else metadata name) to Portal metadata.name
+ * for gRPC filters (releases, alerts, etc.).
+ */
+export function portalRefForRoute(
+  portals: readonly Portal[],
+  routeSegment: string,
+): string {
+  const match = portals.find((p) => (p.subPath || p.name) === routeSegment);
+  return match?.name ?? routeSegment;
+}

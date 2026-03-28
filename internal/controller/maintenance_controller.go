@@ -23,7 +23,9 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	maintenancectrl "github.com/golgoth31/sreportal/internal/controller/maintenancectrl"
@@ -57,6 +59,7 @@ func NewMaintenanceReconciler(c client.Client, maintenanceWriter domainmaint.Mai
 // +kubebuilder:rbac:groups=sreportal.io,resources=maintenances,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=sreportal.io,resources=maintenances/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=maintenances/finalizers,verbs=update
+// +kubebuilder:rbac:groups=sreportal.io,resources=portals,verbs=get;list;watch
 
 // Reconcile computes the maintenance phase and projects to the ReadStore.
 func (r *MaintenanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -101,6 +104,17 @@ func (r *MaintenanceReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 func (r *MaintenanceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&sreportalv1alpha1.Maintenance{}).
+		Watches(
+			&sreportalv1alpha1.Portal{},
+			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []ctrl.Request {
+				portal, ok := obj.(*sreportalv1alpha1.Portal)
+				if !ok {
+					return nil
+				}
+				return maintenanceReconcileRequestsForPortal(ctx, r.Client, portal)
+			}),
+			builder.WithPredicates(PortalStatusPageEnabledWakeupPredicate()),
+		).
 		Named("maintenance").
 		Complete(r)
 }

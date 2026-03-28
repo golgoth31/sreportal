@@ -1,6 +1,7 @@
 import { format, parse, subDays } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
+import { useParams } from "react-router";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -19,6 +20,8 @@ import {
 import { ErrorAlert } from "@/components/ErrorAlert";
 import { FilterBar, type ActiveFilter } from "@/components/FilterBar";
 import { PageRefreshButton } from "@/components/PageRefreshButton";
+import { portalRefForRoute } from "@/features/portal/domain/portal.types";
+import { usePortals } from "@/features/portal/hooks/usePortals";
 import { COMMON_TIMEZONES } from "@/features/release/domain/release.types";
 import { useReleaseDays } from "@/features/release/hooks/useReleaseDays";
 import { useReleases } from "@/features/release/hooks/useReleases";
@@ -32,6 +35,13 @@ function parseDayToDate(day: string): Date | undefined {
 }
 
 export function ReleasesPage() {
+  const { portalName = "main" } = useParams<{ portalName: string }>();
+  const { portals } = usePortals();
+  const apiPortal = useMemo(
+    () => portalRefForRoute(portals, portalName),
+    [portals, portalName],
+  );
+
   const {
     day,
     entries,
@@ -45,7 +55,7 @@ export function ReleasesPage() {
     clearFilters,
     hasFilters,
     refetch: refetchReleases,
-  } = useReleases();
+  } = useReleases(apiPortal);
 
   const {
     isDayDisabled,
@@ -53,7 +63,7 @@ export function ReleasesPage() {
     types,
     isFetching: releaseDaysFetching,
     refetch: refetchReleaseDays,
-  } = useReleaseDays();
+  } = useReleaseDays(apiPortal);
 
   const handleRefresh = useCallback(() => {
     void Promise.all([refetchReleases(), refetchReleaseDays()]);

@@ -125,6 +125,17 @@ func TestValidateType(t *testing.T) {
 	}
 }
 
+func TestEntryView_PortalRefAndDay(t *testing.T) {
+	v := release.EntryView{
+		PortalRef: "main",
+		Day:       "2026-03-25",
+		Type:      "deployment",
+	}
+	assert.Equal(t, "main", v.PortalRef)
+	assert.Equal(t, "2026-03-25", v.Day)
+	assert.Equal(t, "deployment", v.Type)
+}
+
 func TestParseDateFromCRName(t *testing.T) {
 	cases := []struct {
 		name    string

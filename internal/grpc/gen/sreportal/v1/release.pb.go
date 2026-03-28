@@ -38,7 +38,9 @@ type ReleaseEntry struct {
 	// message is the release description or commit message
 	Message string `protobuf:"bytes,6,opt,name=message,proto3" json:"message,omitempty"`
 	// link is a URL to the release (e.g., PR, pipeline, changelog)
-	Link          string `protobuf:"bytes,7,opt,name=link,proto3" json:"link,omitempty"`
+	Link string `protobuf:"bytes,7,opt,name=link,proto3" json:"link,omitempty"`
+	// portal is the Portal metadata.name this entry belongs to (defaults to main if unset)
+	Portal        string `protobuf:"bytes,8,opt,name=portal,proto3" json:"portal,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -122,6 +124,13 @@ func (x *ReleaseEntry) GetLink() string {
 	return ""
 }
 
+func (x *ReleaseEntry) GetPortal() string {
+	if x != nil {
+		return x.Portal
+	}
+	return ""
+}
+
 // AddReleaseResponse is the response after adding a release entry
 type AddReleaseResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -185,7 +194,9 @@ type ListReleasesRequest struct {
 	// page_size is the max entries per response (0 = all entries for the day)
 	PageSize int32 `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
 	// page_token is the opaque cursor for pagination within a day
-	PageToken     string `protobuf:"bytes,3,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	PageToken string `protobuf:"bytes,3,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	// portal filters to a Portal metadata.name (defaults to main if unset)
+	Portal        string `protobuf:"bytes,4,opt,name=portal,proto3" json:"portal,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -237,6 +248,13 @@ func (x *ListReleasesRequest) GetPageSize() int32 {
 func (x *ListReleasesRequest) GetPageToken() string {
 	if x != nil {
 		return x.PageToken
+	}
+	return ""
+}
+
+func (x *ListReleasesRequest) GetPortal() string {
+	if x != nil {
+		return x.Portal
 	}
 	return ""
 }
@@ -325,7 +343,9 @@ func (x *ListReleasesResponse) GetNextDay() string {
 
 // ListReleaseDaysRequest is the request for listing all release days
 type ListReleaseDaysRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// portal filters to a Portal metadata.name (defaults to main if unset)
+	Portal        string `protobuf:"bytes,1,opt,name=portal,proto3" json:"portal,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -358,6 +378,13 @@ func (x *ListReleaseDaysRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ListReleaseDaysRequest.ProtoReflect.Descriptor instead.
 func (*ListReleaseDaysRequest) Descriptor() ([]byte, []int) {
 	return file_sreportal_v1_release_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ListReleaseDaysRequest) GetPortal() string {
+	if x != nil {
+		return x.Portal
+	}
+	return ""
 }
 
 // ListReleaseDaysResponse contains the list of days with releases and TTL info
@@ -483,7 +510,7 @@ var File_sreportal_v1_release_proto protoreflect.FileDescriptor
 
 const file_sreportal_v1_release_proto_rawDesc = "" +
 	"\n" +
-	"\x1asreportal/v1/release.proto\x12\fsreportal.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xca\x01\n" +
+	"\x1asreportal/v1/release.proto\x12\fsreportal.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe2\x01\n" +
 	"\fReleaseEntry\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12\x16\n" +
@@ -491,23 +518,26 @@ const file_sreportal_v1_release_proto_rawDesc = "" +
 	"\x04date\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x04date\x12\x16\n" +
 	"\x06author\x18\x05 \x01(\tR\x06author\x12\x18\n" +
 	"\amessage\x18\x06 \x01(\tR\amessage\x12\x12\n" +
-	"\x04link\x18\a \x01(\tR\x04link\"G\n" +
+	"\x04link\x18\a \x01(\tR\x04link\x12\x16\n" +
+	"\x06portal\x18\b \x01(\tR\x06portal\"G\n" +
 	"\x12AddReleaseResponse\x12\x10\n" +
 	"\x03day\x18\x01 \x01(\tR\x03day\x12\x1f\n" +
 	"\ventry_count\x18\x02 \x01(\x05R\n" +
-	"entryCount\"c\n" +
+	"entryCount\"{\n" +
 	"\x13ListReleasesRequest\x12\x10\n" +
 	"\x03day\x18\x01 \x01(\tR\x03day\x12\x1b\n" +
 	"\tpage_size\x18\x02 \x01(\x05R\bpageSize\x12\x1d\n" +
 	"\n" +
-	"page_token\x18\x03 \x01(\tR\tpageToken\"\xc4\x01\n" +
+	"page_token\x18\x03 \x01(\tR\tpageToken\x12\x16\n" +
+	"\x06portal\x18\x04 \x01(\tR\x06portal\"\xc4\x01\n" +
 	"\x14ListReleasesResponse\x12\x10\n" +
 	"\x03day\x18\x01 \x01(\tR\x03day\x124\n" +
 	"\aentries\x18\x02 \x03(\v2\x1a.sreportal.v1.ReleaseEntryR\aentries\x12&\n" +
 	"\x0fnext_page_token\x18\x03 \x01(\tR\rnextPageToken\x12!\n" +
 	"\fprevious_day\x18\x04 \x01(\tR\vpreviousDay\x12\x19\n" +
-	"\bnext_day\x18\x05 \x01(\tR\anextDay\"\x18\n" +
-	"\x16ListReleaseDaysRequest\"\x7f\n" +
+	"\bnext_day\x18\x05 \x01(\tR\anextDay\"0\n" +
+	"\x16ListReleaseDaysRequest\x12\x16\n" +
+	"\x06portal\x18\x01 \x01(\tR\x06portal\"\x7f\n" +
 	"\x17ListReleaseDaysResponse\x12\x12\n" +
 	"\x04days\x18\x01 \x03(\tR\x04days\x12\x19\n" +
 	"\bttl_days\x18\x02 \x01(\x05R\attlDays\x125\n" +

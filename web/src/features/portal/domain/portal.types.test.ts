@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { hasRemoteSyncError, type Portal } from "./portal.types";
+import {
+  hasRemoteSyncError,
+  portalRefForRoute,
+  type Portal,
+} from "./portal.types";
 
 function portal(p: Partial<Portal> & Pick<Portal, "name" | "title">): Portal {
   return {
@@ -75,5 +79,23 @@ describe("hasRemoteSyncError", () => {
         }),
       ),
     ).toBe(true);
+  });
+});
+
+describe("portalRefForRoute", () => {
+  it("returns metadata name when route matches subPath", () => {
+    const portals = [
+      portal({ name: "team-a", title: "Team A", subPath: "custom" }),
+    ];
+    expect(portalRefForRoute(portals, "custom")).toBe("team-a");
+  });
+
+  it("returns metadata name when route matches name and subPath is empty", () => {
+    const portals = [portal({ name: "main", title: "Main", main: true })];
+    expect(portalRefForRoute(portals, "main")).toBe("main");
+  });
+
+  it("falls back to segment when no portal matches", () => {
+    expect(portalRefForRoute([], "unknown")).toBe("unknown");
   });
 });

@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"time"
 
+	portalctrl "github.com/golgoth31/sreportal/internal/controller/portal"
 	domainrelease "github.com/golgoth31/sreportal/internal/domain/release"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/metrics"
@@ -100,6 +101,9 @@ func (s *ReleasesServer) registerTools() {
 			mcp.WithString("day",
 				mcp.Description("Day to list releases for (YYYY-MM-DD format, defaults to latest)"),
 			),
+			mcp.WithString("portal",
+				mcp.Description("Portal metadata.name (defaults to main)"),
+			),
 		),
 		withToolMetrics("releases", "list_releases", s.handleListReleases),
 	)
@@ -107,10 +111,14 @@ func (s *ReleasesServer) registerTools() {
 
 func (s *ReleasesServer) handleListReleases(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	day := request.GetString("day", "")
+	portal := request.GetString("portal", "")
+	if portal == "" {
+		portal = portalctrl.MainPortalName
+	}
 
 	// If no day specified, use the latest
 	if day == "" {
-		days, err := s.reader.ListDays(ctx)
+		days, err := s.reader.ListDays(ctx, portal)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("failed to list days: %v", err)), nil
 		}
@@ -120,13 +128,13 @@ func (s *ReleasesServer) handleListReleases(ctx context.Context, request mcp.Cal
 		day = days[len(days)-1]
 	}
 
-	entries, err := s.reader.ListEntries(ctx, day)
+	entries, err := s.reader.ListEntries(ctx, day, portal)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to list releases for day %s: %v", day, err)), nil
 	}
 
 	// Get day navigation
-	days, err := s.reader.ListDays(ctx)
+	days, err := s.reader.ListDays(ctx, portal)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to list days: %v", err)), nil
 	}

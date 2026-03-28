@@ -23,7 +23,10 @@ import (
 
 	"github.com/golgoth31/sreportal/internal/config"
 	"github.com/golgoth31/sreportal/internal/log"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
@@ -40,7 +43,10 @@ func SetupReleaseWebhookWithManager(mgr ctrl.Manager, allowedTypes []config.Rele
 		names[i] = t.Name
 	}
 	return ctrl.NewWebhookManagedBy(mgr, &sreportalv1alpha1.Release{}).
-		WithValidator(&ReleaseCustomValidator{allowedTypes: names}).
+		WithValidator(&ReleaseCustomValidator{
+			client:       mgr.GetClient(),
+			allowedTypes: names,
+		}).
 		Complete()
 }
 
@@ -51,26 +57,55 @@ func SetupReleaseWebhookWithManager(mgr ctrl.Manager, allowedTypes []config.Rele
 // NOTE: The +kubebuilder:object:generate=false marker prevents controller-gen from generating DeepCopy methods,
 // as this struct is used only for temporary operations and does not need to be deeply copied.
 type ReleaseCustomValidator struct {
+	client       client.Client
 	allowedTypes []string
 }
 
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type Release.
-func (v *ReleaseCustomValidator) ValidateCreate(_ context.Context, obj *sreportalv1alpha1.Release) (admission.Warnings, error) {
+func (v *ReleaseCustomValidator) ValidateCreate(ctx context.Context, obj *sreportalv1alpha1.Release) (admission.Warnings, error) {
 	releaselog.Info("Validation for Release upon creation", "name", obj.GetName())
 
+	if w, err := v.validatePortalRef(ctx, obj); err != nil {
+		return w, err
+	}
 	return v.validateEntryTypes(obj)
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type Release.
-func (v *ReleaseCustomValidator) ValidateUpdate(_ context.Context, _, newObj *sreportalv1alpha1.Release) (admission.Warnings, error) {
+func (v *ReleaseCustomValidator) ValidateUpdate(ctx context.Context, _, newObj *sreportalv1alpha1.Release) (admission.Warnings, error) {
 	releaselog.Info("Validation for Release upon update", "name", newObj.GetName())
 
+	if w, err := v.validatePortalRef(ctx, newObj); err != nil {
+		return w, err
+	}
 	return v.validateEntryTypes(newObj)
 }
 
 // ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type Release.
 func (v *ReleaseCustomValidator) ValidateDelete(_ context.Context, obj *sreportalv1alpha1.Release) (admission.Warnings, error) {
 	releaselog.Info("Validation for Release upon deletion", "name", obj.GetName())
+
+	return nil, nil
+}
+
+// validatePortalRef checks that the referenced portal exists.
+func (v *ReleaseCustomValidator) validatePortalRef(ctx context.Context, obj *sreportalv1alpha1.Release) (admission.Warnings, error) {
+	if obj.Spec.PortalRef == "" {
+		return nil, fmt.Errorf("spec.portalRef is required")
+	}
+
+	var portal sreportalv1alpha1.Portal
+	key := types.NamespacedName{
+		Name:      obj.Spec.PortalRef,
+		Namespace: obj.Namespace,
+	}
+
+	if err := v.client.Get(ctx, key, &portal); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, fmt.Errorf("referenced portal %q not found in namespace %q", obj.Spec.PortalRef, obj.Namespace)
+		}
+		return nil, fmt.Errorf("failed to check portal reference: %w", err)
+	}
 
 	return nil, nil
 }

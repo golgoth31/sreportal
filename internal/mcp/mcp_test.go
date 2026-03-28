@@ -865,15 +865,17 @@ var _ = Describe("MCP Server", func() {
 
 		Describe("handleListReleases", func() {
 			It("should list releases for a day", func() {
-				_ = store.Replace(ctx, "2026-03-21", []domainrelease.EntryView{
+				_ = store.Replace(ctx, "default/release-2026-03-21", []domainrelease.EntryView{
 					{
-						Type:    "deployment",
-						Version: "v1.0.0",
-						Origin:  "ci/cd",
-						Date:    time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC),
-						Author:  "alice",
-						Message: "ship",
-						Link:    "https://example.com/release",
+						PortalRef: "main",
+						Day:       "2026-03-21",
+						Type:      "deployment",
+						Version:   "v1.0.0",
+						Origin:    "ci/cd",
+						Date:      time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC),
+						Author:    "alice",
+						Message:   "ship",
+						Link:      "https://example.com/release",
 					},
 				})
 				server := NewReleasesServer(store)

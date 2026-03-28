@@ -48,7 +48,7 @@ describe("useReleases", () => {
       ),
     );
 
-    const { result } = renderHook(() => useReleases(), {
+    const { result } = renderHook(() => useReleases("main"), {
       wrapper: createTestQueryWrapper(),
     });
 
@@ -80,7 +80,7 @@ describe("useReleases", () => {
       ),
     );
 
-    const { result } = renderHook(() => useReleases(), {
+    const { result } = renderHook(() => useReleases("main"), {
       wrapper: createTestQueryWrapper(),
     });
 
@@ -109,7 +109,7 @@ describe("useReleases", () => {
       ),
     );
 
-    const { result } = renderHook(() => useReleases(), {
+    const { result } = renderHook(() => useReleases("main"), {
       wrapper: createTestQueryWrapper(),
     });
 

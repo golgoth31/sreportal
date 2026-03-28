@@ -25,6 +25,11 @@ import (
 
 // ReleaseSpec defines the desired state of Release
 type ReleaseSpec struct {
+	// portalRef is the name of the Portal this release is linked to
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinLength=1
+	PortalRef string `json:"portalRef"`
+
 	// entries is the list of release events for this day
 	// +optional
 	Entries []ReleaseEntry `json:"entries,omitempty"`
@@ -78,6 +83,7 @@ type ReleaseStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Portal",type=string,JSONPath=`.spec.portalRef`
 // +kubebuilder:printcolumn:name="Entries",type=integer,JSONPath=`.status.entryCount`
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 

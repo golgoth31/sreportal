@@ -354,6 +354,96 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Add field indexer for Release.spec.portalRef
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&sreportalv1alpha1.Release{},
+		controller.FieldIndexPortalRef,
+		func(o client.Object) []string {
+			rel := o.(*sreportalv1alpha1.Release)
+			if rel.Spec.PortalRef == "" {
+				return nil
+			}
+			return []string{rel.Spec.PortalRef}
+		},
+	); err != nil {
+		setupLog.Error(err, "unable to create field indexer",
+			"field", controller.FieldIndexPortalRef, "kind", "Release")
+		os.Exit(1)
+	}
+
+	// Add field indexer for Alertmanager.spec.portalRef
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&sreportalv1alpha1.Alertmanager{},
+		controller.FieldIndexPortalRef,
+		func(o client.Object) []string {
+			am := o.(*sreportalv1alpha1.Alertmanager)
+			if am.Spec.PortalRef == "" {
+				return nil
+			}
+			return []string{am.Spec.PortalRef}
+		},
+	); err != nil {
+		setupLog.Error(err, "unable to create field indexer",
+			"field", controller.FieldIndexPortalRef, "kind", "Alertmanager")
+		os.Exit(1)
+	}
+
+	// Add field indexer for Component.spec.portalRef
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&sreportalv1alpha1.Component{},
+		controller.FieldIndexPortalRef,
+		func(o client.Object) []string {
+			comp := o.(*sreportalv1alpha1.Component)
+			if comp.Spec.PortalRef == "" {
+				return nil
+			}
+			return []string{comp.Spec.PortalRef}
+		},
+	); err != nil {
+		setupLog.Error(err, "unable to create field indexer",
+			"field", controller.FieldIndexPortalRef, "kind", "Component")
+		os.Exit(1)
+	}
+
+	// Add field indexer for Incident.spec.portalRef
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&sreportalv1alpha1.Incident{},
+		controller.FieldIndexPortalRef,
+		func(o client.Object) []string {
+			inc := o.(*sreportalv1alpha1.Incident)
+			if inc.Spec.PortalRef == "" {
+				return nil
+			}
+			return []string{inc.Spec.PortalRef}
+		},
+	); err != nil {
+		setupLog.Error(err, "unable to create field indexer",
+			"field", controller.FieldIndexPortalRef, "kind", "Incident")
+		os.Exit(1)
+	}
+
+	// Add field indexer for Maintenance.spec.portalRef
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&sreportalv1alpha1.Maintenance{},
+		controller.FieldIndexPortalRef,
+		func(o client.Object) []string {
+			maint := o.(*sreportalv1alpha1.Maintenance)
+			if maint.Spec.PortalRef == "" {
+				return nil
+			}
+			return []string{maint.Spec.PortalRef}
+		},
+	); err != nil {
+		setupLog.Error(err, "unable to create field indexer",
+			"field", controller.FieldIndexPortalRef, "kind", "Maintenance")
+		os.Exit(1)
+	}
+
 	// Create kubernetes clientset for external-dns sources
 	restConfig := ctrl.GetConfigOrDie()
 	kubeClient, err := kubernetes.NewForConfig(restConfig)
@@ -376,6 +466,7 @@ func main() {
 	}
 	fqdnStore := dnsreadstore.NewFQDNStore(nil) // priority dedup handled in SourceReconciler
 	portalStore := portalreadstore.NewPortalStore()
+	releaseStore := releasereadstore.NewReleaseStore()
 	alertmanagerStore := alertmanagerreadstore.NewAlertmanagerStore()
 
 	dnsReconciler := controller.NewDNSReconciler(
@@ -438,6 +529,7 @@ func main() {
 	)
 	portalReconciler.SetPortalWriter(portalStore)
 	portalReconciler.SetFQDNWriter(fqdnStore)
+	portalReconciler.SetReleaseWriter(releaseStore)
 	if err := portalReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Portal")
 		os.Exit(1)
@@ -535,8 +627,7 @@ func main() {
 	if releaseTTL == 0 {
 		releaseTTL = 30 * 24 * 60 * 60 * 1e9 // 30 days in nanoseconds
 	}
-	releaseSvc := releaseservice.NewService(mgr.GetClient(), releaseNamespace)
-	releaseStore := releasereadstore.NewReleaseStore()
+	releaseSvc := releaseservice.NewService(mgr.GetClient(), releaseNamespace, portalctrl.MainPortalName)
 
 	// Release controller: watches Release CRs, pushes to ReadStore, and deletes expired CRs
 	releaseReconciler := controller.NewReleaseReconciler(mgr.GetClient(), releaseTTL)

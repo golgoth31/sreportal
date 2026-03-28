@@ -27,6 +27,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -43,8 +44,12 @@ func setupReleaseServer(t *testing.T, chain *auth.Chain) sreportalv1connect.Rele
 	t.Helper()
 	scheme := runtime.NewScheme()
 	_ = sreportalv1alpha1.AddToScheme(scheme)
-	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&sreportalv1alpha1.Release{}).Build()
-	svc := releaseservice.NewService(k8sClient, "default")
+	portal := &sreportalv1alpha1.Portal{
+		ObjectMeta: metav1.ObjectMeta{Name: "main", Namespace: "default"},
+		Spec:       sreportalv1alpha1.PortalSpec{Title: "Main"},
+	}
+	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).WithStatusSubresource(&sreportalv1alpha1.Release{}).Build()
+	svc := releaseservice.NewService(k8sClient, "default", "main")
 	reader := readstorerelease.NewReleaseStore()
 	grpcSvc := svcgrpc.NewReleaseService(reader, svc, 30*24*time.Hour, nil)
 
