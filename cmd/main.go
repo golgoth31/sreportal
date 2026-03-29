@@ -49,10 +49,20 @@ import (
 	"github.com/golgoth31/sreportal/internal/alertmanagerclient"
 	"github.com/golgoth31/sreportal/internal/auth"
 	"github.com/golgoth31/sreportal/internal/config"
-	"github.com/golgoth31/sreportal/internal/controller"
-	dnspkg "github.com/golgoth31/sreportal/internal/controller/dns"
-	nfdchain "github.com/golgoth31/sreportal/internal/controller/networkflowdiscovery"
+	alertmanagerctrl "github.com/golgoth31/sreportal/internal/controller/alertmanager"
+	componentctrl "github.com/golgoth31/sreportal/internal/controller/component"
+	dnsctrl "github.com/golgoth31/sreportal/internal/controller/dns"
+	dnschain "github.com/golgoth31/sreportal/internal/controller/dns/chain"
+	dnsrecordsctrl "github.com/golgoth31/sreportal/internal/controller/dnsrecords"
+	incidentctrl "github.com/golgoth31/sreportal/internal/controller/incident"
+	maintenancectrl "github.com/golgoth31/sreportal/internal/controller/maintenance"
+	nfdctrl "github.com/golgoth31/sreportal/internal/controller/networkflowdiscovery"
+	nfdchain "github.com/golgoth31/sreportal/internal/controller/networkflowdiscovery/chain"
 	portalctrl "github.com/golgoth31/sreportal/internal/controller/portal"
+	portalchain "github.com/golgoth31/sreportal/internal/controller/portal/chain"
+	portalfeatures "github.com/golgoth31/sreportal/internal/controller/portal/features"
+	releasectrl "github.com/golgoth31/sreportal/internal/controller/release"
+	sourcectrl "github.com/golgoth31/sreportal/internal/controller/source"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/mcp"
 	alertmanagerreadstore "github.com/golgoth31/sreportal/internal/readstore/alertmanager"
@@ -306,7 +316,7 @@ func main() {
 	if err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),
 		&sreportalv1alpha1.DNSRecord{},
-		controller.FieldIndexPortalRef,
+		portalfeatures.FieldIndexPortalRef,
 		func(o client.Object) []string {
 			dnsRecord := o.(*sreportalv1alpha1.DNSRecord)
 			if dnsRecord.Spec.PortalRef == "" {
@@ -315,7 +325,7 @@ func main() {
 			return []string{dnsRecord.Spec.PortalRef}
 		},
 	); err != nil {
-		setupLog.Error(err, "unable to create field indexer", "field", controller.FieldIndexPortalRef)
+		setupLog.Error(err, "unable to create field indexer", "field", portalfeatures.FieldIndexPortalRef)
 		os.Exit(1)
 	}
 
@@ -323,7 +333,7 @@ func main() {
 	if err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),
 		&sreportalv1alpha1.NetworkFlowDiscovery{},
-		controller.FieldIndexPortalRef,
+		portalfeatures.FieldIndexPortalRef,
 		func(o client.Object) []string {
 			nfd := o.(*sreportalv1alpha1.NetworkFlowDiscovery)
 			if nfd.Spec.PortalRef == "" {
@@ -333,7 +343,7 @@ func main() {
 		},
 	); err != nil {
 		setupLog.Error(err, "unable to create field indexer",
-			"field", controller.FieldIndexPortalRef, "kind", "NetworkFlowDiscovery")
+			"field", portalfeatures.FieldIndexPortalRef, "kind", "NetworkFlowDiscovery")
 		os.Exit(1)
 	}
 
@@ -341,7 +351,7 @@ func main() {
 	if err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),
 		&sreportalv1alpha1.DNS{},
-		controller.FieldIndexPortalRef,
+		portalfeatures.FieldIndexPortalRef,
 		func(o client.Object) []string {
 			dns := o.(*sreportalv1alpha1.DNS)
 			if dns.Spec.PortalRef == "" {
@@ -350,7 +360,7 @@ func main() {
 			return []string{dns.Spec.PortalRef}
 		},
 	); err != nil {
-		setupLog.Error(err, "unable to create field indexer", "field", controller.FieldIndexPortalRef)
+		setupLog.Error(err, "unable to create field indexer", "field", portalfeatures.FieldIndexPortalRef)
 		os.Exit(1)
 	}
 
@@ -358,7 +368,7 @@ func main() {
 	if err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),
 		&sreportalv1alpha1.Release{},
-		controller.FieldIndexPortalRef,
+		portalfeatures.FieldIndexPortalRef,
 		func(o client.Object) []string {
 			rel := o.(*sreportalv1alpha1.Release)
 			if rel.Spec.PortalRef == "" {
@@ -368,7 +378,7 @@ func main() {
 		},
 	); err != nil {
 		setupLog.Error(err, "unable to create field indexer",
-			"field", controller.FieldIndexPortalRef, "kind", "Release")
+			"field", portalfeatures.FieldIndexPortalRef, "kind", "Release")
 		os.Exit(1)
 	}
 
@@ -376,7 +386,7 @@ func main() {
 	if err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),
 		&sreportalv1alpha1.Alertmanager{},
-		controller.FieldIndexPortalRef,
+		portalfeatures.FieldIndexPortalRef,
 		func(o client.Object) []string {
 			am := o.(*sreportalv1alpha1.Alertmanager)
 			if am.Spec.PortalRef == "" {
@@ -386,7 +396,7 @@ func main() {
 		},
 	); err != nil {
 		setupLog.Error(err, "unable to create field indexer",
-			"field", controller.FieldIndexPortalRef, "kind", "Alertmanager")
+			"field", portalfeatures.FieldIndexPortalRef, "kind", "Alertmanager")
 		os.Exit(1)
 	}
 
@@ -394,7 +404,7 @@ func main() {
 	if err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),
 		&sreportalv1alpha1.Component{},
-		controller.FieldIndexPortalRef,
+		portalfeatures.FieldIndexPortalRef,
 		func(o client.Object) []string {
 			comp := o.(*sreportalv1alpha1.Component)
 			if comp.Spec.PortalRef == "" {
@@ -404,7 +414,7 @@ func main() {
 		},
 	); err != nil {
 		setupLog.Error(err, "unable to create field indexer",
-			"field", controller.FieldIndexPortalRef, "kind", "Component")
+			"field", portalfeatures.FieldIndexPortalRef, "kind", "Component")
 		os.Exit(1)
 	}
 
@@ -412,7 +422,7 @@ func main() {
 	if err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),
 		&sreportalv1alpha1.Incident{},
-		controller.FieldIndexPortalRef,
+		portalfeatures.FieldIndexPortalRef,
 		func(o client.Object) []string {
 			inc := o.(*sreportalv1alpha1.Incident)
 			if inc.Spec.PortalRef == "" {
@@ -422,7 +432,7 @@ func main() {
 		},
 	); err != nil {
 		setupLog.Error(err, "unable to create field indexer",
-			"field", controller.FieldIndexPortalRef, "kind", "Incident")
+			"field", portalfeatures.FieldIndexPortalRef, "kind", "Incident")
 		os.Exit(1)
 	}
 
@@ -430,7 +440,7 @@ func main() {
 	if err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),
 		&sreportalv1alpha1.Maintenance{},
-		controller.FieldIndexPortalRef,
+		portalfeatures.FieldIndexPortalRef,
 		func(o client.Object) []string {
 			maint := o.(*sreportalv1alpha1.Maintenance)
 			if maint.Spec.PortalRef == "" {
@@ -440,7 +450,7 @@ func main() {
 		},
 	); err != nil {
 		setupLog.Error(err, "unable to create field indexer",
-			"field", controller.FieldIndexPortalRef, "kind", "Maintenance")
+			"field", portalfeatures.FieldIndexPortalRef, "kind", "Maintenance")
 		os.Exit(1)
 	}
 
@@ -469,7 +479,7 @@ func main() {
 	releaseStore := releasereadstore.NewReleaseStore()
 	alertmanagerStore := alertmanagerreadstore.NewAlertmanagerStore()
 
-	dnsReconciler := controller.NewDNSReconciler(
+	dnsReconciler := dnsctrl.NewDNSReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),
 		disableDNSCheck,
@@ -480,11 +490,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	dnsRecordReconciler := controller.NewDNSRecordReconciler(
+	dnsRecordReconciler := dnsrecordsctrl.NewDNSRecordReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),
 		groupMapping,
-		dnspkg.NewNetResolver(),
+		dnschain.NewNetResolver(),
 		disableDNSCheck,
 	)
 	dnsRecordReconciler.SetFQDNWriter(fqdnStore)
@@ -493,7 +503,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	sourceReconciler := controller.NewSourceReconciler(
+	sourceReconciler := sourcectrl.NewSourceReconciler(
 		mgr.GetClient(),
 		kubeClient,
 		restConfig,
@@ -522,7 +532,7 @@ func main() {
 		}
 	}
 	remoteCache := remoteclient.NewCache()
-	portalReconciler := controller.NewPortalReconciler(
+	portalReconciler := portalctrl.NewPortalReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),
 		remoteCache,
@@ -536,7 +546,7 @@ func main() {
 	}
 
 	// Add runnable to ensure main portal exists at startup
-	if err := mgr.Add(portalctrl.NewEnsureMainPortalRunnable(
+	if err := mgr.Add(portalchain.NewEnsureMainPortalRunnable(
 		mgr.GetClient(),
 		mgr.GetCache(),
 		portalNamespace,
@@ -550,13 +560,13 @@ func main() {
 		mgr.GetClient(),
 		mgr.GetCache(),
 		portalNamespace,
-		portalctrl.MainPortalName,
+		portalchain.MainPortalName,
 	)); err != nil {
 		setupLog.Error(err, "unable to add NFD ensure runnable")
 		os.Exit(1)
 	}
 	amClient := alertmanagerclient.NewClient()
-	amReconciler := controller.NewAlertmanagerReconciler(
+	amReconciler := alertmanagerctrl.NewAlertmanagerReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),
 		amClient,
@@ -569,7 +579,7 @@ func main() {
 		os.Exit(1)
 	}
 	flowGraphStore := netpolreadstore.NewFlowGraphStore()
-	nfdReconciler := controller.NewNetworkFlowDiscoveryReconciler(
+	nfdReconciler := nfdctrl.NewNetworkFlowDiscoveryReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),
 		remoteCache,
@@ -584,7 +594,7 @@ func main() {
 	maintenanceStore := maintenancereadstore.NewMaintenanceStore()
 	incidentStore := incidentreadstore.NewIncidentStore()
 
-	componentReconciler := controller.NewComponentReconciler(
+	componentReconciler := componentctrl.NewComponentReconciler(
 		mgr.GetClient(), maintenanceStore, componentStore,
 	)
 	if err := componentReconciler.SetupWithManager(mgr); err != nil {
@@ -592,13 +602,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	maintenanceReconciler := controller.NewMaintenanceReconciler(mgr.GetClient(), maintenanceStore)
+	maintenanceReconciler := maintenancectrl.NewMaintenanceReconciler(mgr.GetClient(), maintenanceStore)
 	if err := maintenanceReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Maintenance")
 		os.Exit(1)
 	}
 
-	incidentReconciler := controller.NewIncidentReconciler(mgr.GetClient(), incidentStore)
+	incidentReconciler := incidentctrl.NewIncidentReconciler(mgr.GetClient(), incidentStore)
 	if err := incidentReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Incident")
 		os.Exit(1)
@@ -629,10 +639,10 @@ func main() {
 	if releaseTTL == 0 {
 		releaseTTL = 30 * 24 * 60 * 60 * 1e9 // 30 days in nanoseconds
 	}
-	releaseSvc := releaseservice.NewService(mgr.GetClient(), releaseNamespace, portalctrl.MainPortalName)
+	releaseSvc := releaseservice.NewService(mgr.GetClient(), releaseNamespace, portalchain.MainPortalName)
 
 	// Release controller: watches Release CRs, pushes to ReadStore, and deletes expired CRs
-	releaseReconciler := controller.NewReleaseReconciler(mgr.GetClient(), releaseTTL)
+	releaseReconciler := releasectrl.NewReleaseReconciler(mgr.GetClient(), releaseTTL)
 	releaseReconciler.SetReleaseWriter(releaseStore)
 	if err := releaseReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Release")

@@ -23,7 +23,7 @@ import (
 	"net/http"
 	"time"
 
-	portalctrl "github.com/golgoth31/sreportal/internal/controller/portal"
+	portalctrl "github.com/golgoth31/sreportal/internal/controller/portal/chain"
 	domainrelease "github.com/golgoth31/sreportal/internal/domain/release"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/metrics"

@@ -24,7 +24,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/golgoth31/sreportal/internal/config"
-	portalctrl "github.com/golgoth31/sreportal/internal/controller/portal"
+	portalctrl "github.com/golgoth31/sreportal/internal/controller/portal/chain"
 	domainrelease "github.com/golgoth31/sreportal/internal/domain/release"
 	releasev1 "github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1"
 	"github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1/sreportalv1connect"
