@@ -910,6 +910,115 @@ var _ = Describe("ApplySourcePriority", func() {
 	})
 })
 
+var _ = Describe("ResolveComponentSpec", func() {
+	Context("when endpoint has no component annotation", func() {
+		It("should return nil", func() {
+			ep := newTestEndpoint("api.example.com")
+			Expect(ResolveComponentSpec(ep)).To(BeNil())
+		})
+	})
+
+	Context("when endpoint has empty component annotation", func() {
+		It("should return nil", func() {
+			ep := newTestEndpointWithLabels("api.example.com", map[string]string{
+				ComponentAnnotationKey: "",
+			})
+			Expect(ResolveComponentSpec(ep)).To(BeNil())
+		})
+	})
+
+	Context("when endpoint is nil", func() {
+		It("should return nil", func() {
+			Expect(ResolveComponentSpec(nil)).To(BeNil())
+		})
+	})
+
+	Context("when endpoint has component annotation only", func() {
+		It("should return spec with display name and empty optional fields", func() {
+			ep := newTestEndpointWithLabels("api.example.com", map[string]string{
+				ComponentAnnotationKey: "API Gateway",
+			})
+			spec := ResolveComponentSpec(ep)
+			Expect(spec).NotTo(BeNil())
+			Expect(spec.DisplayName).To(Equal("API Gateway"))
+			Expect(spec.Group).To(BeEmpty())
+			Expect(spec.Description).To(BeEmpty())
+			Expect(spec.Link).To(BeEmpty())
+			Expect(spec.Status).To(BeEmpty())
+		})
+	})
+
+	Context("when endpoint has all component annotations", func() {
+		It("should extract all fields", func() {
+			ep := newTestEndpointWithLabels("api.example.com", map[string]string{
+				ComponentAnnotationKey:            "API Gateway",
+				ComponentGroupAnnotationKey:       "Infrastructure",
+				ComponentDescriptionAnnotationKey: "Main API ingress",
+				ComponentLinkAnnotationKey:        "https://grafana.internal/d/api",
+				ComponentStatusAnnotationKey:      "operational",
+			})
+			spec := ResolveComponentSpec(ep)
+			Expect(spec).NotTo(BeNil())
+			Expect(spec.DisplayName).To(Equal("API Gateway"))
+			Expect(spec.Group).To(Equal("Infrastructure"))
+			Expect(spec.Description).To(Equal("Main API ingress"))
+			Expect(spec.Link).To(Equal("https://grafana.internal/d/api"))
+			Expect(spec.Status).To(Equal("operational"))
+		})
+	})
+})
+
+var _ = Describe("ComponentAnnotationsFromMap", func() {
+	Context("when annotations are empty", func() {
+		It("should return nil", func() {
+			Expect(ComponentAnnotationsFromMap(nil)).To(BeNil())
+			Expect(ComponentAnnotationsFromMap(map[string]string{})).To(BeNil())
+		})
+	})
+
+	Context("when component annotation is absent", func() {
+		It("should return nil", func() {
+			ann := map[string]string{"some/other": "value"}
+			Expect(ComponentAnnotationsFromMap(ann)).To(BeNil())
+		})
+	})
+
+	Context("when component annotation is present", func() {
+		It("should extract all fields", func() {
+			ann := map[string]string{
+				ComponentAnnotationKey:            "DNS Service",
+				ComponentGroupAnnotationKey:       "Core",
+				ComponentDescriptionAnnotationKey: "Internal DNS",
+				ComponentLinkAnnotationKey:        "https://console.cloud.google.com/dns",
+				ComponentStatusAnnotationKey:      "degraded",
+			}
+			spec := ComponentAnnotationsFromMap(ann)
+			Expect(spec).NotTo(BeNil())
+			Expect(spec.DisplayName).To(Equal("DNS Service"))
+			Expect(spec.Group).To(Equal("Core"))
+			Expect(spec.Description).To(Equal("Internal DNS"))
+			Expect(spec.Link).To(Equal("https://console.cloud.google.com/dns"))
+			Expect(spec.Status).To(Equal("degraded"))
+		})
+	})
+})
+
+var _ = Describe("EnrichEndpointLabels with component annotations", func() {
+	It("should propagate component annotations from K8s resource to endpoint", func() {
+		ep := newTestEndpoint("api.example.com")
+		annotations := map[string]string{
+			ComponentAnnotationKey:       "API Gateway",
+			ComponentGroupAnnotationKey:  "Infrastructure",
+			ComponentStatusAnnotationKey: "operational",
+		}
+		EnrichEndpointLabels(ep, annotations)
+
+		Expect(ep.Labels[ComponentAnnotationKey]).To(Equal("API Gateway"))
+		Expect(ep.Labels[ComponentGroupAnnotationKey]).To(Equal("Infrastructure"))
+		Expect(ep.Labels[ComponentStatusAnnotationKey]).To(Equal("operational"))
+	})
+})
+
 // Benchmarks — these are standard Go benchmarks (not Ginkgo), placed in the
 // same package test file so they can reuse the helper constructors below.
 

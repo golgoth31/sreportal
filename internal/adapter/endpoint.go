@@ -45,11 +45,95 @@ const (
 	// to exclude them from DNS discovery. When set to "true", the endpoint
 	// is silently dropped during group conversion.
 	IgnoreAnnotationKey = "sreportal.io/ignore"
+
+	// ComponentAnnotationKey triggers automatic Component CR creation when
+	// present on a K8s source resource or DNS CR. The value is the component
+	// display name.
+	ComponentAnnotationKey = "sreportal.io/component"
+
+	// ComponentGroupAnnotationKey overrides the component group. When absent
+	// the FQDN group from GroupMappingStrategy is used.
+	ComponentGroupAnnotationKey = "sreportal.io/component-group"
+
+	// ComponentDescriptionAnnotationKey sets the component description.
+	ComponentDescriptionAnnotationKey = "sreportal.io/component-description"
+
+	// ComponentLinkAnnotationKey sets the component external URL.
+	ComponentLinkAnnotationKey = "sreportal.io/component-link"
+
+	// ComponentStatusAnnotationKey sets the initial declared status.
+	// Defaults to "operational" when absent.
+	ComponentStatusAnnotationKey = "sreportal.io/component-status"
+
+	// ManagedByLabelKey marks auto-created Component CRs so orphan cleanup
+	// only deletes components that were created by the same controller.
+	ManagedByLabelKey = "sreportal.io/managed-by"
+
+	// ManagedBySourceController is the managed-by value for components
+	// created by the source reconciliation chain.
+	ManagedBySourceController = "source-controller"
+
+	// ManagedByDNSController is the managed-by value for components
+	// created by the DNS reconciliation chain.
+	ManagedByDNSController = "dns-controller"
 )
 
 // SreportalAnnotations lists the annotation keys that should be propagated
 // from K8s resource annotations to endpoint labels.
-var SreportalAnnotations = []string{PortalAnnotationKey, GroupsAnnotationKey, IgnoreAnnotationKey}
+var SreportalAnnotations = []string{
+	PortalAnnotationKey,
+	GroupsAnnotationKey,
+	IgnoreAnnotationKey,
+	ComponentAnnotationKey,
+	ComponentGroupAnnotationKey,
+	ComponentDescriptionAnnotationKey,
+	ComponentLinkAnnotationKey,
+	ComponentStatusAnnotationKey,
+}
+
+// ComponentAnnotations holds the component metadata extracted from annotations.
+type ComponentAnnotations struct {
+	DisplayName string
+	Group       string
+	Description string
+	Link        string
+	Status      string
+}
+
+// ResolveComponentSpec extracts component metadata from endpoint labels.
+// Returns nil when the sreportal.io/component annotation is absent.
+func ResolveComponentSpec(ep *endpoint.Endpoint) *ComponentAnnotations {
+	if ep == nil {
+		return nil
+	}
+	displayName, ok := ep.Labels[ComponentAnnotationKey]
+	if !ok || displayName == "" {
+		return nil
+	}
+	return &ComponentAnnotations{
+		DisplayName: displayName,
+		Group:       ep.Labels[ComponentGroupAnnotationKey],
+		Description: ep.Labels[ComponentDescriptionAnnotationKey],
+		Link:        ep.Labels[ComponentLinkAnnotationKey],
+		Status:      ep.Labels[ComponentStatusAnnotationKey],
+	}
+}
+
+// ComponentAnnotationsFromMap extracts component metadata from a raw annotation
+// map (e.g. from a DNS CR). Returns nil when sreportal.io/component is absent.
+func ComponentAnnotationsFromMap(annotations map[string]string) *ComponentAnnotations {
+	displayName := annotations[ComponentAnnotationKey]
+	if displayName == "" {
+		return nil
+	}
+	return &ComponentAnnotations{
+		DisplayName: displayName,
+		Group:       annotations[ComponentGroupAnnotationKey],
+		Description: annotations[ComponentDescriptionAnnotationKey],
+		Link:        annotations[ComponentLinkAnnotationKey],
+		Status:      annotations[ComponentStatusAnnotationKey],
+	}
+}
 
 // EnrichEndpointLabels copies sreportal annotations from K8s resource annotations
 // to the endpoint's labels. Existing endpoint labels are not overwritten.

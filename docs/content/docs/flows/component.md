@@ -9,13 +9,29 @@ The Component controller computes the effective operational status of each platf
 
 ```mermaid
 flowchart TD
-    Comp["Component CR\n(spec.status = operational)"] --> Chain["Component Controller\n(Chain of Responsibility)"]
-    Maint["Maintenance CR\n(phase = in_progress)"] -->|"watch: enqueue\naffected components"| Chain
-    Chain --> Status["Component CR Status\n(computedStatus)"]
-    Chain --> Store["ComponentStore\n(in-memory ReadStore)"]
+    Comp["Component CR
+(spec.status = operational)"] --> Chain["Component Controller
+(Chain of Responsibility)"]
+    Maint["Maintenance CR
+(phase = in_progress)"] -->|"watch: enqueue
+affected components"| Chain
+    Chain --> Status["Component CR Status
+(computedStatus)"]
+    Chain --> Store["ComponentStore
+(in-memory ReadStore)"]
     Store --> API["Connect gRPC API / MCP"]
-    API --> UI["Web UI\n(Status page)"]
+    API --> UI["Web UI
+(Status page)"]
 ```
+
+## Component Creation
+
+Components can be created in two ways:
+
+- **Manually** via `kubectl apply` or the gRPC API
+- **Automatically** from `sreportal.io/component` annotations on K8s source resources (Service, Ingress, Gateway, etc.) or DNS CRs. See the [Annotations]({{< relref "annotations" >}}) page for details.
+
+Auto-managed components are labeled with `sreportal.io/managed-by` (`source-controller` or `dns-controller`) and are subject to automatic lifecycle management (sync on reconcile, delete on annotation removal).
 
 ## Trigger
 
@@ -26,9 +42,18 @@ flowchart TD
 ```mermaid
 flowchart TD
     Start([Reconcile]) --> H1
-    H1["① ValidatePortalRef\nVerify Portal CR exists\n→ Ready=False if not found"] --> H2
-    H2["② ComputeStatus\nRead MaintenanceReader for in_progress\nmaintenances targeting this component\n→ Override to affectedStatus or keep spec.status"] --> H3
-    H3["③ UpdateStatus\nPatch status (computedStatus, conditions)\nRe-fetch for fresh resourceVersion\nAdd sreportal.io/portal label\nProject to ComponentWriter"] --> Done([Done])
+    H1["① ValidatePortalRef
+Verify Portal CR exists
+→ Ready=False if not found"] --> H2
+    H2["② ComputeStatus
+Read MaintenanceReader for in_progress
+maintenances targeting this component
+→ Override to affectedStatus or keep spec.status"] --> H3
+    H3["③ UpdateStatus
+Patch status (computedStatus, conditions)
+Re-fetch for fresh resourceVersion
+Add sreportal.io/portal label
+Project to ComponentWriter"] --> Done([Done])
 ```
 
 ### Step 1 — ValidatePortalRef

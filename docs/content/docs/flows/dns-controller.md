@@ -27,7 +27,8 @@ flowchart TD
     H1["① CollectManualEntries\nExtract groups from DNS.spec.groups"] --> H2
     H2["② AggregateFQDNs\nConvert to FQDNGroupStatus\nSet source = manual, sort by name"] --> H3
     H3["③ ResolveDNS\nParallel DNS lookup per FQDN\n(10 workers, 5s timeout)\nSkipped if disableDNSCheck=true\nSkipped for remote-source groups"] --> H4
-    H4["④ UpdateStatus\nPatch DNS.status.groups\nSet Ready condition\nProject to FQDNWriter"] --> Done([Done])
+    H4["④ UpdateStatus\nPatch DNS.status.groups\nSet Ready condition\nProject to FQDNWriter"] --> H5
+    H5["⑤ ReconcileManualComponents\nCreate/update/delete Component CR\nfrom DNS CR annotations"] --> Done([Done])
 ```
 
 ### Step 1 — CollectManualEntries
@@ -59,6 +60,19 @@ Resolution uses up to 10 concurrent goroutines. This step is skipped entirely wh
 4. **Projects to ReadStore**: converts status groups to `[]FQDNView` and writes via `fqdnWriter.Replace(key, views)`
 
 On CR deletion, the controller removes the corresponding key from the FQDNWriter.
+
+### Step 5 — ReconcileManualComponents
+
+If the DNS CR has a `sreportal.io/component` annotation:
+
+1. **Skip** if the portal's status page feature is disabled
+2. **Create or update** a Component CR from the annotation metadata
+3. **Sync metadata** (`displayName`, `group`, `description`, `link`) but **never overwrite `spec.status`**
+4. **Label** the component with `sreportal.io/managed-by: dns-controller`
+
+If the annotation is **removed**, any previously created `dns-controller`-managed component for this portal is deleted.
+
+See the [Annotations]({{< relref "annotations" >}}) page for the full list of `sreportal.io/component-*` annotations.
 
 ## ReadStore Projection
 

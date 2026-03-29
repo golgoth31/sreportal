@@ -68,7 +68,10 @@ func NewDNSReconciler(c client.Client, scheme *runtime.Scheme, disableDNSCheck b
 	if !disableDNSCheck {
 		handlers = append(handlers, dnschain.NewResolveDNSHandler(dnschain.NewNetResolver()))
 	}
-	handlers = append(handlers, dnschain.NewUpdateStatusHandler(c))
+	handlers = append(handlers,
+		dnschain.NewUpdateStatusHandler(c),
+		dnschain.NewReconcileManualComponentsHandler(c),
+	)
 
 	return &DNSReconciler{
 		Client: c,
@@ -84,6 +87,7 @@ func NewDNSReconciler(c client.Client, scheme *runtime.Scheme, disableDNSCheck b
 // +kubebuilder:rbac:groups=sreportal.io,resources=dnsrecords/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=dnsrecords/finalizers,verbs=update
 // +kubebuilder:rbac:groups=sreportal.io,resources=portals,verbs=get;list;watch
+// +kubebuilder:rbac:groups=sreportal.io,resources=components,verbs=get;list;watch;create;update;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.

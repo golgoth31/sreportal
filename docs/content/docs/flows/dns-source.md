@@ -19,17 +19,18 @@ flowchart TD
 
 ## Source Controller Chain
 
-The source controller runs as a `manager.Runnable` with a periodic ticker (configurable interval). On each tick, it executes a Chain of Responsibility with 6 handlers:
+The source controller runs as a `manager.Runnable` with a periodic ticker (configurable interval). On each tick, it executes a Chain of Responsibility with 7 handlers:
 
 ```mermaid
 flowchart TD
     Start([Tick]) --> H1
     H1["① RebuildSources\nBuild external-dns sources from config"] --> H2
     H2["② BuildPortalIndex\nList Portals, build name→portal lookup"] --> H3
-    H3["③ CollectEndpoints\nFetch endpoints from each source\nEnrich with sreportal annotations\nRoute to (portal, sourceType) buckets"] --> H4
+    H3["③ CollectEndpoints\nFetch endpoints from each source\nEnrich with sreportal annotations\nRoute to (portal, sourceType) buckets\nCollect component requests from annotations"] --> H4
     H4["④ Deduplicate\nRemove duplicate FQDNs across sources\nusing configured priority order"] --> H5
     H5["⑤ ReconcileDNSRecords\nCreate/update DNSRecord CRs\nSkip if endpoints hash unchanged"] --> H6
-    H6["⑥ DeleteOrphaned\nDelete DNSRecords for disabled sources\nor portals with no endpoints"] --> Done([Done])
+    H6["⑥ ReconcileComponents\nCreate/update/delete Component CRs\nfrom sreportal.io/component annotations"] --> H7
+    H7["⑦ DeleteOrphaned\nDelete DNSRecords for disabled sources\nor portals with no endpoints"] --> Done([Done])
 ```
 
 ### Step 1 — RebuildSources
@@ -62,9 +63,11 @@ For each enabled source:
    - `sreportal.io/portal` → copied to endpoint labels
    - `sreportal.io/groups` → copied to endpoint labels
    - `sreportal.io/ignore` → endpoint will be dropped later
+   - `sreportal.io/component` and related → copied to endpoint labels
 3. **Route** each endpoint to a `(portalName, sourceType)` bucket:
    - If `sreportal.io/portal` annotation matches a local portal → routed there
    - If annotation is missing or references an unknown/remote portal → falls back to the main portal
+4. **Collect component requests** from endpoints annotated with `sreportal.io/component`. Requests are deduplicated by `(portalName, displayName)` — first-seen wins.
 
 **Failure tracking:** Consecutive failures per source type are tracked. After 5 consecutive failures, a `NotReady` condition is set on the corresponding DNSRecord to surface the issue in `kubectl`.
 
@@ -100,7 +103,20 @@ For each `(portal, sourceType)` pair with endpoints:
 
 The hash comparison happens inside a retry loop to handle cache-lag on newly created resources and conflict errors.
 
-### Step 6 — DeleteOrphaned
+### Step 6 — ReconcileComponents
+
+For each component request collected in step 3:
+
+1. **Skip** if the portal's status page feature is disabled
+2. **Create or update** a Component CR named using a deterministic hash of `(portalRef, displayName)`
+3. **Sync metadata** from annotations: `displayName`, `group`, `description`, `link` are always updated
+4. **Preserve `spec.status`**: if the component already exists, its status is never overwritten (respects manual user changes)
+5. **Label** auto-created components with `sreportal.io/managed-by: source-controller`
+6. **Delete orphans**: auto-managed components whose `(portal, displayName)` no longer appears in the requests are hard-deleted. Manually created components (without the `managed-by` label) are never touched.
+
+See the [Annotations]({{< relref "annotations" >}}) page for the full list of `sreportal.io/component-*` annotations.
+
+### Step 7 — DeleteOrphaned
 
 For each local portal, lists its DNSRecords via the `spec.portalRef` field index. Deletes records whose source type is no longer enabled in config or has no active endpoints.
 

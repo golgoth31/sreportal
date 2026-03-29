@@ -109,6 +109,7 @@ func NewSourceReconciler(
 		sourcechain.NewCollectEndpointsHandler(r, r),
 		sourcechain.NewDeduplicateHandler(sourcePriority),
 		sourcechain.NewReconcileDNSRecordsHandler(c),
+		sourcechain.NewReconcileComponentsHandler(c),
 		sourcechain.NewDeleteOrphanedHandler(c, r),
 	)
 
@@ -117,6 +118,7 @@ func NewSourceReconciler(
 
 // +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
 // +kubebuilder:rbac:groups="discovery.k8s.io",resources=endpointslices,verbs=get;list;watch
+// +kubebuilder:rbac:groups=sreportal.io,resources=components,verbs=get;list;watch;create;update;delete
 
 // Start implements manager.Runnable to run periodic source reconciliation.
 //

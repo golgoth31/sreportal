@@ -62,6 +62,10 @@ func (h *CollectEndpointsHandler) Handle(ctx context.Context, rc *reconciler.Rec
 	idx := rc.Data.Index
 	result := make(map[PortalSourceKey][]*endpoint.Endpoint)
 
+	// Track component requests by (portalName, displayName) for dedup.
+	type compKey struct{ portal, name string }
+	seenComponents := make(map[compKey]struct{})
+
 	for _, ts := range rc.Data.TypedSources {
 		endpoints, err := ts.Source.Endpoints(ctx)
 		if err != nil {
@@ -92,6 +96,22 @@ func (h *CollectEndpointsHandler) Handle(ctx context.Context, rc *reconciler.Rec
 			}
 			key := PortalSourceKey{PortalName: portalName, SourceType: ts.Type}
 			result[key] = append(result[key], ep)
+
+			// Collect component request if annotated (first-seen wins).
+			if compSpec := adapter.ResolveComponentSpec(ep); compSpec != nil {
+				ck := compKey{portal: portalName, name: compSpec.DisplayName}
+				if _, seen := seenComponents[ck]; !seen {
+					seenComponents[ck] = struct{}{}
+					rc.Data.ComponentRequests = append(rc.Data.ComponentRequests, ComponentRequest{
+						PortalName:  portalName,
+						DisplayName: compSpec.DisplayName,
+						Group:       compSpec.Group,
+						Description: compSpec.Description,
+						Link:        compSpec.Link,
+						Status:      compSpec.Status,
+					})
+				}
+			}
 		}
 	}
 

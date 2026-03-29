@@ -40,6 +40,8 @@ Three CRDs work together to model the status page:
 
 Represents a monitored platform component (e.g., GKE cluster, Cloud SQL, API Gateway).
 
+#### Manual creation
+
 ```yaml
 apiVersion: sreportal.io/v1alpha1
 kind: Component
@@ -54,6 +56,30 @@ spec:
   status: operational
   link: "https://console.cloud.google.com/kubernetes"
 ```
+
+#### Auto-creation from annotations
+
+Components can also be created automatically by annotating K8s source resources (Service, Ingress, Gateway, etc.) or DNS CRs with `sreportal.io/component`:
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-server
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: "api.example.com"
+    sreportal.io/portal: "production"
+    sreportal.io/component: "API Gateway"
+    sreportal.io/component-group: "Infrastructure"
+    sreportal.io/component-description: "Main API ingress"
+    sreportal.io/component-link: "https://grafana.internal/d/api"
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 443
+```
+
+Auto-managed components are labeled `sreportal.io/managed-by` and follow annotation-driven lifecycle: metadata is synced on every reconcile, `spec.status` is never overwritten, and the component is deleted when the annotation is removed. See [Annotations]({{< relref "annotations" >}}) for details.
 
 **Key fields:**
 

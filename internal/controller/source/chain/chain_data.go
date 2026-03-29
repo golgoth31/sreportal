@@ -37,6 +37,22 @@ type ChainData struct {
 
 	// EndpointsByPortalSource holds collected endpoints keyed by (portal, sourceType).
 	EndpointsByPortalSource map[PortalSourceKey][]*endpoint.Endpoint
+
+	// ComponentRequests holds component creation/update requests extracted from
+	// annotated endpoints during collection. Keyed by (portalName, displayName)
+	// for deduplication — first-seen wins.
+	ComponentRequests []ComponentRequest
+}
+
+// ComponentRequest represents a request to create or update an auto-managed
+// Component CR, derived from a sreportal.io/component annotation on a source.
+type ComponentRequest struct {
+	PortalName  string
+	DisplayName string
+	Group       string
+	Description string
+	Link        string
+	Status      string
 }
 
 // PortalSourceKey identifies a unique (portal, sourceType) pair.
