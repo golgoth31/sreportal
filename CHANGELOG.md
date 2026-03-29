@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.24.0](https://github.com/golgoth31/sreportal/compare/v1.23.2...v1.24.0) (2026-03-29)
+
+
+### Features
+
+* **component:** add annotation-driven component auto-creation from sources and DNS CRs ([8e7a98f](https://github.com/golgoth31/sreportal/commit/8e7a98f7d79536ad4c29e453ed5e2da7b82939c4))
+* **portal:** add per-portal feature toggles ([#161](https://github.com/golgoth31/sreportal/issues/161)) ([90987ab](https://github.com/golgoth31/sreportal/commit/90987ab7b9072a1c2f42054290348de170fa7dbd))
+* **statuspage:** add status page with component, maintenance and incident CRDs ([#162](https://github.com/golgoth31/sreportal/issues/162)) ([5335690](https://github.com/golgoth31/sreportal/commit/533569011cd511a2d59511313eb6d221a6b2b411))
+
+
+### Bug Fixes
+
+* **component:** read incidents from k8s cache to eliminate race condition ([e7feeef](https://github.com/golgoth31/sreportal/commit/e7feeef8d91cda9372d508013cd14abd4e7295e2))
+
 ## [1.23.2](https://github.com/golgoth31/sreportal/compare/v1.23.1...v1.23.2) (2026-03-27)
 
 
