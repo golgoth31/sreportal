@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { DeleteComponentRequest, DeleteComponentResponse, DeleteIncidentRequest, DeleteIncidentResponse, DeleteMaintenanceRequest, DeleteMaintenanceResponse, ListComponentsRequest, ListComponentsResponse, ListIncidentsRequest, ListIncidentsResponse, ListMaintenancesRequest, ListMaintenancesResponse, UpsertComponentRequest, UpsertComponentResponse, UpsertIncidentRequest, UpsertIncidentResponse, UpsertMaintenanceRequest, UpsertMaintenanceResponse } from "./status_pb.js";
+import { CreateComponentRequest, CreateComponentResponse, CreateIncidentRequest, CreateIncidentResponse, CreateMaintenanceRequest, CreateMaintenanceResponse, DeleteComponentRequest, DeleteComponentResponse, DeleteIncidentRequest, DeleteIncidentResponse, DeleteMaintenanceRequest, DeleteMaintenanceResponse, ListComponentsRequest, ListComponentsResponse, ListIncidentsRequest, ListIncidentsResponse, ListMaintenancesRequest, ListMaintenancesResponse, UpdateComponentRequest, UpdateComponentResponse, UpdateIncidentRequest, UpdateIncidentResponse, UpdateMaintenanceRequest, UpdateMaintenanceResponse } from "./status_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -50,14 +50,25 @@ export const StatusService = {
       kind: MethodKind.Unary,
     },
     /**
-     * UpsertComponent creates or updates a platform component CR
+     * CreateComponent creates a new platform component CR
      *
-     * @generated from rpc sreportal.v1.StatusService.UpsertComponent
+     * @generated from rpc sreportal.v1.StatusService.CreateComponent
      */
-    upsertComponent: {
-      name: "UpsertComponent",
-      I: UpsertComponentRequest,
-      O: UpsertComponentResponse,
+    createComponent: {
+      name: "CreateComponent",
+      I: CreateComponentRequest,
+      O: CreateComponentResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * UpdateComponent updates an existing platform component CR
+     *
+     * @generated from rpc sreportal.v1.StatusService.UpdateComponent
+     */
+    updateComponent: {
+      name: "UpdateComponent",
+      I: UpdateComponentRequest,
+      O: UpdateComponentResponse,
       kind: MethodKind.Unary,
     },
     /**
@@ -72,14 +83,25 @@ export const StatusService = {
       kind: MethodKind.Unary,
     },
     /**
-     * UpsertMaintenance creates or updates a maintenance window CR
+     * CreateMaintenance creates a new maintenance window CR
      *
-     * @generated from rpc sreportal.v1.StatusService.UpsertMaintenance
+     * @generated from rpc sreportal.v1.StatusService.CreateMaintenance
      */
-    upsertMaintenance: {
-      name: "UpsertMaintenance",
-      I: UpsertMaintenanceRequest,
-      O: UpsertMaintenanceResponse,
+    createMaintenance: {
+      name: "CreateMaintenance",
+      I: CreateMaintenanceRequest,
+      O: CreateMaintenanceResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * UpdateMaintenance updates an existing maintenance window CR
+     *
+     * @generated from rpc sreportal.v1.StatusService.UpdateMaintenance
+     */
+    updateMaintenance: {
+      name: "UpdateMaintenance",
+      I: UpdateMaintenanceRequest,
+      O: UpdateMaintenanceResponse,
       kind: MethodKind.Unary,
     },
     /**
@@ -94,14 +116,25 @@ export const StatusService = {
       kind: MethodKind.Unary,
     },
     /**
-     * UpsertIncident creates or updates an incident CR
+     * CreateIncident creates a new incident CR
      *
-     * @generated from rpc sreportal.v1.StatusService.UpsertIncident
+     * @generated from rpc sreportal.v1.StatusService.CreateIncident
      */
-    upsertIncident: {
-      name: "UpsertIncident",
-      I: UpsertIncidentRequest,
-      O: UpsertIncidentResponse,
+    createIncident: {
+      name: "CreateIncident",
+      I: CreateIncidentRequest,
+      O: CreateIncidentResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * UpdateIncident updates an existing incident CR, appending a timeline entry
+     *
+     * @generated from rpc sreportal.v1.StatusService.UpdateIncident
+     */
+    updateIncident: {
+      name: "UpdateIncident",
+      I: UpdateIncidentRequest,
+      O: UpdateIncidentResponse,
       kind: MethodKind.Unary,
     },
     /**

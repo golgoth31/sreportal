@@ -4,6 +4,7 @@ package component
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -55,12 +56,12 @@ func (h *ValidatePortalRefHandler) Handle(ctx context.Context, rc *reconciler.Re
 // ComputeStatusHandler computes the effective status considering active maintenances and incidents.
 type ComputeStatusHandler struct {
 	maintenanceReader domainmaint.MaintenanceReader
-	incidentReader    domainincident.IncidentReader
+	incidentLister    client.Reader
 }
 
 // NewComputeStatusHandler creates a new ComputeStatusHandler.
-func NewComputeStatusHandler(maintenanceReader domainmaint.MaintenanceReader, incidentReader domainincident.IncidentReader) *ComputeStatusHandler {
-	return &ComputeStatusHandler{maintenanceReader: maintenanceReader, incidentReader: incidentReader}
+func NewComputeStatusHandler(maintenanceReader domainmaint.MaintenanceReader, incidentLister client.Reader) *ComputeStatusHandler {
+	return &ComputeStatusHandler{maintenanceReader: maintenanceReader, incidentLister: incidentLister}
 }
 
 func (h *ComputeStatusHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.Component, ChainData]) error {
@@ -86,24 +87,47 @@ func (h *ComputeStatusHandler) Handle(ctx context.Context, rc *reconciler.Reconc
 		}
 	}
 
-	// Check active incidents — incidents take precedence over maintenance
-	if h.incidentReader != nil {
-		incidents, err := h.incidentReader.List(ctx, domainincident.ListOptions{
-			PortalRef: comp.Spec.PortalRef,
-		})
-		if err != nil {
+	// Check active incidents — incidents take precedence over maintenance.
+	// Read Incident CRs directly from the K8s informer cache and compute
+	// the phase from spec.updates to avoid a race with the Incident controller
+	// updating the ReadStore.
+	if h.incidentLister != nil {
+		var incidentList sreportalv1alpha1.IncidentList
+		if err := h.incidentLister.List(ctx, &incidentList,
+			client.InNamespace(comp.Namespace),
+			client.MatchingLabels{"sreportal.io/portal": comp.Spec.PortalRef},
+		); err != nil {
 			return fmt.Errorf("list incidents: %w", err)
 		}
 
 		var activeCount int
 		worstStatus := string(rc.Data.ComputedStatus)
 
-		for _, inc := range incidents {
-			if !inc.AffectsComponent(comp.Spec.PortalRef, comp.Name) {
+		for i := range incidentList.Items {
+			inc := &incidentList.Items[i]
+
+			// Compute the authoritative phase from spec.updates
+			updates := make([]domainincident.UpdateView, 0, len(inc.Spec.Updates))
+			for _, u := range inc.Spec.Updates {
+				updates = append(updates, domainincident.UpdateView{
+					Timestamp: u.Timestamp.Time,
+					Phase:     domainincident.IncidentPhase(u.Phase),
+					Message:   u.Message,
+				})
+			}
+			computed, err := domainincident.ComputeStatus(updates)
+			if err != nil {
+				continue // skip incidents with no updates
+			}
+			if computed.CurrentPhase == domainincident.PhaseResolved {
 				continue
 			}
+			if !slices.Contains(inc.Spec.Components, comp.Name) {
+				continue
+			}
+
 			activeCount++
-			incStatus := inc.ComponentStatus()
+			incStatus := domainincident.SeverityToComponentStatus(domainincident.IncidentSeverity(inc.Spec.Severity))
 			if domaincomponent.StatusSeverityRank(incStatus) > domaincomponent.StatusSeverityRank(worstStatus) {
 				worstStatus = incStatus
 			}

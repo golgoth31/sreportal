@@ -27,6 +27,7 @@ Then open [http://localhost:8090](http://localhost:8090) in your browser.
 | `/:portalName/alerts` | Displays Alertmanager resources and active alerts for the portal |
 | `/:portalName/netpol` | Displays network policy flow graph for the portal |
 | `/:portalName/releases` | Displays release events for a given day (main portal only) |
+| `/:portalName/status` | Status page with components, incidents, and maintenance tabs |
 | `/help` | MCP setup instructions (all MCP endpoints) and available tools |
 
 The root URL redirects to the `main` portal's links page. Each portal has its own DNS (links), Dashboard, Network Policies, and (when applicable) Releases and Alerts routes.
@@ -39,6 +40,7 @@ When viewing a portal, a left sidebar shows:
 - **Dashboard** — navigates to `/:portalName/dashboard` (metrics charts; labeled beta)
 - **Releases** — shown only on the main portal when at least one Release CR exists; navigates to `/:portalName/releases`
 - **Network Policies** — navigates to `/:portalName/netpol` (network flow graph)
+- **Status** — navigates to `/:portalName/status` (components, incidents, maintenances)
 - **Alerts** — shown only if the portal has at least one Alertmanager resource; navigates to `/:portalName/alerts`
 
 ## Features
@@ -70,15 +72,15 @@ For portals that have Alertmanager resources, the Alerts page lists each Alertma
 
 ### Network Policies Page
 
-![Network Policies](/assets/img/dark/netpol.png)
+The Network Policies page visualizes network flows discovered from Kubernetes NetworkPolicies and GKE FQDNNetworkPolicies. It provides three tabs:
 
-The Network Policies page visualizes network flows discovered from Kubernetes NetworkPolicies and GKE FQDNNetworkPolicies. It provides three views:
+- **Flow Matrix** — lists every service with outgoing and incoming flows, collapsible by namespace
+- **Cross-Namespace** — aggregated matrix showing flow counts between namespaces
+- **Impact Analysis** — select a resource to see its blast radius across dependency levels
 
-- **Flow Matrix** — a heatmap showing allowed connections between services grouped by namespace
-- **Impact View** — select a service to see all its ingress and egress flows
-- **Cross-Namespace** — highlights flows that cross namespace boundaries
+![Flow Matrix](/assets/img/dark/netpol-matrix.png)
 
-The graph data is computed by the NetworkFlowDiscovery controller and stored in FlowNodeSet/FlowEdgeSet CRDs. For remote portals, the data is fetched via the Connect API and synced locally.
+The graph data is computed by the NetworkFlowDiscovery controller and stored in FlowNodeSet/FlowEdgeSet CRDs. For remote portals, the data is fetched via the Connect API and synced locally. See [Network Flow Discovery](../networkpolicies/network-flow-discovery) for CRD definitions and API details.
 
 ### Releases Page
 
@@ -92,6 +94,18 @@ Features:
 - **Keyword search**: filter releases by type, version, origin, author, or message (case-insensitive)
 - **Compact layout**: each release is a single row showing time, type badge, version, origin, message, author, and an external link icon
 - **Configurable type colors**: type badge colors are driven by the operator's `release.types` configuration. When no types are configured, built-in default colors are used
+
+### Status Page
+
+The Status page provides a real-time view of platform health, organized into three tabs:
+
+- **Components** — grouped by section, each showing computed status (operational, degraded, maintenance, partial/major outage)
+- **Incidents** — active incidents expanded by default with severity, phase, and timeline updates; resolved incidents collapsed below
+- **Maintenance** — scheduled and in-progress maintenance windows with affected components and time ranges
+
+![Status Page — Components](/assets/img/dark/status-components.png)
+
+See [Status Page](../statuspage) for CRD definitions and API details.
 
 ### Portal Navigation
 

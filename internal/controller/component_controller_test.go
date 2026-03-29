@@ -29,9 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
-	domainincident "github.com/golgoth31/sreportal/internal/domain/incident"
 	componentreadstore "github.com/golgoth31/sreportal/internal/readstore/component"
-	incidentreadstore "github.com/golgoth31/sreportal/internal/readstore/incident"
 	maintenancereadstore "github.com/golgoth31/sreportal/internal/readstore/maintenance"
 )
 
@@ -93,7 +91,7 @@ var _ = Describe("Component Controller", func() {
 		It("should successfully reconcile and set computedStatus", func() {
 			maintStore := maintenancereadstore.NewMaintenanceStore()
 			compStore := componentreadstore.NewComponentStore()
-			controllerReconciler := NewComponentReconciler(k8sClient, maintStore, nil, compStore)
+			controllerReconciler := NewComponentReconciler(k8sClient, maintStore, compStore)
 
 			Eventually(func(g Gomega) {
 				_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -135,7 +133,7 @@ var _ = Describe("Component Controller", func() {
 
 			maintStore := maintenancereadstore.NewMaintenanceStore()
 			compStore := componentreadstore.NewComponentStore()
-			controllerReconciler := NewComponentReconciler(k8sClient, maintStore, nil, compStore)
+			controllerReconciler := NewComponentReconciler(k8sClient, maintStore, compStore)
 
 			// First reconcile — sets condition Ready=True and computedStatus=operational
 			Eventually(func(g Gomega) {
@@ -174,7 +172,7 @@ var _ = Describe("Component Controller", func() {
 		It("should requeue when portalRef does not exist", func() {
 			maintStore := maintenancereadstore.NewMaintenanceStore()
 			compStore := componentreadstore.NewComponentStore()
-			controllerReconciler := NewComponentReconciler(k8sClient, maintStore, nil, compStore)
+			controllerReconciler := NewComponentReconciler(k8sClient, maintStore, compStore)
 
 			badComp := &sreportalv1alpha1.Component{
 				ObjectMeta: metav1.ObjectMeta{Name: "comp-bad-portal", Namespace: "default"},
@@ -225,21 +223,33 @@ var _ = Describe("Component Controller", func() {
 			Expect(k8sClient.Create(ctx, comp)).To(Succeed())
 			defer func() { _ = k8sClient.Delete(ctx, comp) }()
 
-			By("populating incident store with a critical incident")
-			incStore := incidentreadstore.NewIncidentStore()
-			_ = incStore.Replace(ctx, "default/inc-1", []domainincident.IncidentView{
-				{
-					Name:         "inc-1",
-					PortalRef:    incPortalName,
-					Components:   []string{incCompName},
-					Severity:     domainincident.SeverityCritical,
-					CurrentPhase: domainincident.PhaseInvestigating,
+			By("creating an Incident CR with a critical investigating update")
+			inc := &sreportalv1alpha1.Incident{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "inc-1",
+					Namespace: "default",
+					Labels:    map[string]string{"sreportal.io/portal": incPortalName},
 				},
-			})
+				Spec: sreportalv1alpha1.IncidentSpec{
+					Title:      "Test Incident",
+					PortalRef:  incPortalName,
+					Components: []string{incCompName},
+					Severity:   sreportalv1alpha1.IncidentSeverityCritical,
+					Updates: []sreportalv1alpha1.IncidentUpdate{
+						{
+							Timestamp: metav1.Now(),
+							Phase:     sreportalv1alpha1.IncidentPhaseInvestigating,
+							Message:   "investigating",
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, inc)).To(Succeed())
+			defer func() { _ = k8sClient.Delete(ctx, inc) }()
 
 			maintStore := maintenancereadstore.NewMaintenanceStore()
 			compStore := componentreadstore.NewComponentStore()
-			controllerReconciler := NewComponentReconciler(k8sClient, maintStore, incStore, compStore)
+			controllerReconciler := NewComponentReconciler(k8sClient, maintStore, compStore)
 
 			Eventually(func(g Gomega) {
 				_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -279,22 +289,36 @@ var _ = Describe("Component Controller", func() {
 			Expect(k8sClient.Create(ctx, comp)).To(Succeed())
 			defer func() { _ = k8sClient.Delete(ctx, comp) }()
 
-			incStore := incidentreadstore.NewIncidentStore()
 			maintStore := maintenancereadstore.NewMaintenanceStore()
 			compStore := componentreadstore.NewComponentStore()
-			controllerReconciler := NewComponentReconciler(k8sClient, maintStore, incStore, compStore)
+			controllerReconciler := NewComponentReconciler(k8sClient, maintStore, compStore)
 
-			By("reconciling with an active critical incident")
-			_ = incStore.Replace(ctx, "default/inc-res", []domainincident.IncidentView{
-				{
-					Name:         "inc-res",
-					PortalRef:    resPortalName,
-					Components:   []string{resCompName},
-					Severity:     domainincident.SeverityCritical,
-					CurrentPhase: domainincident.PhaseInvestigating,
+			By("creating an Incident CR with a critical investigating update")
+			now := metav1.Now()
+			inc := &sreportalv1alpha1.Incident{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "inc-res",
+					Namespace: "default",
+					Labels:    map[string]string{"sreportal.io/portal": resPortalName},
 				},
-			})
+				Spec: sreportalv1alpha1.IncidentSpec{
+					Title:      "Resolve Test Incident",
+					PortalRef:  resPortalName,
+					Components: []string{resCompName},
+					Severity:   sreportalv1alpha1.IncidentSeverityCritical,
+					Updates: []sreportalv1alpha1.IncidentUpdate{
+						{
+							Timestamp: now,
+							Phase:     sreportalv1alpha1.IncidentPhaseInvestigating,
+							Message:   "investigating",
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, inc)).To(Succeed())
+			defer func() { _ = k8sClient.Delete(ctx, inc) }()
 
+			By("reconciling with the active critical incident")
 			Eventually(func(g Gomega) {
 				_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: resCompNN,
@@ -307,17 +331,20 @@ var _ = Describe("Component Controller", func() {
 				g.Expect(fetched.Status.ActiveIncidents).To(Equal(1))
 			}, 10*time.Second, 500*time.Millisecond).Should(Succeed())
 
-			By("resolving the incident and reconciling again")
-			_ = incStore.Replace(ctx, "default/inc-res", []domainincident.IncidentView{
-				{
-					Name:         "inc-res",
-					PortalRef:    resPortalName,
-					Components:   []string{resCompName},
-					Severity:     domainincident.SeverityCritical,
-					CurrentPhase: domainincident.PhaseResolved,
-				},
-			})
+			By("resolving the incident by adding a resolved update")
+			Eventually(func(g Gomega) {
+				var fetched sreportalv1alpha1.Incident
+				g.Expect(k8sClient.Get(ctx, types.NamespacedName{Name: "inc-res", Namespace: "default"}, &fetched)).To(Succeed())
+				resolvedAt := metav1.NewTime(now.Add(time.Minute))
+				fetched.Spec.Updates = append(fetched.Spec.Updates, sreportalv1alpha1.IncidentUpdate{
+					Timestamp: resolvedAt,
+					Phase:     sreportalv1alpha1.IncidentPhaseResolved,
+					Message:   "resolved",
+				})
+				g.Expect(k8sClient.Update(ctx, &fetched)).To(Succeed())
+			}, 10*time.Second, 500*time.Millisecond).Should(Succeed())
 
+			By("reconciling again — status should revert to operational")
 			Eventually(func(g Gomega) {
 				_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: resCompNN,

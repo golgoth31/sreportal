@@ -32,7 +32,6 @@ import (
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	componentchain "github.com/golgoth31/sreportal/internal/controller/component"
 	domaincomponent "github.com/golgoth31/sreportal/internal/domain/component"
-	domainincident "github.com/golgoth31/sreportal/internal/domain/incident"
 	domainmaint "github.com/golgoth31/sreportal/internal/domain/maintenance"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/metrics"
@@ -50,12 +49,11 @@ type ComponentReconciler struct {
 func NewComponentReconciler(
 	c client.Client,
 	maintenanceReader domainmaint.MaintenanceReader,
-	incidentReader domainincident.IncidentReader,
 	componentWriter domaincomponent.ComponentWriter,
 ) *ComponentReconciler {
 	chain := reconciler.NewChain(
 		componentchain.NewValidatePortalRefHandler(c),
-		componentchain.NewComputeStatusHandler(maintenanceReader, incidentReader),
+		componentchain.NewComputeStatusHandler(maintenanceReader, c),
 		componentchain.NewUpdateStatusHandler(c, componentWriter),
 	)
 

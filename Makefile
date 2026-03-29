@@ -225,7 +225,7 @@ helm: manifests generate kustomize helmify
 
 .PHONY: doc
 doc: manifests generate api2md screenshots
-	$(API2MD) --source-path=./api --config="./hack/api-docs/config.yaml" --output-path=./docs/content/docs/api.md
+	$(API2MD) --source-path=./api --config="./hack/api-docs/config.yaml" --output-path=./docs/content/docs/api/crds.md
 
 ##@ Dependencies
 

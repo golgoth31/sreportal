@@ -315,8 +315,12 @@ const PAGES = [
   { name: "alerts", path: "/main/alerts", waitFor: "text=HighCPU" },
   { name: "dashboard", path: "/main/dashboard", waitFor: "text=Portal Statistics" },
   { name: "releases", path: "/main/releases", waitFor: "text=Releases" },
-  { name: "netpol", path: "/main/netpol", waitFor: "text=Network Policies" },
-  { name: "status", path: "/main/status", waitFor: "text=API Server" },
+  { name: "netpol-matrix", path: "/main/netpol", waitFor: "text=api-server", tab: "flow matrix" },
+  { name: "netpol-cross-ns", path: "/main/netpol", waitFor: "text=Cross-Namespace Flows", tab: "cross-namespace" },
+  { name: "netpol-impact", path: "/main/netpol", waitFor: "text=Select a resource", tab: "impact" },
+  { name: "status-components", path: "/main/status", waitFor: "text=API Server", tab: "components" },
+  { name: "status-incidents", path: "/main/status", waitFor: "text=Elevated Auth Latency", tab: "incidents" },
+  { name: "status-maintenance", path: "/main/status", waitFor: "text=PostgreSQL 16 Upgrade", tab: "maintenance" },
 ];
 
 // ── Theme variants ─────────────────────────────────────────────────────
@@ -388,7 +392,7 @@ async function main() {
         return route.continue();
       });
 
-      for (const { name, path: pagePath, waitFor } of PAGES) {
+      for (const { name, path: pagePath, waitFor, tab } of PAGES) {
         console.log(`  Capturing ${name}...`);
         await page.goto(`${baseUrl}${pagePath}`, { waitUntil: "networkidle" });
 
@@ -397,6 +401,15 @@ async function main() {
           await page.evaluate(() => document.documentElement.classList.add("dark"));
         } else {
           await page.evaluate(() => document.documentElement.classList.remove("dark"));
+        }
+
+        // Click the specified tab if needed (e.g. status page tabs)
+        if (tab) {
+          const tabTrigger = page.locator(`[role="tab"]`).filter({ hasText: new RegExp(tab, "i") });
+          if (await tabTrigger.count() > 0) {
+            await tabTrigger.click();
+            await page.waitForTimeout(300);
+          }
         }
 
         try {

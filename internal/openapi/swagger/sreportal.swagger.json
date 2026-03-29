@@ -343,6 +343,105 @@
         ]
       }
     },
+    "/sreportal.v1.StatusService/CreateComponent": {
+      "post": {
+        "summary": "CreateComponent creates a new platform component CR",
+        "operationId": "StatusService_CreateComponent",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CreateComponentResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CreateComponentRequest"
+            }
+          }
+        ],
+        "tags": [
+          "StatusService"
+        ]
+      }
+    },
+    "/sreportal.v1.StatusService/CreateIncident": {
+      "post": {
+        "summary": "CreateIncident creates a new incident CR",
+        "operationId": "StatusService_CreateIncident",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CreateIncidentResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CreateIncidentRequest"
+            }
+          }
+        ],
+        "tags": [
+          "StatusService"
+        ]
+      }
+    },
+    "/sreportal.v1.StatusService/CreateMaintenance": {
+      "post": {
+        "summary": "CreateMaintenance creates a new maintenance window CR",
+        "operationId": "StatusService_CreateMaintenance",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CreateMaintenanceResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CreateMaintenanceRequest"
+            }
+          }
+        ],
+        "tags": [
+          "StatusService"
+        ]
+      }
+    },
     "/sreportal.v1.StatusService/DeleteComponent": {
       "post": {
         "summary": "DeleteComponent deletes a platform component CR",
@@ -541,15 +640,15 @@
         ]
       }
     },
-    "/sreportal.v1.StatusService/UpsertComponent": {
+    "/sreportal.v1.StatusService/UpdateComponent": {
       "post": {
-        "summary": "UpsertComponent creates or updates a platform component CR",
-        "operationId": "StatusService_UpsertComponent",
+        "summary": "UpdateComponent updates an existing platform component CR",
+        "operationId": "StatusService_UpdateComponent",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v1UpsertComponentResponse"
+              "$ref": "#/definitions/v1UpdateComponentResponse"
             }
           },
           "default": {
@@ -565,7 +664,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/v1UpsertComponentRequest"
+              "$ref": "#/definitions/v1UpdateComponentRequest"
             }
           }
         ],
@@ -574,15 +673,15 @@
         ]
       }
     },
-    "/sreportal.v1.StatusService/UpsertIncident": {
+    "/sreportal.v1.StatusService/UpdateIncident": {
       "post": {
-        "summary": "UpsertIncident creates or updates an incident CR",
-        "operationId": "StatusService_UpsertIncident",
+        "summary": "UpdateIncident updates an existing incident CR, appending a timeline entry",
+        "operationId": "StatusService_UpdateIncident",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v1UpsertIncidentResponse"
+              "$ref": "#/definitions/v1UpdateIncidentResponse"
             }
           },
           "default": {
@@ -598,7 +697,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/v1UpsertIncidentRequest"
+              "$ref": "#/definitions/v1UpdateIncidentRequest"
             }
           }
         ],
@@ -607,15 +706,15 @@
         ]
       }
     },
-    "/sreportal.v1.StatusService/UpsertMaintenance": {
+    "/sreportal.v1.StatusService/UpdateMaintenance": {
       "post": {
-        "summary": "UpsertMaintenance creates or updates a maintenance window CR",
-        "operationId": "StatusService_UpsertMaintenance",
+        "summary": "UpdateMaintenance updates an existing maintenance window CR",
+        "operationId": "StatusService_UpdateMaintenance",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v1UpsertMaintenanceResponse"
+              "$ref": "#/definitions/v1UpdateMaintenanceResponse"
             }
           },
           "default": {
@@ -631,7 +730,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/v1UpsertMaintenanceRequest"
+              "$ref": "#/definitions/v1UpdateMaintenanceRequest"
             }
           }
         ],
@@ -877,6 +976,131 @@
       ],
       "default": "COMPONENT_STATUS_UNSPECIFIED",
       "title": "ComponentStatus describes the operational status of a platform component"
+    },
+    "v1CreateComponentRequest": {
+      "type": "object",
+      "properties": {
+        "displayName": {
+          "type": "string",
+          "title": "display_name is the human-readable name shown on the status page (required)"
+        },
+        "description": {
+          "type": "string",
+          "title": "description is a short text displayed below the component name"
+        },
+        "group": {
+          "type": "string",
+          "title": "group is a logical grouping (e.g. \"Infrastructure\", \"Applications\") (required)"
+        },
+        "link": {
+          "type": "string",
+          "title": "link is an optional external URL"
+        },
+        "portalRef": {
+          "type": "string",
+          "title": "portal_ref is the Portal this component is linked to (required)"
+        },
+        "status": {
+          "$ref": "#/definitions/v1ComponentStatus",
+          "title": "status is the declared operational status"
+        }
+      },
+      "title": "CreateComponentRequest creates a new Component CR"
+    },
+    "v1CreateComponentResponse": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "title": "CreateComponentResponse is returned after creating a component"
+    },
+    "v1CreateIncidentRequest": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "title": "title is the headline of the incident (required)"
+        },
+        "portalRef": {
+          "type": "string",
+          "title": "portal_ref is the Portal this incident is linked to (required)"
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "components is the list of affected Component names"
+        },
+        "severity": {
+          "$ref": "#/definitions/v1IncidentSeverity",
+          "title": "severity indicates the impact level (required)"
+        },
+        "initialUpdate": {
+          "$ref": "#/definitions/v1IncidentUpdate",
+          "title": "initial_update is the first timeline entry (required)"
+        }
+      },
+      "title": "CreateIncidentRequest creates a new Incident CR"
+    },
+    "v1CreateIncidentResponse": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "title": "CreateIncidentResponse is returned after creating an incident"
+    },
+    "v1CreateMaintenanceRequest": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "title": "title is the headline displayed on the status page (required)"
+        },
+        "description": {
+          "type": "string",
+          "title": "description is a longer explanation"
+        },
+        "portalRef": {
+          "type": "string",
+          "title": "portal_ref is the Portal this maintenance is linked to (required)"
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "components is the list of affected Component names"
+        },
+        "scheduledStart": {
+          "type": "string",
+          "format": "date-time",
+          "title": "scheduled_start is the planned start time"
+        },
+        "scheduledEnd": {
+          "type": "string",
+          "format": "date-time",
+          "title": "scheduled_end is the planned end time"
+        },
+        "affectedStatus": {
+          "type": "string",
+          "title": "affected_status is the status applied to components during the maintenance (default: \"maintenance\")"
+        }
+      },
+      "title": "CreateMaintenanceRequest creates a new Maintenance CR"
+    },
+    "v1CreateMaintenanceResponse": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "title": "CreateMaintenanceResponse is returned after creating a maintenance"
     },
     "v1DeleteComponentRequest": {
       "type": "object",
@@ -1863,6 +2087,131 @@
       },
       "title": "StreamFQDNsResponse represents an update to an FQDN"
     },
+    "v1UpdateComponentRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "name is the CR metadata.name (required, from CreateResponse)"
+        },
+        "displayName": {
+          "type": "string",
+          "title": "display_name updates the human-readable name if set"
+        },
+        "description": {
+          "type": "string",
+          "title": "description updates the short text if set"
+        },
+        "group": {
+          "type": "string",
+          "title": "group updates the logical grouping if set"
+        },
+        "link": {
+          "type": "string",
+          "title": "link updates the external URL if set"
+        },
+        "status": {
+          "$ref": "#/definitions/v1ComponentStatus",
+          "title": "status updates the declared operational status if set"
+        }
+      },
+      "title": "UpdateComponentRequest updates an existing Component CR"
+    },
+    "v1UpdateComponentResponse": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "title": "UpdateComponentResponse is returned after updating a component"
+    },
+    "v1UpdateIncidentRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "name is the CR metadata.name (required, identifies the incident)"
+        },
+        "title": {
+          "type": "string",
+          "title": "title updates the headline if set"
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "components replaces affected components if non-empty"
+        },
+        "severity": {
+          "$ref": "#/definitions/v1IncidentSeverity",
+          "title": "severity updates the impact level if set"
+        },
+        "update": {
+          "$ref": "#/definitions/v1IncidentUpdate",
+          "title": "update is a new timeline entry appended to the existing timeline (required)"
+        }
+      },
+      "title": "UpdateIncidentRequest updates an existing Incident CR"
+    },
+    "v1UpdateIncidentResponse": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "title": "UpdateIncidentResponse is returned after updating an incident"
+    },
+    "v1UpdateMaintenanceRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "name is the CR metadata.name (required, identifies the maintenance)"
+        },
+        "title": {
+          "type": "string",
+          "title": "title updates the headline if set"
+        },
+        "description": {
+          "type": "string",
+          "title": "description updates the description if set"
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "components replaces affected components if non-empty"
+        },
+        "scheduledStart": {
+          "type": "string",
+          "format": "date-time",
+          "title": "scheduled_start updates the planned start time if set"
+        },
+        "scheduledEnd": {
+          "type": "string",
+          "format": "date-time",
+          "title": "scheduled_end updates the planned end time if set"
+        },
+        "affectedStatus": {
+          "type": "string",
+          "title": "affected_status updates the status applied to components if set"
+        }
+      },
+      "title": "UpdateMaintenanceRequest updates an existing Maintenance CR"
+    },
+    "v1UpdateMaintenanceResponse": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "title": "UpdateMaintenanceResponse is returned after updating a maintenance"
+    },
     "v1UpdateType": {
       "type": "string",
       "enum": [
@@ -1873,158 +2222,6 @@
       ],
       "default": "UPDATE_TYPE_UNSPECIFIED",
       "title": "UpdateType represents the type of update"
-    },
-    "v1UpsertComponentRequest": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "title": "name is the CR metadata.name (required)"
-        },
-        "displayName": {
-          "type": "string",
-          "title": "display_name is the human-readable name shown on the status page"
-        },
-        "description": {
-          "type": "string",
-          "title": "description is a short text displayed below the component name"
-        },
-        "group": {
-          "type": "string",
-          "title": "group is a logical grouping (e.g. \"Infrastructure\", \"Applications\")"
-        },
-        "link": {
-          "type": "string",
-          "title": "link is an optional external URL"
-        },
-        "portalRef": {
-          "type": "string",
-          "title": "portal_ref is the Portal this component is linked to"
-        },
-        "status": {
-          "$ref": "#/definitions/v1ComponentStatus",
-          "title": "status is the declared operational status"
-        }
-      },
-      "title": "UpsertComponentRequest creates or updates a Component CR"
-    },
-    "v1UpsertComponentResponse": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "title": "name is the CR name"
-        },
-        "created": {
-          "type": "boolean",
-          "title": "created is true if the CR was created (false if updated)"
-        }
-      },
-      "title": "UpsertComponentResponse is returned after creating/updating a component"
-    },
-    "v1UpsertIncidentRequest": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "title": "name is the CR metadata.name (required)"
-        },
-        "title": {
-          "type": "string",
-          "title": "title is the headline of the incident"
-        },
-        "portalRef": {
-          "type": "string",
-          "title": "portal_ref is the Portal this incident is linked to"
-        },
-        "components": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "title": "components is the list of affected Component names"
-        },
-        "severity": {
-          "$ref": "#/definitions/v1IncidentSeverity",
-          "title": "severity indicates the impact level"
-        },
-        "updates": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1IncidentUpdate"
-          },
-          "title": "updates is the full timeline (replaces all existing updates)"
-        }
-      },
-      "title": "UpsertIncidentRequest creates or updates an Incident CR"
-    },
-    "v1UpsertIncidentResponse": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "created": {
-          "type": "boolean"
-        }
-      },
-      "title": "UpsertIncidentResponse is returned after creating/updating an incident"
-    },
-    "v1UpsertMaintenanceRequest": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "title": "name is the CR metadata.name (required)"
-        },
-        "title": {
-          "type": "string",
-          "title": "title is the headline displayed on the status page"
-        },
-        "description": {
-          "type": "string",
-          "title": "description is a longer explanation"
-        },
-        "portalRef": {
-          "type": "string",
-          "title": "portal_ref is the Portal this maintenance is linked to"
-        },
-        "components": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "title": "components is the list of affected Component names"
-        },
-        "scheduledStart": {
-          "type": "string",
-          "format": "date-time",
-          "title": "scheduled_start is the planned start time"
-        },
-        "scheduledEnd": {
-          "type": "string",
-          "format": "date-time",
-          "title": "scheduled_end is the planned end time"
-        },
-        "affectedStatus": {
-          "type": "string",
-          "title": "affected_status is the status applied to components during the maintenance (default: \"maintenance\")"
-        }
-      },
-      "title": "UpsertMaintenanceRequest creates or updates a Maintenance CR"
-    },
-    "v1UpsertMaintenanceResponse": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "created": {
-          "type": "boolean"
-        }
-      },
-      "title": "UpsertMaintenanceResponse is returned after creating/updating a maintenance"
     }
   }
 }

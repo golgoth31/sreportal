@@ -25,11 +25,14 @@ import (
 // WriteProcedures lists the Connect procedures that require authentication.
 var WriteProcedures = map[string]bool{
 	"/sreportal.v1.ReleaseService/AddRelease":       true,
-	"/sreportal.v1.StatusService/UpsertComponent":   true,
+	"/sreportal.v1.StatusService/CreateComponent":   true,
+	"/sreportal.v1.StatusService/UpdateComponent":   true,
 	"/sreportal.v1.StatusService/DeleteComponent":   true,
-	"/sreportal.v1.StatusService/UpsertMaintenance": true,
+	"/sreportal.v1.StatusService/CreateMaintenance": true,
+	"/sreportal.v1.StatusService/UpdateMaintenance": true,
 	"/sreportal.v1.StatusService/DeleteMaintenance": true,
-	"/sreportal.v1.StatusService/UpsertIncident":    true,
+	"/sreportal.v1.StatusService/CreateIncident":    true,
+	"/sreportal.v1.StatusService/UpdateIncident":    true,
 	"/sreportal.v1.StatusService/DeleteIncident":    true,
 }
 

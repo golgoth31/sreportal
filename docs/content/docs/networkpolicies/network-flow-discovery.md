@@ -103,7 +103,7 @@ Nodes are classified by port:
 
 ## Web UI
 
-The Network Policies page (`/:portalName/netpol`) provides three views:
+The Network Policies page (`/:portalName/netpol`) is organized into three tabs:
 
 ### Flow Matrix
 
@@ -112,9 +112,13 @@ Lists every service with its outgoing and incoming flows. Features:
 - Search filter and namespace dropdown
 - **Copy as Markdown** for documentation/audit export
 
+![Flow Matrix tab](/assets/img/dark/netpol-matrix.png)
+
 ### Cross-Namespace
 
 Aggregated matrix showing flow counts between namespaces. Useful for understanding inter-team dependencies.
+
+![Cross-Namespace tab](/assets/img/dark/netpol-cross-ns.png)
 
 ### Impact Analysis
 
@@ -122,6 +126,8 @@ Select any resource (database, service, external endpoint) to see its blast radi
 - **Level 1**: direct dependents (services that call the resource)
 - **Level 2**: services that call Level 1 services
 - And so on, up to configurable depth
+
+![Impact Analysis tab](/assets/img/dark/netpol-impact.png)
 
 ## MCP Server
 

@@ -585,7 +585,7 @@ func main() {
 	incidentStore := incidentreadstore.NewIncidentStore()
 
 	componentReconciler := controller.NewComponentReconciler(
-		mgr.GetClient(), maintenanceStore, incidentStore, componentStore,
+		mgr.GetClient(), maintenanceStore, componentStore,
 	)
 	if err := componentReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Component")

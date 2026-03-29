@@ -281,18 +281,17 @@ func incidentSeverityToProto(s domainincident.IncidentSeverity) sreportalv1.Inci
 
 // --- Write RPCs (auth-protected) ---
 
-// UpsertComponent creates or updates a platform component CR.
-func (s *StatusService) UpsertComponent(
+// CreateComponent creates a new platform component CR.
+func (s *StatusService) CreateComponent(
 	ctx context.Context,
-	req *connect.Request[sreportalv1.UpsertComponentRequest],
-) (*connect.Response[sreportalv1.UpsertComponentResponse], error) {
+	req *connect.Request[sreportalv1.CreateComponentRequest],
+) (*connect.Response[sreportalv1.CreateComponentResponse], error) {
 	status, err := componentStatusFromProto(req.Msg.Status)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	in := statuspage.ComponentInput{
-		Name:        req.Msg.Name,
+	in := statuspage.CreateComponentInput{
 		DisplayName: req.Msg.DisplayName,
 		Description: req.Msg.Description,
 		Group:       req.Msg.Group,
@@ -301,14 +300,52 @@ func (s *StatusService) UpsertComponent(
 		Status:      status,
 	}
 
-	name, created, err := s.writer.UpsertComponent(ctx, in)
+	name, err := s.writer.CreateComponent(ctx, in)
 	if err != nil {
 		return nil, toConnectError(err)
 	}
 
-	return connect.NewResponse(&sreportalv1.UpsertComponentResponse{
-		Name:    name,
-		Created: created,
+	return connect.NewResponse(&sreportalv1.CreateComponentResponse{
+		Name: name,
+	}), nil
+}
+
+// UpdateComponent updates an existing platform component CR.
+func (s *StatusService) UpdateComponent(
+	ctx context.Context,
+	req *connect.Request[sreportalv1.UpdateComponentRequest],
+) (*connect.Response[sreportalv1.UpdateComponentResponse], error) {
+	in := statuspage.UpdateComponentInput{
+		Name: req.Msg.Name,
+	}
+
+	if req.Msg.DisplayName != nil {
+		in.DisplayName = req.Msg.DisplayName
+	}
+	if req.Msg.Description != nil {
+		in.Description = req.Msg.Description
+	}
+	if req.Msg.Group != nil {
+		in.Group = req.Msg.Group
+	}
+	if req.Msg.Link != nil {
+		in.Link = req.Msg.Link
+	}
+	if req.Msg.Status != nil {
+		status, err := componentStatusFromProto(*req.Msg.Status)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		in.Status = &status
+	}
+
+	name, err := s.writer.UpdateComponent(ctx, in)
+	if err != nil {
+		return nil, toConnectError(err)
+	}
+
+	return connect.NewResponse(&sreportalv1.UpdateComponentResponse{
+		Name: name,
 	}), nil
 }
 
@@ -323,11 +360,11 @@ func (s *StatusService) DeleteComponent(
 	return connect.NewResponse(&sreportalv1.DeleteComponentResponse{}), nil
 }
 
-// UpsertMaintenance creates or updates a maintenance window CR.
-func (s *StatusService) UpsertMaintenance(
+// CreateMaintenance creates a new maintenance window CR.
+func (s *StatusService) CreateMaintenance(
 	ctx context.Context,
-	req *connect.Request[sreportalv1.UpsertMaintenanceRequest],
-) (*connect.Response[sreportalv1.UpsertMaintenanceResponse], error) {
+	req *connect.Request[sreportalv1.CreateMaintenanceRequest],
+) (*connect.Response[sreportalv1.CreateMaintenanceResponse], error) {
 	var scheduledStart, scheduledEnd metav1.Time
 	if req.Msg.ScheduledStart != nil {
 		scheduledStart = metav1.NewTime(req.Msg.ScheduledStart.AsTime())
@@ -341,8 +378,7 @@ func (s *StatusService) UpsertMaintenance(
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	in := statuspage.MaintenanceInput{
-		Name:           req.Msg.Name,
+	in := statuspage.CreateMaintenanceInput{
 		Title:          req.Msg.Title,
 		Description:    req.Msg.Description,
 		PortalRef:      req.Msg.PortalRef,
@@ -352,14 +388,55 @@ func (s *StatusService) UpsertMaintenance(
 		AffectedStatus: affectedStatus,
 	}
 
-	name, created, err := s.writer.UpsertMaintenance(ctx, in)
+	name, err := s.writer.CreateMaintenance(ctx, in)
 	if err != nil {
 		return nil, toConnectError(err)
 	}
 
-	return connect.NewResponse(&sreportalv1.UpsertMaintenanceResponse{
-		Name:    name,
-		Created: created,
+	return connect.NewResponse(&sreportalv1.CreateMaintenanceResponse{
+		Name: name,
+	}), nil
+}
+
+// UpdateMaintenance updates an existing maintenance window CR.
+func (s *StatusService) UpdateMaintenance(
+	ctx context.Context,
+	req *connect.Request[sreportalv1.UpdateMaintenanceRequest],
+) (*connect.Response[sreportalv1.UpdateMaintenanceResponse], error) {
+	in := statuspage.UpdateMaintenanceInput{
+		Name:       req.Msg.Name,
+		Components: req.Msg.Components,
+	}
+
+	if req.Msg.Title != nil {
+		in.Title = req.Msg.Title
+	}
+	if req.Msg.Description != nil {
+		in.Description = req.Msg.Description
+	}
+	if req.Msg.ScheduledStart != nil {
+		ts := metav1.NewTime(req.Msg.ScheduledStart.AsTime())
+		in.ScheduledStart = &ts
+	}
+	if req.Msg.ScheduledEnd != nil {
+		ts := metav1.NewTime(req.Msg.ScheduledEnd.AsTime())
+		in.ScheduledEnd = &ts
+	}
+	if req.Msg.AffectedStatus != nil {
+		status, err := maintenanceAffectedStatusFromProto(*req.Msg.AffectedStatus)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		in.AffectedStatus = &status
+	}
+
+	name, err := s.writer.UpdateMaintenance(ctx, in)
+	if err != nil {
+		return nil, toConnectError(err)
+	}
+
+	return connect.NewResponse(&sreportalv1.UpdateMaintenanceResponse{
+		Name: name,
 	}), nil
 }
 
@@ -374,52 +451,100 @@ func (s *StatusService) DeleteMaintenance(
 	return connect.NewResponse(&sreportalv1.DeleteMaintenanceResponse{}), nil
 }
 
-// UpsertIncident creates or updates an incident CR.
-func (s *StatusService) UpsertIncident(
+// CreateIncident creates a new incident CR.
+func (s *StatusService) CreateIncident(
 	ctx context.Context,
-	req *connect.Request[sreportalv1.UpsertIncidentRequest],
-) (*connect.Response[sreportalv1.UpsertIncidentResponse], error) {
-	updates := make([]sreportalv1alpha1.IncidentUpdate, 0, len(req.Msg.Updates))
-	for i, u := range req.Msg.Updates {
-		phase := incidentPhaseFromProto(u.Phase)
-		if phase == "" {
-			return nil, connect.NewError(connect.CodeInvalidArgument,
-				fmt.Errorf("updates[%d].phase: unsupported value %q", i, u.Phase.String()))
-		}
-		var ts metav1.Time
-		if u.Timestamp != nil {
-			ts = metav1.NewTime(u.Timestamp.AsTime())
-		}
-		updates = append(updates, sreportalv1alpha1.IncidentUpdate{
-			Timestamp: ts,
-			Phase:     sreportalv1alpha1.IncidentPhase(phase),
-			Message:   u.Message,
-		})
-	}
-
+	req *connect.Request[sreportalv1.CreateIncidentRequest],
+) (*connect.Response[sreportalv1.CreateIncidentResponse], error) {
 	severity, err := incidentSeverityFromProto(req.Msg.Severity)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	in := statuspage.IncidentInput{
-		Name:       req.Msg.Name,
-		Title:      req.Msg.Title,
-		PortalRef:  req.Msg.PortalRef,
-		Components: req.Msg.Components,
-		Severity:   severity,
-		Updates:    updates,
+	if req.Msg.InitialUpdate == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument,
+			fmt.Errorf("initial_update is required"))
 	}
 
-	name, created, err := s.writer.UpsertIncident(ctx, in)
+	update, err := protoToIncidentUpdate(req.Msg.InitialUpdate, "initial_update")
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	in := statuspage.CreateIncidentInput{
+		Title:         req.Msg.Title,
+		PortalRef:     req.Msg.PortalRef,
+		Components:    req.Msg.Components,
+		Severity:      severity,
+		InitialUpdate: update,
+	}
+
+	name, err := s.writer.CreateIncident(ctx, in)
 	if err != nil {
 		return nil, toConnectError(err)
 	}
 
-	return connect.NewResponse(&sreportalv1.UpsertIncidentResponse{
-		Name:    name,
-		Created: created,
+	return connect.NewResponse(&sreportalv1.CreateIncidentResponse{
+		Name: name,
 	}), nil
+}
+
+// UpdateIncident updates an existing incident CR, appending a timeline entry.
+func (s *StatusService) UpdateIncident(
+	ctx context.Context,
+	req *connect.Request[sreportalv1.UpdateIncidentRequest],
+) (*connect.Response[sreportalv1.UpdateIncidentResponse], error) {
+	if req.Msg.Update == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument,
+			fmt.Errorf("update is required"))
+	}
+
+	update, err := protoToIncidentUpdate(req.Msg.Update, "update")
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	in := statuspage.UpdateIncidentInput{
+		Name:       req.Msg.Name,
+		Components: req.Msg.Components,
+		Update:     update,
+	}
+
+	if req.Msg.Title != nil {
+		in.Title = req.Msg.Title
+	}
+	if req.Msg.Severity != nil {
+		sev, err := incidentSeverityFromProto(*req.Msg.Severity)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		in.Severity = &sev
+	}
+
+	name, err := s.writer.UpdateIncident(ctx, in)
+	if err != nil {
+		return nil, toConnectError(err)
+	}
+
+	return connect.NewResponse(&sreportalv1.UpdateIncidentResponse{
+		Name: name,
+	}), nil
+}
+
+func protoToIncidentUpdate(u *sreportalv1.IncidentUpdate, field string) (sreportalv1alpha1.IncidentUpdate, error) {
+	phase := incidentPhaseFromProto(u.Phase)
+	if phase == "" {
+		return sreportalv1alpha1.IncidentUpdate{}, fmt.Errorf("%s.phase: unsupported value %q", field, u.Phase.String())
+	}
+	var ts metav1.Time
+	if u.Timestamp != nil {
+		ts = metav1.NewTime(u.Timestamp.AsTime())
+	}
+	return sreportalv1alpha1.IncidentUpdate{
+		Timestamp: ts,
+		Phase:     sreportalv1alpha1.IncidentPhase(phase),
+		Message:   u.Message,
+	}, nil
 }
 
 // DeleteIncident deletes an incident CR.
@@ -489,6 +614,8 @@ func toConnectError(err error) *connect.Error {
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, statuspage.ErrNotFound):
 		return connect.NewError(connect.CodeNotFound, err)
+	case errors.Is(err, statuspage.ErrAlreadyExists):
+		return connect.NewError(connect.CodeAlreadyExists, err)
 	default:
 		return connect.NewError(connect.CodeInternal, err)
 	}

@@ -41,6 +41,7 @@ var (
 	ErrTitleRequired     = errors.New("title is required")
 	ErrSeverityRequired  = errors.New("severity is required")
 	ErrNotFound          = errors.New("resource not found")
+	ErrAlreadyExists     = errors.New("resource already exists")
 )
 
 // Service manages status page CRs via the K8s API (write path only).
@@ -56,9 +57,8 @@ func NewService(c client.Client, namespace string) *Service {
 
 // --- Component ---
 
-// ComponentInput holds the fields for creating or updating a Component CR.
-type ComponentInput struct {
-	Name        string
+// CreateComponentInput holds the fields for creating a Component CR.
+type CreateComponentInput struct {
 	DisplayName string
 	Description string
 	Group       string
@@ -67,65 +67,99 @@ type ComponentInput struct {
 	Status      sreportalv1alpha1.ComponentStatusValue
 }
 
-// UpsertComponent creates or updates a Component CR. Returns (name, created, error).
-func (s *Service) UpsertComponent(ctx context.Context, in ComponentInput) (string, bool, error) {
-	if in.Name == "" {
-		return "", false, ErrNameRequired
-	}
+// CreateComponent creates a new Component CR. Returns (name, error).
+func (s *Service) CreateComponent(ctx context.Context, in CreateComponentInput) (string, error) {
 	if in.PortalRef == "" {
-		return "", false, ErrPortalRefRequired
+		return "", ErrPortalRefRequired
 	}
 	if in.Group == "" {
-		return "", false, ErrGroupRequired
+		return "", ErrGroupRequired
+	}
+
+	name := GenerateCRName(in.PortalRef, in.DisplayName)
+
+	nn := types.NamespacedName{Name: name, Namespace: s.namespace}
+
+	var existing sreportalv1alpha1.Component
+	if err := s.client.Get(ctx, nn, &existing); err == nil {
+		return "", fmt.Errorf("component %q: %w", name, ErrAlreadyExists)
+	} else if !apierrors.IsNotFound(err) {
+		return "", fmt.Errorf("get component CR: %w", err)
+	}
+
+	comp := sreportalv1alpha1.Component{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: s.namespace},
+		Spec: sreportalv1alpha1.ComponentSpec{
+			DisplayName: in.DisplayName,
+			Description: in.Description,
+			Group:       in.Group,
+			Link:        in.Link,
+			PortalRef:   in.PortalRef,
+			Status:      in.Status,
+		},
+	}
+	if err := s.client.Create(ctx, &comp); err != nil {
+		if apierrors.IsAlreadyExists(err) {
+			return "", fmt.Errorf("component %q: %w", name, ErrAlreadyExists)
+		}
+		return "", fmt.Errorf("create component CR: %w", err)
+	}
+	return name, nil
+}
+
+// UpdateComponentInput holds the fields for updating an existing Component CR.
+type UpdateComponentInput struct {
+	Name        string
+	DisplayName *string
+	Description *string
+	Group       *string
+	Link        *string
+	Status      *sreportalv1alpha1.ComponentStatusValue
+}
+
+// UpdateComponent updates an existing Component CR. Returns (name, error).
+func (s *Service) UpdateComponent(ctx context.Context, in UpdateComponentInput) (string, error) {
+	if in.Name == "" {
+		return "", ErrNameRequired
 	}
 
 	nn := types.NamespacedName{Name: in.Name, Namespace: s.namespace}
 
 	for attempt := range maxRetries {
 		var comp sreportalv1alpha1.Component
-		err := s.client.Get(ctx, nn, &comp)
-
-		if apierrors.IsNotFound(err) {
-			comp = sreportalv1alpha1.Component{
-				ObjectMeta: metav1.ObjectMeta{Name: in.Name, Namespace: s.namespace},
-				Spec: sreportalv1alpha1.ComponentSpec{
-					DisplayName: in.DisplayName,
-					Description: in.Description,
-					Group:       in.Group,
-					Link:        in.Link,
-					PortalRef:   in.PortalRef,
-					Status:      in.Status,
-				},
+		if err := s.client.Get(ctx, nn, &comp); err != nil {
+			if apierrors.IsNotFound(err) {
+				return "", fmt.Errorf("component %q: %w", in.Name, ErrNotFound)
 			}
-			if createErr := s.client.Create(ctx, &comp); createErr != nil {
-				if apierrors.IsAlreadyExists(createErr) {
-					continue
-				}
-				return "", false, fmt.Errorf("create component CR: %w", createErr)
-			}
-			return in.Name, true, nil
-		}
-		if err != nil {
-			return "", false, fmt.Errorf("get component CR: %w", err)
+			return "", fmt.Errorf("get component CR: %w", err)
 		}
 
-		// Update existing
-		comp.Spec.DisplayName = in.DisplayName
-		comp.Spec.Description = in.Description
-		comp.Spec.Group = in.Group
-		comp.Spec.Link = in.Link
-		comp.Spec.PortalRef = in.PortalRef
-		comp.Spec.Status = in.Status
-		if updateErr := s.client.Update(ctx, &comp); updateErr != nil {
-			if apierrors.IsConflict(updateErr) && attempt < maxRetries-1 {
+		if in.DisplayName != nil {
+			comp.Spec.DisplayName = *in.DisplayName
+		}
+		if in.Description != nil {
+			comp.Spec.Description = *in.Description
+		}
+		if in.Group != nil {
+			comp.Spec.Group = *in.Group
+		}
+		if in.Link != nil {
+			comp.Spec.Link = *in.Link
+		}
+		if in.Status != nil {
+			comp.Spec.Status = *in.Status
+		}
+
+		if err := s.client.Update(ctx, &comp); err != nil {
+			if apierrors.IsConflict(err) && attempt < maxRetries-1 {
 				continue
 			}
-			return "", false, fmt.Errorf("update component CR: %w", updateErr)
+			return "", fmt.Errorf("update component CR: %w", err)
 		}
-		return in.Name, false, nil
+		return in.Name, nil
 	}
 
-	return "", false, fmt.Errorf("upsert component %q: max retries exceeded", in.Name)
+	return "", fmt.Errorf("update component %q: max retries exceeded", in.Name)
 }
 
 // DeleteComponent deletes a Component CR.
@@ -147,9 +181,8 @@ func (s *Service) DeleteComponent(ctx context.Context, name string) error {
 
 // --- Maintenance ---
 
-// MaintenanceInput holds the fields for creating or updating a Maintenance CR.
-type MaintenanceInput struct {
-	Name           string
+// CreateMaintenanceInput holds the fields for creating a Maintenance CR.
+type CreateMaintenanceInput struct {
 	Title          string
 	Description    string
 	PortalRef      string
@@ -159,73 +192,108 @@ type MaintenanceInput struct {
 	AffectedStatus sreportalv1alpha1.MaintenanceAffectedStatus
 }
 
-// UpsertMaintenance creates or updates a Maintenance CR. Returns (name, created, error).
-func (s *Service) UpsertMaintenance(ctx context.Context, in MaintenanceInput) (string, bool, error) {
-	if in.Name == "" {
-		return "", false, ErrNameRequired
-	}
+// CreateMaintenance creates a new Maintenance CR. Returns (name, error).
+func (s *Service) CreateMaintenance(ctx context.Context, in CreateMaintenanceInput) (string, error) {
 	if in.PortalRef == "" {
-		return "", false, ErrPortalRefRequired
+		return "", ErrPortalRefRequired
 	}
 	if in.Title == "" {
-		return "", false, ErrTitleRequired
+		return "", ErrTitleRequired
+	}
+
+	name := GenerateCRName(in.PortalRef, in.Title)
+	nn := types.NamespacedName{Name: name, Namespace: s.namespace}
+
+	var existing sreportalv1alpha1.Maintenance
+	if err := s.client.Get(ctx, nn, &existing); err == nil {
+		return "", fmt.Errorf("maintenance %q: %w", name, ErrAlreadyExists)
+	} else if !apierrors.IsNotFound(err) {
+		return "", fmt.Errorf("get maintenance CR: %w", err)
+	}
+
+	affectedStatus := in.AffectedStatus
+	if affectedStatus == "" {
+		affectedStatus = sreportalv1alpha1.MaintenanceAffectedMaintenance
+	}
+
+	maint := sreportalv1alpha1.Maintenance{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: s.namespace},
+		Spec: sreportalv1alpha1.MaintenanceSpec{
+			Title:          in.Title,
+			Description:    in.Description,
+			PortalRef:      in.PortalRef,
+			Components:     in.Components,
+			ScheduledStart: in.ScheduledStart,
+			ScheduledEnd:   in.ScheduledEnd,
+			AffectedStatus: affectedStatus,
+		},
+	}
+	if err := s.client.Create(ctx, &maint); err != nil {
+		if apierrors.IsAlreadyExists(err) {
+			return "", fmt.Errorf("maintenance %q: %w", name, ErrAlreadyExists)
+		}
+		return "", fmt.Errorf("create maintenance CR: %w", err)
+	}
+	return name, nil
+}
+
+// UpdateMaintenanceInput holds the fields for updating an existing Maintenance CR.
+type UpdateMaintenanceInput struct {
+	Name           string
+	Title          *string
+	Description    *string
+	Components     []string
+	ScheduledStart *metav1.Time
+	ScheduledEnd   *metav1.Time
+	AffectedStatus *sreportalv1alpha1.MaintenanceAffectedStatus
+}
+
+// UpdateMaintenance updates an existing Maintenance CR. Returns (name, error).
+func (s *Service) UpdateMaintenance(ctx context.Context, in UpdateMaintenanceInput) (string, error) {
+	if in.Name == "" {
+		return "", ErrNameRequired
 	}
 
 	nn := types.NamespacedName{Name: in.Name, Namespace: s.namespace}
 
 	for attempt := range maxRetries {
 		var maint sreportalv1alpha1.Maintenance
-		err := s.client.Get(ctx, nn, &maint)
-
-		if apierrors.IsNotFound(err) {
-			affectedStatus := in.AffectedStatus
-			if affectedStatus == "" {
-				affectedStatus = sreportalv1alpha1.MaintenanceAffectedMaintenance
+		if err := s.client.Get(ctx, nn, &maint); err != nil {
+			if apierrors.IsNotFound(err) {
+				return "", fmt.Errorf("maintenance %q: %w", in.Name, ErrNotFound)
 			}
-			maint = sreportalv1alpha1.Maintenance{
-				ObjectMeta: metav1.ObjectMeta{Name: in.Name, Namespace: s.namespace},
-				Spec: sreportalv1alpha1.MaintenanceSpec{
-					Title:          in.Title,
-					Description:    in.Description,
-					PortalRef:      in.PortalRef,
-					Components:     in.Components,
-					ScheduledStart: in.ScheduledStart,
-					ScheduledEnd:   in.ScheduledEnd,
-					AffectedStatus: affectedStatus,
-				},
-			}
-			if createErr := s.client.Create(ctx, &maint); createErr != nil {
-				if apierrors.IsAlreadyExists(createErr) {
-					continue
-				}
-				return "", false, fmt.Errorf("create maintenance CR: %w", createErr)
-			}
-			return in.Name, true, nil
-		}
-		if err != nil {
-			return "", false, fmt.Errorf("get maintenance CR: %w", err)
+			return "", fmt.Errorf("get maintenance CR: %w", err)
 		}
 
-		// Update existing
-		maint.Spec.Title = in.Title
-		maint.Spec.Description = in.Description
-		maint.Spec.PortalRef = in.PortalRef
-		maint.Spec.Components = in.Components
-		maint.Spec.ScheduledStart = in.ScheduledStart
-		maint.Spec.ScheduledEnd = in.ScheduledEnd
-		if in.AffectedStatus != "" {
-			maint.Spec.AffectedStatus = in.AffectedStatus
+		if in.Title != nil {
+			maint.Spec.Title = *in.Title
 		}
-		if updateErr := s.client.Update(ctx, &maint); updateErr != nil {
-			if apierrors.IsConflict(updateErr) && attempt < maxRetries-1 {
+		if in.Description != nil {
+			maint.Spec.Description = *in.Description
+		}
+		if len(in.Components) > 0 {
+			maint.Spec.Components = in.Components
+		}
+		if in.ScheduledStart != nil {
+			maint.Spec.ScheduledStart = *in.ScheduledStart
+		}
+		if in.ScheduledEnd != nil {
+			maint.Spec.ScheduledEnd = *in.ScheduledEnd
+		}
+		if in.AffectedStatus != nil {
+			maint.Spec.AffectedStatus = *in.AffectedStatus
+		}
+
+		if err := s.client.Update(ctx, &maint); err != nil {
+			if apierrors.IsConflict(err) && attempt < maxRetries-1 {
 				continue
 			}
-			return "", false, fmt.Errorf("update maintenance CR: %w", updateErr)
+			return "", fmt.Errorf("update maintenance CR: %w", err)
 		}
-		return in.Name, false, nil
+		return in.Name, nil
 	}
 
-	return "", false, fmt.Errorf("upsert maintenance %q: max retries exceeded", in.Name)
+	return "", fmt.Errorf("update maintenance %q: max retries exceeded", in.Name)
 }
 
 // DeleteMaintenance deletes a Maintenance CR.
@@ -247,76 +315,103 @@ func (s *Service) DeleteMaintenance(ctx context.Context, name string) error {
 
 // --- Incident ---
 
-// IncidentInput holds the fields for creating or updating an Incident CR.
-type IncidentInput struct {
-	Name       string
-	Title      string
-	PortalRef  string
-	Components []string
-	Severity   sreportalv1alpha1.IncidentSeverity
-	Updates    []sreportalv1alpha1.IncidentUpdate
+// CreateIncidentInput holds the fields for creating an Incident CR.
+type CreateIncidentInput struct {
+	Title         string
+	PortalRef     string
+	Components    []string
+	Severity      sreportalv1alpha1.IncidentSeverity
+	InitialUpdate sreportalv1alpha1.IncidentUpdate
 }
 
-// UpsertIncident creates or updates an Incident CR. Returns (name, created, error).
-func (s *Service) UpsertIncident(ctx context.Context, in IncidentInput) (string, bool, error) {
-	if in.Name == "" {
-		return "", false, ErrNameRequired
-	}
+// CreateIncident creates a new Incident CR. Returns (name, error).
+func (s *Service) CreateIncident(ctx context.Context, in CreateIncidentInput) (string, error) {
 	if in.PortalRef == "" {
-		return "", false, ErrPortalRefRequired
+		return "", ErrPortalRefRequired
 	}
 	if in.Title == "" {
-		return "", false, ErrTitleRequired
+		return "", ErrTitleRequired
 	}
 	if in.Severity == "" {
-		return "", false, ErrSeverityRequired
+		return "", ErrSeverityRequired
+	}
+
+	name := GenerateCRName(in.PortalRef, in.Title)
+	nn := types.NamespacedName{Name: name, Namespace: s.namespace}
+
+	var existing sreportalv1alpha1.Incident
+	if err := s.client.Get(ctx, nn, &existing); err == nil {
+		return "", fmt.Errorf("incident %q: %w", name, ErrAlreadyExists)
+	} else if !apierrors.IsNotFound(err) {
+		return "", fmt.Errorf("get incident CR: %w", err)
+	}
+
+	inc := sreportalv1alpha1.Incident{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: s.namespace},
+		Spec: sreportalv1alpha1.IncidentSpec{
+			Title:      in.Title,
+			PortalRef:  in.PortalRef,
+			Components: in.Components,
+			Severity:   in.Severity,
+			Updates:    []sreportalv1alpha1.IncidentUpdate{in.InitialUpdate},
+		},
+	}
+	if err := s.client.Create(ctx, &inc); err != nil {
+		if apierrors.IsAlreadyExists(err) {
+			return "", fmt.Errorf("incident %q: %w", name, ErrAlreadyExists)
+		}
+		return "", fmt.Errorf("create incident CR: %w", err)
+	}
+	return name, nil
+}
+
+// UpdateIncidentInput holds the fields for updating an existing Incident CR.
+type UpdateIncidentInput struct {
+	Name       string
+	Title      *string
+	Components []string
+	Severity   *sreportalv1alpha1.IncidentSeverity
+	Update     sreportalv1alpha1.IncidentUpdate
+}
+
+// UpdateIncident updates an existing Incident CR, appending the update to the timeline.
+func (s *Service) UpdateIncident(ctx context.Context, in UpdateIncidentInput) (string, error) {
+	if in.Name == "" {
+		return "", ErrNameRequired
 	}
 
 	nn := types.NamespacedName{Name: in.Name, Namespace: s.namespace}
 
 	for attempt := range maxRetries {
 		var inc sreportalv1alpha1.Incident
-		err := s.client.Get(ctx, nn, &inc)
-
-		if apierrors.IsNotFound(err) {
-			inc = sreportalv1alpha1.Incident{
-				ObjectMeta: metav1.ObjectMeta{Name: in.Name, Namespace: s.namespace},
-				Spec: sreportalv1alpha1.IncidentSpec{
-					Title:      in.Title,
-					PortalRef:  in.PortalRef,
-					Components: in.Components,
-					Severity:   in.Severity,
-					Updates:    in.Updates,
-				},
+		if err := s.client.Get(ctx, nn, &inc); err != nil {
+			if apierrors.IsNotFound(err) {
+				return "", fmt.Errorf("incident %q: %w", in.Name, ErrNotFound)
 			}
-			if createErr := s.client.Create(ctx, &inc); createErr != nil {
-				if apierrors.IsAlreadyExists(createErr) {
-					continue
-				}
-				return "", false, fmt.Errorf("create incident CR: %w", createErr)
-			}
-			return in.Name, true, nil
-		}
-		if err != nil {
-			return "", false, fmt.Errorf("get incident CR: %w", err)
+			return "", fmt.Errorf("get incident CR: %w", err)
 		}
 
-		// Update existing
-		inc.Spec.Title = in.Title
-		inc.Spec.PortalRef = in.PortalRef
-		inc.Spec.Components = in.Components
-		inc.Spec.Severity = in.Severity
-		inc.Spec.Updates = in.Updates
-		if updateErr := s.client.Update(ctx, &inc); updateErr != nil {
-			if apierrors.IsConflict(updateErr) && attempt < maxRetries-1 {
+		if in.Title != nil {
+			inc.Spec.Title = *in.Title
+		}
+		if len(in.Components) > 0 {
+			inc.Spec.Components = in.Components
+		}
+		if in.Severity != nil {
+			inc.Spec.Severity = *in.Severity
+		}
+		inc.Spec.Updates = append(inc.Spec.Updates, in.Update)
+
+		if err := s.client.Update(ctx, &inc); err != nil {
+			if apierrors.IsConflict(err) && attempt < maxRetries-1 {
 				continue
 			}
-			return "", false, fmt.Errorf("update incident CR: %w", updateErr)
+			return "", fmt.Errorf("update incident CR: %w", err)
 		}
-		return in.Name, false, nil
+		return in.Name, nil
 	}
 
-	return "", false, fmt.Errorf("upsert incident %q: max retries exceeded", in.Name)
+	return "", fmt.Errorf("update incident %q: max retries exceeded", in.Name)
 }
 
 // DeleteIncident deletes an Incident CR.

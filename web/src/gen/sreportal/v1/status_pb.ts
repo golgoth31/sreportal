@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file sreportal/v1/status.proto.
  */
 export const file_sreportal_v1_status: GenFile = /*@__PURE__*/
-  fileDesc("ChlzcmVwb3J0YWwvdjEvc3RhdHVzLnByb3RvEgxzcmVwb3J0YWwudjEivwIKEUNvbXBvbmVudFJlc291cmNlEgwKBG5hbWUYASABKAkSFAoMZGlzcGxheV9uYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEg0KBWdyb3VwGAQgASgJEgwKBGxpbmsYBSABKAkSEgoKcG9ydGFsX3JlZhgGIAEoCRI2Cg9kZWNsYXJlZF9zdGF0dXMYByABKA4yHS5zcmVwb3J0YWwudjEuQ29tcG9uZW50U3RhdHVzEjYKD2NvbXB1dGVkX3N0YXR1cxgIIAEoDjIdLnNyZXBvcnRhbC52MS5Db21wb25lbnRTdGF0dXMSGAoQYWN0aXZlX2luY2lkZW50cxgJIAEoBRI2ChJsYXN0X3N0YXR1c19jaGFuZ2UYCiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIp8CChNNYWludGVuYW5jZVJlc291cmNlEgwKBG5hbWUYASABKAkSDQoFdGl0bGUYAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkSEgoKcG9ydGFsX3JlZhgEIAEoCRISCgpjb21wb25lbnRzGAUgAygJEjMKD3NjaGVkdWxlZF9zdGFydBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMQoNc2NoZWR1bGVkX2VuZBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFwoPYWZmZWN0ZWRfc3RhdHVzGAggASgJEi0KBXBoYXNlGAkgASgOMh4uc3JlcG9ydGFsLnYxLk1haW50ZW5hbmNlUGhhc2Ui5wIKEEluY2lkZW50UmVzb3VyY2USDAoEbmFtZRgBIAEoCRINCgV0aXRsZRgCIAEoCRISCgpwb3J0YWxfcmVmGAMgASgJEhIKCmNvbXBvbmVudHMYBCADKAkSMAoIc2V2ZXJpdHkYBSABKA4yHi5zcmVwb3J0YWwudjEuSW5jaWRlbnRTZXZlcml0eRIyCg1jdXJyZW50X3BoYXNlGAYgASgOMhsuc3JlcG9ydGFsLnYxLkluY2lkZW50UGhhc2USLQoHdXBkYXRlcxgHIAMoCzIcLnNyZXBvcnRhbC52MS5JbmNpZGVudFVwZGF0ZRIuCgpzdGFydGVkX2F0GAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIvCgtyZXNvbHZlZF9hdBgJIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGAoQZHVyYXRpb25fbWludXRlcxgKIAEoBSJ8Cg5JbmNpZGVudFVwZGF0ZRItCgl0aW1lc3RhbXAYASABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEioKBXBoYXNlGAIgASgOMhsuc3JlcG9ydGFsLnYxLkluY2lkZW50UGhhc2USDwoHbWVzc2FnZRgDIAEoCSI6ChVMaXN0Q29tcG9uZW50c1JlcXVlc3QSEgoKcG9ydGFsX3JlZhgBIAEoCRINCgVncm91cBgCIAEoCSJNChZMaXN0Q29tcG9uZW50c1Jlc3BvbnNlEjMKCmNvbXBvbmVudHMYASADKAsyHy5zcmVwb3J0YWwudjEuQ29tcG9uZW50UmVzb3VyY2UiXAoXTGlzdE1haW50ZW5hbmNlc1JlcXVlc3QSEgoKcG9ydGFsX3JlZhgBIAEoCRItCgVwaGFzZRgCIAEoDjIeLnNyZXBvcnRhbC52MS5NYWludGVuYW5jZVBoYXNlIlMKGExpc3RNYWludGVuYW5jZXNSZXNwb25zZRI3CgxtYWludGVuYW5jZXMYASADKAsyIS5zcmVwb3J0YWwudjEuTWFpbnRlbmFuY2VSZXNvdXJjZSJWChRMaXN0SW5jaWRlbnRzUmVxdWVzdBISCgpwb3J0YWxfcmVmGAEgASgJEioKBXBoYXNlGAIgASgOMhsuc3JlcG9ydGFsLnYxLkluY2lkZW50UGhhc2UiSgoVTGlzdEluY2lkZW50c1Jlc3BvbnNlEjEKCWluY2lkZW50cxgBIAMoCzIeLnNyZXBvcnRhbC52MS5JbmNpZGVudFJlc291cmNlIrEBChZVcHNlcnRDb21wb25lbnRSZXF1ZXN0EgwKBG5hbWUYASABKAkSFAoMZGlzcGxheV9uYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEg0KBWdyb3VwGAQgASgJEgwKBGxpbmsYBSABKAkSEgoKcG9ydGFsX3JlZhgGIAEoCRItCgZzdGF0dXMYByABKA4yHS5zcmVwb3J0YWwudjEuQ29tcG9uZW50U3RhdHVzIjgKF1Vwc2VydENvbXBvbmVudFJlc3BvbnNlEgwKBG5hbWUYASABKAkSDwoHY3JlYXRlZBgCIAEoCCImChZEZWxldGVDb21wb25lbnRSZXF1ZXN0EgwKBG5hbWUYASABKAkiGQoXRGVsZXRlQ29tcG9uZW50UmVzcG9uc2Ui9QEKGFVwc2VydE1haW50ZW5hbmNlUmVxdWVzdBIMCgRuYW1lGAEgASgJEg0KBXRpdGxlGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEhIKCnBvcnRhbF9yZWYYBCABKAkSEgoKY29tcG9uZW50cxgFIAMoCRIzCg9zY2hlZHVsZWRfc3RhcnQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjEKDXNjaGVkdWxlZF9lbmQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhcKD2FmZmVjdGVkX3N0YXR1cxgIIAEoCSI6ChlVcHNlcnRNYWludGVuYW5jZVJlc3BvbnNlEgwKBG5hbWUYASABKAkSDwoHY3JlYXRlZBgCIAEoCCIoChhEZWxldGVNYWludGVuYW5jZVJlcXVlc3QSDAoEbmFtZRgBIAEoCSIbChlEZWxldGVNYWludGVuYW5jZVJlc3BvbnNlIr0BChVVcHNlcnRJbmNpZGVudFJlcXVlc3QSDAoEbmFtZRgBIAEoCRINCgV0aXRsZRgCIAEoCRISCgpwb3J0YWxfcmVmGAMgASgJEhIKCmNvbXBvbmVudHMYBCADKAkSMAoIc2V2ZXJpdHkYBSABKA4yHi5zcmVwb3J0YWwudjEuSW5jaWRlbnRTZXZlcml0eRItCgd1cGRhdGVzGAYgAygLMhwuc3JlcG9ydGFsLnYxLkluY2lkZW50VXBkYXRlIjcKFlVwc2VydEluY2lkZW50UmVzcG9uc2USDAoEbmFtZRgBIAEoCRIPCgdjcmVhdGVkGAIgASgIIiUKFURlbGV0ZUluY2lkZW50UmVxdWVzdBIMCgRuYW1lGAEgASgJIhgKFkRlbGV0ZUluY2lkZW50UmVzcG9uc2Uq/AEKD0NvbXBvbmVudFN0YXR1cxIgChxDT01QT05FTlRfU1RBVFVTX1VOU1BFQ0lGSUVEEAASIAocQ09NUE9ORU5UX1NUQVRVU19PUEVSQVRJT05BTBABEh0KGUNPTVBPTkVOVF9TVEFUVVNfREVHUkFERUQQAhIjCh9DT01QT05FTlRfU1RBVFVTX1BBUlRJQUxfT1VUQUdFEAMSIQodQ09NUE9ORU5UX1NUQVRVU19NQUpPUl9PVVRBR0UQBBIcChhDT01QT05FTlRfU1RBVFVTX1VOS05PV04QBRIgChxDT01QT05FTlRfU1RBVFVTX01BSU5URU5BTkNFEAYqmQEKEE1haW50ZW5hbmNlUGhhc2USIQodTUFJTlRFTkFOQ0VfUEhBU0VfVU5TUEVDSUZJRUQQABIeChpNQUlOVEVOQU5DRV9QSEFTRV9VUENPTUlORxABEiEKHU1BSU5URU5BTkNFX1BIQVNFX0lOX1BST0dSRVNTEAISHwobTUFJTlRFTkFOQ0VfUEhBU0VfQ09NUExFVEVEEAMqrAEKDUluY2lkZW50UGhhc2USHgoaSU5DSURFTlRfUEhBU0VfVU5TUEVDSUZJRUQQABIgChxJTkNJREVOVF9QSEFTRV9JTlZFU1RJR0FUSU5HEAESHQoZSU5DSURFTlRfUEhBU0VfSURFTlRJRklFRBACEh0KGUlOQ0lERU5UX1BIQVNFX01PTklUT1JJTkcQAxIbChdJTkNJREVOVF9QSEFTRV9SRVNPTFZFRBAEKo8BChBJbmNpZGVudFNldmVyaXR5EiEKHUlOQ0lERU5UX1NFVkVSSVRZX1VOU1BFQ0lGSUVEEAASHgoaSU5DSURFTlRfU0VWRVJJVFlfQ1JJVElDQUwQARIbChdJTkNJREVOVF9TRVZFUklUWV9NQUpPUhACEhsKF0lOQ0lERU5UX1NFVkVSSVRZX01JTk9SEAMy7wYKDVN0YXR1c1NlcnZpY2USWwoOTGlzdENvbXBvbmVudHMSIy5zcmVwb3J0YWwudjEuTGlzdENvbXBvbmVudHNSZXF1ZXN0GiQuc3JlcG9ydGFsLnYxLkxpc3RDb21wb25lbnRzUmVzcG9uc2USYQoQTGlzdE1haW50ZW5hbmNlcxIlLnNyZXBvcnRhbC52MS5MaXN0TWFpbnRlbmFuY2VzUmVxdWVzdBomLnNyZXBvcnRhbC52MS5MaXN0TWFpbnRlbmFuY2VzUmVzcG9uc2USWAoNTGlzdEluY2lkZW50cxIiLnNyZXBvcnRhbC52MS5MaXN0SW5jaWRlbnRzUmVxdWVzdBojLnNyZXBvcnRhbC52MS5MaXN0SW5jaWRlbnRzUmVzcG9uc2USXgoPVXBzZXJ0Q29tcG9uZW50EiQuc3JlcG9ydGFsLnYxLlVwc2VydENvbXBvbmVudFJlcXVlc3QaJS5zcmVwb3J0YWwudjEuVXBzZXJ0Q29tcG9uZW50UmVzcG9uc2USXgoPRGVsZXRlQ29tcG9uZW50EiQuc3JlcG9ydGFsLnYxLkRlbGV0ZUNvbXBvbmVudFJlcXVlc3QaJS5zcmVwb3J0YWwudjEuRGVsZXRlQ29tcG9uZW50UmVzcG9uc2USZAoRVXBzZXJ0TWFpbnRlbmFuY2USJi5zcmVwb3J0YWwudjEuVXBzZXJ0TWFpbnRlbmFuY2VSZXF1ZXN0Gicuc3JlcG9ydGFsLnYxLlVwc2VydE1haW50ZW5hbmNlUmVzcG9uc2USZAoRRGVsZXRlTWFpbnRlbmFuY2USJi5zcmVwb3J0YWwudjEuRGVsZXRlTWFpbnRlbmFuY2VSZXF1ZXN0Gicuc3JlcG9ydGFsLnYxLkRlbGV0ZU1haW50ZW5hbmNlUmVzcG9uc2USWwoOVXBzZXJ0SW5jaWRlbnQSIy5zcmVwb3J0YWwudjEuVXBzZXJ0SW5jaWRlbnRSZXF1ZXN0GiQuc3JlcG9ydGFsLnYxLlVwc2VydEluY2lkZW50UmVzcG9uc2USWwoORGVsZXRlSW5jaWRlbnQSIy5zcmVwb3J0YWwudjEuRGVsZXRlSW5jaWRlbnRSZXF1ZXN0GiQuc3JlcG9ydGFsLnYxLkRlbGV0ZUluY2lkZW50UmVzcG9uc2VCuwEKEGNvbS5zcmVwb3J0YWwudjFCC1N0YXR1c1Byb3RvUAFaSWdpdGh1Yi5jb20vZ29sZ290aDMxL3NyZXBvcnRhbC9pbnRlcm5hbC9ncnBjL2dlbi9zcmVwb3J0YWwvdjE7c3JlcG9ydGFsdjGiAgNTWFiqAgxTcmVwb3J0YWwuVjHKAgxTcmVwb3J0YWxcVjHiAhhTcmVwb3J0YWxcVjFcR1BCTWV0YWRhdGHqAg1TcmVwb3J0YWw6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp]);
+  fileDesc("ChlzcmVwb3J0YWwvdjEvc3RhdHVzLnByb3RvEgxzcmVwb3J0YWwudjEivwIKEUNvbXBvbmVudFJlc291cmNlEgwKBG5hbWUYASABKAkSFAoMZGlzcGxheV9uYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEg0KBWdyb3VwGAQgASgJEgwKBGxpbmsYBSABKAkSEgoKcG9ydGFsX3JlZhgGIAEoCRI2Cg9kZWNsYXJlZF9zdGF0dXMYByABKA4yHS5zcmVwb3J0YWwudjEuQ29tcG9uZW50U3RhdHVzEjYKD2NvbXB1dGVkX3N0YXR1cxgIIAEoDjIdLnNyZXBvcnRhbC52MS5Db21wb25lbnRTdGF0dXMSGAoQYWN0aXZlX2luY2lkZW50cxgJIAEoBRI2ChJsYXN0X3N0YXR1c19jaGFuZ2UYCiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIp8CChNNYWludGVuYW5jZVJlc291cmNlEgwKBG5hbWUYASABKAkSDQoFdGl0bGUYAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkSEgoKcG9ydGFsX3JlZhgEIAEoCRISCgpjb21wb25lbnRzGAUgAygJEjMKD3NjaGVkdWxlZF9zdGFydBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMQoNc2NoZWR1bGVkX2VuZBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFwoPYWZmZWN0ZWRfc3RhdHVzGAggASgJEi0KBXBoYXNlGAkgASgOMh4uc3JlcG9ydGFsLnYxLk1haW50ZW5hbmNlUGhhc2Ui5wIKEEluY2lkZW50UmVzb3VyY2USDAoEbmFtZRgBIAEoCRINCgV0aXRsZRgCIAEoCRISCgpwb3J0YWxfcmVmGAMgASgJEhIKCmNvbXBvbmVudHMYBCADKAkSMAoIc2V2ZXJpdHkYBSABKA4yHi5zcmVwb3J0YWwudjEuSW5jaWRlbnRTZXZlcml0eRIyCg1jdXJyZW50X3BoYXNlGAYgASgOMhsuc3JlcG9ydGFsLnYxLkluY2lkZW50UGhhc2USLQoHdXBkYXRlcxgHIAMoCzIcLnNyZXBvcnRhbC52MS5JbmNpZGVudFVwZGF0ZRIuCgpzdGFydGVkX2F0GAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIvCgtyZXNvbHZlZF9hdBgJIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGAoQZHVyYXRpb25fbWludXRlcxgKIAEoBSJ8Cg5JbmNpZGVudFVwZGF0ZRItCgl0aW1lc3RhbXAYASABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEioKBXBoYXNlGAIgASgOMhsuc3JlcG9ydGFsLnYxLkluY2lkZW50UGhhc2USDwoHbWVzc2FnZRgDIAEoCSI6ChVMaXN0Q29tcG9uZW50c1JlcXVlc3QSEgoKcG9ydGFsX3JlZhgBIAEoCRINCgVncm91cBgCIAEoCSJNChZMaXN0Q29tcG9uZW50c1Jlc3BvbnNlEjMKCmNvbXBvbmVudHMYASADKAsyHy5zcmVwb3J0YWwudjEuQ29tcG9uZW50UmVzb3VyY2UiXAoXTGlzdE1haW50ZW5hbmNlc1JlcXVlc3QSEgoKcG9ydGFsX3JlZhgBIAEoCRItCgVwaGFzZRgCIAEoDjIeLnNyZXBvcnRhbC52MS5NYWludGVuYW5jZVBoYXNlIlMKGExpc3RNYWludGVuYW5jZXNSZXNwb25zZRI3CgxtYWludGVuYW5jZXMYASADKAsyIS5zcmVwb3J0YWwudjEuTWFpbnRlbmFuY2VSZXNvdXJjZSJWChRMaXN0SW5jaWRlbnRzUmVxdWVzdBISCgpwb3J0YWxfcmVmGAEgASgJEioKBXBoYXNlGAIgASgOMhsuc3JlcG9ydGFsLnYxLkluY2lkZW50UGhhc2UiSgoVTGlzdEluY2lkZW50c1Jlc3BvbnNlEjEKCWluY2lkZW50cxgBIAMoCzIeLnNyZXBvcnRhbC52MS5JbmNpZGVudFJlc291cmNlIqkBChZDcmVhdGVDb21wb25lbnRSZXF1ZXN0EhQKDGRpc3BsYXlfbmFtZRgCIAEoCRITCgtkZXNjcmlwdGlvbhgDIAEoCRINCgVncm91cBgEIAEoCRIMCgRsaW5rGAUgASgJEhIKCnBvcnRhbF9yZWYYBiABKAkSLQoGc3RhdHVzGAcgASgOMh0uc3JlcG9ydGFsLnYxLkNvbXBvbmVudFN0YXR1c0oECAEQAiInChdDcmVhdGVDb21wb25lbnRSZXNwb25zZRIMCgRuYW1lGAEgASgJIvUBChZVcGRhdGVDb21wb25lbnRSZXF1ZXN0EgwKBG5hbWUYASABKAkSGQoMZGlzcGxheV9uYW1lGAIgASgJSACIAQESGAoLZGVzY3JpcHRpb24YAyABKAlIAYgBARISCgVncm91cBgEIAEoCUgCiAEBEhEKBGxpbmsYBSABKAlIA4gBARIyCgZzdGF0dXMYBiABKA4yHS5zcmVwb3J0YWwudjEuQ29tcG9uZW50U3RhdHVzSASIAQFCDwoNX2Rpc3BsYXlfbmFtZUIOCgxfZGVzY3JpcHRpb25CCAoGX2dyb3VwQgcKBV9saW5rQgkKB19zdGF0dXMiJwoXVXBkYXRlQ29tcG9uZW50UmVzcG9uc2USDAoEbmFtZRgBIAEoCSImChZEZWxldGVDb21wb25lbnRSZXF1ZXN0EgwKBG5hbWUYASABKAkiGQoXRGVsZXRlQ29tcG9uZW50UmVzcG9uc2Ui7QEKGENyZWF0ZU1haW50ZW5hbmNlUmVxdWVzdBINCgV0aXRsZRgCIAEoCRITCgtkZXNjcmlwdGlvbhgDIAEoCRISCgpwb3J0YWxfcmVmGAQgASgJEhIKCmNvbXBvbmVudHMYBSADKAkSMwoPc2NoZWR1bGVkX3N0YXJ0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIxCg1zY2hlZHVsZWRfZW5kGAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIXCg9hZmZlY3RlZF9zdGF0dXMYCCABKAlKBAgBEAIiKQoZQ3JlYXRlTWFpbnRlbmFuY2VSZXNwb25zZRIMCgRuYW1lGAEgASgJIs4CChhVcGRhdGVNYWludGVuYW5jZVJlcXVlc3QSDAoEbmFtZRgBIAEoCRISCgV0aXRsZRgCIAEoCUgAiAEBEhgKC2Rlc2NyaXB0aW9uGAMgASgJSAGIAQESEgoKY29tcG9uZW50cxgEIAMoCRI4Cg9zY2hlZHVsZWRfc3RhcnQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSAKIAQESNgoNc2NoZWR1bGVkX2VuZBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBIA4gBARIcCg9hZmZlY3RlZF9zdGF0dXMYByABKAlIBIgBAUIICgZfdGl0bGVCDgoMX2Rlc2NyaXB0aW9uQhIKEF9zY2hlZHVsZWRfc3RhcnRCEAoOX3NjaGVkdWxlZF9lbmRCEgoQX2FmZmVjdGVkX3N0YXR1cyIpChlVcGRhdGVNYWludGVuYW5jZVJlc3BvbnNlEgwKBG5hbWUYASABKAkiKAoYRGVsZXRlTWFpbnRlbmFuY2VSZXF1ZXN0EgwKBG5hbWUYASABKAkiGwoZRGVsZXRlTWFpbnRlbmFuY2VSZXNwb25zZSK8AQoVQ3JlYXRlSW5jaWRlbnRSZXF1ZXN0Eg0KBXRpdGxlGAIgASgJEhIKCnBvcnRhbF9yZWYYAyABKAkSEgoKY29tcG9uZW50cxgEIAMoCRIwCghzZXZlcml0eRgFIAEoDjIeLnNyZXBvcnRhbC52MS5JbmNpZGVudFNldmVyaXR5EjQKDmluaXRpYWxfdXBkYXRlGAYgASgLMhwuc3JlcG9ydGFsLnYxLkluY2lkZW50VXBkYXRlSgQIARACIiYKFkNyZWF0ZUluY2lkZW50UmVzcG9uc2USDAoEbmFtZRgBIAEoCSLJAQoVVXBkYXRlSW5jaWRlbnRSZXF1ZXN0EgwKBG5hbWUYASABKAkSEgoFdGl0bGUYAiABKAlIAIgBARISCgpjb21wb25lbnRzGAMgAygJEjUKCHNldmVyaXR5GAQgASgOMh4uc3JlcG9ydGFsLnYxLkluY2lkZW50U2V2ZXJpdHlIAYgBARIsCgZ1cGRhdGUYBSABKAsyHC5zcmVwb3J0YWwudjEuSW5jaWRlbnRVcGRhdGVCCAoGX3RpdGxlQgsKCV9zZXZlcml0eSImChZVcGRhdGVJbmNpZGVudFJlc3BvbnNlEgwKBG5hbWUYASABKAkiJQoVRGVsZXRlSW5jaWRlbnRSZXF1ZXN0EgwKBG5hbWUYASABKAkiGAoWRGVsZXRlSW5jaWRlbnRSZXNwb25zZSr8AQoPQ29tcG9uZW50U3RhdHVzEiAKHENPTVBPTkVOVF9TVEFUVVNfVU5TUEVDSUZJRUQQABIgChxDT01QT05FTlRfU1RBVFVTX09QRVJBVElPTkFMEAESHQoZQ09NUE9ORU5UX1NUQVRVU19ERUdSQURFRBACEiMKH0NPTVBPTkVOVF9TVEFUVVNfUEFSVElBTF9PVVRBR0UQAxIhCh1DT01QT05FTlRfU1RBVFVTX01BSk9SX09VVEFHRRAEEhwKGENPTVBPTkVOVF9TVEFUVVNfVU5LTk9XThAFEiAKHENPTVBPTkVOVF9TVEFUVVNfTUFJTlRFTkFOQ0UQBiqZAQoQTWFpbnRlbmFuY2VQaGFzZRIhCh1NQUlOVEVOQU5DRV9QSEFTRV9VTlNQRUNJRklFRBAAEh4KGk1BSU5URU5BTkNFX1BIQVNFX1VQQ09NSU5HEAESIQodTUFJTlRFTkFOQ0VfUEhBU0VfSU5fUFJPR1JFU1MQAhIfChtNQUlOVEVOQU5DRV9QSEFTRV9DT01QTEVURUQQAyqsAQoNSW5jaWRlbnRQaGFzZRIeChpJTkNJREVOVF9QSEFTRV9VTlNQRUNJRklFRBAAEiAKHElOQ0lERU5UX1BIQVNFX0lOVkVTVElHQVRJTkcQARIdChlJTkNJREVOVF9QSEFTRV9JREVOVElGSUVEEAISHQoZSU5DSURFTlRfUEhBU0VfTU9OSVRPUklORxADEhsKF0lOQ0lERU5UX1BIQVNFX1JFU09MVkVEEAQqjwEKEEluY2lkZW50U2V2ZXJpdHkSIQodSU5DSURFTlRfU0VWRVJJVFlfVU5TUEVDSUZJRUQQABIeChpJTkNJREVOVF9TRVZFUklUWV9DUklUSUNBTBABEhsKF0lOQ0lERU5UX1NFVkVSSVRZX01BSk9SEAISGwoXSU5DSURFTlRfU0VWRVJJVFlfTUlOT1IQAzKSCQoNU3RhdHVzU2VydmljZRJbCg5MaXN0Q29tcG9uZW50cxIjLnNyZXBvcnRhbC52MS5MaXN0Q29tcG9uZW50c1JlcXVlc3QaJC5zcmVwb3J0YWwudjEuTGlzdENvbXBvbmVudHNSZXNwb25zZRJhChBMaXN0TWFpbnRlbmFuY2VzEiUuc3JlcG9ydGFsLnYxLkxpc3RNYWludGVuYW5jZXNSZXF1ZXN0GiYuc3JlcG9ydGFsLnYxLkxpc3RNYWludGVuYW5jZXNSZXNwb25zZRJYCg1MaXN0SW5jaWRlbnRzEiIuc3JlcG9ydGFsLnYxLkxpc3RJbmNpZGVudHNSZXF1ZXN0GiMuc3JlcG9ydGFsLnYxLkxpc3RJbmNpZGVudHNSZXNwb25zZRJeCg9DcmVhdGVDb21wb25lbnQSJC5zcmVwb3J0YWwudjEuQ3JlYXRlQ29tcG9uZW50UmVxdWVzdBolLnNyZXBvcnRhbC52MS5DcmVhdGVDb21wb25lbnRSZXNwb25zZRJeCg9VcGRhdGVDb21wb25lbnQSJC5zcmVwb3J0YWwudjEuVXBkYXRlQ29tcG9uZW50UmVxdWVzdBolLnNyZXBvcnRhbC52MS5VcGRhdGVDb21wb25lbnRSZXNwb25zZRJeCg9EZWxldGVDb21wb25lbnQSJC5zcmVwb3J0YWwudjEuRGVsZXRlQ29tcG9uZW50UmVxdWVzdBolLnNyZXBvcnRhbC52MS5EZWxldGVDb21wb25lbnRSZXNwb25zZRJkChFDcmVhdGVNYWludGVuYW5jZRImLnNyZXBvcnRhbC52MS5DcmVhdGVNYWludGVuYW5jZVJlcXVlc3QaJy5zcmVwb3J0YWwudjEuQ3JlYXRlTWFpbnRlbmFuY2VSZXNwb25zZRJkChFVcGRhdGVNYWludGVuYW5jZRImLnNyZXBvcnRhbC52MS5VcGRhdGVNYWludGVuYW5jZVJlcXVlc3QaJy5zcmVwb3J0YWwudjEuVXBkYXRlTWFpbnRlbmFuY2VSZXNwb25zZRJkChFEZWxldGVNYWludGVuYW5jZRImLnNyZXBvcnRhbC52MS5EZWxldGVNYWludGVuYW5jZVJlcXVlc3QaJy5zcmVwb3J0YWwudjEuRGVsZXRlTWFpbnRlbmFuY2VSZXNwb25zZRJbCg5DcmVhdGVJbmNpZGVudBIjLnNyZXBvcnRhbC52MS5DcmVhdGVJbmNpZGVudFJlcXVlc3QaJC5zcmVwb3J0YWwudjEuQ3JlYXRlSW5jaWRlbnRSZXNwb25zZRJbCg5VcGRhdGVJbmNpZGVudBIjLnNyZXBvcnRhbC52MS5VcGRhdGVJbmNpZGVudFJlcXVlc3QaJC5zcmVwb3J0YWwudjEuVXBkYXRlSW5jaWRlbnRSZXNwb25zZRJbCg5EZWxldGVJbmNpZGVudBIjLnNyZXBvcnRhbC52MS5EZWxldGVJbmNpZGVudFJlcXVlc3QaJC5zcmVwb3J0YWwudjEuRGVsZXRlSW5jaWRlbnRSZXNwb25zZUK7AQoQY29tLnNyZXBvcnRhbC52MUILU3RhdHVzUHJvdG9QAVpJZ2l0aHViLmNvbS9nb2xnb3RoMzEvc3JlcG9ydGFsL2ludGVybmFsL2dycGMvZ2VuL3NyZXBvcnRhbC92MTtzcmVwb3J0YWx2MaICA1NYWKoCDFNyZXBvcnRhbC5WMcoCDFNyZXBvcnRhbFxWMeICGFNyZXBvcnRhbFxWMVxHUEJNZXRhZGF0YeoCDVNyZXBvcnRhbDo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
 
 /**
  * ComponentResource represents a platform component on the status page
@@ -360,20 +360,13 @@ export const ListIncidentsResponseSchema: GenMessage<ListIncidentsResponse> = /*
   messageDesc(file_sreportal_v1_status, 9);
 
 /**
- * UpsertComponentRequest creates or updates a Component CR
+ * CreateComponentRequest creates a new Component CR
  *
- * @generated from message sreportal.v1.UpsertComponentRequest
+ * @generated from message sreportal.v1.CreateComponentRequest
  */
-export type UpsertComponentRequest = Message<"sreportal.v1.UpsertComponentRequest"> & {
+export type CreateComponentRequest = Message<"sreportal.v1.CreateComponentRequest"> & {
   /**
-   * name is the CR metadata.name (required)
-   *
-   * @generated from field: string name = 1;
-   */
-  name: string;
-
-  /**
-   * display_name is the human-readable name shown on the status page
+   * display_name is the human-readable name shown on the status page (required)
    *
    * @generated from field: string display_name = 2;
    */
@@ -387,7 +380,7 @@ export type UpsertComponentRequest = Message<"sreportal.v1.UpsertComponentReques
   description: string;
 
   /**
-   * group is a logical grouping (e.g. "Infrastructure", "Applications")
+   * group is a logical grouping (e.g. "Infrastructure", "Applications") (required)
    *
    * @generated from field: string group = 4;
    */
@@ -401,7 +394,7 @@ export type UpsertComponentRequest = Message<"sreportal.v1.UpsertComponentReques
   link: string;
 
   /**
-   * portal_ref is the Portal this component is linked to
+   * portal_ref is the Portal this component is linked to (required)
    *
    * @generated from field: string portal_ref = 6;
    */
@@ -416,39 +409,105 @@ export type UpsertComponentRequest = Message<"sreportal.v1.UpsertComponentReques
 };
 
 /**
- * Describes the message sreportal.v1.UpsertComponentRequest.
- * Use `create(UpsertComponentRequestSchema)` to create a new message.
+ * Describes the message sreportal.v1.CreateComponentRequest.
+ * Use `create(CreateComponentRequestSchema)` to create a new message.
  */
-export const UpsertComponentRequestSchema: GenMessage<UpsertComponentRequest> = /*@__PURE__*/
+export const CreateComponentRequestSchema: GenMessage<CreateComponentRequest> = /*@__PURE__*/
   messageDesc(file_sreportal_v1_status, 10);
 
 /**
- * UpsertComponentResponse is returned after creating/updating a component
+ * CreateComponentResponse is returned after creating a component
  *
- * @generated from message sreportal.v1.UpsertComponentResponse
+ * @generated from message sreportal.v1.CreateComponentResponse
  */
-export type UpsertComponentResponse = Message<"sreportal.v1.UpsertComponentResponse"> & {
+export type CreateComponentResponse = Message<"sreportal.v1.CreateComponentResponse"> & {
   /**
-   * name is the CR name
+   * @generated from field: string name = 1;
+   */
+  name: string;
+};
+
+/**
+ * Describes the message sreportal.v1.CreateComponentResponse.
+ * Use `create(CreateComponentResponseSchema)` to create a new message.
+ */
+export const CreateComponentResponseSchema: GenMessage<CreateComponentResponse> = /*@__PURE__*/
+  messageDesc(file_sreportal_v1_status, 11);
+
+/**
+ * UpdateComponentRequest updates an existing Component CR
+ *
+ * @generated from message sreportal.v1.UpdateComponentRequest
+ */
+export type UpdateComponentRequest = Message<"sreportal.v1.UpdateComponentRequest"> & {
+  /**
+   * name is the CR metadata.name (required, from CreateResponse)
    *
    * @generated from field: string name = 1;
    */
   name: string;
 
   /**
-   * created is true if the CR was created (false if updated)
+   * display_name updates the human-readable name if set
    *
-   * @generated from field: bool created = 2;
+   * @generated from field: optional string display_name = 2;
    */
-  created: boolean;
+  displayName?: string;
+
+  /**
+   * description updates the short text if set
+   *
+   * @generated from field: optional string description = 3;
+   */
+  description?: string;
+
+  /**
+   * group updates the logical grouping if set
+   *
+   * @generated from field: optional string group = 4;
+   */
+  group?: string;
+
+  /**
+   * link updates the external URL if set
+   *
+   * @generated from field: optional string link = 5;
+   */
+  link?: string;
+
+  /**
+   * status updates the declared operational status if set
+   *
+   * @generated from field: optional sreportal.v1.ComponentStatus status = 6;
+   */
+  status?: ComponentStatus;
 };
 
 /**
- * Describes the message sreportal.v1.UpsertComponentResponse.
- * Use `create(UpsertComponentResponseSchema)` to create a new message.
+ * Describes the message sreportal.v1.UpdateComponentRequest.
+ * Use `create(UpdateComponentRequestSchema)` to create a new message.
  */
-export const UpsertComponentResponseSchema: GenMessage<UpsertComponentResponse> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 11);
+export const UpdateComponentRequestSchema: GenMessage<UpdateComponentRequest> = /*@__PURE__*/
+  messageDesc(file_sreportal_v1_status, 12);
+
+/**
+ * UpdateComponentResponse is returned after updating a component
+ *
+ * @generated from message sreportal.v1.UpdateComponentResponse
+ */
+export type UpdateComponentResponse = Message<"sreportal.v1.UpdateComponentResponse"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+};
+
+/**
+ * Describes the message sreportal.v1.UpdateComponentResponse.
+ * Use `create(UpdateComponentResponseSchema)` to create a new message.
+ */
+export const UpdateComponentResponseSchema: GenMessage<UpdateComponentResponse> = /*@__PURE__*/
+  messageDesc(file_sreportal_v1_status, 13);
 
 /**
  * DeleteComponentRequest deletes a Component CR
@@ -469,7 +528,7 @@ export type DeleteComponentRequest = Message<"sreportal.v1.DeleteComponentReques
  * Use `create(DeleteComponentRequestSchema)` to create a new message.
  */
 export const DeleteComponentRequestSchema: GenMessage<DeleteComponentRequest> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 12);
+  messageDesc(file_sreportal_v1_status, 14);
 
 /**
  * DeleteComponentResponse is returned after deleting a component
@@ -484,23 +543,16 @@ export type DeleteComponentResponse = Message<"sreportal.v1.DeleteComponentRespo
  * Use `create(DeleteComponentResponseSchema)` to create a new message.
  */
 export const DeleteComponentResponseSchema: GenMessage<DeleteComponentResponse> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 13);
+  messageDesc(file_sreportal_v1_status, 15);
 
 /**
- * UpsertMaintenanceRequest creates or updates a Maintenance CR
+ * CreateMaintenanceRequest creates a new Maintenance CR
  *
- * @generated from message sreportal.v1.UpsertMaintenanceRequest
+ * @generated from message sreportal.v1.CreateMaintenanceRequest
  */
-export type UpsertMaintenanceRequest = Message<"sreportal.v1.UpsertMaintenanceRequest"> & {
+export type CreateMaintenanceRequest = Message<"sreportal.v1.CreateMaintenanceRequest"> & {
   /**
-   * name is the CR metadata.name (required)
-   *
-   * @generated from field: string name = 1;
-   */
-  name: string;
-
-  /**
-   * title is the headline displayed on the status page
+   * title is the headline displayed on the status page (required)
    *
    * @generated from field: string title = 2;
    */
@@ -514,7 +566,7 @@ export type UpsertMaintenanceRequest = Message<"sreportal.v1.UpsertMaintenanceRe
   description: string;
 
   /**
-   * portal_ref is the Portal this maintenance is linked to
+   * portal_ref is the Portal this maintenance is linked to (required)
    *
    * @generated from field: string portal_ref = 4;
    */
@@ -550,35 +602,112 @@ export type UpsertMaintenanceRequest = Message<"sreportal.v1.UpsertMaintenanceRe
 };
 
 /**
- * Describes the message sreportal.v1.UpsertMaintenanceRequest.
- * Use `create(UpsertMaintenanceRequestSchema)` to create a new message.
+ * Describes the message sreportal.v1.CreateMaintenanceRequest.
+ * Use `create(CreateMaintenanceRequestSchema)` to create a new message.
  */
-export const UpsertMaintenanceRequestSchema: GenMessage<UpsertMaintenanceRequest> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 14);
+export const CreateMaintenanceRequestSchema: GenMessage<CreateMaintenanceRequest> = /*@__PURE__*/
+  messageDesc(file_sreportal_v1_status, 16);
 
 /**
- * UpsertMaintenanceResponse is returned after creating/updating a maintenance
+ * CreateMaintenanceResponse is returned after creating a maintenance
  *
- * @generated from message sreportal.v1.UpsertMaintenanceResponse
+ * @generated from message sreportal.v1.CreateMaintenanceResponse
  */
-export type UpsertMaintenanceResponse = Message<"sreportal.v1.UpsertMaintenanceResponse"> & {
+export type CreateMaintenanceResponse = Message<"sreportal.v1.CreateMaintenanceResponse"> & {
   /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+};
+
+/**
+ * Describes the message sreportal.v1.CreateMaintenanceResponse.
+ * Use `create(CreateMaintenanceResponseSchema)` to create a new message.
+ */
+export const CreateMaintenanceResponseSchema: GenMessage<CreateMaintenanceResponse> = /*@__PURE__*/
+  messageDesc(file_sreportal_v1_status, 17);
+
+/**
+ * UpdateMaintenanceRequest updates an existing Maintenance CR
+ *
+ * @generated from message sreportal.v1.UpdateMaintenanceRequest
+ */
+export type UpdateMaintenanceRequest = Message<"sreportal.v1.UpdateMaintenanceRequest"> & {
+  /**
+   * name is the CR metadata.name (required, identifies the maintenance)
+   *
    * @generated from field: string name = 1;
    */
   name: string;
 
   /**
-   * @generated from field: bool created = 2;
+   * title updates the headline if set
+   *
+   * @generated from field: optional string title = 2;
    */
-  created: boolean;
+  title?: string;
+
+  /**
+   * description updates the description if set
+   *
+   * @generated from field: optional string description = 3;
+   */
+  description?: string;
+
+  /**
+   * components replaces affected components if non-empty
+   *
+   * @generated from field: repeated string components = 4;
+   */
+  components: string[];
+
+  /**
+   * scheduled_start updates the planned start time if set
+   *
+   * @generated from field: optional google.protobuf.Timestamp scheduled_start = 5;
+   */
+  scheduledStart?: Timestamp;
+
+  /**
+   * scheduled_end updates the planned end time if set
+   *
+   * @generated from field: optional google.protobuf.Timestamp scheduled_end = 6;
+   */
+  scheduledEnd?: Timestamp;
+
+  /**
+   * affected_status updates the status applied to components if set
+   *
+   * @generated from field: optional string affected_status = 7;
+   */
+  affectedStatus?: string;
 };
 
 /**
- * Describes the message sreportal.v1.UpsertMaintenanceResponse.
- * Use `create(UpsertMaintenanceResponseSchema)` to create a new message.
+ * Describes the message sreportal.v1.UpdateMaintenanceRequest.
+ * Use `create(UpdateMaintenanceRequestSchema)` to create a new message.
  */
-export const UpsertMaintenanceResponseSchema: GenMessage<UpsertMaintenanceResponse> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 15);
+export const UpdateMaintenanceRequestSchema: GenMessage<UpdateMaintenanceRequest> = /*@__PURE__*/
+  messageDesc(file_sreportal_v1_status, 18);
+
+/**
+ * UpdateMaintenanceResponse is returned after updating a maintenance
+ *
+ * @generated from message sreportal.v1.UpdateMaintenanceResponse
+ */
+export type UpdateMaintenanceResponse = Message<"sreportal.v1.UpdateMaintenanceResponse"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+};
+
+/**
+ * Describes the message sreportal.v1.UpdateMaintenanceResponse.
+ * Use `create(UpdateMaintenanceResponseSchema)` to create a new message.
+ */
+export const UpdateMaintenanceResponseSchema: GenMessage<UpdateMaintenanceResponse> = /*@__PURE__*/
+  messageDesc(file_sreportal_v1_status, 19);
 
 /**
  * DeleteMaintenanceRequest deletes a Maintenance CR
@@ -597,7 +726,7 @@ export type DeleteMaintenanceRequest = Message<"sreportal.v1.DeleteMaintenanceRe
  * Use `create(DeleteMaintenanceRequestSchema)` to create a new message.
  */
 export const DeleteMaintenanceRequestSchema: GenMessage<DeleteMaintenanceRequest> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 16);
+  messageDesc(file_sreportal_v1_status, 20);
 
 /**
  * DeleteMaintenanceResponse is returned after deleting a maintenance
@@ -612,30 +741,23 @@ export type DeleteMaintenanceResponse = Message<"sreportal.v1.DeleteMaintenanceR
  * Use `create(DeleteMaintenanceResponseSchema)` to create a new message.
  */
 export const DeleteMaintenanceResponseSchema: GenMessage<DeleteMaintenanceResponse> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 17);
+  messageDesc(file_sreportal_v1_status, 21);
 
 /**
- * UpsertIncidentRequest creates or updates an Incident CR
+ * CreateIncidentRequest creates a new Incident CR
  *
- * @generated from message sreportal.v1.UpsertIncidentRequest
+ * @generated from message sreportal.v1.CreateIncidentRequest
  */
-export type UpsertIncidentRequest = Message<"sreportal.v1.UpsertIncidentRequest"> & {
+export type CreateIncidentRequest = Message<"sreportal.v1.CreateIncidentRequest"> & {
   /**
-   * name is the CR metadata.name (required)
-   *
-   * @generated from field: string name = 1;
-   */
-  name: string;
-
-  /**
-   * title is the headline of the incident
+   * title is the headline of the incident (required)
    *
    * @generated from field: string title = 2;
    */
   title: string;
 
   /**
-   * portal_ref is the Portal this incident is linked to
+   * portal_ref is the Portal this incident is linked to (required)
    *
    * @generated from field: string portal_ref = 3;
    */
@@ -649,50 +771,113 @@ export type UpsertIncidentRequest = Message<"sreportal.v1.UpsertIncidentRequest"
   components: string[];
 
   /**
-   * severity indicates the impact level
+   * severity indicates the impact level (required)
    *
    * @generated from field: sreportal.v1.IncidentSeverity severity = 5;
    */
   severity: IncidentSeverity;
 
   /**
-   * updates is the full timeline (replaces all existing updates)
+   * initial_update is the first timeline entry (required)
    *
-   * @generated from field: repeated sreportal.v1.IncidentUpdate updates = 6;
+   * @generated from field: sreportal.v1.IncidentUpdate initial_update = 6;
    */
-  updates: IncidentUpdate[];
+  initialUpdate?: IncidentUpdate;
 };
 
 /**
- * Describes the message sreportal.v1.UpsertIncidentRequest.
- * Use `create(UpsertIncidentRequestSchema)` to create a new message.
+ * Describes the message sreportal.v1.CreateIncidentRequest.
+ * Use `create(CreateIncidentRequestSchema)` to create a new message.
  */
-export const UpsertIncidentRequestSchema: GenMessage<UpsertIncidentRequest> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 18);
+export const CreateIncidentRequestSchema: GenMessage<CreateIncidentRequest> = /*@__PURE__*/
+  messageDesc(file_sreportal_v1_status, 22);
 
 /**
- * UpsertIncidentResponse is returned after creating/updating an incident
+ * CreateIncidentResponse is returned after creating an incident
  *
- * @generated from message sreportal.v1.UpsertIncidentResponse
+ * @generated from message sreportal.v1.CreateIncidentResponse
  */
-export type UpsertIncidentResponse = Message<"sreportal.v1.UpsertIncidentResponse"> & {
+export type CreateIncidentResponse = Message<"sreportal.v1.CreateIncidentResponse"> & {
   /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+};
+
+/**
+ * Describes the message sreportal.v1.CreateIncidentResponse.
+ * Use `create(CreateIncidentResponseSchema)` to create a new message.
+ */
+export const CreateIncidentResponseSchema: GenMessage<CreateIncidentResponse> = /*@__PURE__*/
+  messageDesc(file_sreportal_v1_status, 23);
+
+/**
+ * UpdateIncidentRequest updates an existing Incident CR
+ *
+ * @generated from message sreportal.v1.UpdateIncidentRequest
+ */
+export type UpdateIncidentRequest = Message<"sreportal.v1.UpdateIncidentRequest"> & {
+  /**
+   * name is the CR metadata.name (required, identifies the incident)
+   *
    * @generated from field: string name = 1;
    */
   name: string;
 
   /**
-   * @generated from field: bool created = 2;
+   * title updates the headline if set
+   *
+   * @generated from field: optional string title = 2;
    */
-  created: boolean;
+  title?: string;
+
+  /**
+   * components replaces affected components if non-empty
+   *
+   * @generated from field: repeated string components = 3;
+   */
+  components: string[];
+
+  /**
+   * severity updates the impact level if set
+   *
+   * @generated from field: optional sreportal.v1.IncidentSeverity severity = 4;
+   */
+  severity?: IncidentSeverity;
+
+  /**
+   * update is a new timeline entry appended to the existing timeline (required)
+   *
+   * @generated from field: sreportal.v1.IncidentUpdate update = 5;
+   */
+  update?: IncidentUpdate;
 };
 
 /**
- * Describes the message sreportal.v1.UpsertIncidentResponse.
- * Use `create(UpsertIncidentResponseSchema)` to create a new message.
+ * Describes the message sreportal.v1.UpdateIncidentRequest.
+ * Use `create(UpdateIncidentRequestSchema)` to create a new message.
  */
-export const UpsertIncidentResponseSchema: GenMessage<UpsertIncidentResponse> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 19);
+export const UpdateIncidentRequestSchema: GenMessage<UpdateIncidentRequest> = /*@__PURE__*/
+  messageDesc(file_sreportal_v1_status, 24);
+
+/**
+ * UpdateIncidentResponse is returned after updating an incident
+ *
+ * @generated from message sreportal.v1.UpdateIncidentResponse
+ */
+export type UpdateIncidentResponse = Message<"sreportal.v1.UpdateIncidentResponse"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+};
+
+/**
+ * Describes the message sreportal.v1.UpdateIncidentResponse.
+ * Use `create(UpdateIncidentResponseSchema)` to create a new message.
+ */
+export const UpdateIncidentResponseSchema: GenMessage<UpdateIncidentResponse> = /*@__PURE__*/
+  messageDesc(file_sreportal_v1_status, 25);
 
 /**
  * DeleteIncidentRequest deletes an Incident CR
@@ -711,7 +896,7 @@ export type DeleteIncidentRequest = Message<"sreportal.v1.DeleteIncidentRequest"
  * Use `create(DeleteIncidentRequestSchema)` to create a new message.
  */
 export const DeleteIncidentRequestSchema: GenMessage<DeleteIncidentRequest> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 20);
+  messageDesc(file_sreportal_v1_status, 26);
 
 /**
  * DeleteIncidentResponse is returned after deleting an incident
@@ -726,7 +911,7 @@ export type DeleteIncidentResponse = Message<"sreportal.v1.DeleteIncidentRespons
  * Use `create(DeleteIncidentResponseSchema)` to create a new message.
  */
 export const DeleteIncidentResponseSchema: GenMessage<DeleteIncidentResponse> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 21);
+  messageDesc(file_sreportal_v1_status, 27);
 
 /**
  * ComponentStatus describes the operational status of a platform component
@@ -919,14 +1104,24 @@ export const StatusService: GenService<{
     output: typeof ListIncidentsResponseSchema;
   },
   /**
-   * UpsertComponent creates or updates a platform component CR
+   * CreateComponent creates a new platform component CR
    *
-   * @generated from rpc sreportal.v1.StatusService.UpsertComponent
+   * @generated from rpc sreportal.v1.StatusService.CreateComponent
    */
-  upsertComponent: {
+  createComponent: {
     methodKind: "unary";
-    input: typeof UpsertComponentRequestSchema;
-    output: typeof UpsertComponentResponseSchema;
+    input: typeof CreateComponentRequestSchema;
+    output: typeof CreateComponentResponseSchema;
+  },
+  /**
+   * UpdateComponent updates an existing platform component CR
+   *
+   * @generated from rpc sreportal.v1.StatusService.UpdateComponent
+   */
+  updateComponent: {
+    methodKind: "unary";
+    input: typeof UpdateComponentRequestSchema;
+    output: typeof UpdateComponentResponseSchema;
   },
   /**
    * DeleteComponent deletes a platform component CR
@@ -939,14 +1134,24 @@ export const StatusService: GenService<{
     output: typeof DeleteComponentResponseSchema;
   },
   /**
-   * UpsertMaintenance creates or updates a maintenance window CR
+   * CreateMaintenance creates a new maintenance window CR
    *
-   * @generated from rpc sreportal.v1.StatusService.UpsertMaintenance
+   * @generated from rpc sreportal.v1.StatusService.CreateMaintenance
    */
-  upsertMaintenance: {
+  createMaintenance: {
     methodKind: "unary";
-    input: typeof UpsertMaintenanceRequestSchema;
-    output: typeof UpsertMaintenanceResponseSchema;
+    input: typeof CreateMaintenanceRequestSchema;
+    output: typeof CreateMaintenanceResponseSchema;
+  },
+  /**
+   * UpdateMaintenance updates an existing maintenance window CR
+   *
+   * @generated from rpc sreportal.v1.StatusService.UpdateMaintenance
+   */
+  updateMaintenance: {
+    methodKind: "unary";
+    input: typeof UpdateMaintenanceRequestSchema;
+    output: typeof UpdateMaintenanceResponseSchema;
   },
   /**
    * DeleteMaintenance deletes a maintenance window CR
@@ -959,14 +1164,24 @@ export const StatusService: GenService<{
     output: typeof DeleteMaintenanceResponseSchema;
   },
   /**
-   * UpsertIncident creates or updates an incident CR
+   * CreateIncident creates a new incident CR
    *
-   * @generated from rpc sreportal.v1.StatusService.UpsertIncident
+   * @generated from rpc sreportal.v1.StatusService.CreateIncident
    */
-  upsertIncident: {
+  createIncident: {
     methodKind: "unary";
-    input: typeof UpsertIncidentRequestSchema;
-    output: typeof UpsertIncidentResponseSchema;
+    input: typeof CreateIncidentRequestSchema;
+    output: typeof CreateIncidentResponseSchema;
+  },
+  /**
+   * UpdateIncident updates an existing incident CR, appending a timeline entry
+   *
+   * @generated from rpc sreportal.v1.StatusService.UpdateIncident
+   */
+  updateIncident: {
+    methodKind: "unary";
+    input: typeof UpdateIncidentRequestSchema;
+    output: typeof UpdateIncidentResponseSchema;
   },
   /**
    * DeleteIncident deletes an incident CR

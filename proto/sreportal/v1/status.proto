@@ -19,20 +19,29 @@ service StatusService {
 
   // --- Write RPCs (auth-protected) ---
 
-  // UpsertComponent creates or updates a platform component CR
-  rpc UpsertComponent(UpsertComponentRequest) returns (UpsertComponentResponse);
+  // CreateComponent creates a new platform component CR
+  rpc CreateComponent(CreateComponentRequest) returns (CreateComponentResponse);
+
+  // UpdateComponent updates an existing platform component CR
+  rpc UpdateComponent(UpdateComponentRequest) returns (UpdateComponentResponse);
 
   // DeleteComponent deletes a platform component CR
   rpc DeleteComponent(DeleteComponentRequest) returns (DeleteComponentResponse);
 
-  // UpsertMaintenance creates or updates a maintenance window CR
-  rpc UpsertMaintenance(UpsertMaintenanceRequest) returns (UpsertMaintenanceResponse);
+  // CreateMaintenance creates a new maintenance window CR
+  rpc CreateMaintenance(CreateMaintenanceRequest) returns (CreateMaintenanceResponse);
+
+  // UpdateMaintenance updates an existing maintenance window CR
+  rpc UpdateMaintenance(UpdateMaintenanceRequest) returns (UpdateMaintenanceResponse);
 
   // DeleteMaintenance deletes a maintenance window CR
   rpc DeleteMaintenance(DeleteMaintenanceRequest) returns (DeleteMaintenanceResponse);
 
-  // UpsertIncident creates or updates an incident CR
-  rpc UpsertIncident(UpsertIncidentRequest) returns (UpsertIncidentResponse);
+  // CreateIncident creates a new incident CR
+  rpc CreateIncident(CreateIncidentRequest) returns (CreateIncidentResponse);
+
+  // UpdateIncident updates an existing incident CR, appending a timeline entry
+  rpc UpdateIncident(UpdateIncidentRequest) returns (UpdateIncidentResponse);
 
   // DeleteIncident deletes an incident CR
   rpc DeleteIncident(DeleteIncidentRequest) returns (DeleteIncidentResponse);
@@ -159,30 +168,47 @@ message ListIncidentsResponse {
 
 // --- Write request/response messages ---
 
-// UpsertComponentRequest creates or updates a Component CR
-message UpsertComponentRequest {
-  // name is the CR metadata.name (required)
-  string name = 1;
-  // display_name is the human-readable name shown on the status page
+// CreateComponentRequest creates a new Component CR
+message CreateComponentRequest {
+  reserved 1;
+  // display_name is the human-readable name shown on the status page (required)
   string display_name = 2;
   // description is a short text displayed below the component name
   string description = 3;
-  // group is a logical grouping (e.g. "Infrastructure", "Applications")
+  // group is a logical grouping (e.g. "Infrastructure", "Applications") (required)
   string group = 4;
   // link is an optional external URL
   string link = 5;
-  // portal_ref is the Portal this component is linked to
+  // portal_ref is the Portal this component is linked to (required)
   string portal_ref = 6;
   // status is the declared operational status
   ComponentStatus status = 7;
 }
 
-// UpsertComponentResponse is returned after creating/updating a component
-message UpsertComponentResponse {
-  // name is the CR name
+// CreateComponentResponse is returned after creating a component
+message CreateComponentResponse {
   string name = 1;
-  // created is true if the CR was created (false if updated)
-  bool created = 2;
+}
+
+// UpdateComponentRequest updates an existing Component CR
+message UpdateComponentRequest {
+  // name is the CR metadata.name (required, from CreateResponse)
+  string name = 1;
+  // display_name updates the human-readable name if set
+  optional string display_name = 2;
+  // description updates the short text if set
+  optional string description = 3;
+  // group updates the logical grouping if set
+  optional string group = 4;
+  // link updates the external URL if set
+  optional string link = 5;
+  // status updates the declared operational status if set
+  optional ComponentStatus status = 6;
+}
+
+// UpdateComponentResponse is returned after updating a component
+message UpdateComponentResponse {
+  string name = 1;
 }
 
 // DeleteComponentRequest deletes a Component CR
@@ -194,15 +220,14 @@ message DeleteComponentRequest {
 // DeleteComponentResponse is returned after deleting a component
 message DeleteComponentResponse {}
 
-// UpsertMaintenanceRequest creates or updates a Maintenance CR
-message UpsertMaintenanceRequest {
-  // name is the CR metadata.name (required)
-  string name = 1;
-  // title is the headline displayed on the status page
+// CreateMaintenanceRequest creates a new Maintenance CR
+message CreateMaintenanceRequest {
+  reserved 1;
+  // title is the headline displayed on the status page (required)
   string title = 2;
   // description is a longer explanation
   string description = 3;
-  // portal_ref is the Portal this maintenance is linked to
+  // portal_ref is the Portal this maintenance is linked to (required)
   string portal_ref = 4;
   // components is the list of affected Component names
   repeated string components = 5;
@@ -214,10 +239,32 @@ message UpsertMaintenanceRequest {
   string affected_status = 8;
 }
 
-// UpsertMaintenanceResponse is returned after creating/updating a maintenance
-message UpsertMaintenanceResponse {
+// CreateMaintenanceResponse is returned after creating a maintenance
+message CreateMaintenanceResponse {
   string name = 1;
-  bool created = 2;
+}
+
+// UpdateMaintenanceRequest updates an existing Maintenance CR
+message UpdateMaintenanceRequest {
+  // name is the CR metadata.name (required, identifies the maintenance)
+  string name = 1;
+  // title updates the headline if set
+  optional string title = 2;
+  // description updates the description if set
+  optional string description = 3;
+  // components replaces affected components if non-empty
+  repeated string components = 4;
+  // scheduled_start updates the planned start time if set
+  optional google.protobuf.Timestamp scheduled_start = 5;
+  // scheduled_end updates the planned end time if set
+  optional google.protobuf.Timestamp scheduled_end = 6;
+  // affected_status updates the status applied to components if set
+  optional string affected_status = 7;
+}
+
+// UpdateMaintenanceResponse is returned after updating a maintenance
+message UpdateMaintenanceResponse {
+  string name = 1;
 }
 
 // DeleteMaintenanceRequest deletes a Maintenance CR
@@ -228,26 +275,43 @@ message DeleteMaintenanceRequest {
 // DeleteMaintenanceResponse is returned after deleting a maintenance
 message DeleteMaintenanceResponse {}
 
-// UpsertIncidentRequest creates or updates an Incident CR
-message UpsertIncidentRequest {
-  // name is the CR metadata.name (required)
-  string name = 1;
-  // title is the headline of the incident
+// CreateIncidentRequest creates a new Incident CR
+message CreateIncidentRequest {
+  reserved 1;
+  // title is the headline of the incident (required)
   string title = 2;
-  // portal_ref is the Portal this incident is linked to
+  // portal_ref is the Portal this incident is linked to (required)
   string portal_ref = 3;
   // components is the list of affected Component names
   repeated string components = 4;
-  // severity indicates the impact level
+  // severity indicates the impact level (required)
   IncidentSeverity severity = 5;
-  // updates is the full timeline (replaces all existing updates)
-  repeated IncidentUpdate updates = 6;
+  // initial_update is the first timeline entry (required)
+  IncidentUpdate initial_update = 6;
 }
 
-// UpsertIncidentResponse is returned after creating/updating an incident
-message UpsertIncidentResponse {
+// CreateIncidentResponse is returned after creating an incident
+message CreateIncidentResponse {
   string name = 1;
-  bool created = 2;
+}
+
+// UpdateIncidentRequest updates an existing Incident CR
+message UpdateIncidentRequest {
+  // name is the CR metadata.name (required, identifies the incident)
+  string name = 1;
+  // title updates the headline if set
+  optional string title = 2;
+  // components replaces affected components if non-empty
+  repeated string components = 3;
+  // severity updates the impact level if set
+  optional IncidentSeverity severity = 4;
+  // update is a new timeline entry appended to the existing timeline (required)
+  IncidentUpdate update = 5;
+}
+
+// UpdateIncidentResponse is returned after updating an incident
+message UpdateIncidentResponse {
+  string name = 1;
 }
 
 // DeleteIncidentRequest deletes an Incident CR

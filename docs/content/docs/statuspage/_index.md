@@ -132,12 +132,25 @@ spec:
 
 ## Web UI
 
-The status page is accessible at `/:portalName/status` and has three sections:
+The status page is accessible at `/:portalName/status` and is organized into three tabs:
 
-1. **Global status banner** — worst status across all components (operational → major_outage)
-2. **Component grid** — grouped by `spec.group`, responsive (1/2/3 columns)
-3. **Maintenances** — sorted: in_progress → upcoming → completed (last 5)
-4. **Incidents** — active on top, resolved below (last 10, expandable timeline)
+### Components
+
+Displays a global status banner (worst status across all components) and a grouped component grid (responsive 1/2/3 columns). Each component shows its computed status, display name, description, and an optional external link.
+
+![Components tab](/assets/img/dark/status-components.png)
+
+### Incidents
+
+Active incidents appear on top (expanded by default), resolved incidents below (last 10, collapsible timeline). Each incident shows severity, phase, affected components, and chronological updates.
+
+![Incidents tab](/assets/img/dark/status-incidents.png)
+
+### Maintenance
+
+Scheduled and ongoing maintenance windows, sorted: in_progress → upcoming → completed (last 5). Each entry shows title, affected components, scheduled time range, and current phase.
+
+![Maintenance tab](/assets/img/dark/status-maintenance.png)
 
 ## API
 
