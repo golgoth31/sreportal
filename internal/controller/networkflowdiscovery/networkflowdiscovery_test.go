@@ -18,6 +18,7 @@ package networkflowdiscovery
 
 import (
 	"context"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -27,6 +28,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	domainnetpol "github.com/golgoth31/sreportal/internal/domain/netpol"
+	netpolreadstore "github.com/golgoth31/sreportal/internal/readstore/netpol"
 	"github.com/golgoth31/sreportal/internal/remoteclient"
 )
 
@@ -87,6 +90,76 @@ var _ = Describe("NetworkFlowDiscovery Controller", func() {
 				g.Expect(k8sClient.Get(ctx, typeNamespacedName, &updated)).To(Succeed())
 				g.Expect(updated.Status.LastReconcileTime).NotTo(BeNil())
 			}).Should(Succeed())
+		})
+	})
+
+	Context("When networkPolicy feature is disabled on the referenced portal", func() {
+		const (
+			nfdName    = "nfd-feature-toggle"
+			portalName = "portal-netpol-toggle"
+		)
+		ctx := context.Background()
+		nfdNN := types.NamespacedName{Name: nfdName, Namespace: "default"}
+		portalNN := types.NamespacedName{Name: portalName, Namespace: "default"}
+
+		AfterEach(func() {
+			nfd := &sreportalv1alpha1.NetworkFlowDiscovery{}
+			if err := k8sClient.Get(ctx, nfdNN, nfd); err == nil {
+				_ = k8sClient.Delete(ctx, nfd)
+			}
+			portal := &sreportalv1alpha1.Portal{}
+			if err := k8sClient.Get(ctx, portalNN, portal); err == nil {
+				_ = k8sClient.Delete(ctx, portal)
+			}
+		})
+
+		It("should purge flow graph data from the read store", func() {
+			store := netpolreadstore.NewFlowGraphStore()
+			reconciler := NewNetworkFlowDiscoveryReconciler(k8sClient, k8sClient.Scheme(), remoteclient.NewCache())
+			reconciler.SetFlowGraphWriter(store)
+
+			By("creating a portal with networkPolicy disabled")
+			netpolOff := false
+			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.Portal{
+				ObjectMeta: metav1.ObjectMeta{Name: portalName, Namespace: "default"},
+				Spec: sreportalv1alpha1.PortalSpec{
+					Title:    "Netpol Toggle Portal",
+					Features: &sreportalv1alpha1.PortalFeatures{NetworkPolicy: &netpolOff},
+				},
+			})).To(Succeed())
+
+			By("creating an NFD referencing the portal")
+			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.NetworkFlowDiscovery{
+				ObjectMeta: metav1.ObjectMeta{Name: nfdName, Namespace: "default"},
+				Spec: sreportalv1alpha1.NetworkFlowDiscoverySpec{
+					PortalRef: portalName,
+				},
+			})).To(Succeed())
+
+			By("pre-populating the flow graph store")
+			Expect(store.ReplaceNodes(ctx, nfdName, portalName, []domainnetpol.FlowNode{
+				{ID: "service:default:app1", Label: "app1", Namespace: "default", NodeType: "service", Group: "default"},
+			})).To(Succeed())
+			Expect(store.ReplaceEdges(ctx, nfdName, portalName, []domainnetpol.FlowEdge{
+				{From: "service:default:app1", To: "service:default:app2", EdgeType: "internal"},
+			})).To(Succeed())
+
+			nodes, _ := store.ListNodes(ctx, domainnetpol.FlowGraphFilters{Portal: portalName})
+			Expect(nodes).To(HaveLen(1), "pre-condition: store should have 1 node")
+
+			By("reconciling — flow graph data should be purged")
+			Eventually(func(g Gomega) {
+				_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: nfdNN})
+				g.Expect(err).NotTo(HaveOccurred())
+
+				gotNodes, err := store.ListNodes(ctx, domainnetpol.FlowGraphFilters{Portal: portalName})
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(gotNodes).To(BeEmpty(), "nodes should be purged when feature is disabled")
+
+				gotEdges, err := store.ListEdges(ctx, domainnetpol.FlowGraphFilters{Portal: portalName})
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(gotEdges).To(BeEmpty(), "edges should be purged when feature is disabled")
+			}, 10*time.Second, 250*time.Millisecond).Should(Succeed())
 		})
 	})
 })

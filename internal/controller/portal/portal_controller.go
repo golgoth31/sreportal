@@ -35,6 +35,7 @@ import (
 	dnsctrl "github.com/golgoth31/sreportal/internal/controller/dns"
 	portalfeatures "github.com/golgoth31/sreportal/internal/controller/portal/features"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
+	domainnetpol "github.com/golgoth31/sreportal/internal/domain/netpol"
 	domainportal "github.com/golgoth31/sreportal/internal/domain/portal"
 	domainrelease "github.com/golgoth31/sreportal/internal/domain/release"
 	"github.com/golgoth31/sreportal/internal/log"
@@ -54,6 +55,7 @@ type PortalReconciler struct {
 	portalWriter      domainportal.PortalWriter
 	fqdnWriter        domaindns.FQDNWriter
 	releaseWriter     domainrelease.ReleaseWriter
+	flowGraphWriter   domainnetpol.FlowGraphWriter
 }
 
 // SetPortalWriter sets the optional PortalWriter used to push read models into the ReadStore.
@@ -69,6 +71,11 @@ func (r *PortalReconciler) SetFQDNWriter(w domaindns.FQDNWriter) {
 // SetReleaseWriter sets the optional ReleaseWriter used to flush release projections when the feature is disabled.
 func (r *PortalReconciler) SetReleaseWriter(w domainrelease.ReleaseWriter) {
 	r.releaseWriter = w
+}
+
+// SetFlowGraphWriter sets the optional FlowGraphWriter used to purge network flow projections when the feature is disabled.
+func (r *PortalReconciler) SetFlowGraphWriter(w domainnetpol.FlowGraphWriter) {
+	r.flowGraphWriter = w
 }
 
 // NewPortalReconciler creates a new PortalReconciler
@@ -121,6 +128,17 @@ func (r *PortalReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if !portal.Spec.Features.IsReleasesEnabled() {
 		if err := r.cleanupReleaseData(ctx, &portal); err != nil {
 			logger.Error(err, "failed to clean up release data for disabled feature")
+		}
+	}
+
+	if !portal.Spec.Features.IsNetworkPolicyEnabled() {
+		if err := r.cleanupNetworkFlowData(ctx, &portal); err != nil {
+			logger.Error(err, "failed to clean up network flow data for disabled feature")
+		}
+	} else if portal.Spec.Remote == nil {
+		// Re-enable path: ensure a local NFD exists when the feature is (re-)enabled.
+		if err := r.ensureNetworkFlowDiscovery(ctx, &portal); err != nil {
+			logger.Error(err, "failed to ensure NetworkFlowDiscovery for re-enabled feature")
 		}
 	}
 
@@ -542,6 +560,75 @@ func (r *PortalReconciler) cleanupReleaseData(ctx context.Context, portal *srepo
 
 	logger.Info("cleaned up release data for disabled feature",
 		"portal", portal.Name, "releaseCount", len(releaseList.Items))
+	return nil
+}
+
+// cleanupNetworkFlowData removes network flow read-store projections for this portal
+// and deletes NetworkFlowDiscovery K8s resources owned by the portal.
+// Called when the networkPolicy feature toggle is disabled.
+func (r *PortalReconciler) cleanupNetworkFlowData(ctx context.Context, portal *sreportalv1alpha1.Portal) error {
+	logger := log.FromContext(ctx)
+
+	var nfdList sreportalv1alpha1.NetworkFlowDiscoveryList
+	if err := r.List(ctx, &nfdList,
+		client.InNamespace(portal.Namespace),
+		client.MatchingFields{portalfeatures.FieldIndexPortalRef: portal.Name},
+	); err != nil {
+		return fmt.Errorf("list NetworkFlowDiscovery resources: %w", err)
+	}
+
+	for i := range nfdList.Items {
+		nfd := &nfdList.Items[i]
+		if r.flowGraphWriter != nil {
+			if err := r.flowGraphWriter.Delete(ctx, nfd.Name); err != nil {
+				logger.Error(err, "failed to delete flow graph from read store", "key", nfd.Name)
+			}
+		}
+		if err := r.Delete(ctx, nfd); err != nil && !errors.IsNotFound(err) {
+			logger.Error(err, "failed to delete NetworkFlowDiscovery", "name", nfd.Name)
+		} else if err == nil {
+			logger.Info("deleted NetworkFlowDiscovery (networkPolicy feature disabled)", "name", nfd.Name)
+		}
+	}
+
+	logger.Info("cleaned up network flow data for disabled feature",
+		"portal", portal.Name, "nfdCount", len(nfdList.Items))
+	return nil
+}
+
+// ensureNetworkFlowDiscovery creates a NetworkFlowDiscovery resource for the portal
+// if one does not already exist. This covers the re-enable path (false→true) since
+// cleanupNetworkFlowData deletes NFD CRs when the feature is disabled.
+func (r *PortalReconciler) ensureNetworkFlowDiscovery(ctx context.Context, portal *sreportalv1alpha1.Portal) error {
+	logger := log.FromContext(ctx)
+
+	nfdName := "netflow-" + portal.Name
+	var existing sreportalv1alpha1.NetworkFlowDiscovery
+	err := r.Get(ctx, types.NamespacedName{Name: nfdName, Namespace: portal.Namespace}, &existing)
+	if err == nil {
+		return nil // already exists
+	}
+	if !errors.IsNotFound(err) {
+		return fmt.Errorf("get NetworkFlowDiscovery: %w", err)
+	}
+
+	nfd := &sreportalv1alpha1.NetworkFlowDiscovery{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      nfdName,
+			Namespace: portal.Namespace,
+		},
+		Spec: sreportalv1alpha1.NetworkFlowDiscoverySpec{
+			PortalRef: portal.Name,
+		},
+	}
+	if err := controllerutil.SetControllerReference(portal, nfd, r.Scheme); err != nil {
+		return fmt.Errorf("set controller reference: %w", err)
+	}
+	if err := r.Create(ctx, nfd); err != nil {
+		return fmt.Errorf("create NetworkFlowDiscovery: %w", err)
+	}
+
+	logger.Info("created NetworkFlowDiscovery (networkPolicy feature re-enabled)", "name", nfdName)
 	return nil
 }
 

@@ -579,6 +579,7 @@ func main() {
 		os.Exit(1)
 	}
 	flowGraphStore := netpolreadstore.NewFlowGraphStore()
+	portalReconciler.SetFlowGraphWriter(flowGraphStore)
 	nfdReconciler := nfdctrl.NewNetworkFlowDiscoveryReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),

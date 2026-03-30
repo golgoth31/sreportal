@@ -31,8 +31,10 @@ import (
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	dnsctrl "github.com/golgoth31/sreportal/internal/controller/dns"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
+	domainnetpol "github.com/golgoth31/sreportal/internal/domain/netpol"
 	domainrelease "github.com/golgoth31/sreportal/internal/domain/release"
 	dnsreadstore "github.com/golgoth31/sreportal/internal/readstore/dns"
+	netpolreadstore "github.com/golgoth31/sreportal/internal/readstore/netpol"
 	releasereadstore "github.com/golgoth31/sreportal/internal/readstore/release"
 	"github.com/golgoth31/sreportal/internal/remoteclient"
 )
@@ -275,7 +277,7 @@ var _ = Describe("Portal Controller", func() {
 			}
 		})
 
-		It("should flush read store entries and not delete Release CRs", func() {
+		It("should flush read store entries and preserve Release CRs", func() {
 			store := releasereadstore.NewReleaseStore()
 			portalReconciler := NewPortalReconciler(k8sClient, k8sClient.Scheme(), remoteclient.NewCache())
 			portalReconciler.SetReleaseWriter(store)
@@ -322,6 +324,122 @@ var _ = Describe("Portal Controller", func() {
 
 			var rel sreportalv1alpha1.Release
 			Expect(k8sClient.Get(ctx, releaseNN, &rel)).To(Succeed(), "Release CR must remain when feature is disabled")
+		})
+	})
+
+	Context("When networkPolicy feature is disabled on a portal", func() {
+		const (
+			portalNPName = "portal-netpol-toggle"
+			nfdCRName    = "netflow-portal-netpol-toggle"
+		)
+		ctx := context.Background()
+		portalNPNN := types.NamespacedName{Name: portalNPName, Namespace: "default"}
+		nfdNN := types.NamespacedName{Name: nfdCRName, Namespace: "default"}
+
+		AfterEach(func() {
+			nfd := &sreportalv1alpha1.NetworkFlowDiscovery{}
+			if err := k8sClient.Get(ctx, nfdNN, nfd); err == nil {
+				_ = k8sClient.Delete(ctx, nfd)
+			}
+			p := &sreportalv1alpha1.Portal{}
+			if err := k8sClient.Get(ctx, portalNPNN, p); err == nil {
+				_ = k8sClient.Delete(ctx, p)
+			}
+		})
+
+		It("should purge read store and delete NFD CRs", func() {
+			store := netpolreadstore.NewFlowGraphStore()
+			portalReconciler := NewPortalReconciler(k8sClient, k8sClient.Scheme(), remoteclient.NewCache())
+			portalReconciler.SetFlowGraphWriter(store)
+
+			By("creating a portal with networkPolicy enabled (default)")
+			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.Portal{
+				ObjectMeta: metav1.ObjectMeta{Name: portalNPName, Namespace: "default"},
+				Spec:       sreportalv1alpha1.PortalSpec{Title: "Netpol Toggle Portal"},
+			})).To(Succeed())
+
+			By("creating an NFD CR for this portal")
+			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.NetworkFlowDiscovery{
+				ObjectMeta: metav1.ObjectMeta{Name: nfdCRName, Namespace: "default"},
+				Spec: sreportalv1alpha1.NetworkFlowDiscoverySpec{
+					PortalRef: portalNPName,
+				},
+			})).To(Succeed())
+
+			By("pre-populating the flow graph store")
+			Expect(store.ReplaceNodes(ctx, nfdCRName, portalNPName, []domainnetpol.FlowNode{
+				{ID: "service:default:app1", Label: "app1", Namespace: "default", NodeType: "service", Group: "default"},
+			})).To(Succeed())
+
+			nodes, _ := store.ListNodes(ctx, domainnetpol.FlowGraphFilters{Portal: portalNPName})
+			Expect(nodes).To(HaveLen(1), "pre-condition: store should have 1 node")
+
+			By("disabling networkPolicy on the portal")
+			netpolOff := false
+			Eventually(func(g Gomega) {
+				var portal sreportalv1alpha1.Portal
+				g.Expect(k8sClient.Get(ctx, portalNPNN, &portal)).To(Succeed())
+				portal.Spec.Features = &sreportalv1alpha1.PortalFeatures{NetworkPolicy: &netpolOff}
+				g.Expect(k8sClient.Update(ctx, &portal)).To(Succeed())
+			}, 10*time.Second, 250*time.Millisecond).Should(Succeed())
+
+			By("reconciling — read store should be purged and NFD CR deleted")
+			Eventually(func(g Gomega) {
+				_, err := portalReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: portalNPNN})
+				g.Expect(err).NotTo(HaveOccurred())
+
+				gotNodes, err := store.ListNodes(ctx, domainnetpol.FlowGraphFilters{Portal: portalNPName})
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(gotNodes).To(BeEmpty(), "flow graph nodes should be purged")
+			}, 10*time.Second, 250*time.Millisecond).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				var nfd sreportalv1alpha1.NetworkFlowDiscovery
+				err := k8sClient.Get(ctx, nfdNN, &nfd)
+				g.Expect(errors.IsNotFound(err)).To(BeTrue(), "NFD CR should be deleted")
+			}, 10*time.Second, 250*time.Millisecond).Should(Succeed())
+		})
+
+		It("should recreate NFD when networkPolicy is re-enabled", func() {
+			portalReconciler := NewPortalReconciler(k8sClient, k8sClient.Scheme(), remoteclient.NewCache())
+
+			By("creating a portal with networkPolicy disabled")
+			netpolOff := false
+			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.Portal{
+				ObjectMeta: metav1.ObjectMeta{Name: portalNPName, Namespace: "default"},
+				Spec: sreportalv1alpha1.PortalSpec{
+					Title:    "Netpol Toggle Portal",
+					Features: &sreportalv1alpha1.PortalFeatures{NetworkPolicy: &netpolOff},
+				},
+			})).To(Succeed())
+
+			By("reconciling with feature disabled — no NFD should exist")
+			Eventually(func(g Gomega) {
+				_, err := portalReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: portalNPNN})
+				g.Expect(err).NotTo(HaveOccurred())
+			}, 10*time.Second, 250*time.Millisecond).Should(Succeed())
+
+			var nfd sreportalv1alpha1.NetworkFlowDiscovery
+			Expect(errors.IsNotFound(k8sClient.Get(ctx, nfdNN, &nfd))).To(BeTrue(), "NFD should not exist")
+
+			By("re-enabling networkPolicy")
+			Eventually(func(g Gomega) {
+				var portal sreportalv1alpha1.Portal
+				g.Expect(k8sClient.Get(ctx, portalNPNN, &portal)).To(Succeed())
+				netpolOn := true
+				portal.Spec.Features.NetworkPolicy = &netpolOn
+				g.Expect(k8sClient.Update(ctx, &portal)).To(Succeed())
+			}, 10*time.Second, 250*time.Millisecond).Should(Succeed())
+
+			By("reconciling — NFD CR should be created")
+			Eventually(func(g Gomega) {
+				_, err := portalReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: portalNPNN})
+				g.Expect(err).NotTo(HaveOccurred())
+
+				var created sreportalv1alpha1.NetworkFlowDiscovery
+				g.Expect(k8sClient.Get(ctx, nfdNN, &created)).To(Succeed())
+				g.Expect(created.Spec.PortalRef).To(Equal(portalNPName))
+			}, 10*time.Second, 250*time.Millisecond).Should(Succeed())
 		})
 	})
 })

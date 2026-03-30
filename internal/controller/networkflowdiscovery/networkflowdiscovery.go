@@ -106,11 +106,17 @@ func (r *NetworkFlowDiscoveryReconciler) Reconcile(ctx context.Context, req ctrl
 	logger.V(1).Info("reconciling NetworkFlowDiscovery", "name", resource.Name, "portalRef", resource.Spec.PortalRef)
 
 	// Skip reconciliation when networkPolicy feature is disabled on the referenced portal.
+	// Purge stale data from the read store so the gRPC/MCP layer stops serving it.
 	if resource.Spec.PortalRef != "" {
 		var portal sreportalv1alpha1.Portal
 		if err := r.Get(ctx, client.ObjectKey{Name: resource.Spec.PortalRef, Namespace: resource.Namespace}, &portal); err == nil {
 			if !portal.Spec.Features.IsNetworkPolicyEnabled() {
 				logger.V(1).Info("networkPolicy feature disabled for portal, skipping", "portal", resource.Spec.PortalRef)
+				if r.flowGraphWriter != nil {
+					if delErr := r.flowGraphWriter.Delete(ctx, req.Name); delErr != nil {
+						logger.Error(delErr, "failed to delete flow graph from read store")
+					}
+				}
 				return ctrl.Result{}, nil
 			}
 		}
