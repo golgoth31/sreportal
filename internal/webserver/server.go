@@ -153,7 +153,7 @@ func (s *Server) setupRoutes() {
 	connectOpts := connect.WithInterceptors(grpc.LoggingInterceptor())
 
 	// Mount Connect handlers for gRPC/Connect protocol
-	dnsService := grpc.NewDNSService(s.config.FQDNReader)
+	dnsService := grpc.NewDNSService(s.config.FQDNReader, s.config.PortalReader)
 	dnsPath, dnsHandler := sreportalv1connect.NewDNSServiceHandler(dnsService, connectOpts)
 	s.echo.Any(dnsPath+"*", echo.WrapHandler(dnsHandler))
 
@@ -161,11 +161,11 @@ func (s *Server) setupRoutes() {
 	portalPath, portalHandler := sreportalv1connect.NewPortalServiceHandler(portalService, connectOpts)
 	s.echo.Any(portalPath+"*", echo.WrapHandler(portalHandler))
 
-	alertmanagerService := grpc.NewAlertmanagerService(s.config.AlertmanagerReader)
+	alertmanagerService := grpc.NewAlertmanagerService(s.config.AlertmanagerReader, s.config.PortalReader)
 	amPath, amHandler := sreportalv1connect.NewAlertmanagerServiceHandler(alertmanagerService, connectOpts)
 	s.echo.Any(amPath+"*", echo.WrapHandler(amHandler))
 
-	netpolService := grpc.NewNetworkPolicyService(s.config.FlowGraphReader)
+	netpolService := grpc.NewNetworkPolicyService(s.config.FlowGraphReader, s.config.PortalReader)
 	netpolPath, netpolHandler := sreportalv1connect.NewNetworkPolicyServiceHandler(netpolService, connectOpts)
 	s.echo.Any(netpolPath+"*", echo.WrapHandler(netpolHandler))
 
@@ -180,7 +180,7 @@ func (s *Server) setupRoutes() {
 	}
 
 	if s.config.ReleaseReader != nil {
-		releaseGRPC := grpc.NewReleaseService(s.config.ReleaseReader, s.config.ReleaseService, s.config.ReleaseTTL, s.config.ReleaseAllowedTypes)
+		releaseGRPC := grpc.NewReleaseService(s.config.ReleaseReader, s.config.ReleaseService, s.config.ReleaseTTL, s.config.ReleaseAllowedTypes, s.config.PortalReader)
 		releaseOpts := []connect.HandlerOption{connectOpts}
 		if s.config.AuthChain != nil {
 			releaseOpts = append(releaseOpts, connect.WithInterceptors(auth.AuthInterceptor(s.config.AuthChain)))
@@ -196,6 +196,7 @@ func (s *Server) setupRoutes() {
 			s.config.MaintenanceReader,
 			s.config.IncidentReader,
 			s.config.StatusPageService,
+			s.config.PortalReader,
 		)
 		statusOpts := []connect.HandlerOption{connectOpts}
 		if s.config.AuthChain != nil {

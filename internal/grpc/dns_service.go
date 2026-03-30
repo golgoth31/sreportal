@@ -25,6 +25,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
+	domainportal "github.com/golgoth31/sreportal/internal/domain/portal"
 	dnsv1 "github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1"
 	"github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1/sreportalv1connect"
 )
@@ -35,12 +36,13 @@ import (
 // for event-driven notifications instead of polling.
 type DNSService struct {
 	sreportalv1connect.UnimplementedDNSServiceHandler
-	reader domaindns.FQDNReader
+	reader       domaindns.FQDNReader
+	portalReader domainportal.PortalReader
 }
 
 // NewDNSService creates a new DNSService backed by a FQDNReader.
-func NewDNSService(reader domaindns.FQDNReader) *DNSService {
-	return &DNSService{reader: reader}
+func NewDNSService(reader domaindns.FQDNReader, portalReader domainportal.PortalReader) *DNSService {
+	return &DNSService{reader: reader, portalReader: portalReader}
 }
 
 // ListFQDNs returns all aggregated FQDNs with optional filters and cursor-based pagination.
@@ -48,6 +50,12 @@ func (s *DNSService) ListFQDNs(
 	ctx context.Context,
 	req *connect.Request[dnsv1.ListFQDNsRequest],
 ) (*connect.Response[dnsv1.ListFQDNsResponse], error) {
+	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, req.Msg.Portal, CheckDNS); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	} else if !enabled {
+		return connect.NewResponse(&dnsv1.ListFQDNsResponse{}), nil
+	}
+
 	filters := domaindns.FQDNFilters{
 		Portal:    req.Msg.Portal,
 		Namespace: req.Msg.Namespace,
@@ -96,6 +104,12 @@ func (s *DNSService) StreamFQDNs(
 	req *connect.Request[dnsv1.StreamFQDNsRequest],
 	stream *connect.ServerStream[dnsv1.StreamFQDNsResponse],
 ) error {
+	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, req.Msg.Portal, CheckDNS); err != nil {
+		return err
+	} else if !enabled {
+		return nil
+	}
+
 	filters := domaindns.FQDNFilters{
 		Portal:    req.Msg.Portal,
 		Namespace: req.Msg.Namespace,
@@ -132,6 +146,13 @@ func (s *DNSService) StreamFQDNs(
 		case <-ctx.Done():
 			return nil
 		case <-updateCh:
+		}
+
+		// Re-check feature gate: if disabled mid-stream, close gracefully.
+		if enabled, gateErr := IsFeatureEnabled(ctx, s.portalReader, req.Msg.Portal, CheckDNS); gateErr != nil {
+			return gateErr
+		} else if !enabled {
+			return nil
 		}
 
 		views, err = s.reader.List(ctx, filters)

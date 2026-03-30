@@ -67,7 +67,7 @@ func seedFQDNStore(t *testing.T) *dnsstore.FQDNStore {
 
 func TestListFQDNs_ReturnsAllFQDNs(t *testing.T) {
 	store := seedFQDNStore(t)
-	svc := svcgrpc.NewDNSService(store)
+	svc := svcgrpc.NewDNSService(store, nil)
 
 	resp, err := svc.ListFQDNs(
 		context.Background(),
@@ -90,7 +90,7 @@ func TestListFQDNs_ReturnsAllFQDNs(t *testing.T) {
 
 func TestListFQDNs_NoDuplicateGroups(t *testing.T) {
 	store := seedFQDNStore(t)
-	svc := svcgrpc.NewDNSService(store)
+	svc := svcgrpc.NewDNSService(store, nil)
 
 	resp, err := svc.ListFQDNs(
 		context.Background(),
@@ -109,7 +109,7 @@ func TestListFQDNs_NoDuplicateGroups(t *testing.T) {
 
 func TestListFQDNs_OriginRef_IsPopulated(t *testing.T) {
 	store := seedFQDNStore(t)
-	svc := svcgrpc.NewDNSService(store)
+	svc := svcgrpc.NewDNSService(store, nil)
 
 	resp, err := svc.ListFQDNs(
 		context.Background(),
@@ -135,7 +135,7 @@ func TestListFQDNs_OriginRef_IsPopulated(t *testing.T) {
 
 func TestListFQDNs_OriginRef_IsNil_ForManualEntries(t *testing.T) {
 	store := seedFQDNStore(t)
-	svc := svcgrpc.NewDNSService(store)
+	svc := svcgrpc.NewDNSService(store, nil)
 
 	resp, err := svc.ListFQDNs(
 		context.Background(),
@@ -159,7 +159,7 @@ func TestListFQDNs_ReturnsBothRecordTypes(t *testing.T) {
 		{Name: "api.example.com", RecordType: "CNAME", Targets: []string{"lb.example.com"}, LastSeen: now, PortalName: "main"},
 	})
 
-	svc := svcgrpc.NewDNSService(store)
+	svc := svcgrpc.NewDNSService(store, nil)
 
 	resp, err := svc.ListFQDNs(
 		context.Background(),
@@ -180,7 +180,7 @@ func TestListFQDNs_ReturnsBothRecordTypes(t *testing.T) {
 
 func TestListFQDNs_FiltersWork(t *testing.T) {
 	store := seedFQDNStore(t)
-	svc := svcgrpc.NewDNSService(store)
+	svc := svcgrpc.NewDNSService(store, nil)
 
 	cases := []struct {
 		name     string
@@ -231,7 +231,7 @@ func TestListFQDNs_FiltersWork(t *testing.T) {
 
 func TestListFQDNs_TotalSize_ReflectsFullCount(t *testing.T) {
 	store := seedFQDNStore(t)
-	svc := svcgrpc.NewDNSService(store)
+	svc := svcgrpc.NewDNSService(store, nil)
 
 	resp, err := svc.ListFQDNs(
 		context.Background(),

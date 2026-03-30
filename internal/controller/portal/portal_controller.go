@@ -340,6 +340,7 @@ func (r *PortalReconciler) reconcileRemotePortal(ctx context.Context, portal *sr
 	portal.Status.RemoteSync.LastSyncError = ""
 	portal.Status.RemoteSync.RemoteTitle = result.RemoteTitle
 	portal.Status.RemoteSync.FQDNCount = result.FQDNCount
+	portal.Status.RemoteSync.Features = result.RemoteFeatures
 
 	// Create or update DNS CR with fetched FQDNs. A failure here does not
 	// block the portal being marked Ready — the remote connection succeeded —
@@ -471,6 +472,23 @@ func portalToView(p *sreportalv1alpha1.Portal) domainportal.PortalView {
 		}
 		if p.Status.RemoteSync.LastSyncTime != nil {
 			rs.LastSyncTime = p.Status.RemoteSync.LastSyncTime.Format("2006-01-02T15:04:05Z07:00")
+		}
+		if p.Status.RemoteSync.Features != nil {
+			rf := p.Status.RemoteSync.Features
+			rs.RemoteFeatures = &domainportal.PortalFeatures{
+				DNS:           rf.DNS,
+				Releases:      rf.Releases,
+				NetworkPolicy: rf.NetworkPolicy,
+				Alerts:        rf.Alerts,
+				StatusPage:    rf.StatusPage,
+			}
+			// Effective features for remote portals: local AND remote.
+			// A feature is enabled only if both the local spec and the remote portal agree.
+			view.Features.DNS = view.Features.DNS && rf.DNS
+			view.Features.Releases = view.Features.Releases && rf.Releases
+			view.Features.NetworkPolicy = view.Features.NetworkPolicy && rf.NetworkPolicy
+			view.Features.Alerts = view.Features.Alerts && rf.Alerts
+			view.Features.StatusPage = view.Features.StatusPage && rf.StatusPage
 		}
 		view.RemoteSync = rs
 	}

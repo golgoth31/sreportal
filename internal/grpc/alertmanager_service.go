@@ -25,6 +25,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	domainalertmanager "github.com/golgoth31/sreportal/internal/domain/alertmanagerreadmodel"
+	domainportal "github.com/golgoth31/sreportal/internal/domain/portal"
 	alertmanagerv1 "github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1"
 	"github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1/sreportalv1connect"
 )
@@ -32,12 +33,13 @@ import (
 // AlertmanagerService implements the AlertmanagerServiceHandler interface.
 type AlertmanagerService struct {
 	sreportalv1connect.UnimplementedAlertmanagerServiceHandler
-	reader domainalertmanager.AlertmanagerReader
+	reader       domainalertmanager.AlertmanagerReader
+	portalReader domainportal.PortalReader
 }
 
 // NewAlertmanagerService creates a new AlertmanagerService.
-func NewAlertmanagerService(reader domainalertmanager.AlertmanagerReader) *AlertmanagerService {
-	return &AlertmanagerService{reader: reader}
+func NewAlertmanagerService(reader domainalertmanager.AlertmanagerReader, portalReader domainportal.PortalReader) *AlertmanagerService {
+	return &AlertmanagerService{reader: reader, portalReader: portalReader}
 }
 
 // ListAlerts returns all active alerts from Alertmanager resources.
@@ -45,6 +47,12 @@ func (s *AlertmanagerService) ListAlerts(
 	ctx context.Context,
 	req *connect.Request[alertmanagerv1.ListAlertsRequest],
 ) (*connect.Response[alertmanagerv1.ListAlertsResponse], error) {
+	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, req.Msg.Portal, CheckAlerts); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	} else if !enabled {
+		return connect.NewResponse(&alertmanagerv1.ListAlertsResponse{}), nil
+	}
+
 	filters := domainalertmanager.AlertmanagerFilters{
 		Portal:    req.Msg.Portal,
 		Namespace: req.Msg.Namespace,

@@ -24,6 +24,7 @@ import (
 	"connectrpc.com/connect"
 
 	domainnetpol "github.com/golgoth31/sreportal/internal/domain/netpol"
+	domainportal "github.com/golgoth31/sreportal/internal/domain/portal"
 	netpolv1 "github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1"
 	"github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1/sreportalv1connect"
 )
@@ -32,12 +33,13 @@ import (
 // It reads pre-computed flow graphs from the in-memory FlowGraphReader.
 type NetworkPolicyService struct {
 	sreportalv1connect.UnimplementedNetworkPolicyServiceHandler
-	reader domainnetpol.FlowGraphReader
+	reader       domainnetpol.FlowGraphReader
+	portalReader domainportal.PortalReader
 }
 
 // NewNetworkPolicyService creates a new NetworkPolicyService.
-func NewNetworkPolicyService(reader domainnetpol.FlowGraphReader) *NetworkPolicyService {
-	return &NetworkPolicyService{reader: reader}
+func NewNetworkPolicyService(reader domainnetpol.FlowGraphReader, portalReader domainportal.PortalReader) *NetworkPolicyService {
+	return &NetworkPolicyService{reader: reader, portalReader: portalReader}
 }
 
 // ListNetworkPolicies returns the flow graph filtered by portal, namespace, and search.
@@ -45,6 +47,12 @@ func (s *NetworkPolicyService) ListNetworkPolicies(
 	ctx context.Context,
 	req *connect.Request[netpolv1.ListNetworkPoliciesRequest],
 ) (*connect.Response[netpolv1.ListNetworkPoliciesResponse], error) {
+	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, req.Msg.Portal, CheckNetworkPolicy); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	} else if !enabled {
+		return connect.NewResponse(&netpolv1.ListNetworkPoliciesResponse{}), nil
+	}
+
 	filters := domainnetpol.FlowGraphFilters{
 		Portal:    req.Msg.Portal,
 		Namespace: req.Msg.Namespace,

@@ -119,6 +119,8 @@ type FetchResult struct {
 	RemoteTitle string
 	// FQDNCount is the total number of FQDNs fetched.
 	FQDNCount int
+	// RemoteFeatures contains the feature flags reported by the remote portal.
+	RemoteFeatures *sreportalv1alpha1.PortalFeaturesStatus
 }
 
 // FetchFQDNs fetches FQDNs from a remote portal.
@@ -160,18 +162,32 @@ func (c *Client) doFetchFQDNs(ctx context.Context, baseURL string, portalName st
 		baseURL,
 	)
 
-	// Fetch portal info to get title
+	// Fetch portal info to get title and features
 	var remoteTitle string
+	var remoteFeatures *sreportalv1alpha1.PortalFeaturesStatus
 	portalResp, err := portalClient.ListPortals(ctx, connect.NewRequest(&sreportalv1.ListPortalsRequest{}))
 	if err == nil {
 		// Find the portal with the given name, or use the main portal
+		var matched *sreportalv1.Portal
 		for _, p := range portalResp.Msg.Portals {
 			if portalName != "" && p.Name == portalName {
-				remoteTitle = p.Title
+				matched = p
 				break
 			}
 			if p.Main {
-				remoteTitle = p.Title
+				matched = p
+			}
+		}
+		if matched != nil {
+			remoteTitle = matched.Title
+			if matched.Features != nil {
+				remoteFeatures = &sreportalv1alpha1.PortalFeaturesStatus{
+					DNS:           matched.Features.Dns,
+					Releases:      matched.Features.Releases,
+					NetworkPolicy: matched.Features.NetworkPolicy,
+					Alerts:        matched.Features.Alerts,
+					StatusPage:    matched.Features.StatusPage,
+				}
 			}
 		}
 	}
@@ -190,9 +206,10 @@ func (c *Client) doFetchFQDNs(ctx context.Context, baseURL string, portalName st
 	groups := convertToGroups(resp.Msg.Fqdns)
 
 	return &FetchResult{
-		Groups:      groups,
-		RemoteTitle: remoteTitle,
-		FQDNCount:   len(resp.Msg.Fqdns),
+		Groups:         groups,
+		RemoteTitle:    remoteTitle,
+		FQDNCount:      len(resp.Msg.Fqdns),
+		RemoteFeatures: remoteFeatures,
 	}, nil
 }
 

@@ -779,6 +779,24 @@ _Appears in:_
 | `lastSyncError` _string_ | lastSyncError contains the error message from the last failed synchronization attempt. Empty if the last sync was successful. |   |   |
 | `remoteTitle` _string_ | remoteTitle is the title of the remote portal as fetched from the remote server. |   |   |
 | `fqdnCount` _integer_ | fqdnCount is the number of FQDNs fetched from the remote portal. |   |   |
+| `features` _[sreportal.io/v1alpha1.PortalFeaturesStatus](#sreportaliov1alpha1portalfeaturesstatus)_ | features contains the feature flags reported by the remote portal. Used to compute effective features for remote portals (local AND remote). |   |   |
+
+
+
+#### sreportal.io/v1alpha1.PortalFeaturesStatus
+
+PortalFeaturesStatus contains the observed feature flags from a remote portal. Unlike PortalFeatures (spec), these are explicit booleans with no nil-defaults-to-true semantics.
+
+_Appears in:_
+- [sreportal.io/v1alpha1.RemoteSyncStatus](#sreportaliov1alpha1remotesyncstatus)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `dns` _boolean_ | dns indicates whether the remote portal has DNS discovery enabled. |   |   |
+| `releases` _boolean_ | releases indicates whether the remote portal has releases enabled. |   |   |
+| `networkPolicy` _boolean_ | networkPolicy indicates whether the remote portal has network policy visualization enabled. |   |   |
+| `alerts` _boolean_ | alerts indicates whether the remote portal has alertmanager integration enabled. |   |   |
+| `statusPage` _boolean_ | statusPage indicates whether the remote portal has the status page enabled. |   |   |
 
 
 

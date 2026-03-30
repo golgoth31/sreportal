@@ -25,10 +25,11 @@ type PortalView struct {
 
 // RemoteSyncView captures the last remote sync state.
 type RemoteSyncView struct {
-	LastSyncTime  string
-	LastSyncError string
-	RemoteTitle   string
-	FQDNCount     int
+	LastSyncTime   string
+	LastSyncError  string
+	RemoteTitle    string
+	FQDNCount      int
+	RemoteFeatures *PortalFeatures
 }
 
 // PortalFilters are the criteria for listing portals.

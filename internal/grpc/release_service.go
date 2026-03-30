@@ -18,6 +18,7 @@ package grpc
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"connectrpc.com/connect"
@@ -25,6 +26,7 @@ import (
 
 	"github.com/golgoth31/sreportal/internal/config"
 	portalctrl "github.com/golgoth31/sreportal/internal/controller/portal/chain"
+	domainportal "github.com/golgoth31/sreportal/internal/domain/portal"
 	domainrelease "github.com/golgoth31/sreportal/internal/domain/release"
 	releasev1 "github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1"
 	"github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1/sreportalv1connect"
@@ -39,6 +41,7 @@ type ReleaseService struct {
 	writer       *releaseservice.Service
 	ttl          time.Duration
 	allowedTypes []config.ReleaseTypeConfig
+	portalReader domainportal.PortalReader
 }
 
 // NewReleaseService creates a new ReleaseService.
@@ -47,12 +50,14 @@ func NewReleaseService(
 	writer *releaseservice.Service,
 	ttl time.Duration,
 	allowedTypes []config.ReleaseTypeConfig,
+	portalReader domainportal.PortalReader,
 ) *ReleaseService {
 	return &ReleaseService{
 		reader:       reader,
 		writer:       writer,
 		ttl:          ttl,
 		allowedTypes: allowedTypes,
+		portalReader: portalReader,
 	}
 }
 
@@ -62,6 +67,16 @@ func (s *ReleaseService) AddRelease(
 	req *connect.Request[releasev1.ReleaseEntry],
 ) (*connect.Response[releasev1.AddReleaseResponse], error) {
 	e := req.Msg
+	portal := e.GetPortal()
+	if portal == "" {
+		portal = portalctrl.MainPortalName
+	}
+	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, portal, CheckReleases); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	} else if !enabled {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("releases feature is disabled for portal %q", portal))
+	}
+
 	date := e.Date.AsTime()
 	entry, err := domainrelease.NewEntry(e.Type, e.Version, e.Origin, date)
 	if err != nil {
@@ -77,10 +92,7 @@ func (s *ReleaseService) AddRelease(
 	entry.Author = e.Author
 	entry.Message = e.Message
 	entry.Link = e.Link
-	entry.PortalRef = e.GetPortal()
-	if entry.PortalRef == "" {
-		entry.PortalRef = portalctrl.MainPortalName
-	}
+	entry.PortalRef = portal
 
 	day, count, created, err := s.writer.AddEntry(ctx, entry)
 	if err != nil {
@@ -107,6 +119,12 @@ func (s *ReleaseService) ListReleases(
 	portal := req.Msg.GetPortal()
 	if portal == "" {
 		portal = portalctrl.MainPortalName
+	}
+
+	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, portal, CheckReleases); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	} else if !enabled {
+		return connect.NewResponse(&releasev1.ListReleasesResponse{}), nil
 	}
 
 	// If no day specified, use the latest available day
@@ -168,6 +186,13 @@ func (s *ReleaseService) ListReleaseDays(
 	if portal == "" {
 		portal = portalctrl.MainPortalName
 	}
+
+	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, portal, CheckReleases); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	} else if !enabled {
+		return connect.NewResponse(&releasev1.ListReleaseDaysResponse{}), nil
+	}
+
 	days, err := s.reader.ListDays(ctx, portal)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)

@@ -64,7 +64,7 @@ func TestListAlerts_ReturnsAlertmanagerResources(t *testing.T) {
 		},
 	})
 
-	svc := svcgrpc.NewAlertmanagerService(store)
+	svc := svcgrpc.NewAlertmanagerService(store, nil)
 
 	resp, err := svc.ListAlerts(ctx, connect.NewRequest(&alertmanagerv1.ListAlertsRequest{}))
 	require.NoError(t, err)
@@ -96,7 +96,7 @@ func TestListAlerts_FiltersByPortal(t *testing.T) {
 		LocalURL: "http://am2:9093",
 	})
 
-	svc := svcgrpc.NewAlertmanagerService(store)
+	svc := svcgrpc.NewAlertmanagerService(store, nil)
 
 	resp, err := svc.ListAlerts(ctx, connect.NewRequest(&alertmanagerv1.ListAlertsRequest{Portal: "main"}))
 	require.NoError(t, err)
@@ -118,7 +118,7 @@ func TestListAlerts_FiltersBySearch(t *testing.T) {
 		},
 	})
 
-	svc := svcgrpc.NewAlertmanagerService(store)
+	svc := svcgrpc.NewAlertmanagerService(store, nil)
 
 	resp, err := svc.ListAlerts(ctx, connect.NewRequest(&alertmanagerv1.ListAlertsRequest{Search: "cpu"}))
 	require.NoError(t, err)
@@ -141,7 +141,7 @@ func TestListAlerts_FiltersByState(t *testing.T) {
 		},
 	})
 
-	svc := svcgrpc.NewAlertmanagerService(store)
+	svc := svcgrpc.NewAlertmanagerService(store, nil)
 
 	resp, err := svc.ListAlerts(ctx, connect.NewRequest(&alertmanagerv1.ListAlertsRequest{State: "suppressed"}))
 	require.NoError(t, err)
@@ -164,7 +164,7 @@ func TestListAlerts_UsesSpecRemoteURL(t *testing.T) {
 		},
 	})
 
-	svc := svcgrpc.NewAlertmanagerService(store)
+	svc := svcgrpc.NewAlertmanagerService(store, nil)
 
 	resp, err := svc.ListAlerts(ctx, connect.NewRequest(&alertmanagerv1.ListAlertsRequest{}))
 	require.NoError(t, err)
@@ -175,7 +175,7 @@ func TestListAlerts_UsesSpecRemoteURL(t *testing.T) {
 func TestListAlerts_WhenNoAlertmanagers_ReturnsEmpty(t *testing.T) {
 	ctx := context.Background()
 	store := amstore.NewAlertmanagerStore()
-	svc := svcgrpc.NewAlertmanagerService(store)
+	svc := svcgrpc.NewAlertmanagerService(store, nil)
 
 	resp, err := svc.ListAlerts(ctx, connect.NewRequest(&alertmanagerv1.ListAlertsRequest{}))
 	require.NoError(t, err)

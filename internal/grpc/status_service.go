@@ -31,6 +31,7 @@ import (
 	domaincomponent "github.com/golgoth31/sreportal/internal/domain/component"
 	domainincident "github.com/golgoth31/sreportal/internal/domain/incident"
 	domainmaint "github.com/golgoth31/sreportal/internal/domain/maintenance"
+	domainportal "github.com/golgoth31/sreportal/internal/domain/portal"
 	sreportalv1 "github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1"
 	"github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1/sreportalv1connect"
 	"github.com/golgoth31/sreportal/internal/statuspage"
@@ -43,6 +44,7 @@ type StatusService struct {
 	maintenanceReader domainmaint.MaintenanceReader
 	incidentReader    domainincident.IncidentReader
 	writer            *statuspage.Service
+	portalReader      domainportal.PortalReader
 }
 
 // NewStatusService creates a new StatusService.
@@ -51,12 +53,14 @@ func NewStatusService(
 	maintenanceReader domainmaint.MaintenanceReader,
 	incidentReader domainincident.IncidentReader,
 	writer *statuspage.Service,
+	portalReader domainportal.PortalReader,
 ) *StatusService {
 	return &StatusService{
 		componentReader:   componentReader,
 		maintenanceReader: maintenanceReader,
 		incidentReader:    incidentReader,
 		writer:            writer,
+		portalReader:      portalReader,
 	}
 }
 
@@ -65,6 +69,12 @@ func (s *StatusService) ListComponents(
 	ctx context.Context,
 	req *connect.Request[sreportalv1.ListComponentsRequest],
 ) (*connect.Response[sreportalv1.ListComponentsResponse], error) {
+	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, req.Msg.PortalRef, CheckStatusPage); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	} else if !enabled {
+		return connect.NewResponse(&sreportalv1.ListComponentsResponse{}), nil
+	}
+
 	opts := domaincomponent.ListOptions{
 		PortalRef: req.Msg.PortalRef,
 		Group:     req.Msg.Group,
@@ -109,6 +119,12 @@ func (s *StatusService) ListMaintenances(
 	ctx context.Context,
 	req *connect.Request[sreportalv1.ListMaintenancesRequest],
 ) (*connect.Response[sreportalv1.ListMaintenancesResponse], error) {
+	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, req.Msg.PortalRef, CheckStatusPage); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	} else if !enabled {
+		return connect.NewResponse(&sreportalv1.ListMaintenancesResponse{}), nil
+	}
+
 	opts := domainmaint.ListOptions{
 		PortalRef: req.Msg.PortalRef,
 		Phase:     maintenancePhaseFromProto(req.Msg.Phase),
@@ -145,6 +161,12 @@ func (s *StatusService) ListIncidents(
 	ctx context.Context,
 	req *connect.Request[sreportalv1.ListIncidentsRequest],
 ) (*connect.Response[sreportalv1.ListIncidentsResponse], error) {
+	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, req.Msg.PortalRef, CheckStatusPage); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	} else if !enabled {
+		return connect.NewResponse(&sreportalv1.ListIncidentsResponse{}), nil
+	}
+
 	opts := domainincident.ListOptions{
 		PortalRef: req.Msg.PortalRef,
 		Phase:     incidentPhaseFromProto(req.Msg.Phase),
@@ -286,6 +308,12 @@ func (s *StatusService) CreateComponent(
 	ctx context.Context,
 	req *connect.Request[sreportalv1.CreateComponentRequest],
 ) (*connect.Response[sreportalv1.CreateComponentResponse], error) {
+	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, req.Msg.PortalRef, CheckStatusPage); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	} else if !enabled {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("statusPage feature is disabled for portal %q", req.Msg.PortalRef))
+	}
+
 	status, err := componentStatusFromProto(req.Msg.Status)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -365,6 +393,12 @@ func (s *StatusService) CreateMaintenance(
 	ctx context.Context,
 	req *connect.Request[sreportalv1.CreateMaintenanceRequest],
 ) (*connect.Response[sreportalv1.CreateMaintenanceResponse], error) {
+	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, req.Msg.PortalRef, CheckStatusPage); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	} else if !enabled {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("statusPage feature is disabled for portal %q", req.Msg.PortalRef))
+	}
+
 	var scheduledStart, scheduledEnd metav1.Time
 	if req.Msg.ScheduledStart != nil {
 		scheduledStart = metav1.NewTime(req.Msg.ScheduledStart.AsTime())
@@ -456,6 +490,12 @@ func (s *StatusService) CreateIncident(
 	ctx context.Context,
 	req *connect.Request[sreportalv1.CreateIncidentRequest],
 ) (*connect.Response[sreportalv1.CreateIncidentResponse], error) {
+	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, req.Msg.PortalRef, CheckStatusPage); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	} else if !enabled {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("statusPage feature is disabled for portal %q", req.Msg.PortalRef))
+	}
+
 	severity, err := incidentSeverityFromProto(req.Msg.Severity)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)

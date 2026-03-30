@@ -51,7 +51,7 @@ func setupReleaseServer(t *testing.T, chain *auth.Chain) sreportalv1connect.Rele
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).WithStatusSubresource(&sreportalv1alpha1.Release{}).Build()
 	svc := releaseservice.NewService(k8sClient, "default", "main")
 	reader := readstorerelease.NewReleaseStore()
-	grpcSvc := svcgrpc.NewReleaseService(reader, svc, 30*24*time.Hour, nil)
+	grpcSvc := svcgrpc.NewReleaseService(reader, svc, 30*24*time.Hour, nil, nil)
 
 	var opts []connect.HandlerOption
 	if chain != nil {

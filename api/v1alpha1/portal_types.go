@@ -183,6 +183,30 @@ type RemoteSyncStatus struct {
 	// fqdnCount is the number of FQDNs fetched from the remote portal.
 	// +optional
 	FQDNCount int `json:"fqdnCount,omitempty"`
+
+	// features contains the feature flags reported by the remote portal.
+	// Used to compute effective features for remote portals (local AND remote).
+	// +optional
+	Features *PortalFeaturesStatus `json:"features,omitempty"`
+}
+
+// PortalFeaturesStatus contains the observed feature flags from a remote portal.
+// Unlike PortalFeatures (spec), these are explicit booleans with no nil-defaults-to-true semantics.
+type PortalFeaturesStatus struct {
+	// dns indicates whether the remote portal has DNS discovery enabled.
+	DNS bool `json:"dns"`
+
+	// releases indicates whether the remote portal has releases enabled.
+	Releases bool `json:"releases"`
+
+	// networkPolicy indicates whether the remote portal has network policy visualization enabled.
+	NetworkPolicy bool `json:"networkPolicy"`
+
+	// alerts indicates whether the remote portal has alertmanager integration enabled.
+	Alerts bool `json:"alerts"`
+
+	// statusPage indicates whether the remote portal has the status page enabled.
+	StatusPage bool `json:"statusPage"`
 }
 
 // +kubebuilder:object:root=true

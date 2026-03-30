@@ -227,6 +227,38 @@ spec:
                   remoteSync contains the status of synchronization with a remote portal.
                   This is only populated when spec.remote is set.
                 properties:
+                  features:
+                    description: |-
+                      features contains the feature flags reported by the remote portal.
+                      Used to compute effective features for remote portals (local AND remote).
+                    properties:
+                      alerts:
+                        description: alerts indicates whether the remote portal has
+                          alertmanager integration enabled.
+                        type: boolean
+                      dns:
+                        description: dns indicates whether the remote portal has DNS
+                          discovery enabled.
+                        type: boolean
+                      networkPolicy:
+                        description: networkPolicy indicates whether the remote portal
+                          has network policy visualization enabled.
+                        type: boolean
+                      releases:
+                        description: releases indicates whether the remote portal has
+                          releases enabled.
+                        type: boolean
+                      statusPage:
+                        description: statusPage indicates whether the remote portal
+                          has the status page enabled.
+                        type: boolean
+                    required:
+                    - alerts
+                    - dns
+                    - networkPolicy
+                    - releases
+                    - statusPage
+                    type: object
                   fqdnCount:
                     description: fqdnCount is the number of FQDNs fetched from the remote
                       portal.

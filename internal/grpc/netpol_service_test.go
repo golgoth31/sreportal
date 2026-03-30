@@ -73,7 +73,7 @@ func TestListNetworkPolicies_ReturnsAllNodesAndEdges_WhenNoFilter(t *testing.T) 
 		},
 	)
 
-	svc := svcgrpc.NewNetworkPolicyService(store)
+	svc := svcgrpc.NewNetworkPolicyService(store, nil)
 
 	resp, err := svc.ListNetworkPolicies(
 		context.Background(),
@@ -101,7 +101,7 @@ func TestListNetworkPolicies_DeduplicatesNodesAndEdges_AcrossMultipleSets(t *tes
 	require.NoError(t, store.ReplaceEdges(ctx, "nfd-a", "", []domainnetpol.FlowEdge{sharedEdge}))
 	require.NoError(t, store.ReplaceEdges(ctx, "nfd-b", "", []domainnetpol.FlowEdge{sharedEdge}))
 
-	svc := svcgrpc.NewNetworkPolicyService(store)
+	svc := svcgrpc.NewNetworkPolicyService(store, nil)
 
 	resp, err := svc.ListNetworkPolicies(
 		context.Background(),
@@ -126,7 +126,7 @@ func TestListNetworkPolicies_FiltersByPortal(t *testing.T) {
 	require.NoError(t, store.ReplaceEdges(ctx, "nfd-main", "main", nil))
 	require.NoError(t, store.ReplaceEdges(ctx, "nfd-other", "other", nil))
 
-	svc := svcgrpc.NewNetworkPolicyService(store)
+	svc := svcgrpc.NewNetworkPolicyService(store, nil)
 
 	resp, err := svc.ListNetworkPolicies(
 		context.Background(),
@@ -149,7 +149,7 @@ func TestListNetworkPolicies_FiltersByNamespace(t *testing.T) {
 		},
 	)
 
-	svc := svcgrpc.NewNetworkPolicyService(store)
+	svc := svcgrpc.NewNetworkPolicyService(store, nil)
 
 	resp, err := svc.ListNetworkPolicies(
 		context.Background(),
@@ -172,7 +172,7 @@ func TestListNetworkPolicies_SearchMatchesLabelGroupAndNamespace(t *testing.T) {
 		nil,
 	)
 
-	svc := svcgrpc.NewNetworkPolicyService(store)
+	svc := svcgrpc.NewNetworkPolicyService(store, nil)
 
 	cases := []struct {
 		name    string
@@ -226,7 +226,7 @@ func TestListNetworkPolicies_SearchExpandsToDirectNeighbors(t *testing.T) {
 		},
 	)
 
-	svc := svcgrpc.NewNetworkPolicyService(store)
+	svc := svcgrpc.NewNetworkPolicyService(store, nil)
 
 	resp, err := svc.ListNetworkPolicies(
 		context.Background(),
@@ -246,7 +246,7 @@ func TestListNetworkPolicies_SearchExpandsToDirectNeighbors(t *testing.T) {
 func TestListNetworkPolicies_EmptyState_ReturnsEmptyGraph(t *testing.T) {
 	store := netpolreadstore.NewFlowGraphStore()
 
-	svc := svcgrpc.NewNetworkPolicyService(store)
+	svc := svcgrpc.NewNetworkPolicyService(store, nil)
 
 	resp, err := svc.ListNetworkPolicies(
 		context.Background(),
@@ -271,7 +271,7 @@ func TestListNetworkPolicies_SortOrder_IsDeterministic(t *testing.T) {
 		},
 	)
 
-	svc := svcgrpc.NewNetworkPolicyService(store)
+	svc := svcgrpc.NewNetworkPolicyService(store, nil)
 
 	resp, err := svc.ListNetworkPolicies(
 		context.Background(),
