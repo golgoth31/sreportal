@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.25.0](https://github.com/golgoth31/sreportal/compare/v1.24.0...v1.25.0) (2026-03-31)
+
+
+### Features
+
+* **grpc:** gate services on portal feature flags and sync remote features ([1dc46fe](https://github.com/golgoth31/sreportal/commit/1dc46fe5035311d8ff5deb0fb4d7898c235680c1))
+
+
+### Bug Fixes
+
+* **netpol:** purge flow graph data when networkPolicy feature is disabled ([71bd2c4](https://github.com/golgoth31/sreportal/commit/71bd2c46f6cc1fa6c3713ac8af3651293a46978e))
+* **netpol:** replace unicode escape sequences with actual characters in UI views ([c48811e](https://github.com/golgoth31/sreportal/commit/c48811e38bf4bf4a21a25499cdc4e5d17c1b7c3e))
+
 ## [1.24.0](https://github.com/golgoth31/sreportal/compare/v1.23.2...v1.24.0) (2026-03-29)
 
 
