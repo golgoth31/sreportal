@@ -68,6 +68,9 @@ var _ = Describe("NetworkFlowDiscovery Controller", func() {
 			if err == nil {
 				By("Cleanup the specific resource instance NetworkFlowDiscovery")
 				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+				Eventually(func() bool {
+					return errors.IsNotFound(k8sClient.Get(ctx, typeNamespacedName, resource))
+				}, 5*time.Second, 100*time.Millisecond).Should(BeTrue())
 			}
 		})
 
@@ -79,11 +82,13 @@ var _ = Describe("NetworkFlowDiscovery Controller", func() {
 				remoteclient.NewCache(),
 			)
 
-			result, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			Expect(result.RequeueAfter).To(Equal(networkFlowDiscoveryRequeueAfter))
+			Eventually(func(g Gomega) {
+				result, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: typeNamespacedName,
+				})
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(result.RequeueAfter).To(Equal(networkFlowDiscoveryRequeueAfter))
+			}, 10*time.Second, 250*time.Millisecond).Should(Succeed())
 
 			Eventually(func(g Gomega) {
 				var updated sreportalv1alpha1.NetworkFlowDiscovery
@@ -105,11 +110,17 @@ var _ = Describe("NetworkFlowDiscovery Controller", func() {
 		AfterEach(func() {
 			nfd := &sreportalv1alpha1.NetworkFlowDiscovery{}
 			if err := k8sClient.Get(ctx, nfdNN, nfd); err == nil {
-				_ = k8sClient.Delete(ctx, nfd)
+				Expect(k8sClient.Delete(ctx, nfd)).To(Succeed())
+				Eventually(func() bool {
+					return errors.IsNotFound(k8sClient.Get(ctx, nfdNN, nfd))
+				}, 5*time.Second, 100*time.Millisecond).Should(BeTrue())
 			}
 			portal := &sreportalv1alpha1.Portal{}
 			if err := k8sClient.Get(ctx, portalNN, portal); err == nil {
-				_ = k8sClient.Delete(ctx, portal)
+				Expect(k8sClient.Delete(ctx, portal)).To(Succeed())
+				Eventually(func() bool {
+					return errors.IsNotFound(k8sClient.Get(ctx, portalNN, portal))
+				}, 5*time.Second, 100*time.Millisecond).Should(BeTrue())
 			}
 		})
 
