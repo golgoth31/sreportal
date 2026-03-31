@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.25.1](https://github.com/golgoth31/sreportal/compare/v1.25.0...v1.25.1) (2026-03-31)
+
+
+### Bug Fixes
+
+* **emoji:** resolve Slack emoji shortcodes in alerts and releases ([#165](https://github.com/golgoth31/sreportal/issues/165)) ([0f4c049](https://github.com/golgoth31/sreportal/commit/0f4c049eea8355046c7ed92f4925906a2bf495dd))
+
 ## [1.25.0](https://github.com/golgoth31/sreportal/compare/v1.24.0...v1.25.0) (2026-03-31)
 
 
