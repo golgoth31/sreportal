@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { EmojiText } from "@/features/emoji/ui/EmojiText";
 import type { AlertGroup } from "../domain/alertmanager.types";
 import {
   formatAlertTime,
@@ -136,9 +137,13 @@ export function AlertGroupCard({ group }: AlertGroupCardProps) {
                     {formatAlertTime(alert.startsAt)}
                   </TableCell>
                   <TableCell className="text-muted-foreground text-xs hidden sm:table-cell max-w-[16rem] truncate">
-                    {alert.annotations["summary"] ??
-                      alert.annotations["description"] ??
-                      "\u2014"}
+                    <EmojiText
+                      text={
+                        alert.annotations["summary"] ??
+                        alert.annotations["description"] ??
+                        "\u2014"
+                      }
+                    />
                   </TableCell>
                   <TableCell className="text-muted-foreground text-xs hidden md:table-cell max-w-[12rem] truncate">
                     {alert.labels["instance"] ?? "\u2014"}

@@ -24,6 +24,7 @@ import (
 	"io/fs"
 	"os"
 	"strings"
+	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -54,6 +55,7 @@ import (
 	dnsctrl "github.com/golgoth31/sreportal/internal/controller/dns"
 	dnschain "github.com/golgoth31/sreportal/internal/controller/dns/chain"
 	dnsrecordsctrl "github.com/golgoth31/sreportal/internal/controller/dnsrecords"
+	emojictrl "github.com/golgoth31/sreportal/internal/controller/emoji"
 	incidentctrl "github.com/golgoth31/sreportal/internal/controller/incident"
 	maintenancectrl "github.com/golgoth31/sreportal/internal/controller/maintenance"
 	nfdctrl "github.com/golgoth31/sreportal/internal/controller/networkflowdiscovery"
@@ -68,6 +70,7 @@ import (
 	alertmanagerreadstore "github.com/golgoth31/sreportal/internal/readstore/alertmanager"
 	componentreadstore "github.com/golgoth31/sreportal/internal/readstore/component"
 	dnsreadstore "github.com/golgoth31/sreportal/internal/readstore/dns"
+	emojireadstore "github.com/golgoth31/sreportal/internal/readstore/emoji"
 	incidentreadstore "github.com/golgoth31/sreportal/internal/readstore/incident"
 	maintenancereadstore "github.com/golgoth31/sreportal/internal/readstore/maintenance"
 	netpolreadstore "github.com/golgoth31/sreportal/internal/readstore/netpol"
@@ -75,6 +78,7 @@ import (
 	releasereadstore "github.com/golgoth31/sreportal/internal/readstore/release"
 	releaseservice "github.com/golgoth31/sreportal/internal/release"
 	"github.com/golgoth31/sreportal/internal/remoteclient"
+	"github.com/golgoth31/sreportal/internal/slackclient"
 	"github.com/golgoth31/sreportal/internal/source"
 	statuspagesvc "github.com/golgoth31/sreportal/internal/statuspage"
 	"github.com/golgoth31/sreportal/internal/version"
@@ -478,6 +482,31 @@ func main() {
 	portalStore := portalreadstore.NewPortalStore()
 	releaseStore := releasereadstore.NewReleaseStore()
 	alertmanagerStore := alertmanagerreadstore.NewAlertmanagerStore()
+	emojiStore := emojireadstore.NewEmojiStore()
+
+	// Emoji: Slack custom emoji sync (optional, async at startup + periodic refresh)
+	slackEnabled := operatorConfig != nil && operatorConfig.Emoji != nil &&
+		operatorConfig.Emoji.Slack != nil && operatorConfig.Emoji.Slack.Enabled
+	if slackEnabled {
+		slackToken := os.Getenv("SLACK_API_TOKEN")
+		if slackToken != "" {
+			interval := operatorConfig.Emoji.Slack.RefreshInterval.Duration()
+			if interval == 0 {
+				interval = 24 * time.Hour
+			}
+			slackClient := slackclient.NewClient(slackToken)
+			emojiRunnable := emojictrl.NewEmojiRunnable(slackClient, emojiStore, interval)
+			if err := mgr.Add(emojiRunnable); err != nil {
+				setupLog.Error(err, "unable to add emoji runnable")
+				os.Exit(1)
+			}
+			setupLog.Info("emoji: Slack custom emoji sync enabled", "interval", interval)
+		} else {
+			setupLog.Info("emoji: Slack custom emoji sync disabled (SLACK_API_TOKEN not set)")
+		}
+	} else {
+		setupLog.Info("emoji: Slack custom emoji sync disabled (not configured)")
+	}
 
 	dnsReconciler := dnsctrl.NewDNSReconciler(
 		mgr.GetClient(),
@@ -666,6 +695,7 @@ func main() {
 		MaintenanceReader:   maintenanceStore,
 		IncidentReader:      incidentStore,
 		StatusPageService:   statuspagesvc.NewService(mgr.GetClient(), portalNamespace),
+		EmojiReader:         emojiStore,
 		AuthChain:           authChain,
 	}
 	if devMode {

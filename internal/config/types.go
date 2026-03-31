@@ -62,6 +62,7 @@ type OperatorConfig struct {
 	Reconciliation ReconciliationConfig `json:"reconciliation" yaml:"reconciliation"`
 	Release        ReleaseConfig        `json:"release,omitempty" yaml:"release,omitempty"`
 	Auth           AuthConfig           `json:"auth,omitempty" yaml:"auth,omitempty"`
+	Emoji          *EmojiConfig         `json:"emoji,omitempty" yaml:"emoji,omitempty"`
 }
 
 // AuthConfig configures authentication for write endpoints.
@@ -104,6 +105,20 @@ type JWTIssuerConfig struct {
 	Audience       string            `json:"audience,omitempty" yaml:"audience,omitempty"`
 	JWKSURL        string            `json:"jwksURL" yaml:"jwksURL"`
 	RequiredClaims map[string]string `json:"requiredClaims,omitempty" yaml:"requiredClaims,omitempty"`
+}
+
+// EmojiConfig configures custom emoji resolution from external sources.
+type EmojiConfig struct {
+	Slack *SlackEmojiConfig `json:"slack,omitempty" yaml:"slack,omitempty"`
+}
+
+// SlackEmojiConfig configures Slack custom emoji fetching.
+// The actual Slack API token is read from the SLACK_API_TOKEN environment variable.
+type SlackEmojiConfig struct {
+	// Enabled controls whether Slack emoji fetching is active.
+	Enabled bool `json:"enabled" yaml:"enabled"`
+	// RefreshInterval is the time between Slack emoji list refreshes (default: 24h).
+	RefreshInterval Duration `json:"refreshInterval,omitempty" yaml:"refreshInterval,omitempty"`
 }
 
 // ReleaseConfig configures the Release CRD feature.

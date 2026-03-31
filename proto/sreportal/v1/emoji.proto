@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package sreportal.v1;
+
+// EmojiService provides custom emoji resolution from external sources (e.g. Slack)
+service EmojiService {
+  // ListCustomEmojis returns all custom emojis (shortcode to image URL)
+  rpc ListCustomEmojis(ListCustomEmojisRequest) returns (ListCustomEmojisResponse);
+}
+
+// ListCustomEmojisRequest is the request for listing custom emojis
+message ListCustomEmojisRequest {}
+
+// ListCustomEmojisResponse contains the custom emoji mapping
+message ListCustomEmojisResponse {
+  // emojis maps shortcode (without colons) to image URL
+  map<string, string> emojis = 1;
+}
