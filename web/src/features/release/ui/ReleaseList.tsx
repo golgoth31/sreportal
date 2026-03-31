@@ -18,6 +18,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
+import { EmojiText } from "@/features/emoji/ui/EmojiText";
 import type { ReleaseEntry, ReleaseTypeConfig } from "../domain/release.types";
 import { formatEntryTime } from "../domain/release.types";
 
@@ -173,11 +174,11 @@ function MessageCell({ message }: { message: string }) {
             className="truncate max-w-xs text-left cursor-pointer hover:text-foreground transition-colors"
             aria-label="Click to copy message"
           >
-            {message}
+            <EmojiText text={message} />
           </button>
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-sm whitespace-pre-wrap break-words">
-          {message}
+          <EmojiText text={message} />
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

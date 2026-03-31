@@ -41,6 +41,7 @@ import (
 	domainalertmanager "github.com/golgoth31/sreportal/internal/domain/alertmanagerreadmodel"
 	domaincomponent "github.com/golgoth31/sreportal/internal/domain/component"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
+	domainemoji "github.com/golgoth31/sreportal/internal/domain/emoji"
 	domainincident "github.com/golgoth31/sreportal/internal/domain/incident"
 	domainmaint "github.com/golgoth31/sreportal/internal/domain/maintenance"
 	domainnetpol "github.com/golgoth31/sreportal/internal/domain/netpol"
@@ -103,6 +104,9 @@ type Config struct {
 
 	// StatusPageService is the write-path service for status page CRs (nil = read-only)
 	StatusPageService *statuspagesvc.Service
+
+	// EmojiReader is the read-side interface for custom emoji data (provided by the ReadStore)
+	EmojiReader domainemoji.EmojiReader
 
 	// AuthChain is the authentication chain for write endpoints (nil = no auth)
 	AuthChain *auth.Chain
@@ -172,6 +176,10 @@ func (s *Server) setupRoutes() {
 	versionService := grpc.NewVersionService()
 	versionPath, versionHandler := sreportalv1connect.NewVersionServiceHandler(versionService, connectOpts)
 	s.echo.Any(versionPath+"*", echo.WrapHandler(versionHandler))
+
+	emojiService := grpc.NewEmojiService(s.config.EmojiReader)
+	emojiPath, emojiHandler := sreportalv1connect.NewEmojiServiceHandler(emojiService, connectOpts)
+	s.echo.Any(emojiPath+"*", echo.WrapHandler(emojiHandler))
 
 	if s.config.Gatherer != nil {
 		metricsService := grpc.NewMetricsService(s.config.Gatherer)

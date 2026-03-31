@@ -12,6 +12,9 @@
       "name": "DNSService"
     },
     {
+      "name": "EmojiService"
+    },
+    {
       "name": "MetricsService"
     },
     {
@@ -142,6 +145,39 @@
         ],
         "tags": [
           "DNSService"
+        ]
+      }
+    },
+    "/sreportal.v1.EmojiService/ListCustomEmojis": {
+      "post": {
+        "summary": "ListCustomEmojis returns all custom emojis (shortcode to image URL)",
+        "operationId": "EmojiService_ListCustomEmojis",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListCustomEmojisResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1ListCustomEmojisRequest"
+            }
+          }
+        ],
+        "tags": [
+          "EmojiService"
         ]
       }
     },
@@ -1406,6 +1442,23 @@
         }
       },
       "title": "ListComponentsResponse contains the list of components"
+    },
+    "v1ListCustomEmojisRequest": {
+      "type": "object",
+      "title": "ListCustomEmojisRequest is the request for listing custom emojis"
+    },
+    "v1ListCustomEmojisResponse": {
+      "type": "object",
+      "properties": {
+        "emojis": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "emojis maps shortcode (without colons) to image URL"
+        }
+      },
+      "title": "ListCustomEmojisResponse contains the custom emoji mapping"
     },
     "v1ListFQDNsRequest": {
       "type": "object",

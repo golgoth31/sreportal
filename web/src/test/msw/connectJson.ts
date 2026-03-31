@@ -12,6 +12,9 @@ import {
   type Portal,
 } from "@/gen/sreportal/v1/portal_pb";
 import {
+  ListCustomEmojisResponseSchema,
+} from "@/gen/sreportal/v1/emoji_pb";
+import {
   ListReleaseDaysResponseSchema,
   ListReleasesResponseSchema,
   ReleaseEntrySchema,
@@ -96,6 +99,13 @@ export function listReleasesResponseJson(
     nextPageToken: "",
   });
   return grpcWebFrame(ListReleasesResponseSchema, message);
+}
+
+export function listCustomEmojisResponseJson(
+  emojis: Record<string, string>,
+) {
+  const message = create(ListCustomEmojisResponseSchema, { emojis });
+  return grpcWebFrame(ListCustomEmojisResponseSchema, message);
 }
 
 // ---------------------------------------------------------------------------
