@@ -39,3 +39,6 @@ docs/.hugo_build.lock
 /dist
 .mcp.json
 .DS_Store
+
+# Generated at build time from emojibase-data
+web/src/features/emoji/ui/shortcode-map.json
