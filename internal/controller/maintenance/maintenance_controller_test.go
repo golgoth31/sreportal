@@ -74,6 +74,11 @@ var _ = Describe("Maintenance Controller", func() {
 			store := maintenancereadstore.NewMaintenanceStore()
 			controllerReconciler := NewMaintenanceReconciler(k8sClient, store)
 
+			By("waiting for the resource to be visible in cache")
+			Eventually(func() error {
+				return k8sClient.Get(ctx, typeNamespacedName, &sreportalv1alpha1.Maintenance{})
+			}, 10*time.Second, 250*time.Millisecond).Should(Succeed())
+
 			Eventually(func(g Gomega) {
 				result, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: typeNamespacedName,
@@ -85,7 +90,7 @@ var _ = Describe("Maintenance Controller", func() {
 				g.Expect(k8sClient.Get(ctx, typeNamespacedName, &maint)).To(Succeed())
 				g.Expect(maint.Status.Phase).To(Equal(sreportalv1alpha1.MaintenancePhaseUpcoming))
 				g.Expect(maint.Labels["sreportal.io/portal"]).To(Equal("main"))
-			}, 10*time.Second, 500*time.Millisecond).Should(Succeed())
+			}, 30*time.Second, 500*time.Millisecond).Should(Succeed())
 		})
 
 		It("should reject invalid schedule", func() {
@@ -107,9 +112,16 @@ var _ = Describe("Maintenance Controller", func() {
 				_ = k8sClient.Delete(ctx, badMaint)
 			}()
 
+			badNN := types.NamespacedName{Name: "maint-bad-schedule", Namespace: "default"}
+
+			By("waiting for the resource to be visible in cache")
+			Eventually(func() error {
+				return k8sClient.Get(ctx, badNN, &sreportalv1alpha1.Maintenance{})
+			}, 10*time.Second, 250*time.Millisecond).Should(Succeed())
+
 			// Chain returns error, reconciler swallows it
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: types.NamespacedName{Name: "maint-bad-schedule", Namespace: "default"},
+				NamespacedName: badNN,
 			})
 			Expect(err).NotTo(HaveOccurred())
 		})
