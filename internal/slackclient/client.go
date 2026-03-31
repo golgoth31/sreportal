@@ -4,12 +4,11 @@ package slackclient
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
-
-	"github.com/golgoth31/sreportal/internal/domain/emoji"
 )
 
 const (
@@ -18,6 +17,9 @@ const (
 	maxAliasDepth  = 10
 	aliasPrefix    = "alias:"
 )
+
+// ErrFetchEmojis is returned when the Slack API call fails at any stage.
+var ErrFetchEmojis = errors.New("failed to fetch custom emojis")
 
 // apiResponse is the JSON shape returned by the Slack emoji.list API.
 type apiResponse struct {
@@ -67,27 +69,27 @@ func NewClient(token string, opts ...Option) *Client {
 func (c *Client) GetCustomEmojis(ctx context.Context) (map[string]string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("%w: build request: %v", emoji.ErrFetchEmojis, err)
+		return nil, fmt.Errorf("%w: build request: %w", ErrFetchEmojis, err)
 	}
 	req.Header.Set("Authorization", "Bearer "+c.token)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", emoji.ErrFetchEmojis, err)
+		return nil, fmt.Errorf("%w: %w", ErrFetchEmojis, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%w: unexpected status %d", emoji.ErrFetchEmojis, resp.StatusCode)
+		return nil, fmt.Errorf("%w: unexpected status %d", ErrFetchEmojis, resp.StatusCode)
 	}
 
 	var apiResp apiResponse
 	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
-		return nil, fmt.Errorf("%w: decode response: %v", emoji.ErrFetchEmojis, err)
+		return nil, fmt.Errorf("%w: decode response: %w", ErrFetchEmojis, err)
 	}
 
 	if !apiResp.OK {
-		return nil, fmt.Errorf("%w: slack error: %s", emoji.ErrFetchEmojis, apiResp.Error)
+		return nil, fmt.Errorf("%w: slack error: %s", ErrFetchEmojis, apiResp.Error)
 	}
 
 	return resolveAliases(apiResp.Emoji), nil
@@ -107,6 +109,8 @@ func resolveAliases(raw map[string]string) map[string]string {
 	return resolved
 }
 
+// resolve follows an alias chain. name is the root emoji being resolved (not the
+// current alias target), so target == name detects cycles back to the origin.
 func resolve(raw map[string]string, name, value string, depth int) string {
 	if depth >= maxAliasDepth {
 		return ""

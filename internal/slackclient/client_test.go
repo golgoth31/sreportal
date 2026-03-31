@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/golgoth31/sreportal/internal/domain/emoji"
 	"github.com/golgoth31/sreportal/internal/slackclient"
 )
 
@@ -111,7 +110,7 @@ func TestGetCustomEmojis(t *testing.T) {
 				"ok":    false,
 				"error": "invalid_auth",
 			}),
-			wantErr: emoji.ErrFetchEmojis,
+			wantErr: slackclient.ErrFetchEmojis,
 		},
 		{
 			name: "empty emoji list",
@@ -151,7 +150,7 @@ func TestGetCustomEmojis_HTTPError(t *testing.T) {
 	client := slackclient.NewClient("test-token", slackclient.WithBaseURL(srv.URL))
 	_, err := client.GetCustomEmojis(context.Background())
 
-	require.ErrorIs(t, err, emoji.ErrFetchEmojis)
+	require.ErrorIs(t, err, slackclient.ErrFetchEmojis)
 }
 
 func TestGetCustomEmojis_SetsAuthHeader(t *testing.T) {

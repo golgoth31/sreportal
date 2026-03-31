@@ -10,23 +10,27 @@ import (
 
 	domainemoji "github.com/golgoth31/sreportal/internal/domain/emoji"
 	"github.com/golgoth31/sreportal/internal/log"
-	"github.com/golgoth31/sreportal/internal/slackclient"
 )
+
+// EmojiSource fetches custom emojis from an external provider.
+type EmojiSource interface {
+	GetCustomEmojis(ctx context.Context) (map[string]string, error)
+}
 
 // Compile-time interface check.
 var _ manager.Runnable = (*EmojiRunnable)(nil)
 
-// EmojiRunnable fetches custom emojis from Slack at startup and on a periodic interval.
+// EmojiRunnable fetches custom emojis from an external source at startup and on a periodic interval.
 type EmojiRunnable struct {
-	client   *slackclient.Client
+	source   EmojiSource
 	writer   domainemoji.EmojiWriter
 	interval time.Duration
 }
 
 // NewEmojiRunnable creates a new EmojiRunnable.
-func NewEmojiRunnable(client *slackclient.Client, writer domainemoji.EmojiWriter, interval time.Duration) *EmojiRunnable {
+func NewEmojiRunnable(source EmojiSource, writer domainemoji.EmojiWriter, interval time.Duration) *EmojiRunnable {
 	return &EmojiRunnable{
-		client:   client,
+		source:   source,
 		writer:   writer,
 		interval: interval,
 	}
@@ -61,7 +65,7 @@ func (r *EmojiRunnable) Start(ctx context.Context) error {
 }
 
 func (r *EmojiRunnable) fetch(ctx context.Context) error {
-	emojis, err := r.client.GetCustomEmojis(ctx)
+	emojis, err := r.source.GetCustomEmojis(ctx)
 	if err != nil {
 		return err
 	}

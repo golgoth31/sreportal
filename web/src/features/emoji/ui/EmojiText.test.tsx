@@ -30,7 +30,6 @@ describe("EmojiText", () => {
     render(<EmojiText text="Deploy :rocket: done" />, {
       wrapper: createWrapper(),
     });
-    // The rocket emoji should be rendered
     expect(screen.getByRole("img", { name: "rocket" })).toHaveTextContent(
       "🚀",
     );

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -53,10 +54,9 @@ func TestEmojiRunnable_FetchesAtStartup(t *testing.T) {
 }
 
 func TestEmojiRunnable_ContinuesOnFetchError(t *testing.T) {
-	callCount := 0
+	var callCount atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		callCount++
-		if callCount == 1 {
+		if callCount.Add(1) == 1 {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}

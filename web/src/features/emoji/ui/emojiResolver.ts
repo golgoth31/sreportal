@@ -6,7 +6,6 @@ import shortcodes from "emojibase-data/en/shortcodes/github.json";
 const shortcodeToUnicode = buildShortcodeMap();
 
 function buildShortcodeMap(): Map<string, string> {
-  // Index emoji data by hexcode for fast lookup
   const hexToEmoji = new Map<string, string>();
   for (const entry of emojis) {
     hexToEmoji.set(entry.hexcode, entry.emoji);
