@@ -1,9 +1,11 @@
-import { useParams } from "react-router";
+import { useMatch, useParams } from "react-router";
 
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Badge } from "@/components/ui/badge";
 import { ErrorAlert } from "@/components/ErrorAlert";
 import { PageRefreshButton } from "@/components/PageRefreshButton";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useStatusPage } from "@/features/statuspage/hooks/useStatusPage";
 import { StatusBanner } from "@/features/statuspage/ui/StatusBanner";
@@ -13,6 +15,7 @@ import { IncidentSection } from "@/features/statuspage/ui/IncidentSection";
 
 export function StatusPage() {
   const { portalName = "main" } = useParams<{ portalName: string }>();
+  const isStandalone = useMatch("/status/:portalName") != null;
   const {
     groupedComponents,
     maintenances,
@@ -35,11 +38,14 @@ export function StatusPage() {
     );
   }
 
-  return (
+  const page = (
     <div className="max-w-screen-xl mx-auto px-4 py-6 space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <h1 className="text-xl font-semibold tracking-tight">Status</h1>
-        <PageRefreshButton onRefresh={refetch} isFetching={isFetching} />
+        <div className="flex items-center gap-2 shrink-0">
+          <PageRefreshButton onRefresh={refetch} isFetching={isFetching} />
+          {isStandalone && <ThemeToggle />}
+        </div>
       </div>
       {isLoading ? (
         <div className="space-y-4">
@@ -90,4 +96,6 @@ export function StatusPage() {
       )}
     </div>
   );
+
+  return isStandalone ? <TooltipProvider>{page}</TooltipProvider> : page;
 }
