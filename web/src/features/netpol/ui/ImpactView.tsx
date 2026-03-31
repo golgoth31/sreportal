@@ -26,8 +26,8 @@ const DEPTH_BADGE = [
 
 const DEPTH_LABELS = [
   "Direct resource",
-  "Level 1 \u2014 Direct dependents",
-  "Level 2 \u2014 Indirect dependents",
+  "Level 1 — Direct dependents",
+  "Level 2 — Indirect dependents",
   "Level 3",
   "Level 4",
   "Level 5",
@@ -144,7 +144,7 @@ export function ImpactView({ nodes, nodeMap, callsFrom }: Props) {
                 <span className="font-medium">{item.node.label}</span>
                 <span className="text-muted-foreground text-xs">{item.node.group}</span>
                 {item.via && (
-                  <span className="text-muted-foreground text-xs">\u2190 via {item.via}</span>
+                  <span className="text-muted-foreground text-xs">← via {item.via}</span>
                 )}
               </div>
             ))}

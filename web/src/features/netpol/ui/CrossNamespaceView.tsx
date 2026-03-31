@@ -37,7 +37,7 @@ export function CrossNamespaceView({ edges, nodeMap }: Props) {
       const tgt = nodeMap.get(e.to);
       if (!src || !tgt || src.group === tgt.group) continue;
 
-      const key = `${src.group}\u2192${tgt.group}`;
+      const key = `${src.group}→${tgt.group}`;
       const existing = map.get(key);
       if (existing) {
         existing.count++;
@@ -96,7 +96,7 @@ export function CrossNamespaceView({ edges, nodeMap }: Props) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="text-xs">From \u2193 / To \u2192</TableHead>
+              <TableHead className="text-xs">From ↓ / To →</TableHead>
               {allPls.map((pl) => (
                 <TableHead key={pl} className="text-center">
                   <Badge variant="outline" className={groupColor(pl)}>{pl}</Badge>
@@ -115,7 +115,7 @@ export function CrossNamespaceView({ edges, nodeMap }: Props) {
                   return (
                     <TableCell key={tgtPl} className="text-center">
                       {srcPl === tgtPl ? (
-                        <span className="text-muted-foreground">\u2014</span>
+                        <span className="text-muted-foreground">—</span>
                       ) : count > 0 ? (
                         <span className="font-medium">{count}</span>
                       ) : (
@@ -136,9 +136,9 @@ export function CrossNamespaceView({ edges, nodeMap }: Props) {
           Top flows
         </h3>
         {flows.slice(0, MAX_TOP_FLOWS).map((f) => (
-          <div key={`${f.sourcePl}\u2192${f.targetPl}`} className="flex items-center gap-2 text-sm">
+          <div key={`${f.sourcePl}→${f.targetPl}`} className="flex items-center gap-2 text-sm">
             <Badge variant="outline" className={cn(groupColor(f.sourcePl))}>{f.sourcePl}</Badge>
-            <span className="text-muted-foreground">\u2192</span>
+            <span className="text-muted-foreground">→</span>
             <Badge variant="outline" className={cn(groupColor(f.targetPl))}>{f.targetPl}</Badge>
             <span className="font-medium">{f.count} flows</span>
           </div>
