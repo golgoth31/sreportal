@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -142,17 +143,73 @@ func (h *ComputeStatusHandler) Handle(ctx context.Context, rc *reconciler.Reconc
 	return nil
 }
 
-// --- Handler 3: UpdateStatus ---
+// --- Handler 3: MergeDailyStatus ---
+
+// DailyStatusWindowDays is the number of days in the sliding daily-status window.
+const DailyStatusWindowDays = 30
+
+// MergeDailyStatusHandler merges the computed status into the daily worst-status history.
+type MergeDailyStatusHandler struct {
+	now func() time.Time
+}
+
+// NewMergeDailyStatusHandler creates a new MergeDailyStatusHandler.
+// The now function is used to determine the current UTC date (inject for tests).
+func NewMergeDailyStatusHandler(now func() time.Time) *MergeDailyStatusHandler {
+	return &MergeDailyStatusHandler{now: now}
+}
+
+func (h *MergeDailyStatusHandler) Handle(_ context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.Component, ChainData]) error {
+	comp := rc.Resource
+	today := h.now().UTC().Format("2006-01-02")
+
+	// Convert CRD slice → domain slice
+	domainHistory := make([]domaincomponent.DailyStatus, len(comp.Status.DailyWorstStatus))
+	for i, entry := range comp.Status.DailyWorstStatus {
+		domainHistory[i] = domaincomponent.DailyStatus{
+			Date:        entry.Date,
+			WorstStatus: domaincomponent.ComponentStatus(entry.WorstStatus),
+		}
+	}
+
+	// Merge + prune via pure domain function
+	merged := domaincomponent.MergeDailyWorst(
+		domainHistory,
+		today,
+		domaincomponent.ComponentStatus(rc.Data.ComputedStatus),
+		DailyStatusWindowDays,
+	)
+
+	// Convert back to CRD slice
+	comp.Status.DailyWorstStatus = make([]sreportalv1alpha1.DailyComponentStatus, len(merged))
+	for i, entry := range merged {
+		comp.Status.DailyWorstStatus[i] = sreportalv1alpha1.DailyComponentStatus{
+			Date:        entry.Date,
+			WorstStatus: sreportalv1alpha1.ComputedComponentStatus(entry.WorstStatus),
+		}
+	}
+
+	return nil
+}
+
+// --- Handler 4: UpdateStatus ---
 
 // UpdateStatusHandler patches the CR status, labels, and projects to the ReadStore.
+// It also sets RequeueAfter to the next UTC midnight to ensure daily status entries.
 type UpdateStatusHandler struct {
 	client          client.Client
 	componentWriter domaincomponent.ComponentWriter
+	now             func() time.Time
 }
 
 // NewUpdateStatusHandler creates a new UpdateStatusHandler.
-func NewUpdateStatusHandler(c client.Client, w domaincomponent.ComponentWriter) *UpdateStatusHandler {
-	return &UpdateStatusHandler{client: c, componentWriter: w}
+func NewUpdateStatusHandler(c client.Client, w domaincomponent.ComponentWriter, now func() time.Time) *UpdateStatusHandler {
+	return &UpdateStatusHandler{client: c, componentWriter: w, now: now}
+}
+
+// requeueDuration returns the duration until the next UTC midnight.
+func (h *UpdateStatusHandler) requeueDuration() time.Duration {
+	return domaincomponent.DurationUntilNextMidnightUTC(h.now())
 }
 
 func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.Component, ChainData]) error {
@@ -206,6 +263,9 @@ func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 		}
 	}
 
+	// Requeue at next UTC midnight for daily status rollover
+	rc.Result.RequeueAfter = h.requeueDuration()
+
 	return nil
 }
 
@@ -224,6 +284,15 @@ func ToView(comp *sreportalv1alpha1.Component) domaincomponent.ComponentView {
 	}
 	if comp.Status.LastStatusChange != nil {
 		view.LastStatusChange = comp.Status.LastStatusChange.Time
+	}
+	if len(comp.Status.DailyWorstStatus) > 0 {
+		view.DailyWorstStatus = make([]domaincomponent.DailyStatus, len(comp.Status.DailyWorstStatus))
+		for i, entry := range comp.Status.DailyWorstStatus {
+			view.DailyWorstStatus[i] = domaincomponent.DailyStatus{
+				Date:        entry.Date,
+				WorstStatus: domaincomponent.ComponentStatus(entry.WorstStatus),
+			}
+		}
 	}
 	return view
 }

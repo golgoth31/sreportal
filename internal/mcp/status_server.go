@@ -123,17 +123,24 @@ func (s *StatusServer) registerTools() {
 
 // --- MCP Result types (stable JSON contract, decoupled from domain) ---
 
+// DailyStatusResult is the MCP JSON representation of a daily worst status entry.
+type DailyStatusResult struct {
+	Date        string `json:"date"`
+	WorstStatus string `json:"worst_status"`
+}
+
 // ComponentResult is the MCP JSON representation of a platform component.
 type ComponentResult struct {
-	Name            string `json:"name"`
-	DisplayName     string `json:"display_name"`
-	Description     string `json:"description,omitempty"`
-	Group           string `json:"group"`
-	Link            string `json:"link,omitempty"`
-	PortalRef       string `json:"portal_ref"`
-	DeclaredStatus  string `json:"declared_status"`
-	ComputedStatus  string `json:"computed_status"`
-	ActiveIncidents int    `json:"active_incidents"`
+	Name             string              `json:"name"`
+	DisplayName      string              `json:"display_name"`
+	Description      string              `json:"description,omitempty"`
+	Group            string              `json:"group"`
+	Link             string              `json:"link,omitempty"`
+	PortalRef        string              `json:"portal_ref"`
+	DeclaredStatus   string              `json:"declared_status"`
+	ComputedStatus   string              `json:"computed_status"`
+	ActiveIncidents  int                 `json:"active_incidents"`
+	DailyWorstStatus []DailyStatusResult `json:"daily_worst_status,omitempty"`
 }
 
 // MaintenanceResult is the MCP JSON representation of a maintenance window.
@@ -187,7 +194,7 @@ func (s *StatusServer) handleListComponents(ctx context.Context, request mcp.Cal
 
 	results := make([]ComponentResult, 0, len(views))
 	for _, v := range views {
-		results = append(results, ComponentResult{
+		cr := ComponentResult{
 			Name:            v.Name,
 			DisplayName:     v.DisplayName,
 			Description:     v.Description,
@@ -197,7 +204,17 @@ func (s *StatusServer) handleListComponents(ctx context.Context, request mcp.Cal
 			DeclaredStatus:  string(v.DeclaredStatus),
 			ComputedStatus:  string(v.ComputedStatus),
 			ActiveIncidents: v.ActiveIncidents,
-		})
+		}
+		if len(v.DailyWorstStatus) > 0 {
+			cr.DailyWorstStatus = make([]DailyStatusResult, len(v.DailyWorstStatus))
+			for j, d := range v.DailyWorstStatus {
+				cr.DailyWorstStatus[j] = DailyStatusResult{
+					Date:        d.Date,
+					WorstStatus: string(d.WorstStatus),
+				}
+			}
+		}
+		results = append(results, cr)
 	}
 
 	jsonBytes, err := json.MarshalIndent(results, "", "  ")

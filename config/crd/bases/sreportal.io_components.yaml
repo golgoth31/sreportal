@@ -169,6 +169,29 @@ spec:
                 x-kubernetes-list-map-keys:
                 - type
                 x-kubernetes-list-type: map
+              dailyWorstStatus:
+                description: dailyWorstStatus records the worst computed status per
+                  UTC day over a sliding window (30 days).
+                items:
+                  description: DailyComponentStatus records the worst observed status
+                    for a single UTC calendar day.
+                  properties:
+                    date:
+                      description: date is the UTC calendar day in YYYY-MM-DD format.
+                      pattern: ^\d{4}-\d{2}-\d{2}$
+                      type: string
+                    worstStatus:
+                      description: worstStatus is the worst computed status observed
+                        during this day.
+                      type: string
+                  required:
+                  - date
+                  - worstStatus
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - date
+                x-kubernetes-list-type: map
               lastStatusChange:
                 description: lastStatusChange is the timestamp of the last computedStatus
                   transition
