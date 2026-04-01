@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.26.0](https://github.com/golgoth31/sreportal/compare/v1.25.1...v1.26.0) (2026-04-01)
+
+
+### Features
+
+* **component:** add 30-day daily worst-status history with backfill ([#168](https://github.com/golgoth31/sreportal/issues/168)) ([6134b87](https://github.com/golgoth31/sreportal/commit/6134b870e57d85d6a953f586853cac64e0fb5133))
+
 ## [1.25.1](https://github.com/golgoth31/sreportal/compare/v1.25.0...v1.25.1) (2026-03-31)
 
 
