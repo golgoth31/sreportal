@@ -72,6 +72,11 @@ var _ = Describe("Component Controller", func() {
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
+
+			By("waiting for cache to sync the Component")
+			Eventually(func() error {
+				return k8sClient.Get(ctx, typeNamespacedName, &sreportalv1alpha1.Component{})
+			}, 5*time.Second, 100*time.Millisecond).Should(Succeed())
 		})
 
 		AfterEach(func() {
