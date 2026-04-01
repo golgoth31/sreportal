@@ -18,6 +18,7 @@ import {
 } from "@/gen/sreportal/v1/status_pb";
 import type {
   PlatformComponent,
+  DailyStatus,
   Maintenance,
   Incident,
   IncidentUpdate,
@@ -108,6 +109,12 @@ function toDomainComponent(p: ProtoComponent): PlatformComponent {
     computedStatus: toComponentStatus(p.computedStatus),
     activeIncidents: p.activeIncidents,
     lastStatusChange: timestampToIso(p.lastStatusChange),
+    dailyWorstStatus: p.dailyWorstStatus.map(
+      (d): DailyStatus => ({
+        date: d.date,
+        worstStatus: toComponentStatus(d.worstStatus),
+      })
+    ),
   };
 }
 

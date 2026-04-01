@@ -60,6 +60,23 @@ export function getStatusLabel(status: ComponentStatus): string {
   }
 }
 
+export function getStatusDotColor(status: ComponentStatus): string {
+  switch (status) {
+    case "operational":
+      return "bg-green-500";
+    case "degraded":
+      return "bg-yellow-500";
+    case "partial_outage":
+      return "bg-orange-500";
+    case "major_outage":
+      return "bg-red-500";
+    case "maintenance":
+      return "bg-blue-500";
+    default:
+      return "bg-gray-400";
+  }
+}
+
 export function getGlobalStatusMessage(status: ComponentStatus): string {
   switch (status) {
     case "operational":

@@ -246,26 +246,80 @@ func (IncidentSeverity) EnumDescriptor() ([]byte, []int) {
 	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{3}
 }
 
+// DailyComponentStatus records the worst observed status for a single UTC calendar day
+type DailyComponentStatus struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Date          string                 `protobuf:"bytes,1,opt,name=date,proto3" json:"date,omitempty"`
+	WorstStatus   ComponentStatus        `protobuf:"varint,2,opt,name=worst_status,json=worstStatus,proto3,enum=sreportal.v1.ComponentStatus" json:"worst_status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DailyComponentStatus) Reset() {
+	*x = DailyComponentStatus{}
+	mi := &file_sreportal_v1_status_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DailyComponentStatus) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DailyComponentStatus) ProtoMessage() {}
+
+func (x *DailyComponentStatus) ProtoReflect() protoreflect.Message {
+	mi := &file_sreportal_v1_status_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DailyComponentStatus.ProtoReflect.Descriptor instead.
+func (*DailyComponentStatus) Descriptor() ([]byte, []int) {
+	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *DailyComponentStatus) GetDate() string {
+	if x != nil {
+		return x.Date
+	}
+	return ""
+}
+
+func (x *DailyComponentStatus) GetWorstStatus() ComponentStatus {
+	if x != nil {
+		return x.WorstStatus
+	}
+	return ComponentStatus_COMPONENT_STATUS_UNSPECIFIED
+}
+
 // ComponentResource represents a platform component on the status page
 type ComponentResource struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	Name             string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	DisplayName      string                 `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
-	Description      string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
-	Group            string                 `protobuf:"bytes,4,opt,name=group,proto3" json:"group,omitempty"`
-	Link             string                 `protobuf:"bytes,5,opt,name=link,proto3" json:"link,omitempty"`
-	PortalRef        string                 `protobuf:"bytes,6,opt,name=portal_ref,json=portalRef,proto3" json:"portal_ref,omitempty"`
-	DeclaredStatus   ComponentStatus        `protobuf:"varint,7,opt,name=declared_status,json=declaredStatus,proto3,enum=sreportal.v1.ComponentStatus" json:"declared_status,omitempty"`
-	ComputedStatus   ComponentStatus        `protobuf:"varint,8,opt,name=computed_status,json=computedStatus,proto3,enum=sreportal.v1.ComponentStatus" json:"computed_status,omitempty"`
-	ActiveIncidents  int32                  `protobuf:"varint,9,opt,name=active_incidents,json=activeIncidents,proto3" json:"active_incidents,omitempty"`
-	LastStatusChange *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=last_status_change,json=lastStatusChange,proto3" json:"last_status_change,omitempty"`
+	state            protoimpl.MessageState  `protogen:"open.v1"`
+	Name             string                  `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	DisplayName      string                  `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	Description      string                  `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	Group            string                  `protobuf:"bytes,4,opt,name=group,proto3" json:"group,omitempty"`
+	Link             string                  `protobuf:"bytes,5,opt,name=link,proto3" json:"link,omitempty"`
+	PortalRef        string                  `protobuf:"bytes,6,opt,name=portal_ref,json=portalRef,proto3" json:"portal_ref,omitempty"`
+	DeclaredStatus   ComponentStatus         `protobuf:"varint,7,opt,name=declared_status,json=declaredStatus,proto3,enum=sreportal.v1.ComponentStatus" json:"declared_status,omitempty"`
+	ComputedStatus   ComponentStatus         `protobuf:"varint,8,opt,name=computed_status,json=computedStatus,proto3,enum=sreportal.v1.ComponentStatus" json:"computed_status,omitempty"`
+	ActiveIncidents  int32                   `protobuf:"varint,9,opt,name=active_incidents,json=activeIncidents,proto3" json:"active_incidents,omitempty"`
+	LastStatusChange *timestamppb.Timestamp  `protobuf:"bytes,10,opt,name=last_status_change,json=lastStatusChange,proto3" json:"last_status_change,omitempty"`
+	DailyWorstStatus []*DailyComponentStatus `protobuf:"bytes,11,rep,name=daily_worst_status,json=dailyWorstStatus,proto3" json:"daily_worst_status,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
 
 func (x *ComponentResource) Reset() {
 	*x = ComponentResource{}
-	mi := &file_sreportal_v1_status_proto_msgTypes[0]
+	mi := &file_sreportal_v1_status_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -277,7 +331,7 @@ func (x *ComponentResource) String() string {
 func (*ComponentResource) ProtoMessage() {}
 
 func (x *ComponentResource) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_status_proto_msgTypes[0]
+	mi := &file_sreportal_v1_status_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -290,7 +344,7 @@ func (x *ComponentResource) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ComponentResource.ProtoReflect.Descriptor instead.
 func (*ComponentResource) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{0}
+	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *ComponentResource) GetName() string {
@@ -363,6 +417,13 @@ func (x *ComponentResource) GetLastStatusChange() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *ComponentResource) GetDailyWorstStatus() []*DailyComponentStatus {
+	if x != nil {
+		return x.DailyWorstStatus
+	}
+	return nil
+}
+
 // MaintenanceResource represents a scheduled maintenance window
 type MaintenanceResource struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
@@ -381,7 +442,7 @@ type MaintenanceResource struct {
 
 func (x *MaintenanceResource) Reset() {
 	*x = MaintenanceResource{}
-	mi := &file_sreportal_v1_status_proto_msgTypes[1]
+	mi := &file_sreportal_v1_status_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -393,7 +454,7 @@ func (x *MaintenanceResource) String() string {
 func (*MaintenanceResource) ProtoMessage() {}
 
 func (x *MaintenanceResource) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_status_proto_msgTypes[1]
+	mi := &file_sreportal_v1_status_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -406,7 +467,7 @@ func (x *MaintenanceResource) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MaintenanceResource.ProtoReflect.Descriptor instead.
 func (*MaintenanceResource) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{1}
+	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *MaintenanceResource) GetName() string {
@@ -491,7 +552,7 @@ type IncidentResource struct {
 
 func (x *IncidentResource) Reset() {
 	*x = IncidentResource{}
-	mi := &file_sreportal_v1_status_proto_msgTypes[2]
+	mi := &file_sreportal_v1_status_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -503,7 +564,7 @@ func (x *IncidentResource) String() string {
 func (*IncidentResource) ProtoMessage() {}
 
 func (x *IncidentResource) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_status_proto_msgTypes[2]
+	mi := &file_sreportal_v1_status_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -516,7 +577,7 @@ func (x *IncidentResource) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IncidentResource.ProtoReflect.Descriptor instead.
 func (*IncidentResource) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{2}
+	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *IncidentResource) GetName() string {
@@ -601,7 +662,7 @@ type IncidentUpdate struct {
 
 func (x *IncidentUpdate) Reset() {
 	*x = IncidentUpdate{}
-	mi := &file_sreportal_v1_status_proto_msgTypes[3]
+	mi := &file_sreportal_v1_status_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -613,7 +674,7 @@ func (x *IncidentUpdate) String() string {
 func (*IncidentUpdate) ProtoMessage() {}
 
 func (x *IncidentUpdate) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_status_proto_msgTypes[3]
+	mi := &file_sreportal_v1_status_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -626,7 +687,7 @@ func (x *IncidentUpdate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IncidentUpdate.ProtoReflect.Descriptor instead.
 func (*IncidentUpdate) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{3}
+	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *IncidentUpdate) GetTimestamp() *timestamppb.Timestamp {
@@ -661,7 +722,7 @@ type ListComponentsRequest struct {
 
 func (x *ListComponentsRequest) Reset() {
 	*x = ListComponentsRequest{}
-	mi := &file_sreportal_v1_status_proto_msgTypes[4]
+	mi := &file_sreportal_v1_status_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -673,7 +734,7 @@ func (x *ListComponentsRequest) String() string {
 func (*ListComponentsRequest) ProtoMessage() {}
 
 func (x *ListComponentsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_status_proto_msgTypes[4]
+	mi := &file_sreportal_v1_status_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -686,7 +747,7 @@ func (x *ListComponentsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListComponentsRequest.ProtoReflect.Descriptor instead.
 func (*ListComponentsRequest) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{4}
+	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ListComponentsRequest) GetPortalRef() string {
@@ -713,7 +774,7 @@ type ListComponentsResponse struct {
 
 func (x *ListComponentsResponse) Reset() {
 	*x = ListComponentsResponse{}
-	mi := &file_sreportal_v1_status_proto_msgTypes[5]
+	mi := &file_sreportal_v1_status_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -725,7 +786,7 @@ func (x *ListComponentsResponse) String() string {
 func (*ListComponentsResponse) ProtoMessage() {}
 
 func (x *ListComponentsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_status_proto_msgTypes[5]
+	mi := &file_sreportal_v1_status_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -738,7 +799,7 @@ func (x *ListComponentsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListComponentsResponse.ProtoReflect.Descriptor instead.
 func (*ListComponentsResponse) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{5}
+	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ListComponentsResponse) GetComponents() []*ComponentResource {
@@ -759,7 +820,7 @@ type ListMaintenancesRequest struct {
 
 func (x *ListMaintenancesRequest) Reset() {
 	*x = ListMaintenancesRequest{}
-	mi := &file_sreportal_v1_status_proto_msgTypes[6]
+	mi := &file_sreportal_v1_status_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -771,7 +832,7 @@ func (x *ListMaintenancesRequest) String() string {
 func (*ListMaintenancesRequest) ProtoMessage() {}
 
 func (x *ListMaintenancesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_status_proto_msgTypes[6]
+	mi := &file_sreportal_v1_status_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -784,7 +845,7 @@ func (x *ListMaintenancesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMaintenancesRequest.ProtoReflect.Descriptor instead.
 func (*ListMaintenancesRequest) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{6}
+	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ListMaintenancesRequest) GetPortalRef() string {
@@ -811,7 +872,7 @@ type ListMaintenancesResponse struct {
 
 func (x *ListMaintenancesResponse) Reset() {
 	*x = ListMaintenancesResponse{}
-	mi := &file_sreportal_v1_status_proto_msgTypes[7]
+	mi := &file_sreportal_v1_status_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -823,7 +884,7 @@ func (x *ListMaintenancesResponse) String() string {
 func (*ListMaintenancesResponse) ProtoMessage() {}
 
 func (x *ListMaintenancesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_status_proto_msgTypes[7]
+	mi := &file_sreportal_v1_status_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -836,7 +897,7 @@ func (x *ListMaintenancesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMaintenancesResponse.ProtoReflect.Descriptor instead.
 func (*ListMaintenancesResponse) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{7}
+	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ListMaintenancesResponse) GetMaintenances() []*MaintenanceResource {
@@ -857,7 +918,7 @@ type ListIncidentsRequest struct {
 
 func (x *ListIncidentsRequest) Reset() {
 	*x = ListIncidentsRequest{}
-	mi := &file_sreportal_v1_status_proto_msgTypes[8]
+	mi := &file_sreportal_v1_status_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -869,7 +930,7 @@ func (x *ListIncidentsRequest) String() string {
 func (*ListIncidentsRequest) ProtoMessage() {}
 
 func (x *ListIncidentsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_status_proto_msgTypes[8]
+	mi := &file_sreportal_v1_status_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -882,7 +943,7 @@ func (x *ListIncidentsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListIncidentsRequest.ProtoReflect.Descriptor instead.
 func (*ListIncidentsRequest) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{8}
+	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ListIncidentsRequest) GetPortalRef() string {
@@ -909,7 +970,7 @@ type ListIncidentsResponse struct {
 
 func (x *ListIncidentsResponse) Reset() {
 	*x = ListIncidentsResponse{}
-	mi := &file_sreportal_v1_status_proto_msgTypes[9]
+	mi := &file_sreportal_v1_status_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -921,7 +982,7 @@ func (x *ListIncidentsResponse) String() string {
 func (*ListIncidentsResponse) ProtoMessage() {}
 
 func (x *ListIncidentsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_status_proto_msgTypes[9]
+	mi := &file_sreportal_v1_status_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -934,7 +995,7 @@ func (x *ListIncidentsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListIncidentsResponse.ProtoReflect.Descriptor instead.
 func (*ListIncidentsResponse) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{9}
+	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ListIncidentsResponse) GetIncidents() []*IncidentResource {
@@ -965,7 +1026,7 @@ type CreateComponentRequest struct {
 
 func (x *CreateComponentRequest) Reset() {
 	*x = CreateComponentRequest{}
-	mi := &file_sreportal_v1_status_proto_msgTypes[10]
+	mi := &file_sreportal_v1_status_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -977,7 +1038,7 @@ func (x *CreateComponentRequest) String() string {
 func (*CreateComponentRequest) ProtoMessage() {}
 
 func (x *CreateComponentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_status_proto_msgTypes[10]
+	mi := &file_sreportal_v1_status_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -990,7 +1051,7 @@ func (x *CreateComponentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateComponentRequest.ProtoReflect.Descriptor instead.
 func (*CreateComponentRequest) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{10}
+	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *CreateComponentRequest) GetDisplayName() string {
@@ -1045,7 +1106,7 @@ type CreateComponentResponse struct {
 
 func (x *CreateComponentResponse) Reset() {
 	*x = CreateComponentResponse{}
-	mi := &file_sreportal_v1_status_proto_msgTypes[11]
+	mi := &file_sreportal_v1_status_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1057,7 +1118,7 @@ func (x *CreateComponentResponse) String() string {
 func (*CreateComponentResponse) ProtoMessage() {}
 
 func (x *CreateComponentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_status_proto_msgTypes[11]
+	mi := &file_sreportal_v1_status_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1070,7 +1131,7 @@ func (x *CreateComponentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateComponentResponse.ProtoReflect.Descriptor instead.
 func (*CreateComponentResponse) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{11}
+	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *CreateComponentResponse) GetName() string {
@@ -1101,7 +1162,7 @@ type UpdateComponentRequest struct {
 
 func (x *UpdateComponentRequest) Reset() {
 	*x = UpdateComponentRequest{}
-	mi := &file_sreportal_v1_status_proto_msgTypes[12]
+	mi := &file_sreportal_v1_status_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1113,7 +1174,7 @@ func (x *UpdateComponentRequest) String() string {
 func (*UpdateComponentRequest) ProtoMessage() {}
 
 func (x *UpdateComponentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_status_proto_msgTypes[12]
+	mi := &file_sreportal_v1_status_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1126,7 +1187,7 @@ func (x *UpdateComponentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateComponentRequest.ProtoReflect.Descriptor instead.
 func (*UpdateComponentRequest) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{12}
+	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *UpdateComponentRequest) GetName() string {
@@ -1181,7 +1242,7 @@ type UpdateComponentResponse struct {
 
 func (x *UpdateComponentResponse) Reset() {
 	*x = UpdateComponentResponse{}
-	mi := &file_sreportal_v1_status_proto_msgTypes[13]
+	mi := &file_sreportal_v1_status_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1193,7 +1254,7 @@ func (x *UpdateComponentResponse) String() string {
 func (*UpdateComponentResponse) ProtoMessage() {}
 
 func (x *UpdateComponentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_status_proto_msgTypes[13]
+	mi := &file_sreportal_v1_status_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1206,7 +1267,7 @@ func (x *UpdateComponentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateComponentResponse.ProtoReflect.Descriptor instead.
 func (*UpdateComponentResponse) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{13}
+	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *UpdateComponentResponse) GetName() string {
@@ -1227,7 +1288,7 @@ type DeleteComponentRequest struct {
 
 func (x *DeleteComponentRequest) Reset() {
 	*x = DeleteComponentRequest{}
-	mi := &file_sreportal_v1_status_proto_msgTypes[14]
+	mi := &file_sreportal_v1_status_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1239,7 +1300,7 @@ func (x *DeleteComponentRequest) String() string {
 func (*DeleteComponentRequest) ProtoMessage() {}
 
 func (x *DeleteComponentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_status_proto_msgTypes[14]
+	mi := &file_sreportal_v1_status_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1252,7 +1313,7 @@ func (x *DeleteComponentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteComponentRequest.ProtoReflect.Descriptor instead.
 func (*DeleteComponentRequest) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{14}
+	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *DeleteComponentRequest) GetName() string {
@@ -1271,7 +1332,7 @@ type DeleteComponentResponse struct {
 
 func (x *DeleteComponentResponse) Reset() {
 	*x = DeleteComponentResponse{}
-	mi := &file_sreportal_v1_status_proto_msgTypes[15]
+	mi := &file_sreportal_v1_status_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1283,7 +1344,7 @@ func (x *DeleteComponentResponse) String() string {
 func (*DeleteComponentResponse) ProtoMessage() {}
 
 func (x *DeleteComponentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_status_proto_msgTypes[15]
+	mi := &file_sreportal_v1_status_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1296,7 +1357,7 @@ func (x *DeleteComponentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteComponentResponse.ProtoReflect.Descriptor instead.
 func (*DeleteComponentResponse) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{15}
+	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{16}
 }
 
 // CreateMaintenanceRequest creates a new Maintenance CR
@@ -1322,7 +1383,7 @@ type CreateMaintenanceRequest struct {
 
 func (x *CreateMaintenanceRequest) Reset() {
 	*x = CreateMaintenanceRequest{}
-	mi := &file_sreportal_v1_status_proto_msgTypes[16]
+	mi := &file_sreportal_v1_status_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1334,7 +1395,7 @@ func (x *CreateMaintenanceRequest) String() string {
 func (*CreateMaintenanceRequest) ProtoMessage() {}
 
 func (x *CreateMaintenanceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_status_proto_msgTypes[16]
+	mi := &file_sreportal_v1_status_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1347,7 +1408,7 @@ func (x *CreateMaintenanceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateMaintenanceRequest.ProtoReflect.Descriptor instead.
 func (*CreateMaintenanceRequest) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{16}
+	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *CreateMaintenanceRequest) GetTitle() string {
@@ -1409,7 +1470,7 @@ type CreateMaintenanceResponse struct {
 
 func (x *CreateMaintenanceResponse) Reset() {
 	*x = CreateMaintenanceResponse{}
-	mi := &file_sreportal_v1_status_proto_msgTypes[17]
+	mi := &file_sreportal_v1_status_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1421,7 +1482,7 @@ func (x *CreateMaintenanceResponse) String() string {
 func (*CreateMaintenanceResponse) ProtoMessage() {}
 
 func (x *CreateMaintenanceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_status_proto_msgTypes[17]
+	mi := &file_sreportal_v1_status_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1434,7 +1495,7 @@ func (x *CreateMaintenanceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateMaintenanceResponse.ProtoReflect.Descriptor instead.
 func (*CreateMaintenanceResponse) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{17}
+	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *CreateMaintenanceResponse) GetName() string {
@@ -1467,7 +1528,7 @@ type UpdateMaintenanceRequest struct {
 
 func (x *UpdateMaintenanceRequest) Reset() {
 	*x = UpdateMaintenanceRequest{}
-	mi := &file_sreportal_v1_status_proto_msgTypes[18]
+	mi := &file_sreportal_v1_status_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1479,7 +1540,7 @@ func (x *UpdateMaintenanceRequest) String() string {
 func (*UpdateMaintenanceRequest) ProtoMessage() {}
 
 func (x *UpdateMaintenanceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_status_proto_msgTypes[18]
+	mi := &file_sreportal_v1_status_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1492,7 +1553,7 @@ func (x *UpdateMaintenanceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMaintenanceRequest.ProtoReflect.Descriptor instead.
 func (*UpdateMaintenanceRequest) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{18}
+	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *UpdateMaintenanceRequest) GetName() string {
@@ -1554,7 +1615,7 @@ type UpdateMaintenanceResponse struct {
 
 func (x *UpdateMaintenanceResponse) Reset() {
 	*x = UpdateMaintenanceResponse{}
-	mi := &file_sreportal_v1_status_proto_msgTypes[19]
+	mi := &file_sreportal_v1_status_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1566,7 +1627,7 @@ func (x *UpdateMaintenanceResponse) String() string {
 func (*UpdateMaintenanceResponse) ProtoMessage() {}
 
 func (x *UpdateMaintenanceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_status_proto_msgTypes[19]
+	mi := &file_sreportal_v1_status_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1579,7 +1640,7 @@ func (x *UpdateMaintenanceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMaintenanceResponse.ProtoReflect.Descriptor instead.
 func (*UpdateMaintenanceResponse) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{19}
+	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *UpdateMaintenanceResponse) GetName() string {
@@ -1599,7 +1660,7 @@ type DeleteMaintenanceRequest struct {
 
 func (x *DeleteMaintenanceRequest) Reset() {
 	*x = DeleteMaintenanceRequest{}
-	mi := &file_sreportal_v1_status_proto_msgTypes[20]
+	mi := &file_sreportal_v1_status_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1611,7 +1672,7 @@ func (x *DeleteMaintenanceRequest) String() string {
 func (*DeleteMaintenanceRequest) ProtoMessage() {}
 
 func (x *DeleteMaintenanceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_status_proto_msgTypes[20]
+	mi := &file_sreportal_v1_status_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1624,7 +1685,7 @@ func (x *DeleteMaintenanceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteMaintenanceRequest.ProtoReflect.Descriptor instead.
 func (*DeleteMaintenanceRequest) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{20}
+	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *DeleteMaintenanceRequest) GetName() string {
@@ -1643,7 +1704,7 @@ type DeleteMaintenanceResponse struct {
 
 func (x *DeleteMaintenanceResponse) Reset() {
 	*x = DeleteMaintenanceResponse{}
-	mi := &file_sreportal_v1_status_proto_msgTypes[21]
+	mi := &file_sreportal_v1_status_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1655,7 +1716,7 @@ func (x *DeleteMaintenanceResponse) String() string {
 func (*DeleteMaintenanceResponse) ProtoMessage() {}
 
 func (x *DeleteMaintenanceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_status_proto_msgTypes[21]
+	mi := &file_sreportal_v1_status_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1668,7 +1729,7 @@ func (x *DeleteMaintenanceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteMaintenanceResponse.ProtoReflect.Descriptor instead.
 func (*DeleteMaintenanceResponse) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{21}
+	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{22}
 }
 
 // CreateIncidentRequest creates a new Incident CR
@@ -1690,7 +1751,7 @@ type CreateIncidentRequest struct {
 
 func (x *CreateIncidentRequest) Reset() {
 	*x = CreateIncidentRequest{}
-	mi := &file_sreportal_v1_status_proto_msgTypes[22]
+	mi := &file_sreportal_v1_status_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1702,7 +1763,7 @@ func (x *CreateIncidentRequest) String() string {
 func (*CreateIncidentRequest) ProtoMessage() {}
 
 func (x *CreateIncidentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_status_proto_msgTypes[22]
+	mi := &file_sreportal_v1_status_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1715,7 +1776,7 @@ func (x *CreateIncidentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateIncidentRequest.ProtoReflect.Descriptor instead.
 func (*CreateIncidentRequest) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{22}
+	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *CreateIncidentRequest) GetTitle() string {
@@ -1763,7 +1824,7 @@ type CreateIncidentResponse struct {
 
 func (x *CreateIncidentResponse) Reset() {
 	*x = CreateIncidentResponse{}
-	mi := &file_sreportal_v1_status_proto_msgTypes[23]
+	mi := &file_sreportal_v1_status_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1775,7 +1836,7 @@ func (x *CreateIncidentResponse) String() string {
 func (*CreateIncidentResponse) ProtoMessage() {}
 
 func (x *CreateIncidentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_status_proto_msgTypes[23]
+	mi := &file_sreportal_v1_status_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1788,7 +1849,7 @@ func (x *CreateIncidentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateIncidentResponse.ProtoReflect.Descriptor instead.
 func (*CreateIncidentResponse) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{23}
+	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *CreateIncidentResponse) GetName() string {
@@ -1817,7 +1878,7 @@ type UpdateIncidentRequest struct {
 
 func (x *UpdateIncidentRequest) Reset() {
 	*x = UpdateIncidentRequest{}
-	mi := &file_sreportal_v1_status_proto_msgTypes[24]
+	mi := &file_sreportal_v1_status_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1829,7 +1890,7 @@ func (x *UpdateIncidentRequest) String() string {
 func (*UpdateIncidentRequest) ProtoMessage() {}
 
 func (x *UpdateIncidentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_status_proto_msgTypes[24]
+	mi := &file_sreportal_v1_status_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1842,7 +1903,7 @@ func (x *UpdateIncidentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateIncidentRequest.ProtoReflect.Descriptor instead.
 func (*UpdateIncidentRequest) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{24}
+	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *UpdateIncidentRequest) GetName() string {
@@ -1890,7 +1951,7 @@ type UpdateIncidentResponse struct {
 
 func (x *UpdateIncidentResponse) Reset() {
 	*x = UpdateIncidentResponse{}
-	mi := &file_sreportal_v1_status_proto_msgTypes[25]
+	mi := &file_sreportal_v1_status_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1902,7 +1963,7 @@ func (x *UpdateIncidentResponse) String() string {
 func (*UpdateIncidentResponse) ProtoMessage() {}
 
 func (x *UpdateIncidentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_status_proto_msgTypes[25]
+	mi := &file_sreportal_v1_status_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1915,7 +1976,7 @@ func (x *UpdateIncidentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateIncidentResponse.ProtoReflect.Descriptor instead.
 func (*UpdateIncidentResponse) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{25}
+	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *UpdateIncidentResponse) GetName() string {
@@ -1935,7 +1996,7 @@ type DeleteIncidentRequest struct {
 
 func (x *DeleteIncidentRequest) Reset() {
 	*x = DeleteIncidentRequest{}
-	mi := &file_sreportal_v1_status_proto_msgTypes[26]
+	mi := &file_sreportal_v1_status_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1947,7 +2008,7 @@ func (x *DeleteIncidentRequest) String() string {
 func (*DeleteIncidentRequest) ProtoMessage() {}
 
 func (x *DeleteIncidentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_status_proto_msgTypes[26]
+	mi := &file_sreportal_v1_status_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1960,7 +2021,7 @@ func (x *DeleteIncidentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteIncidentRequest.ProtoReflect.Descriptor instead.
 func (*DeleteIncidentRequest) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{26}
+	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *DeleteIncidentRequest) GetName() string {
@@ -1979,7 +2040,7 @@ type DeleteIncidentResponse struct {
 
 func (x *DeleteIncidentResponse) Reset() {
 	*x = DeleteIncidentResponse{}
-	mi := &file_sreportal_v1_status_proto_msgTypes[27]
+	mi := &file_sreportal_v1_status_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1991,7 +2052,7 @@ func (x *DeleteIncidentResponse) String() string {
 func (*DeleteIncidentResponse) ProtoMessage() {}
 
 func (x *DeleteIncidentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sreportal_v1_status_proto_msgTypes[27]
+	mi := &file_sreportal_v1_status_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2004,14 +2065,17 @@ func (x *DeleteIncidentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteIncidentResponse.ProtoReflect.Descriptor instead.
 func (*DeleteIncidentResponse) Descriptor() ([]byte, []int) {
-	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{27}
+	return file_sreportal_v1_status_proto_rawDescGZIP(), []int{28}
 }
 
 var File_sreportal_v1_status_proto protoreflect.FileDescriptor
 
 const file_sreportal_v1_status_proto_rawDesc = "" +
 	"\n" +
-	"\x19sreportal/v1/status.proto\x12\fsreportal.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xba\x03\n" +
+	"\x19sreportal/v1/status.proto\x12\fsreportal.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"l\n" +
+	"\x14DailyComponentStatus\x12\x12\n" +
+	"\x04date\x18\x01 \x01(\tR\x04date\x12@\n" +
+	"\fworst_status\x18\x02 \x01(\x0e2\x1d.sreportal.v1.ComponentStatusR\vworstStatus\"\x8c\x04\n" +
 	"\x11ComponentResource\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12!\n" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12 \n" +
@@ -2024,7 +2088,8 @@ const file_sreportal_v1_status_proto_rawDesc = "" +
 	"\x0fcomputed_status\x18\b \x01(\x0e2\x1d.sreportal.v1.ComponentStatusR\x0ecomputedStatus\x12)\n" +
 	"\x10active_incidents\x18\t \x01(\x05R\x0factiveIncidents\x12H\n" +
 	"\x12last_status_change\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampR\x10lastStatusChange\"\x85\x03\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\x10lastStatusChange\x12P\n" +
+	"\x12daily_worst_status\x18\v \x03(\v2\".sreportal.v1.DailyComponentStatusR\x10dailyWorstStatus\"\x85\x03\n" +
 	"\x13MaintenanceResource\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12 \n" +
@@ -2217,100 +2282,103 @@ func file_sreportal_v1_status_proto_rawDescGZIP() []byte {
 }
 
 var file_sreportal_v1_status_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_sreportal_v1_status_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
+var file_sreportal_v1_status_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
 var file_sreportal_v1_status_proto_goTypes = []any{
 	(ComponentStatus)(0),              // 0: sreportal.v1.ComponentStatus
 	(MaintenancePhase)(0),             // 1: sreportal.v1.MaintenancePhase
 	(IncidentPhase)(0),                // 2: sreportal.v1.IncidentPhase
 	(IncidentSeverity)(0),             // 3: sreportal.v1.IncidentSeverity
-	(*ComponentResource)(nil),         // 4: sreportal.v1.ComponentResource
-	(*MaintenanceResource)(nil),       // 5: sreportal.v1.MaintenanceResource
-	(*IncidentResource)(nil),          // 6: sreportal.v1.IncidentResource
-	(*IncidentUpdate)(nil),            // 7: sreportal.v1.IncidentUpdate
-	(*ListComponentsRequest)(nil),     // 8: sreportal.v1.ListComponentsRequest
-	(*ListComponentsResponse)(nil),    // 9: sreportal.v1.ListComponentsResponse
-	(*ListMaintenancesRequest)(nil),   // 10: sreportal.v1.ListMaintenancesRequest
-	(*ListMaintenancesResponse)(nil),  // 11: sreportal.v1.ListMaintenancesResponse
-	(*ListIncidentsRequest)(nil),      // 12: sreportal.v1.ListIncidentsRequest
-	(*ListIncidentsResponse)(nil),     // 13: sreportal.v1.ListIncidentsResponse
-	(*CreateComponentRequest)(nil),    // 14: sreportal.v1.CreateComponentRequest
-	(*CreateComponentResponse)(nil),   // 15: sreportal.v1.CreateComponentResponse
-	(*UpdateComponentRequest)(nil),    // 16: sreportal.v1.UpdateComponentRequest
-	(*UpdateComponentResponse)(nil),   // 17: sreportal.v1.UpdateComponentResponse
-	(*DeleteComponentRequest)(nil),    // 18: sreportal.v1.DeleteComponentRequest
-	(*DeleteComponentResponse)(nil),   // 19: sreportal.v1.DeleteComponentResponse
-	(*CreateMaintenanceRequest)(nil),  // 20: sreportal.v1.CreateMaintenanceRequest
-	(*CreateMaintenanceResponse)(nil), // 21: sreportal.v1.CreateMaintenanceResponse
-	(*UpdateMaintenanceRequest)(nil),  // 22: sreportal.v1.UpdateMaintenanceRequest
-	(*UpdateMaintenanceResponse)(nil), // 23: sreportal.v1.UpdateMaintenanceResponse
-	(*DeleteMaintenanceRequest)(nil),  // 24: sreportal.v1.DeleteMaintenanceRequest
-	(*DeleteMaintenanceResponse)(nil), // 25: sreportal.v1.DeleteMaintenanceResponse
-	(*CreateIncidentRequest)(nil),     // 26: sreportal.v1.CreateIncidentRequest
-	(*CreateIncidentResponse)(nil),    // 27: sreportal.v1.CreateIncidentResponse
-	(*UpdateIncidentRequest)(nil),     // 28: sreportal.v1.UpdateIncidentRequest
-	(*UpdateIncidentResponse)(nil),    // 29: sreportal.v1.UpdateIncidentResponse
-	(*DeleteIncidentRequest)(nil),     // 30: sreportal.v1.DeleteIncidentRequest
-	(*DeleteIncidentResponse)(nil),    // 31: sreportal.v1.DeleteIncidentResponse
-	(*timestamppb.Timestamp)(nil),     // 32: google.protobuf.Timestamp
+	(*DailyComponentStatus)(nil),      // 4: sreportal.v1.DailyComponentStatus
+	(*ComponentResource)(nil),         // 5: sreportal.v1.ComponentResource
+	(*MaintenanceResource)(nil),       // 6: sreportal.v1.MaintenanceResource
+	(*IncidentResource)(nil),          // 7: sreportal.v1.IncidentResource
+	(*IncidentUpdate)(nil),            // 8: sreportal.v1.IncidentUpdate
+	(*ListComponentsRequest)(nil),     // 9: sreportal.v1.ListComponentsRequest
+	(*ListComponentsResponse)(nil),    // 10: sreportal.v1.ListComponentsResponse
+	(*ListMaintenancesRequest)(nil),   // 11: sreportal.v1.ListMaintenancesRequest
+	(*ListMaintenancesResponse)(nil),  // 12: sreportal.v1.ListMaintenancesResponse
+	(*ListIncidentsRequest)(nil),      // 13: sreportal.v1.ListIncidentsRequest
+	(*ListIncidentsResponse)(nil),     // 14: sreportal.v1.ListIncidentsResponse
+	(*CreateComponentRequest)(nil),    // 15: sreportal.v1.CreateComponentRequest
+	(*CreateComponentResponse)(nil),   // 16: sreportal.v1.CreateComponentResponse
+	(*UpdateComponentRequest)(nil),    // 17: sreportal.v1.UpdateComponentRequest
+	(*UpdateComponentResponse)(nil),   // 18: sreportal.v1.UpdateComponentResponse
+	(*DeleteComponentRequest)(nil),    // 19: sreportal.v1.DeleteComponentRequest
+	(*DeleteComponentResponse)(nil),   // 20: sreportal.v1.DeleteComponentResponse
+	(*CreateMaintenanceRequest)(nil),  // 21: sreportal.v1.CreateMaintenanceRequest
+	(*CreateMaintenanceResponse)(nil), // 22: sreportal.v1.CreateMaintenanceResponse
+	(*UpdateMaintenanceRequest)(nil),  // 23: sreportal.v1.UpdateMaintenanceRequest
+	(*UpdateMaintenanceResponse)(nil), // 24: sreportal.v1.UpdateMaintenanceResponse
+	(*DeleteMaintenanceRequest)(nil),  // 25: sreportal.v1.DeleteMaintenanceRequest
+	(*DeleteMaintenanceResponse)(nil), // 26: sreportal.v1.DeleteMaintenanceResponse
+	(*CreateIncidentRequest)(nil),     // 27: sreportal.v1.CreateIncidentRequest
+	(*CreateIncidentResponse)(nil),    // 28: sreportal.v1.CreateIncidentResponse
+	(*UpdateIncidentRequest)(nil),     // 29: sreportal.v1.UpdateIncidentRequest
+	(*UpdateIncidentResponse)(nil),    // 30: sreportal.v1.UpdateIncidentResponse
+	(*DeleteIncidentRequest)(nil),     // 31: sreportal.v1.DeleteIncidentRequest
+	(*DeleteIncidentResponse)(nil),    // 32: sreportal.v1.DeleteIncidentResponse
+	(*timestamppb.Timestamp)(nil),     // 33: google.protobuf.Timestamp
 }
 var file_sreportal_v1_status_proto_depIdxs = []int32{
-	0,  // 0: sreportal.v1.ComponentResource.declared_status:type_name -> sreportal.v1.ComponentStatus
-	0,  // 1: sreportal.v1.ComponentResource.computed_status:type_name -> sreportal.v1.ComponentStatus
-	32, // 2: sreportal.v1.ComponentResource.last_status_change:type_name -> google.protobuf.Timestamp
-	32, // 3: sreportal.v1.MaintenanceResource.scheduled_start:type_name -> google.protobuf.Timestamp
-	32, // 4: sreportal.v1.MaintenanceResource.scheduled_end:type_name -> google.protobuf.Timestamp
-	1,  // 5: sreportal.v1.MaintenanceResource.phase:type_name -> sreportal.v1.MaintenancePhase
-	3,  // 6: sreportal.v1.IncidentResource.severity:type_name -> sreportal.v1.IncidentSeverity
-	2,  // 7: sreportal.v1.IncidentResource.current_phase:type_name -> sreportal.v1.IncidentPhase
-	7,  // 8: sreportal.v1.IncidentResource.updates:type_name -> sreportal.v1.IncidentUpdate
-	32, // 9: sreportal.v1.IncidentResource.started_at:type_name -> google.protobuf.Timestamp
-	32, // 10: sreportal.v1.IncidentResource.resolved_at:type_name -> google.protobuf.Timestamp
-	32, // 11: sreportal.v1.IncidentUpdate.timestamp:type_name -> google.protobuf.Timestamp
-	2,  // 12: sreportal.v1.IncidentUpdate.phase:type_name -> sreportal.v1.IncidentPhase
-	4,  // 13: sreportal.v1.ListComponentsResponse.components:type_name -> sreportal.v1.ComponentResource
-	1,  // 14: sreportal.v1.ListMaintenancesRequest.phase:type_name -> sreportal.v1.MaintenancePhase
-	5,  // 15: sreportal.v1.ListMaintenancesResponse.maintenances:type_name -> sreportal.v1.MaintenanceResource
-	2,  // 16: sreportal.v1.ListIncidentsRequest.phase:type_name -> sreportal.v1.IncidentPhase
-	6,  // 17: sreportal.v1.ListIncidentsResponse.incidents:type_name -> sreportal.v1.IncidentResource
-	0,  // 18: sreportal.v1.CreateComponentRequest.status:type_name -> sreportal.v1.ComponentStatus
-	0,  // 19: sreportal.v1.UpdateComponentRequest.status:type_name -> sreportal.v1.ComponentStatus
-	32, // 20: sreportal.v1.CreateMaintenanceRequest.scheduled_start:type_name -> google.protobuf.Timestamp
-	32, // 21: sreportal.v1.CreateMaintenanceRequest.scheduled_end:type_name -> google.protobuf.Timestamp
-	32, // 22: sreportal.v1.UpdateMaintenanceRequest.scheduled_start:type_name -> google.protobuf.Timestamp
-	32, // 23: sreportal.v1.UpdateMaintenanceRequest.scheduled_end:type_name -> google.protobuf.Timestamp
-	3,  // 24: sreportal.v1.CreateIncidentRequest.severity:type_name -> sreportal.v1.IncidentSeverity
-	7,  // 25: sreportal.v1.CreateIncidentRequest.initial_update:type_name -> sreportal.v1.IncidentUpdate
-	3,  // 26: sreportal.v1.UpdateIncidentRequest.severity:type_name -> sreportal.v1.IncidentSeverity
-	7,  // 27: sreportal.v1.UpdateIncidentRequest.update:type_name -> sreportal.v1.IncidentUpdate
-	8,  // 28: sreportal.v1.StatusService.ListComponents:input_type -> sreportal.v1.ListComponentsRequest
-	10, // 29: sreportal.v1.StatusService.ListMaintenances:input_type -> sreportal.v1.ListMaintenancesRequest
-	12, // 30: sreportal.v1.StatusService.ListIncidents:input_type -> sreportal.v1.ListIncidentsRequest
-	14, // 31: sreportal.v1.StatusService.CreateComponent:input_type -> sreportal.v1.CreateComponentRequest
-	16, // 32: sreportal.v1.StatusService.UpdateComponent:input_type -> sreportal.v1.UpdateComponentRequest
-	18, // 33: sreportal.v1.StatusService.DeleteComponent:input_type -> sreportal.v1.DeleteComponentRequest
-	20, // 34: sreportal.v1.StatusService.CreateMaintenance:input_type -> sreportal.v1.CreateMaintenanceRequest
-	22, // 35: sreportal.v1.StatusService.UpdateMaintenance:input_type -> sreportal.v1.UpdateMaintenanceRequest
-	24, // 36: sreportal.v1.StatusService.DeleteMaintenance:input_type -> sreportal.v1.DeleteMaintenanceRequest
-	26, // 37: sreportal.v1.StatusService.CreateIncident:input_type -> sreportal.v1.CreateIncidentRequest
-	28, // 38: sreportal.v1.StatusService.UpdateIncident:input_type -> sreportal.v1.UpdateIncidentRequest
-	30, // 39: sreportal.v1.StatusService.DeleteIncident:input_type -> sreportal.v1.DeleteIncidentRequest
-	9,  // 40: sreportal.v1.StatusService.ListComponents:output_type -> sreportal.v1.ListComponentsResponse
-	11, // 41: sreportal.v1.StatusService.ListMaintenances:output_type -> sreportal.v1.ListMaintenancesResponse
-	13, // 42: sreportal.v1.StatusService.ListIncidents:output_type -> sreportal.v1.ListIncidentsResponse
-	15, // 43: sreportal.v1.StatusService.CreateComponent:output_type -> sreportal.v1.CreateComponentResponse
-	17, // 44: sreportal.v1.StatusService.UpdateComponent:output_type -> sreportal.v1.UpdateComponentResponse
-	19, // 45: sreportal.v1.StatusService.DeleteComponent:output_type -> sreportal.v1.DeleteComponentResponse
-	21, // 46: sreportal.v1.StatusService.CreateMaintenance:output_type -> sreportal.v1.CreateMaintenanceResponse
-	23, // 47: sreportal.v1.StatusService.UpdateMaintenance:output_type -> sreportal.v1.UpdateMaintenanceResponse
-	25, // 48: sreportal.v1.StatusService.DeleteMaintenance:output_type -> sreportal.v1.DeleteMaintenanceResponse
-	27, // 49: sreportal.v1.StatusService.CreateIncident:output_type -> sreportal.v1.CreateIncidentResponse
-	29, // 50: sreportal.v1.StatusService.UpdateIncident:output_type -> sreportal.v1.UpdateIncidentResponse
-	31, // 51: sreportal.v1.StatusService.DeleteIncident:output_type -> sreportal.v1.DeleteIncidentResponse
-	40, // [40:52] is the sub-list for method output_type
-	28, // [28:40] is the sub-list for method input_type
-	28, // [28:28] is the sub-list for extension type_name
-	28, // [28:28] is the sub-list for extension extendee
-	0,  // [0:28] is the sub-list for field type_name
+	0,  // 0: sreportal.v1.DailyComponentStatus.worst_status:type_name -> sreportal.v1.ComponentStatus
+	0,  // 1: sreportal.v1.ComponentResource.declared_status:type_name -> sreportal.v1.ComponentStatus
+	0,  // 2: sreportal.v1.ComponentResource.computed_status:type_name -> sreportal.v1.ComponentStatus
+	33, // 3: sreportal.v1.ComponentResource.last_status_change:type_name -> google.protobuf.Timestamp
+	4,  // 4: sreportal.v1.ComponentResource.daily_worst_status:type_name -> sreportal.v1.DailyComponentStatus
+	33, // 5: sreportal.v1.MaintenanceResource.scheduled_start:type_name -> google.protobuf.Timestamp
+	33, // 6: sreportal.v1.MaintenanceResource.scheduled_end:type_name -> google.protobuf.Timestamp
+	1,  // 7: sreportal.v1.MaintenanceResource.phase:type_name -> sreportal.v1.MaintenancePhase
+	3,  // 8: sreportal.v1.IncidentResource.severity:type_name -> sreportal.v1.IncidentSeverity
+	2,  // 9: sreportal.v1.IncidentResource.current_phase:type_name -> sreportal.v1.IncidentPhase
+	8,  // 10: sreportal.v1.IncidentResource.updates:type_name -> sreportal.v1.IncidentUpdate
+	33, // 11: sreportal.v1.IncidentResource.started_at:type_name -> google.protobuf.Timestamp
+	33, // 12: sreportal.v1.IncidentResource.resolved_at:type_name -> google.protobuf.Timestamp
+	33, // 13: sreportal.v1.IncidentUpdate.timestamp:type_name -> google.protobuf.Timestamp
+	2,  // 14: sreportal.v1.IncidentUpdate.phase:type_name -> sreportal.v1.IncidentPhase
+	5,  // 15: sreportal.v1.ListComponentsResponse.components:type_name -> sreportal.v1.ComponentResource
+	1,  // 16: sreportal.v1.ListMaintenancesRequest.phase:type_name -> sreportal.v1.MaintenancePhase
+	6,  // 17: sreportal.v1.ListMaintenancesResponse.maintenances:type_name -> sreportal.v1.MaintenanceResource
+	2,  // 18: sreportal.v1.ListIncidentsRequest.phase:type_name -> sreportal.v1.IncidentPhase
+	7,  // 19: sreportal.v1.ListIncidentsResponse.incidents:type_name -> sreportal.v1.IncidentResource
+	0,  // 20: sreportal.v1.CreateComponentRequest.status:type_name -> sreportal.v1.ComponentStatus
+	0,  // 21: sreportal.v1.UpdateComponentRequest.status:type_name -> sreportal.v1.ComponentStatus
+	33, // 22: sreportal.v1.CreateMaintenanceRequest.scheduled_start:type_name -> google.protobuf.Timestamp
+	33, // 23: sreportal.v1.CreateMaintenanceRequest.scheduled_end:type_name -> google.protobuf.Timestamp
+	33, // 24: sreportal.v1.UpdateMaintenanceRequest.scheduled_start:type_name -> google.protobuf.Timestamp
+	33, // 25: sreportal.v1.UpdateMaintenanceRequest.scheduled_end:type_name -> google.protobuf.Timestamp
+	3,  // 26: sreportal.v1.CreateIncidentRequest.severity:type_name -> sreportal.v1.IncidentSeverity
+	8,  // 27: sreportal.v1.CreateIncidentRequest.initial_update:type_name -> sreportal.v1.IncidentUpdate
+	3,  // 28: sreportal.v1.UpdateIncidentRequest.severity:type_name -> sreportal.v1.IncidentSeverity
+	8,  // 29: sreportal.v1.UpdateIncidentRequest.update:type_name -> sreportal.v1.IncidentUpdate
+	9,  // 30: sreportal.v1.StatusService.ListComponents:input_type -> sreportal.v1.ListComponentsRequest
+	11, // 31: sreportal.v1.StatusService.ListMaintenances:input_type -> sreportal.v1.ListMaintenancesRequest
+	13, // 32: sreportal.v1.StatusService.ListIncidents:input_type -> sreportal.v1.ListIncidentsRequest
+	15, // 33: sreportal.v1.StatusService.CreateComponent:input_type -> sreportal.v1.CreateComponentRequest
+	17, // 34: sreportal.v1.StatusService.UpdateComponent:input_type -> sreportal.v1.UpdateComponentRequest
+	19, // 35: sreportal.v1.StatusService.DeleteComponent:input_type -> sreportal.v1.DeleteComponentRequest
+	21, // 36: sreportal.v1.StatusService.CreateMaintenance:input_type -> sreportal.v1.CreateMaintenanceRequest
+	23, // 37: sreportal.v1.StatusService.UpdateMaintenance:input_type -> sreportal.v1.UpdateMaintenanceRequest
+	25, // 38: sreportal.v1.StatusService.DeleteMaintenance:input_type -> sreportal.v1.DeleteMaintenanceRequest
+	27, // 39: sreportal.v1.StatusService.CreateIncident:input_type -> sreportal.v1.CreateIncidentRequest
+	29, // 40: sreportal.v1.StatusService.UpdateIncident:input_type -> sreportal.v1.UpdateIncidentRequest
+	31, // 41: sreportal.v1.StatusService.DeleteIncident:input_type -> sreportal.v1.DeleteIncidentRequest
+	10, // 42: sreportal.v1.StatusService.ListComponents:output_type -> sreportal.v1.ListComponentsResponse
+	12, // 43: sreportal.v1.StatusService.ListMaintenances:output_type -> sreportal.v1.ListMaintenancesResponse
+	14, // 44: sreportal.v1.StatusService.ListIncidents:output_type -> sreportal.v1.ListIncidentsResponse
+	16, // 45: sreportal.v1.StatusService.CreateComponent:output_type -> sreportal.v1.CreateComponentResponse
+	18, // 46: sreportal.v1.StatusService.UpdateComponent:output_type -> sreportal.v1.UpdateComponentResponse
+	20, // 47: sreportal.v1.StatusService.DeleteComponent:output_type -> sreportal.v1.DeleteComponentResponse
+	22, // 48: sreportal.v1.StatusService.CreateMaintenance:output_type -> sreportal.v1.CreateMaintenanceResponse
+	24, // 49: sreportal.v1.StatusService.UpdateMaintenance:output_type -> sreportal.v1.UpdateMaintenanceResponse
+	26, // 50: sreportal.v1.StatusService.DeleteMaintenance:output_type -> sreportal.v1.DeleteMaintenanceResponse
+	28, // 51: sreportal.v1.StatusService.CreateIncident:output_type -> sreportal.v1.CreateIncidentResponse
+	30, // 52: sreportal.v1.StatusService.UpdateIncident:output_type -> sreportal.v1.UpdateIncidentResponse
+	32, // 53: sreportal.v1.StatusService.DeleteIncident:output_type -> sreportal.v1.DeleteIncidentResponse
+	42, // [42:54] is the sub-list for method output_type
+	30, // [30:42] is the sub-list for method input_type
+	30, // [30:30] is the sub-list for extension type_name
+	30, // [30:30] is the sub-list for extension extendee
+	0,  // [0:30] is the sub-list for field type_name
 }
 
 func init() { file_sreportal_v1_status_proto_init() }
@@ -2318,16 +2386,16 @@ func file_sreportal_v1_status_proto_init() {
 	if File_sreportal_v1_status_proto != nil {
 		return
 	}
-	file_sreportal_v1_status_proto_msgTypes[12].OneofWrappers = []any{}
-	file_sreportal_v1_status_proto_msgTypes[18].OneofWrappers = []any{}
-	file_sreportal_v1_status_proto_msgTypes[24].OneofWrappers = []any{}
+	file_sreportal_v1_status_proto_msgTypes[13].OneofWrappers = []any{}
+	file_sreportal_v1_status_proto_msgTypes[19].OneofWrappers = []any{}
+	file_sreportal_v1_status_proto_msgTypes[25].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_sreportal_v1_status_proto_rawDesc), len(file_sreportal_v1_status_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   28,
+			NumMessages:   29,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

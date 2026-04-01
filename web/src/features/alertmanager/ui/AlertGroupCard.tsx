@@ -16,8 +16,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { TruncatedCopyTooltipText } from "@/components/TruncatedCopyTooltipText";
 import { cn } from "@/lib/utils";
-import { EmojiText } from "@/features/emoji/ui/EmojiText";
 import type { AlertGroup } from "../domain/alertmanager.types";
 import {
   formatAlertTime,
@@ -96,7 +96,15 @@ export function AlertGroupCard({ group }: AlertGroupCardProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {group.alerts.map((alert) => (
+              {group.alerts.map((alert) => {
+                const summaryText = (
+                  alert.annotations["summary"] ??
+                  alert.annotations["description"] ??
+                  ""
+                ).trim();
+                const receiversText = alert.receivers.join(", ").trim();
+
+                return (
                 <TableRow key={alert.fingerprint}>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
@@ -121,35 +129,37 @@ export function AlertGroupCard({ group }: AlertGroupCardProps) {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell
-                    className="text-muted-foreground text-xs hidden sm:table-cell max-w-[10rem] truncate"
-                    title={
-                      alert.receivers.length > 0
-                        ? alert.receivers.join(", ")
-                        : undefined
-                    }
-                  >
-                    {alert.receivers.length > 0
-                      ? alert.receivers.join(", ")
-                      : "\u2014"}
+                  <TableCell className="text-muted-foreground text-xs hidden sm:table-cell max-w-[10rem]">
+                    {receiversText ? (
+                      <TruncatedCopyTooltipText
+                        text={receiversText}
+                        enableCopy={false}
+                        triggerClassName="max-w-[10rem]"
+                      />
+                    ) : (
+                      "\u2014"
+                    )}
                   </TableCell>
                   <TableCell className="text-muted-foreground text-xs">
                     {formatAlertTime(alert.startsAt)}
                   </TableCell>
-                  <TableCell className="text-muted-foreground text-xs hidden sm:table-cell max-w-[16rem] truncate">
-                    <EmojiText
-                      text={
-                        alert.annotations["summary"] ??
-                        alert.annotations["description"] ??
-                        "\u2014"
-                      }
-                    />
+                  <TableCell className="text-muted-foreground text-xs hidden sm:table-cell max-w-[16rem]">
+                    {summaryText ? (
+                      <TruncatedCopyTooltipText
+                        text={summaryText}
+                        copyAriaLabel="Click to copy summary"
+                        triggerClassName="max-w-[16rem]"
+                      />
+                    ) : (
+                      "\u2014"
+                    )}
                   </TableCell>
                   <TableCell className="text-muted-foreground text-xs hidden md:table-cell max-w-[12rem] truncate">
                     {alert.labels["instance"] ?? "\u2014"}
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         </div>

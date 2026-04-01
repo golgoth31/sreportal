@@ -12,7 +12,31 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file sreportal/v1/status.proto.
  */
 export const file_sreportal_v1_status: GenFile = /*@__PURE__*/
-  fileDesc("ChlzcmVwb3J0YWwvdjEvc3RhdHVzLnByb3RvEgxzcmVwb3J0YWwudjEivwIKEUNvbXBvbmVudFJlc291cmNlEgwKBG5hbWUYASABKAkSFAoMZGlzcGxheV9uYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEg0KBWdyb3VwGAQgASgJEgwKBGxpbmsYBSABKAkSEgoKcG9ydGFsX3JlZhgGIAEoCRI2Cg9kZWNsYXJlZF9zdGF0dXMYByABKA4yHS5zcmVwb3J0YWwudjEuQ29tcG9uZW50U3RhdHVzEjYKD2NvbXB1dGVkX3N0YXR1cxgIIAEoDjIdLnNyZXBvcnRhbC52MS5Db21wb25lbnRTdGF0dXMSGAoQYWN0aXZlX2luY2lkZW50cxgJIAEoBRI2ChJsYXN0X3N0YXR1c19jaGFuZ2UYCiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIp8CChNNYWludGVuYW5jZVJlc291cmNlEgwKBG5hbWUYASABKAkSDQoFdGl0bGUYAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkSEgoKcG9ydGFsX3JlZhgEIAEoCRISCgpjb21wb25lbnRzGAUgAygJEjMKD3NjaGVkdWxlZF9zdGFydBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMQoNc2NoZWR1bGVkX2VuZBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFwoPYWZmZWN0ZWRfc3RhdHVzGAggASgJEi0KBXBoYXNlGAkgASgOMh4uc3JlcG9ydGFsLnYxLk1haW50ZW5hbmNlUGhhc2Ui5wIKEEluY2lkZW50UmVzb3VyY2USDAoEbmFtZRgBIAEoCRINCgV0aXRsZRgCIAEoCRISCgpwb3J0YWxfcmVmGAMgASgJEhIKCmNvbXBvbmVudHMYBCADKAkSMAoIc2V2ZXJpdHkYBSABKA4yHi5zcmVwb3J0YWwudjEuSW5jaWRlbnRTZXZlcml0eRIyCg1jdXJyZW50X3BoYXNlGAYgASgOMhsuc3JlcG9ydGFsLnYxLkluY2lkZW50UGhhc2USLQoHdXBkYXRlcxgHIAMoCzIcLnNyZXBvcnRhbC52MS5JbmNpZGVudFVwZGF0ZRIuCgpzdGFydGVkX2F0GAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIvCgtyZXNvbHZlZF9hdBgJIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGAoQZHVyYXRpb25fbWludXRlcxgKIAEoBSJ8Cg5JbmNpZGVudFVwZGF0ZRItCgl0aW1lc3RhbXAYASABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEioKBXBoYXNlGAIgASgOMhsuc3JlcG9ydGFsLnYxLkluY2lkZW50UGhhc2USDwoHbWVzc2FnZRgDIAEoCSI6ChVMaXN0Q29tcG9uZW50c1JlcXVlc3QSEgoKcG9ydGFsX3JlZhgBIAEoCRINCgVncm91cBgCIAEoCSJNChZMaXN0Q29tcG9uZW50c1Jlc3BvbnNlEjMKCmNvbXBvbmVudHMYASADKAsyHy5zcmVwb3J0YWwudjEuQ29tcG9uZW50UmVzb3VyY2UiXAoXTGlzdE1haW50ZW5hbmNlc1JlcXVlc3QSEgoKcG9ydGFsX3JlZhgBIAEoCRItCgVwaGFzZRgCIAEoDjIeLnNyZXBvcnRhbC52MS5NYWludGVuYW5jZVBoYXNlIlMKGExpc3RNYWludGVuYW5jZXNSZXNwb25zZRI3CgxtYWludGVuYW5jZXMYASADKAsyIS5zcmVwb3J0YWwudjEuTWFpbnRlbmFuY2VSZXNvdXJjZSJWChRMaXN0SW5jaWRlbnRzUmVxdWVzdBISCgpwb3J0YWxfcmVmGAEgASgJEioKBXBoYXNlGAIgASgOMhsuc3JlcG9ydGFsLnYxLkluY2lkZW50UGhhc2UiSgoVTGlzdEluY2lkZW50c1Jlc3BvbnNlEjEKCWluY2lkZW50cxgBIAMoCzIeLnNyZXBvcnRhbC52MS5JbmNpZGVudFJlc291cmNlIqkBChZDcmVhdGVDb21wb25lbnRSZXF1ZXN0EhQKDGRpc3BsYXlfbmFtZRgCIAEoCRITCgtkZXNjcmlwdGlvbhgDIAEoCRINCgVncm91cBgEIAEoCRIMCgRsaW5rGAUgASgJEhIKCnBvcnRhbF9yZWYYBiABKAkSLQoGc3RhdHVzGAcgASgOMh0uc3JlcG9ydGFsLnYxLkNvbXBvbmVudFN0YXR1c0oECAEQAiInChdDcmVhdGVDb21wb25lbnRSZXNwb25zZRIMCgRuYW1lGAEgASgJIvUBChZVcGRhdGVDb21wb25lbnRSZXF1ZXN0EgwKBG5hbWUYASABKAkSGQoMZGlzcGxheV9uYW1lGAIgASgJSACIAQESGAoLZGVzY3JpcHRpb24YAyABKAlIAYgBARISCgVncm91cBgEIAEoCUgCiAEBEhEKBGxpbmsYBSABKAlIA4gBARIyCgZzdGF0dXMYBiABKA4yHS5zcmVwb3J0YWwudjEuQ29tcG9uZW50U3RhdHVzSASIAQFCDwoNX2Rpc3BsYXlfbmFtZUIOCgxfZGVzY3JpcHRpb25CCAoGX2dyb3VwQgcKBV9saW5rQgkKB19zdGF0dXMiJwoXVXBkYXRlQ29tcG9uZW50UmVzcG9uc2USDAoEbmFtZRgBIAEoCSImChZEZWxldGVDb21wb25lbnRSZXF1ZXN0EgwKBG5hbWUYASABKAkiGQoXRGVsZXRlQ29tcG9uZW50UmVzcG9uc2Ui7QEKGENyZWF0ZU1haW50ZW5hbmNlUmVxdWVzdBINCgV0aXRsZRgCIAEoCRITCgtkZXNjcmlwdGlvbhgDIAEoCRISCgpwb3J0YWxfcmVmGAQgASgJEhIKCmNvbXBvbmVudHMYBSADKAkSMwoPc2NoZWR1bGVkX3N0YXJ0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIxCg1zY2hlZHVsZWRfZW5kGAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIXCg9hZmZlY3RlZF9zdGF0dXMYCCABKAlKBAgBEAIiKQoZQ3JlYXRlTWFpbnRlbmFuY2VSZXNwb25zZRIMCgRuYW1lGAEgASgJIs4CChhVcGRhdGVNYWludGVuYW5jZVJlcXVlc3QSDAoEbmFtZRgBIAEoCRISCgV0aXRsZRgCIAEoCUgAiAEBEhgKC2Rlc2NyaXB0aW9uGAMgASgJSAGIAQESEgoKY29tcG9uZW50cxgEIAMoCRI4Cg9zY2hlZHVsZWRfc3RhcnQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSAKIAQESNgoNc2NoZWR1bGVkX2VuZBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBIA4gBARIcCg9hZmZlY3RlZF9zdGF0dXMYByABKAlIBIgBAUIICgZfdGl0bGVCDgoMX2Rlc2NyaXB0aW9uQhIKEF9zY2hlZHVsZWRfc3RhcnRCEAoOX3NjaGVkdWxlZF9lbmRCEgoQX2FmZmVjdGVkX3N0YXR1cyIpChlVcGRhdGVNYWludGVuYW5jZVJlc3BvbnNlEgwKBG5hbWUYASABKAkiKAoYRGVsZXRlTWFpbnRlbmFuY2VSZXF1ZXN0EgwKBG5hbWUYASABKAkiGwoZRGVsZXRlTWFpbnRlbmFuY2VSZXNwb25zZSK8AQoVQ3JlYXRlSW5jaWRlbnRSZXF1ZXN0Eg0KBXRpdGxlGAIgASgJEhIKCnBvcnRhbF9yZWYYAyABKAkSEgoKY29tcG9uZW50cxgEIAMoCRIwCghzZXZlcml0eRgFIAEoDjIeLnNyZXBvcnRhbC52MS5JbmNpZGVudFNldmVyaXR5EjQKDmluaXRpYWxfdXBkYXRlGAYgASgLMhwuc3JlcG9ydGFsLnYxLkluY2lkZW50VXBkYXRlSgQIARACIiYKFkNyZWF0ZUluY2lkZW50UmVzcG9uc2USDAoEbmFtZRgBIAEoCSLJAQoVVXBkYXRlSW5jaWRlbnRSZXF1ZXN0EgwKBG5hbWUYASABKAkSEgoFdGl0bGUYAiABKAlIAIgBARISCgpjb21wb25lbnRzGAMgAygJEjUKCHNldmVyaXR5GAQgASgOMh4uc3JlcG9ydGFsLnYxLkluY2lkZW50U2V2ZXJpdHlIAYgBARIsCgZ1cGRhdGUYBSABKAsyHC5zcmVwb3J0YWwudjEuSW5jaWRlbnRVcGRhdGVCCAoGX3RpdGxlQgsKCV9zZXZlcml0eSImChZVcGRhdGVJbmNpZGVudFJlc3BvbnNlEgwKBG5hbWUYASABKAkiJQoVRGVsZXRlSW5jaWRlbnRSZXF1ZXN0EgwKBG5hbWUYASABKAkiGAoWRGVsZXRlSW5jaWRlbnRSZXNwb25zZSr8AQoPQ29tcG9uZW50U3RhdHVzEiAKHENPTVBPTkVOVF9TVEFUVVNfVU5TUEVDSUZJRUQQABIgChxDT01QT05FTlRfU1RBVFVTX09QRVJBVElPTkFMEAESHQoZQ09NUE9ORU5UX1NUQVRVU19ERUdSQURFRBACEiMKH0NPTVBPTkVOVF9TVEFUVVNfUEFSVElBTF9PVVRBR0UQAxIhCh1DT01QT05FTlRfU1RBVFVTX01BSk9SX09VVEFHRRAEEhwKGENPTVBPTkVOVF9TVEFUVVNfVU5LTk9XThAFEiAKHENPTVBPTkVOVF9TVEFUVVNfTUFJTlRFTkFOQ0UQBiqZAQoQTWFpbnRlbmFuY2VQaGFzZRIhCh1NQUlOVEVOQU5DRV9QSEFTRV9VTlNQRUNJRklFRBAAEh4KGk1BSU5URU5BTkNFX1BIQVNFX1VQQ09NSU5HEAESIQodTUFJTlRFTkFOQ0VfUEhBU0VfSU5fUFJPR1JFU1MQAhIfChtNQUlOVEVOQU5DRV9QSEFTRV9DT01QTEVURUQQAyqsAQoNSW5jaWRlbnRQaGFzZRIeChpJTkNJREVOVF9QSEFTRV9VTlNQRUNJRklFRBAAEiAKHElOQ0lERU5UX1BIQVNFX0lOVkVTVElHQVRJTkcQARIdChlJTkNJREVOVF9QSEFTRV9JREVOVElGSUVEEAISHQoZSU5DSURFTlRfUEhBU0VfTU9OSVRPUklORxADEhsKF0lOQ0lERU5UX1BIQVNFX1JFU09MVkVEEAQqjwEKEEluY2lkZW50U2V2ZXJpdHkSIQodSU5DSURFTlRfU0VWRVJJVFlfVU5TUEVDSUZJRUQQABIeChpJTkNJREVOVF9TRVZFUklUWV9DUklUSUNBTBABEhsKF0lOQ0lERU5UX1NFVkVSSVRZX01BSk9SEAISGwoXSU5DSURFTlRfU0VWRVJJVFlfTUlOT1IQAzKSCQoNU3RhdHVzU2VydmljZRJbCg5MaXN0Q29tcG9uZW50cxIjLnNyZXBvcnRhbC52MS5MaXN0Q29tcG9uZW50c1JlcXVlc3QaJC5zcmVwb3J0YWwudjEuTGlzdENvbXBvbmVudHNSZXNwb25zZRJhChBMaXN0TWFpbnRlbmFuY2VzEiUuc3JlcG9ydGFsLnYxLkxpc3RNYWludGVuYW5jZXNSZXF1ZXN0GiYuc3JlcG9ydGFsLnYxLkxpc3RNYWludGVuYW5jZXNSZXNwb25zZRJYCg1MaXN0SW5jaWRlbnRzEiIuc3JlcG9ydGFsLnYxLkxpc3RJbmNpZGVudHNSZXF1ZXN0GiMuc3JlcG9ydGFsLnYxLkxpc3RJbmNpZGVudHNSZXNwb25zZRJeCg9DcmVhdGVDb21wb25lbnQSJC5zcmVwb3J0YWwudjEuQ3JlYXRlQ29tcG9uZW50UmVxdWVzdBolLnNyZXBvcnRhbC52MS5DcmVhdGVDb21wb25lbnRSZXNwb25zZRJeCg9VcGRhdGVDb21wb25lbnQSJC5zcmVwb3J0YWwudjEuVXBkYXRlQ29tcG9uZW50UmVxdWVzdBolLnNyZXBvcnRhbC52MS5VcGRhdGVDb21wb25lbnRSZXNwb25zZRJeCg9EZWxldGVDb21wb25lbnQSJC5zcmVwb3J0YWwudjEuRGVsZXRlQ29tcG9uZW50UmVxdWVzdBolLnNyZXBvcnRhbC52MS5EZWxldGVDb21wb25lbnRSZXNwb25zZRJkChFDcmVhdGVNYWludGVuYW5jZRImLnNyZXBvcnRhbC52MS5DcmVhdGVNYWludGVuYW5jZVJlcXVlc3QaJy5zcmVwb3J0YWwudjEuQ3JlYXRlTWFpbnRlbmFuY2VSZXNwb25zZRJkChFVcGRhdGVNYWludGVuYW5jZRImLnNyZXBvcnRhbC52MS5VcGRhdGVNYWludGVuYW5jZVJlcXVlc3QaJy5zcmVwb3J0YWwudjEuVXBkYXRlTWFpbnRlbmFuY2VSZXNwb25zZRJkChFEZWxldGVNYWludGVuYW5jZRImLnNyZXBvcnRhbC52MS5EZWxldGVNYWludGVuYW5jZVJlcXVlc3QaJy5zcmVwb3J0YWwudjEuRGVsZXRlTWFpbnRlbmFuY2VSZXNwb25zZRJbCg5DcmVhdGVJbmNpZGVudBIjLnNyZXBvcnRhbC52MS5DcmVhdGVJbmNpZGVudFJlcXVlc3QaJC5zcmVwb3J0YWwudjEuQ3JlYXRlSW5jaWRlbnRSZXNwb25zZRJbCg5VcGRhdGVJbmNpZGVudBIjLnNyZXBvcnRhbC52MS5VcGRhdGVJbmNpZGVudFJlcXVlc3QaJC5zcmVwb3J0YWwudjEuVXBkYXRlSW5jaWRlbnRSZXNwb25zZRJbCg5EZWxldGVJbmNpZGVudBIjLnNyZXBvcnRhbC52MS5EZWxldGVJbmNpZGVudFJlcXVlc3QaJC5zcmVwb3J0YWwudjEuRGVsZXRlSW5jaWRlbnRSZXNwb25zZUK7AQoQY29tLnNyZXBvcnRhbC52MUILU3RhdHVzUHJvdG9QAVpJZ2l0aHViLmNvbS9nb2xnb3RoMzEvc3JlcG9ydGFsL2ludGVybmFsL2dycGMvZ2VuL3NyZXBvcnRhbC92MTtzcmVwb3J0YWx2MaICA1NYWKoCDFNyZXBvcnRhbC5WMcoCDFNyZXBvcnRhbFxWMeICGFNyZXBvcnRhbFxWMVxHUEJNZXRhZGF0YeoCDVNyZXBvcnRhbDo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
+  fileDesc("ChlzcmVwb3J0YWwvdjEvc3RhdHVzLnByb3RvEgxzcmVwb3J0YWwudjEiWQoURGFpbHlDb21wb25lbnRTdGF0dXMSDAoEZGF0ZRgBIAEoCRIzCgx3b3JzdF9zdGF0dXMYAiABKA4yHS5zcmVwb3J0YWwudjEuQ29tcG9uZW50U3RhdHVzIv8CChFDb21wb25lbnRSZXNvdXJjZRIMCgRuYW1lGAEgASgJEhQKDGRpc3BsYXlfbmFtZRgCIAEoCRITCgtkZXNjcmlwdGlvbhgDIAEoCRINCgVncm91cBgEIAEoCRIMCgRsaW5rGAUgASgJEhIKCnBvcnRhbF9yZWYYBiABKAkSNgoPZGVjbGFyZWRfc3RhdHVzGAcgASgOMh0uc3JlcG9ydGFsLnYxLkNvbXBvbmVudFN0YXR1cxI2Cg9jb21wdXRlZF9zdGF0dXMYCCABKA4yHS5zcmVwb3J0YWwudjEuQ29tcG9uZW50U3RhdHVzEhgKEGFjdGl2ZV9pbmNpZGVudHMYCSABKAUSNgoSbGFzdF9zdGF0dXNfY2hhbmdlGAogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBI+ChJkYWlseV93b3JzdF9zdGF0dXMYCyADKAsyIi5zcmVwb3J0YWwudjEuRGFpbHlDb21wb25lbnRTdGF0dXMinwIKE01haW50ZW5hbmNlUmVzb3VyY2USDAoEbmFtZRgBIAEoCRINCgV0aXRsZRgCIAEoCRITCgtkZXNjcmlwdGlvbhgDIAEoCRISCgpwb3J0YWxfcmVmGAQgASgJEhIKCmNvbXBvbmVudHMYBSADKAkSMwoPc2NoZWR1bGVkX3N0YXJ0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIxCg1zY2hlZHVsZWRfZW5kGAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIXCg9hZmZlY3RlZF9zdGF0dXMYCCABKAkSLQoFcGhhc2UYCSABKA4yHi5zcmVwb3J0YWwudjEuTWFpbnRlbmFuY2VQaGFzZSLnAgoQSW5jaWRlbnRSZXNvdXJjZRIMCgRuYW1lGAEgASgJEg0KBXRpdGxlGAIgASgJEhIKCnBvcnRhbF9yZWYYAyABKAkSEgoKY29tcG9uZW50cxgEIAMoCRIwCghzZXZlcml0eRgFIAEoDjIeLnNyZXBvcnRhbC52MS5JbmNpZGVudFNldmVyaXR5EjIKDWN1cnJlbnRfcGhhc2UYBiABKA4yGy5zcmVwb3J0YWwudjEuSW5jaWRlbnRQaGFzZRItCgd1cGRhdGVzGAcgAygLMhwuc3JlcG9ydGFsLnYxLkluY2lkZW50VXBkYXRlEi4KCnN0YXJ0ZWRfYXQYCCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi8KC3Jlc29sdmVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIYChBkdXJhdGlvbl9taW51dGVzGAogASgFInwKDkluY2lkZW50VXBkYXRlEi0KCXRpbWVzdGFtcBgBIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASKgoFcGhhc2UYAiABKA4yGy5zcmVwb3J0YWwudjEuSW5jaWRlbnRQaGFzZRIPCgdtZXNzYWdlGAMgASgJIjoKFUxpc3RDb21wb25lbnRzUmVxdWVzdBISCgpwb3J0YWxfcmVmGAEgASgJEg0KBWdyb3VwGAIgASgJIk0KFkxpc3RDb21wb25lbnRzUmVzcG9uc2USMwoKY29tcG9uZW50cxgBIAMoCzIfLnNyZXBvcnRhbC52MS5Db21wb25lbnRSZXNvdXJjZSJcChdMaXN0TWFpbnRlbmFuY2VzUmVxdWVzdBISCgpwb3J0YWxfcmVmGAEgASgJEi0KBXBoYXNlGAIgASgOMh4uc3JlcG9ydGFsLnYxLk1haW50ZW5hbmNlUGhhc2UiUwoYTGlzdE1haW50ZW5hbmNlc1Jlc3BvbnNlEjcKDG1haW50ZW5hbmNlcxgBIAMoCzIhLnNyZXBvcnRhbC52MS5NYWludGVuYW5jZVJlc291cmNlIlYKFExpc3RJbmNpZGVudHNSZXF1ZXN0EhIKCnBvcnRhbF9yZWYYASABKAkSKgoFcGhhc2UYAiABKA4yGy5zcmVwb3J0YWwudjEuSW5jaWRlbnRQaGFzZSJKChVMaXN0SW5jaWRlbnRzUmVzcG9uc2USMQoJaW5jaWRlbnRzGAEgAygLMh4uc3JlcG9ydGFsLnYxLkluY2lkZW50UmVzb3VyY2UiqQEKFkNyZWF0ZUNvbXBvbmVudFJlcXVlc3QSFAoMZGlzcGxheV9uYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEg0KBWdyb3VwGAQgASgJEgwKBGxpbmsYBSABKAkSEgoKcG9ydGFsX3JlZhgGIAEoCRItCgZzdGF0dXMYByABKA4yHS5zcmVwb3J0YWwudjEuQ29tcG9uZW50U3RhdHVzSgQIARACIicKF0NyZWF0ZUNvbXBvbmVudFJlc3BvbnNlEgwKBG5hbWUYASABKAki9QEKFlVwZGF0ZUNvbXBvbmVudFJlcXVlc3QSDAoEbmFtZRgBIAEoCRIZCgxkaXNwbGF5X25hbWUYAiABKAlIAIgBARIYCgtkZXNjcmlwdGlvbhgDIAEoCUgBiAEBEhIKBWdyb3VwGAQgASgJSAKIAQESEQoEbGluaxgFIAEoCUgDiAEBEjIKBnN0YXR1cxgGIAEoDjIdLnNyZXBvcnRhbC52MS5Db21wb25lbnRTdGF0dXNIBIgBAUIPCg1fZGlzcGxheV9uYW1lQg4KDF9kZXNjcmlwdGlvbkIICgZfZ3JvdXBCBwoFX2xpbmtCCQoHX3N0YXR1cyInChdVcGRhdGVDb21wb25lbnRSZXNwb25zZRIMCgRuYW1lGAEgASgJIiYKFkRlbGV0ZUNvbXBvbmVudFJlcXVlc3QSDAoEbmFtZRgBIAEoCSIZChdEZWxldGVDb21wb25lbnRSZXNwb25zZSLtAQoYQ3JlYXRlTWFpbnRlbmFuY2VSZXF1ZXN0Eg0KBXRpdGxlGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEhIKCnBvcnRhbF9yZWYYBCABKAkSEgoKY29tcG9uZW50cxgFIAMoCRIzCg9zY2hlZHVsZWRfc3RhcnQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjEKDXNjaGVkdWxlZF9lbmQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhcKD2FmZmVjdGVkX3N0YXR1cxgIIAEoCUoECAEQAiIpChlDcmVhdGVNYWludGVuYW5jZVJlc3BvbnNlEgwKBG5hbWUYASABKAkizgIKGFVwZGF0ZU1haW50ZW5hbmNlUmVxdWVzdBIMCgRuYW1lGAEgASgJEhIKBXRpdGxlGAIgASgJSACIAQESGAoLZGVzY3JpcHRpb24YAyABKAlIAYgBARISCgpjb21wb25lbnRzGAQgAygJEjgKD3NjaGVkdWxlZF9zdGFydBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBIAogBARI2Cg1zY2hlZHVsZWRfZW5kGAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgDiAEBEhwKD2FmZmVjdGVkX3N0YXR1cxgHIAEoCUgEiAEBQggKBl90aXRsZUIOCgxfZGVzY3JpcHRpb25CEgoQX3NjaGVkdWxlZF9zdGFydEIQCg5fc2NoZWR1bGVkX2VuZEISChBfYWZmZWN0ZWRfc3RhdHVzIikKGVVwZGF0ZU1haW50ZW5hbmNlUmVzcG9uc2USDAoEbmFtZRgBIAEoCSIoChhEZWxldGVNYWludGVuYW5jZVJlcXVlc3QSDAoEbmFtZRgBIAEoCSIbChlEZWxldGVNYWludGVuYW5jZVJlc3BvbnNlIrwBChVDcmVhdGVJbmNpZGVudFJlcXVlc3QSDQoFdGl0bGUYAiABKAkSEgoKcG9ydGFsX3JlZhgDIAEoCRISCgpjb21wb25lbnRzGAQgAygJEjAKCHNldmVyaXR5GAUgASgOMh4uc3JlcG9ydGFsLnYxLkluY2lkZW50U2V2ZXJpdHkSNAoOaW5pdGlhbF91cGRhdGUYBiABKAsyHC5zcmVwb3J0YWwudjEuSW5jaWRlbnRVcGRhdGVKBAgBEAIiJgoWQ3JlYXRlSW5jaWRlbnRSZXNwb25zZRIMCgRuYW1lGAEgASgJIskBChVVcGRhdGVJbmNpZGVudFJlcXVlc3QSDAoEbmFtZRgBIAEoCRISCgV0aXRsZRgCIAEoCUgAiAEBEhIKCmNvbXBvbmVudHMYAyADKAkSNQoIc2V2ZXJpdHkYBCABKA4yHi5zcmVwb3J0YWwudjEuSW5jaWRlbnRTZXZlcml0eUgBiAEBEiwKBnVwZGF0ZRgFIAEoCzIcLnNyZXBvcnRhbC52MS5JbmNpZGVudFVwZGF0ZUIICgZfdGl0bGVCCwoJX3NldmVyaXR5IiYKFlVwZGF0ZUluY2lkZW50UmVzcG9uc2USDAoEbmFtZRgBIAEoCSIlChVEZWxldGVJbmNpZGVudFJlcXVlc3QSDAoEbmFtZRgBIAEoCSIYChZEZWxldGVJbmNpZGVudFJlc3BvbnNlKvwBCg9Db21wb25lbnRTdGF0dXMSIAocQ09NUE9ORU5UX1NUQVRVU19VTlNQRUNJRklFRBAAEiAKHENPTVBPTkVOVF9TVEFUVVNfT1BFUkFUSU9OQUwQARIdChlDT01QT05FTlRfU1RBVFVTX0RFR1JBREVEEAISIwofQ09NUE9ORU5UX1NUQVRVU19QQVJUSUFMX09VVEFHRRADEiEKHUNPTVBPTkVOVF9TVEFUVVNfTUFKT1JfT1VUQUdFEAQSHAoYQ09NUE9ORU5UX1NUQVRVU19VTktOT1dOEAUSIAocQ09NUE9ORU5UX1NUQVRVU19NQUlOVEVOQU5DRRAGKpkBChBNYWludGVuYW5jZVBoYXNlEiEKHU1BSU5URU5BTkNFX1BIQVNFX1VOU1BFQ0lGSUVEEAASHgoaTUFJTlRFTkFOQ0VfUEhBU0VfVVBDT01JTkcQARIhCh1NQUlOVEVOQU5DRV9QSEFTRV9JTl9QUk9HUkVTUxACEh8KG01BSU5URU5BTkNFX1BIQVNFX0NPTVBMRVRFRBADKqwBCg1JbmNpZGVudFBoYXNlEh4KGklOQ0lERU5UX1BIQVNFX1VOU1BFQ0lGSUVEEAASIAocSU5DSURFTlRfUEhBU0VfSU5WRVNUSUdBVElORxABEh0KGUlOQ0lERU5UX1BIQVNFX0lERU5USUZJRUQQAhIdChlJTkNJREVOVF9QSEFTRV9NT05JVE9SSU5HEAMSGwoXSU5DSURFTlRfUEhBU0VfUkVTT0xWRUQQBCqPAQoQSW5jaWRlbnRTZXZlcml0eRIhCh1JTkNJREVOVF9TRVZFUklUWV9VTlNQRUNJRklFRBAAEh4KGklOQ0lERU5UX1NFVkVSSVRZX0NSSVRJQ0FMEAESGwoXSU5DSURFTlRfU0VWRVJJVFlfTUFKT1IQAhIbChdJTkNJREVOVF9TRVZFUklUWV9NSU5PUhADMpIJCg1TdGF0dXNTZXJ2aWNlElsKDkxpc3RDb21wb25lbnRzEiMuc3JlcG9ydGFsLnYxLkxpc3RDb21wb25lbnRzUmVxdWVzdBokLnNyZXBvcnRhbC52MS5MaXN0Q29tcG9uZW50c1Jlc3BvbnNlEmEKEExpc3RNYWludGVuYW5jZXMSJS5zcmVwb3J0YWwudjEuTGlzdE1haW50ZW5hbmNlc1JlcXVlc3QaJi5zcmVwb3J0YWwudjEuTGlzdE1haW50ZW5hbmNlc1Jlc3BvbnNlElgKDUxpc3RJbmNpZGVudHMSIi5zcmVwb3J0YWwudjEuTGlzdEluY2lkZW50c1JlcXVlc3QaIy5zcmVwb3J0YWwudjEuTGlzdEluY2lkZW50c1Jlc3BvbnNlEl4KD0NyZWF0ZUNvbXBvbmVudBIkLnNyZXBvcnRhbC52MS5DcmVhdGVDb21wb25lbnRSZXF1ZXN0GiUuc3JlcG9ydGFsLnYxLkNyZWF0ZUNvbXBvbmVudFJlc3BvbnNlEl4KD1VwZGF0ZUNvbXBvbmVudBIkLnNyZXBvcnRhbC52MS5VcGRhdGVDb21wb25lbnRSZXF1ZXN0GiUuc3JlcG9ydGFsLnYxLlVwZGF0ZUNvbXBvbmVudFJlc3BvbnNlEl4KD0RlbGV0ZUNvbXBvbmVudBIkLnNyZXBvcnRhbC52MS5EZWxldGVDb21wb25lbnRSZXF1ZXN0GiUuc3JlcG9ydGFsLnYxLkRlbGV0ZUNvbXBvbmVudFJlc3BvbnNlEmQKEUNyZWF0ZU1haW50ZW5hbmNlEiYuc3JlcG9ydGFsLnYxLkNyZWF0ZU1haW50ZW5hbmNlUmVxdWVzdBonLnNyZXBvcnRhbC52MS5DcmVhdGVNYWludGVuYW5jZVJlc3BvbnNlEmQKEVVwZGF0ZU1haW50ZW5hbmNlEiYuc3JlcG9ydGFsLnYxLlVwZGF0ZU1haW50ZW5hbmNlUmVxdWVzdBonLnNyZXBvcnRhbC52MS5VcGRhdGVNYWludGVuYW5jZVJlc3BvbnNlEmQKEURlbGV0ZU1haW50ZW5hbmNlEiYuc3JlcG9ydGFsLnYxLkRlbGV0ZU1haW50ZW5hbmNlUmVxdWVzdBonLnNyZXBvcnRhbC52MS5EZWxldGVNYWludGVuYW5jZVJlc3BvbnNlElsKDkNyZWF0ZUluY2lkZW50EiMuc3JlcG9ydGFsLnYxLkNyZWF0ZUluY2lkZW50UmVxdWVzdBokLnNyZXBvcnRhbC52MS5DcmVhdGVJbmNpZGVudFJlc3BvbnNlElsKDlVwZGF0ZUluY2lkZW50EiMuc3JlcG9ydGFsLnYxLlVwZGF0ZUluY2lkZW50UmVxdWVzdBokLnNyZXBvcnRhbC52MS5VcGRhdGVJbmNpZGVudFJlc3BvbnNlElsKDkRlbGV0ZUluY2lkZW50EiMuc3JlcG9ydGFsLnYxLkRlbGV0ZUluY2lkZW50UmVxdWVzdBokLnNyZXBvcnRhbC52MS5EZWxldGVJbmNpZGVudFJlc3BvbnNlQrsBChBjb20uc3JlcG9ydGFsLnYxQgtTdGF0dXNQcm90b1ABWklnaXRodWIuY29tL2dvbGdvdGgzMS9zcmVwb3J0YWwvaW50ZXJuYWwvZ3JwYy9nZW4vc3JlcG9ydGFsL3YxO3NyZXBvcnRhbHYxogIDU1hYqgIMU3JlcG9ydGFsLlYxygIMU3JlcG9ydGFsXFYx4gIYU3JlcG9ydGFsXFYxXEdQQk1ldGFkYXRh6gINU3JlcG9ydGFsOjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp]);
+
+/**
+ * DailyComponentStatus records the worst observed status for a single UTC calendar day
+ *
+ * @generated from message sreportal.v1.DailyComponentStatus
+ */
+export type DailyComponentStatus = Message<"sreportal.v1.DailyComponentStatus"> & {
+  /**
+   * @generated from field: string date = 1;
+   */
+  date: string;
+
+  /**
+   * @generated from field: sreportal.v1.ComponentStatus worst_status = 2;
+   */
+  worstStatus: ComponentStatus;
+};
+
+/**
+ * Describes the message sreportal.v1.DailyComponentStatus.
+ * Use `create(DailyComponentStatusSchema)` to create a new message.
+ */
+export const DailyComponentStatusSchema: GenMessage<DailyComponentStatus> = /*@__PURE__*/
+  messageDesc(file_sreportal_v1_status, 0);
 
 /**
  * ComponentResource represents a platform component on the status page
@@ -69,6 +93,11 @@ export type ComponentResource = Message<"sreportal.v1.ComponentResource"> & {
    * @generated from field: google.protobuf.Timestamp last_status_change = 10;
    */
   lastStatusChange?: Timestamp;
+
+  /**
+   * @generated from field: repeated sreportal.v1.DailyComponentStatus daily_worst_status = 11;
+   */
+  dailyWorstStatus: DailyComponentStatus[];
 };
 
 /**
@@ -76,7 +105,7 @@ export type ComponentResource = Message<"sreportal.v1.ComponentResource"> & {
  * Use `create(ComponentResourceSchema)` to create a new message.
  */
 export const ComponentResourceSchema: GenMessage<ComponentResource> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 0);
+  messageDesc(file_sreportal_v1_status, 1);
 
 /**
  * MaintenanceResource represents a scheduled maintenance window
@@ -135,7 +164,7 @@ export type MaintenanceResource = Message<"sreportal.v1.MaintenanceResource"> & 
  * Use `create(MaintenanceResourceSchema)` to create a new message.
  */
 export const MaintenanceResourceSchema: GenMessage<MaintenanceResource> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 1);
+  messageDesc(file_sreportal_v1_status, 2);
 
 /**
  * IncidentResource represents a declared incident
@@ -199,7 +228,7 @@ export type IncidentResource = Message<"sreportal.v1.IncidentResource"> & {
  * Use `create(IncidentResourceSchema)` to create a new message.
  */
 export const IncidentResourceSchema: GenMessage<IncidentResource> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 2);
+  messageDesc(file_sreportal_v1_status, 3);
 
 /**
  * IncidentUpdate is a single timeline entry in an incident
@@ -228,7 +257,7 @@ export type IncidentUpdate = Message<"sreportal.v1.IncidentUpdate"> & {
  * Use `create(IncidentUpdateSchema)` to create a new message.
  */
 export const IncidentUpdateSchema: GenMessage<IncidentUpdate> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 3);
+  messageDesc(file_sreportal_v1_status, 4);
 
 /**
  * ListComponentsRequest filters components
@@ -252,7 +281,7 @@ export type ListComponentsRequest = Message<"sreportal.v1.ListComponentsRequest"
  * Use `create(ListComponentsRequestSchema)` to create a new message.
  */
 export const ListComponentsRequestSchema: GenMessage<ListComponentsRequest> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 4);
+  messageDesc(file_sreportal_v1_status, 5);
 
 /**
  * ListComponentsResponse contains the list of components
@@ -271,7 +300,7 @@ export type ListComponentsResponse = Message<"sreportal.v1.ListComponentsRespons
  * Use `create(ListComponentsResponseSchema)` to create a new message.
  */
 export const ListComponentsResponseSchema: GenMessage<ListComponentsResponse> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 5);
+  messageDesc(file_sreportal_v1_status, 6);
 
 /**
  * ListMaintenancesRequest filters maintenances
@@ -295,7 +324,7 @@ export type ListMaintenancesRequest = Message<"sreportal.v1.ListMaintenancesRequ
  * Use `create(ListMaintenancesRequestSchema)` to create a new message.
  */
 export const ListMaintenancesRequestSchema: GenMessage<ListMaintenancesRequest> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 6);
+  messageDesc(file_sreportal_v1_status, 7);
 
 /**
  * ListMaintenancesResponse contains the list of maintenances
@@ -314,7 +343,7 @@ export type ListMaintenancesResponse = Message<"sreportal.v1.ListMaintenancesRes
  * Use `create(ListMaintenancesResponseSchema)` to create a new message.
  */
 export const ListMaintenancesResponseSchema: GenMessage<ListMaintenancesResponse> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 7);
+  messageDesc(file_sreportal_v1_status, 8);
 
 /**
  * ListIncidentsRequest filters incidents
@@ -338,7 +367,7 @@ export type ListIncidentsRequest = Message<"sreportal.v1.ListIncidentsRequest"> 
  * Use `create(ListIncidentsRequestSchema)` to create a new message.
  */
 export const ListIncidentsRequestSchema: GenMessage<ListIncidentsRequest> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 8);
+  messageDesc(file_sreportal_v1_status, 9);
 
 /**
  * ListIncidentsResponse contains the list of incidents
@@ -357,7 +386,7 @@ export type ListIncidentsResponse = Message<"sreportal.v1.ListIncidentsResponse"
  * Use `create(ListIncidentsResponseSchema)` to create a new message.
  */
 export const ListIncidentsResponseSchema: GenMessage<ListIncidentsResponse> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 9);
+  messageDesc(file_sreportal_v1_status, 10);
 
 /**
  * CreateComponentRequest creates a new Component CR
@@ -413,7 +442,7 @@ export type CreateComponentRequest = Message<"sreportal.v1.CreateComponentReques
  * Use `create(CreateComponentRequestSchema)` to create a new message.
  */
 export const CreateComponentRequestSchema: GenMessage<CreateComponentRequest> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 10);
+  messageDesc(file_sreportal_v1_status, 11);
 
 /**
  * CreateComponentResponse is returned after creating a component
@@ -432,7 +461,7 @@ export type CreateComponentResponse = Message<"sreportal.v1.CreateComponentRespo
  * Use `create(CreateComponentResponseSchema)` to create a new message.
  */
 export const CreateComponentResponseSchema: GenMessage<CreateComponentResponse> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 11);
+  messageDesc(file_sreportal_v1_status, 12);
 
 /**
  * UpdateComponentRequest updates an existing Component CR
@@ -488,7 +517,7 @@ export type UpdateComponentRequest = Message<"sreportal.v1.UpdateComponentReques
  * Use `create(UpdateComponentRequestSchema)` to create a new message.
  */
 export const UpdateComponentRequestSchema: GenMessage<UpdateComponentRequest> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 12);
+  messageDesc(file_sreportal_v1_status, 13);
 
 /**
  * UpdateComponentResponse is returned after updating a component
@@ -507,7 +536,7 @@ export type UpdateComponentResponse = Message<"sreportal.v1.UpdateComponentRespo
  * Use `create(UpdateComponentResponseSchema)` to create a new message.
  */
 export const UpdateComponentResponseSchema: GenMessage<UpdateComponentResponse> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 13);
+  messageDesc(file_sreportal_v1_status, 14);
 
 /**
  * DeleteComponentRequest deletes a Component CR
@@ -528,7 +557,7 @@ export type DeleteComponentRequest = Message<"sreportal.v1.DeleteComponentReques
  * Use `create(DeleteComponentRequestSchema)` to create a new message.
  */
 export const DeleteComponentRequestSchema: GenMessage<DeleteComponentRequest> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 14);
+  messageDesc(file_sreportal_v1_status, 15);
 
 /**
  * DeleteComponentResponse is returned after deleting a component
@@ -543,7 +572,7 @@ export type DeleteComponentResponse = Message<"sreportal.v1.DeleteComponentRespo
  * Use `create(DeleteComponentResponseSchema)` to create a new message.
  */
 export const DeleteComponentResponseSchema: GenMessage<DeleteComponentResponse> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 15);
+  messageDesc(file_sreportal_v1_status, 16);
 
 /**
  * CreateMaintenanceRequest creates a new Maintenance CR
@@ -606,7 +635,7 @@ export type CreateMaintenanceRequest = Message<"sreportal.v1.CreateMaintenanceRe
  * Use `create(CreateMaintenanceRequestSchema)` to create a new message.
  */
 export const CreateMaintenanceRequestSchema: GenMessage<CreateMaintenanceRequest> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 16);
+  messageDesc(file_sreportal_v1_status, 17);
 
 /**
  * CreateMaintenanceResponse is returned after creating a maintenance
@@ -625,7 +654,7 @@ export type CreateMaintenanceResponse = Message<"sreportal.v1.CreateMaintenanceR
  * Use `create(CreateMaintenanceResponseSchema)` to create a new message.
  */
 export const CreateMaintenanceResponseSchema: GenMessage<CreateMaintenanceResponse> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 17);
+  messageDesc(file_sreportal_v1_status, 18);
 
 /**
  * UpdateMaintenanceRequest updates an existing Maintenance CR
@@ -688,7 +717,7 @@ export type UpdateMaintenanceRequest = Message<"sreportal.v1.UpdateMaintenanceRe
  * Use `create(UpdateMaintenanceRequestSchema)` to create a new message.
  */
 export const UpdateMaintenanceRequestSchema: GenMessage<UpdateMaintenanceRequest> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 18);
+  messageDesc(file_sreportal_v1_status, 19);
 
 /**
  * UpdateMaintenanceResponse is returned after updating a maintenance
@@ -707,7 +736,7 @@ export type UpdateMaintenanceResponse = Message<"sreportal.v1.UpdateMaintenanceR
  * Use `create(UpdateMaintenanceResponseSchema)` to create a new message.
  */
 export const UpdateMaintenanceResponseSchema: GenMessage<UpdateMaintenanceResponse> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 19);
+  messageDesc(file_sreportal_v1_status, 20);
 
 /**
  * DeleteMaintenanceRequest deletes a Maintenance CR
@@ -726,7 +755,7 @@ export type DeleteMaintenanceRequest = Message<"sreportal.v1.DeleteMaintenanceRe
  * Use `create(DeleteMaintenanceRequestSchema)` to create a new message.
  */
 export const DeleteMaintenanceRequestSchema: GenMessage<DeleteMaintenanceRequest> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 20);
+  messageDesc(file_sreportal_v1_status, 21);
 
 /**
  * DeleteMaintenanceResponse is returned after deleting a maintenance
@@ -741,7 +770,7 @@ export type DeleteMaintenanceResponse = Message<"sreportal.v1.DeleteMaintenanceR
  * Use `create(DeleteMaintenanceResponseSchema)` to create a new message.
  */
 export const DeleteMaintenanceResponseSchema: GenMessage<DeleteMaintenanceResponse> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 21);
+  messageDesc(file_sreportal_v1_status, 22);
 
 /**
  * CreateIncidentRequest creates a new Incident CR
@@ -790,7 +819,7 @@ export type CreateIncidentRequest = Message<"sreportal.v1.CreateIncidentRequest"
  * Use `create(CreateIncidentRequestSchema)` to create a new message.
  */
 export const CreateIncidentRequestSchema: GenMessage<CreateIncidentRequest> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 22);
+  messageDesc(file_sreportal_v1_status, 23);
 
 /**
  * CreateIncidentResponse is returned after creating an incident
@@ -809,7 +838,7 @@ export type CreateIncidentResponse = Message<"sreportal.v1.CreateIncidentRespons
  * Use `create(CreateIncidentResponseSchema)` to create a new message.
  */
 export const CreateIncidentResponseSchema: GenMessage<CreateIncidentResponse> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 23);
+  messageDesc(file_sreportal_v1_status, 24);
 
 /**
  * UpdateIncidentRequest updates an existing Incident CR
@@ -858,7 +887,7 @@ export type UpdateIncidentRequest = Message<"sreportal.v1.UpdateIncidentRequest"
  * Use `create(UpdateIncidentRequestSchema)` to create a new message.
  */
 export const UpdateIncidentRequestSchema: GenMessage<UpdateIncidentRequest> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 24);
+  messageDesc(file_sreportal_v1_status, 25);
 
 /**
  * UpdateIncidentResponse is returned after updating an incident
@@ -877,7 +906,7 @@ export type UpdateIncidentResponse = Message<"sreportal.v1.UpdateIncidentRespons
  * Use `create(UpdateIncidentResponseSchema)` to create a new message.
  */
 export const UpdateIncidentResponseSchema: GenMessage<UpdateIncidentResponse> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 25);
+  messageDesc(file_sreportal_v1_status, 26);
 
 /**
  * DeleteIncidentRequest deletes an Incident CR
@@ -896,7 +925,7 @@ export type DeleteIncidentRequest = Message<"sreportal.v1.DeleteIncidentRequest"
  * Use `create(DeleteIncidentRequestSchema)` to create a new message.
  */
 export const DeleteIncidentRequestSchema: GenMessage<DeleteIncidentRequest> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 26);
+  messageDesc(file_sreportal_v1_status, 27);
 
 /**
  * DeleteIncidentResponse is returned after deleting an incident
@@ -911,7 +940,7 @@ export type DeleteIncidentResponse = Message<"sreportal.v1.DeleteIncidentRespons
  * Use `create(DeleteIncidentResponseSchema)` to create a new message.
  */
 export const DeleteIncidentResponseSchema: GenMessage<DeleteIncidentResponse> = /*@__PURE__*/
-  messageDesc(file_sreportal_v1_status, 27);
+  messageDesc(file_sreportal_v1_status, 28);
 
 /**
  * ComponentStatus describes the operational status of a platform component

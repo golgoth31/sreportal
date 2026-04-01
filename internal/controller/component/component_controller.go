@@ -52,10 +52,12 @@ func NewComponentReconciler(
 	maintenanceReader domainmaint.MaintenanceReader,
 	componentWriter domaincomponent.ComponentWriter,
 ) *ComponentReconciler {
+	now := time.Now
 	chain := reconciler.NewChain(
 		componentchain.NewValidatePortalRefHandler(c),
 		componentchain.NewComputeStatusHandler(maintenanceReader, c),
-		componentchain.NewUpdateStatusHandler(c, componentWriter),
+		componentchain.NewMergeDailyStatusHandler(now),
+		componentchain.NewUpdateStatusHandler(c, componentWriter, now),
 	)
 
 	return &ComponentReconciler{

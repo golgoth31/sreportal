@@ -83,6 +83,12 @@ enum IncidentSeverity {
   INCIDENT_SEVERITY_MINOR = 3;
 }
 
+// DailyComponentStatus records the worst observed status for a single UTC calendar day
+message DailyComponentStatus {
+  string date = 1;
+  ComponentStatus worst_status = 2;
+}
+
 // ComponentResource represents a platform component on the status page
 message ComponentResource {
   string name = 1;
@@ -95,6 +101,7 @@ message ComponentResource {
   ComponentStatus computed_status = 8;
   int32 active_incidents = 9;
   google.protobuf.Timestamp last_status_change = 10;
+  repeated DailyComponentStatus daily_worst_status = 11;
 }
 
 // MaintenanceResource represents a scheduled maintenance window

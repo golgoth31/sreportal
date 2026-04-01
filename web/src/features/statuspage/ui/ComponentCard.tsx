@@ -2,6 +2,7 @@ import { ExternalLinkIcon } from "lucide-react";
 
 import type { PlatformComponent } from "../domain/types";
 import { getStatusColor, getStatusLabel } from "../domain/utils";
+import { DailyStatusBar } from "./DailyStatusBar";
 
 function safeHostname(url: string): string {
   try {
@@ -52,6 +53,7 @@ export function ComponentCard({ component }: ComponentCardProps) {
           </span>
         </a>
       )}
+      <DailyStatusBar dailyStatus={component.dailyWorstStatus} />
     </div>
   );
 }

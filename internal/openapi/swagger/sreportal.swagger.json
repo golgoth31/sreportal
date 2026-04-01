@@ -995,6 +995,13 @@
         "lastStatusChange": {
           "type": "string",
           "format": "date-time"
+        },
+        "dailyWorstStatus": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1DailyComponentStatus"
+          }
         }
       },
       "title": "ComponentResource represents a platform component on the status page"
@@ -1137,6 +1144,18 @@
         }
       },
       "title": "CreateMaintenanceResponse is returned after creating a maintenance"
+    },
+    "v1DailyComponentStatus": {
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string"
+        },
+        "worstStatus": {
+          "$ref": "#/definitions/v1ComponentStatus"
+        }
+      },
+      "title": "DailyComponentStatus records the worst observed status for a single UTC calendar day"
     },
     "v1DeleteComponentRequest": {
       "type": "object",

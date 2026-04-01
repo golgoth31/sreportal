@@ -16,6 +16,11 @@ export type IncidentPhase =
 
 export type IncidentSeverity = "critical" | "major" | "minor";
 
+export interface DailyStatus {
+  date: string;
+  worstStatus: ComponentStatus;
+}
+
 export interface PlatformComponent {
   name: string;
   displayName: string;
@@ -27,6 +32,7 @@ export interface PlatformComponent {
   computedStatus: ComponentStatus;
   activeIncidents: number;
   lastStatusChange: string;
+  dailyWorstStatus: DailyStatus[];
 }
 
 export interface Maintenance {

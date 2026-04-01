@@ -26,6 +26,7 @@ type ComponentView struct {
 	ComputedStatus   ComponentStatus
 	ActiveIncidents  int
 	LastStatusChange time.Time
+	DailyWorstStatus []DailyStatus
 }
 
 // statusSeverityOrder defines the severity hierarchy for global status computation.

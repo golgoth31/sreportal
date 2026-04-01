@@ -294,10 +294,25 @@ _Appears in:_
 
 
 
+#### sreportal.io/v1alpha1.DailyComponentStatus
+
+DailyComponentStatus records the worst observed status for a single UTC calendar day.
+status is the manually declared operational status
+
+_Appears in:_
+- [sreportal.io/v1alpha1.ComponentStatus](#sreportaliov1alpha1componentstatus)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `date` _string_ | date is the UTC calendar day in YYYY-MM-DD format. |   | Pattern: `^\d\{4\}-\d\{2\}-\d\{2\}$` |
+| `worstStatus` _[sreportal.io/v1alpha1.ComputedComponentStatus](#sreportaliov1alpha1computedcomponentstatus)_ | worstStatus is the worst computed status observed during this day. |   |   |
+
+
+
 #### sreportal.io/v1alpha1.ComponentStatus
 
 ComponentStatus defines the observed state of Component.
-status is the manually declared operational status
+worstStatus is the worst computed status observed during this day.
 
 _Appears in:_
 - [sreportal.io/v1alpha1.Component](#sreportaliov1alpha1component)
@@ -307,6 +322,7 @@ _Appears in:_
 | `computedStatus` _[sreportal.io/v1alpha1.ComputedComponentStatus](#sreportaliov1alpha1computedcomponentstatus)_ | computedStatus is the effective status calculated by the controller. If a maintenance is in progress on this component, it is overridden to "maintenance". Otherwise it reflects spec.status. |   |   |
 | `activeIncidents` _integer_ | activeIncidents is the number of active (non-resolved) incidents linked to this component |   |   |
 | `lastStatusChange` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | lastStatusChange is the timestamp of the last computedStatus transition |   |   |
+| `dailyWorstStatus` _[sreportal.io/v1alpha1.DailyComponentStatus](#sreportaliov1alpha1dailycomponentstatus) array_ | dailyWorstStatus records the worst computed status per UTC day over a sliding window (30 days). |   |   |
 | `conditions` _[Condition](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#condition-v1-meta) array_ | conditions represent the current state of the Component resource. |   |   |
 
 

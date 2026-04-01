@@ -76,6 +76,18 @@ type ComponentSpec struct {
 	Status ComponentStatusValue `json:"status"`
 }
 
+// DailyComponentStatus records the worst observed status for a single UTC calendar day.
+type DailyComponentStatus struct {
+	// date is the UTC calendar day in YYYY-MM-DD format.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Pattern=`^\d{4}-\d{2}-\d{2}$`
+	Date string `json:"date"`
+
+	// worstStatus is the worst computed status observed during this day.
+	// +kubebuilder:validation:Required
+	WorstStatus ComputedComponentStatus `json:"worstStatus"`
+}
+
 // ComponentStatus defines the observed state of Component.
 type ComponentStatus struct {
 	// computedStatus is the effective status calculated by the controller.
@@ -91,6 +103,12 @@ type ComponentStatus struct {
 	// lastStatusChange is the timestamp of the last computedStatus transition
 	// +optional
 	LastStatusChange *metav1.Time `json:"lastStatusChange,omitempty"`
+
+	// dailyWorstStatus records the worst computed status per UTC day over a sliding window (30 days).
+	// +listType=map
+	// +listMapKey=date
+	// +optional
+	DailyWorstStatus []DailyComponentStatus `json:"dailyWorstStatus,omitempty"`
 
 	// conditions represent the current state of the Component resource.
 	// +listType=map

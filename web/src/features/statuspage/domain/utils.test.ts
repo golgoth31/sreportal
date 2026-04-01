@@ -21,6 +21,7 @@ function component(
     declaredStatus: "operational",
     activeIncidents: 0,
     lastStatusChange: "",
+    dailyWorstStatus: [],
     ...overrides,
   };
 }

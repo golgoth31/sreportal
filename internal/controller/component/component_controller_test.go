@@ -72,6 +72,11 @@ var _ = Describe("Component Controller", func() {
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
+
+			By("waiting for cache to sync the Component")
+			Eventually(func() error {
+				return k8sClient.Get(ctx, typeNamespacedName, &sreportalv1alpha1.Component{})
+			}, 5*time.Second, 100*time.Millisecond).Should(Succeed())
 		})
 
 		AfterEach(func() {
@@ -94,7 +99,7 @@ var _ = Describe("Component Controller", func() {
 			controllerReconciler := NewComponentReconciler(k8sClient, maintStore, compStore)
 
 			Eventually(func(g Gomega) {
-				_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+				result, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: typeNamespacedName,
 				})
 				g.Expect(err).NotTo(HaveOccurred())
@@ -103,6 +108,15 @@ var _ = Describe("Component Controller", func() {
 				g.Expect(k8sClient.Get(ctx, typeNamespacedName, &comp)).To(Succeed())
 				g.Expect(comp.Status.ComputedStatus).To(Equal(sreportalv1alpha1.ComputedStatusOperational))
 				g.Expect(comp.Labels["sreportal.io/portal"]).To(Equal(portalName))
+
+				// Daily status: should have at least one entry for today
+				g.Expect(comp.Status.DailyWorstStatus).NotTo(BeEmpty(), "should have daily status entries")
+				today := time.Now().UTC().Format("2006-01-02")
+				g.Expect(comp.Status.DailyWorstStatus[len(comp.Status.DailyWorstStatus)-1].Date).To(Equal(today))
+
+				// Requeue: should be scheduled for next UTC midnight
+				g.Expect(result.RequeueAfter).To(BeNumerically(">", 0), "should requeue for midnight")
+				g.Expect(result.RequeueAfter).To(BeNumerically("<=", 24*time.Hour), "requeue must be within 24h")
 			}, 10*time.Second, 500*time.Millisecond).Should(Succeed())
 		})
 

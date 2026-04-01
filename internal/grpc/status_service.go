@@ -99,6 +99,16 @@ func (s *StatusService) ListComponents(
 			ActiveIncidents:  int32(v.ActiveIncidents),
 			LastStatusChange: timestamppb.New(v.LastStatusChange),
 		}
+		if len(v.DailyWorstStatus) > 0 {
+			daily := make([]*sreportalv1.DailyComponentStatus, len(v.DailyWorstStatus))
+			for j, d := range v.DailyWorstStatus {
+				daily[j] = &sreportalv1.DailyComponentStatus{
+					Date:        d.Date,
+					WorstStatus: componentStatusToProto(d.WorstStatus),
+				}
+			}
+			comp.DailyWorstStatus = daily
+		}
 		components = append(components, comp)
 	}
 
