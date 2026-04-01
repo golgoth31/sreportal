@@ -3,6 +3,7 @@ import { lazy, Suspense } from "react";
 import { createBrowserRouter, Navigate, useRouteError } from "react-router";
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { RootLayout } from "@/components/RootLayout";
 
 function PageSkeleton() {
@@ -129,9 +130,11 @@ export const router = createBrowserRouter([
     path: "status/:portalName",
     errorElement: <ErrorPage />,
     element: (
-      <Suspense fallback={<PageSkeleton />}>
-        <StatusPage />
-      </Suspense>
+      <TooltipProvider>
+        <Suspense fallback={<PageSkeleton />}>
+          <StatusPage />
+        </Suspense>
+      </TooltipProvider>
     ),
   },
 ]);

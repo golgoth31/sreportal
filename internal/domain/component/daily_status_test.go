@@ -96,6 +96,97 @@ func TestMergeDailyWorst_UnknownStatus_TreatedAsRankZero(t *testing.T) {
 	assert.Equal(t, StatusOperational, got[0].WorstStatus)
 }
 
+func TestBackfillMissingDays_EmptyHistory_Creates30Days(t *testing.T) {
+	got := BackfillMissingDays(nil, "2026-04-01", 30)
+
+	require.Len(t, got, 30)
+	assert.Equal(t, "2026-03-03", got[0].Date)
+	assert.Equal(t, "2026-04-01", got[29].Date)
+	for _, entry := range got {
+		assert.Equal(t, StatusOperational, entry.WorstStatus)
+	}
+}
+
+func TestBackfillMissingDays_AllPresent_NoChange(t *testing.T) {
+	history := make([]DailyStatus, 30)
+	for i := range history {
+		day := time.Date(2026, 3, 3+i, 0, 0, 0, 0, time.UTC)
+		history[i] = DailyStatus{
+			Date:        day.Format("2006-01-02"),
+			WorstStatus: StatusDegraded,
+		}
+	}
+
+	got := BackfillMissingDays(history, "2026-04-01", 30)
+
+	require.Len(t, got, 30)
+	for i, entry := range got {
+		assert.Equal(t, history[i].Date, entry.Date)
+		assert.Equal(t, StatusDegraded, entry.WorstStatus, "existing status must not be overwritten")
+	}
+}
+
+func TestBackfillMissingDays_GapInMiddle_FillsGap(t *testing.T) {
+	history := []DailyStatus{
+		{Date: "2026-03-28", WorstStatus: StatusDegraded},
+		{Date: "2026-03-31", WorstStatus: StatusMajorOutage},
+	}
+
+	got := BackfillMissingDays(history, "2026-03-31", 30)
+
+	require.Len(t, got, 30)
+	// Existing entries preserved
+	dateStatus := make(map[string]ComponentStatus, len(got))
+	for _, entry := range got {
+		dateStatus[entry.Date] = entry.WorstStatus
+	}
+	assert.Equal(t, StatusDegraded, dateStatus["2026-03-28"])
+	assert.Equal(t, StatusMajorOutage, dateStatus["2026-03-31"])
+	// Gap days filled with operational
+	assert.Equal(t, StatusOperational, dateStatus["2026-03-29"])
+	assert.Equal(t, StatusOperational, dateStatus["2026-03-30"])
+}
+
+func TestBackfillMissingDays_OldEntriesPruned(t *testing.T) {
+	history := []DailyStatus{
+		{Date: "2025-01-01", WorstStatus: StatusMajorOutage},
+		{Date: "2026-03-31", WorstStatus: StatusDegraded},
+	}
+
+	got := BackfillMissingDays(history, "2026-03-31", 30)
+
+	require.Len(t, got, 30)
+	for _, entry := range got {
+		assert.GreaterOrEqual(t, entry.Date, "2026-03-02", "old entries must be pruned")
+	}
+}
+
+func TestBackfillMissingDays_ExistingStatusPreserved(t *testing.T) {
+	history := []DailyStatus{
+		{Date: "2026-04-01", WorstStatus: StatusMajorOutage},
+	}
+
+	got := BackfillMissingDays(history, "2026-04-01", 30)
+
+	require.Len(t, got, 30)
+	dateStatus := make(map[string]ComponentStatus, len(got))
+	for _, entry := range got {
+		dateStatus[entry.Date] = entry.WorstStatus
+	}
+	assert.Equal(t, StatusMajorOutage, dateStatus["2026-04-01"], "must not overwrite existing status")
+}
+
+func TestBackfillMissingDays_Idempotent(t *testing.T) {
+	history := []DailyStatus{
+		{Date: "2026-03-30", WorstStatus: StatusDegraded},
+	}
+
+	first := BackfillMissingDays(history, "2026-04-01", 30)
+	second := BackfillMissingDays(first, "2026-04-01", 30)
+
+	require.Equal(t, first, second)
+}
+
 func TestDurationUntilNextMidnightUTC(t *testing.T) {
 	cases := []struct {
 		name string

@@ -8,6 +8,35 @@ type DailyStatus struct {
 	WorstStatus ComponentStatus // worst status observed during the day
 }
 
+// BackfillMissingDays ensures the history contains an entry for every day in the sliding window
+// [today - (windowDays-1) .. today]. Missing days are filled with StatusOperational.
+// Existing entries are preserved unchanged. The returned slice is sorted ascending by date
+// and pruned to the window.
+func BackfillMissingDays(history []DailyStatus, today string, windowDays int) []DailyStatus {
+	todayTime, _ := time.Parse("2006-01-02", today)
+	start := todayTime.AddDate(0, 0, -(windowDays - 1))
+
+	// Index existing entries within the window
+	existing := make(map[string]DailyStatus, len(history))
+	for _, entry := range history {
+		if entry.Date >= start.Format("2006-01-02") && entry.Date <= today {
+			existing[entry.Date] = entry
+		}
+	}
+
+	result := make([]DailyStatus, 0, windowDays)
+	for d := start; !d.After(todayTime); d = d.AddDate(0, 0, 1) {
+		dateStr := d.Format("2006-01-02")
+		if entry, ok := existing[dateStr]; ok {
+			result = append(result, entry)
+		} else {
+			result = append(result, DailyStatus{Date: dateStr, WorstStatus: StatusOperational})
+		}
+	}
+
+	return result
+}
+
 // MergeDailyWorst merges the current status into the daily history for the given UTC date,
 // keeping only the worst status per day, and prunes entries outside the sliding window.
 // The returned slice is sorted in ascending date order.
