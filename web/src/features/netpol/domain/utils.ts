@@ -40,9 +40,6 @@ export const NODE_TYPE_COLORS: Record<string, string> = {
 /** Maximum number of search results shown in impact analysis. */
 export const MAX_SEARCH_RESULTS = 50;
 
-/** Maximum BFS depth for impact analysis. */
-export const MAX_IMPACT_DEPTH = 6;
-
 /** Maximum number of top cross-namespace flows displayed. */
 export const MAX_TOP_FLOWS = 20;
 

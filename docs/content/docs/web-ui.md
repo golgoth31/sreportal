@@ -76,7 +76,7 @@ The Network Policies page visualizes network flows discovered from Kubernetes Ne
 
 - **Flow Matrix** — lists every service with outgoing and incoming flows, collapsible by namespace
 - **Cross-Namespace** — aggregated matrix showing flow counts between namespaces
-- **Impact Analysis** — select a resource to see its blast radius across dependency levels
+- **Flow Explorer** — select a resource to see its direct incoming and outgoing flows in a butterfly layout, grouped by namespace; click any connected service to navigate to it
 
 ![Flow Matrix](/assets/img/dark/netpol-matrix.png)
 

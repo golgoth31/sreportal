@@ -7,7 +7,7 @@ import { PageRefreshButton } from "@/components/PageRefreshButton";
 import { ErrorAlert } from "@/components/ErrorAlert";
 import { useNetpol } from "@/features/netpol/hooks/useNetpol";
 import { FlowMatrixView } from "@/features/netpol/ui/FlowMatrixView";
-import { ImpactView } from "@/features/netpol/ui/ImpactView";
+import { FlowExplorerView } from "@/features/netpol/ui/FlowExplorerView";
 import { CrossNamespaceView } from "@/features/netpol/ui/CrossNamespaceView";
 
 export function NetpolPage() {
@@ -59,7 +59,7 @@ export function NetpolPage() {
             <TabsTrigger value="matrix">Flow Matrix</TabsTrigger>
             <TabsTrigger value="cross-pl">Cross-Namespace</TabsTrigger>
             <TabsTrigger value="impact">
-              Impact
+              Flow Explorer
               <Badge variant="outline" className="ml-1.5 text-[10px] px-1.5 py-0">
                 beta
               </Badge>
@@ -83,9 +83,10 @@ export function NetpolPage() {
             />
           </TabsContent>
           <TabsContent value="impact">
-            <ImpactView
+            <FlowExplorerView
               nodes={graph.nodes}
               nodeMap={nodeMap}
+              callsTo={callsTo}
               callsFrom={callsFrom}
             />
           </TabsContent>

@@ -120,24 +120,25 @@ Aggregated matrix showing flow counts between namespaces. Useful for understandi
 
 ![Cross-Namespace tab](/assets/img/dark/netpol-cross-ns.png)
 
-### Impact Analysis
+### Flow Explorer
 
-Select any resource (database, service, external endpoint) to see its blast radius:
-- **Level 1**: direct dependents (services that call the resource)
-- **Level 2**: services that call Level 1 services
-- And so on, up to configurable depth
+Select any resource (database, service, external endpoint) to see its direct incoming and outgoing flows in a butterfly layout:
+- **Left column**: services that call the selected resource (incoming), grouped by namespace in collapsible sections
+- **Center**: the selected resource with incoming/outgoing counts
+- **Right column**: services/resources that the selected resource calls (outgoing), grouped by namespace in collapsible sections
 
-![Impact Analysis tab](/assets/img/dark/netpol-impact.png)
+Click on any connected service to navigate to it and explore its own flows — this allows depth-first exploration without needing a multi-level BFS view.
+
+![Flow Explorer tab](/assets/img/dark/netpol-impact.png)
 
 ## MCP Server
 
-Available at `/mcp/netpol` with three tools:
+Available at `/mcp/netpol` with two tools:
 
 | Tool | Description | Parameters |
 |------|-------------|------------|
 | `list_network_flows` | List all nodes and edges in the flow graph | `search` |
 | `get_service_flows` | Get incoming/outgoing flows for a specific service | `service` (required) |
-| `impact_analysis` | Blast radius analysis for a resource | `resource` (required), `max_depth` |
 
 ## Kubernetes API calls
 
