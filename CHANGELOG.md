@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.26.1](https://github.com/golgoth31/sreportal/compare/v1.26.0...v1.26.1) (2026-04-03)
+
+
+### Bug Fixes
+
+* **netpol:** replace Impact Analysis with Flow Explorer ([#167](https://github.com/golgoth31/sreportal/issues/167)) ([c53ff74](https://github.com/golgoth31/sreportal/commit/c53ff745c13ec4020a45a2868059f8af49b86c05))
+
 ## [1.26.0](https://github.com/golgoth31/sreportal/compare/v1.25.1...v1.26.0) (2026-04-01)
 
 
