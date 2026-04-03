@@ -224,6 +224,9 @@ var _ = BeforeSuite(func() {
 		Expect(err).NotTo(HaveOccurred())
 	}()
 
+	// Wait for the manager's cache to sync before running tests
+	Expect(mgr.GetCache().WaitForCacheSync(ctx)).To(BeTrue())
+
 	// Use the manager's client which has the indexer
 	k8sClient = mgr.GetClient()
 	Expect(k8sClient).NotTo(BeNil())
