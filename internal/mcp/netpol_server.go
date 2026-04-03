@@ -71,12 +71,13 @@ func NewNetpolServer(reader domainnetpol.FlowGraphReader) *NetpolServer {
 		server.WithHooks(hooks),
 	)
 
-	s.registerTools()
+	s.registerNetpolTools()
 
 	return s
 }
 
-func (s *NetpolServer) registerTools() {
+// registerNetpolTools registers network-policy-related MCP tools.
+func (s *NetpolServer) registerNetpolTools() {
 	s.mcpServer.AddTool(
 		mcp.NewTool("list_network_flows",
 			mcp.WithDescription("List all network flows between services, databases, crons, and external endpoints "+
@@ -312,8 +313,8 @@ func (s *NetpolServer) handleGetServiceFlows(ctx context.Context, request mcp.Ca
 	return mcp.NewToolResultText(string(jsonBytes)), nil
 }
 
-
 // Handler returns an http.Handler for the MCP Streamable HTTP transport.
+// Mount at /mcp/netpol.
 func (s *NetpolServer) Handler() http.Handler {
 	return server.NewStreamableHTTPServer(s.mcpServer)
 }

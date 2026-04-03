@@ -129,7 +129,7 @@ Select any resource (database, service, external endpoint) to see its direct inc
 
 Click on any connected service to navigate to it and explore its own flows — this allows depth-first exploration without needing a multi-level BFS view.
 
-![Flow Explorer tab](/assets/img/dark/netpol-impact.png)
+![Flow Explorer tab](/assets/img/dark/netpol-flow-explorer.png)
 
 ## MCP Server
 

@@ -1,9 +1,15 @@
 import { useMemo, useState } from "react";
 
-import { cn } from "@/lib/utils";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+import { ChevronDownIcon } from "lucide-react";
 import type { NetpolNode, NetpolEdge } from "../domain/netpol.types";
 import { NODE_TYPE_COLORS, MAX_SEARCH_RESULTS, groupColor } from "../domain/utils";
 
@@ -42,37 +48,52 @@ function NamespaceGroup({
   const [open, setOpen] = useState(true);
 
   return (
-    <div className="rounded-lg border bg-card">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-muted/50 transition-colors"
-      >
-        {open ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
-        <Badge variant="outline" className={cn(groupColor(namespace), "text-[10px]")}>
-          {namespace}
-        </Badge>
-        <span className="text-muted-foreground text-xs ml-auto">{items.length}</span>
-      </button>
-      {open && (
-        <div className="border-t">
-          {items.map((item) => (
-            <button
-              key={`${item.node.id}-${item.edgeType}`}
-              onClick={() => onSelect(item.node.id)}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm text-left transition-colors hover:bg-muted w-full"
-            >
-              <Badge variant="outline" className={cn(NODE_TYPE_COLORS[item.node.nodeType], "text-[10px]")}>
-                {item.node.nodeType}
+    <Collapsible open={open} onOpenChange={setOpen} className="w-full">
+      <div className="rounded-lg border bg-card shadow-xs overflow-hidden">
+        <CollapsibleTrigger asChild>
+          <Button
+            variant="ghost"
+            className="w-full flex items-center justify-between px-3 py-2 h-auto rounded-none hover:bg-muted/50"
+          >
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className={cn(groupColor(namespace), "text-[10px]")}>
+                {namespace}
               </Badge>
-              <span className="font-medium truncate">{item.node.label}</span>
-              <Badge variant="outline" className="ml-auto text-[10px] shrink-0">
-                {item.edgeType}
-              </Badge>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground text-xs">{items.length}</span>
+              <ChevronDownIcon
+                className={cn(
+                  "size-3.5 text-muted-foreground transition-transform duration-200",
+                  open && "rotate-180"
+                )}
+              />
+            </div>
+          </Button>
+        </CollapsibleTrigger>
+
+        <CollapsibleContent>
+          <div className="border-t">
+            {items.map((item) => (
+              <Button
+                key={`${item.node.id}-${item.edgeType}`}
+                variant="ghost"
+                onClick={() => onSelect(item.node.id)}
+                className="flex items-center gap-2 px-3 py-1.5 h-auto text-sm text-left rounded-none hover:bg-muted w-full"
+              >
+                <Badge variant="outline" className={cn(NODE_TYPE_COLORS[item.node.nodeType], "text-[10px]")}>
+                  {item.node.nodeType}
+                </Badge>
+                <span className="font-medium truncate">{item.node.label}</span>
+                <Badge variant="outline" className="ml-auto text-[10px] shrink-0">
+                  {item.edgeType}
+                </Badge>
+              </Button>
+            ))}
+          </div>
+        </CollapsibleContent>
+      </div>
+    </Collapsible>
   );
 }
 
@@ -165,13 +186,14 @@ export function FlowExplorerView({ nodes, nodeMap, callsTo, callsFrom }: Props) 
       {search && filteredNodes.length > 0 && (
         <div className="grid gap-1 max-h-48 overflow-y-auto" role="listbox" aria-label="Search results">
           {filteredNodes.map((n) => (
-            <button
+            <Button
               key={n.id}
+              variant="ghost"
               role="option"
               aria-selected={n.id === selectedId}
               onClick={() => handleSelect(n.id)}
               className={cn(
-                "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm text-left transition-colors",
+                "flex items-center gap-2 px-3 py-1.5 h-auto text-sm text-left justify-start",
                 n.id === selectedId ? "bg-accent" : "hover:bg-muted",
               )}
             >
@@ -180,7 +202,7 @@ export function FlowExplorerView({ nodes, nodeMap, callsTo, callsFrom }: Props) 
               </Badge>
               <span className="font-medium">{n.label}</span>
               <span className="text-muted-foreground text-xs">{n.group}</span>
-            </button>
+            </Button>
           ))}
         </div>
       )}

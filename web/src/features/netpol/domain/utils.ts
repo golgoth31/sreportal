@@ -26,8 +26,10 @@ export function groupColor(group: string): string {
   return GROUP_PALETTE[Math.abs(hash) % GROUP_PALETTE.length]!;
 }
 
+import type { NodeType } from "./netpol.types";
+
 /** Badge colors for node types (service, database, etc.). */
-export const NODE_TYPE_COLORS: Record<string, string> = {
+export const NODE_TYPE_COLORS: Record<NodeType, string> = {
   service: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
   database: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
   messaging:

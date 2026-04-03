@@ -3,18 +3,22 @@
  * No React or infrastructure dependencies.
  */
 
+export type NodeType = "service" | "database" | "cron" | "messaging" | "external";
+
+export type EdgeType = "internal" | "cross-ns" | "cron" | "database" | "messaging" | "external";
+
 export interface NetpolNode {
   readonly id: string;
   readonly label: string;
   readonly namespace: string;
-  readonly nodeType: string;
+  readonly nodeType: NodeType;
   readonly group: string;
 }
 
 export interface NetpolEdge {
   readonly from: string;
   readonly to: string;
-  readonly edgeType: string;
+  readonly edgeType: EdgeType;
 }
 
 export interface NetpolGraph {
