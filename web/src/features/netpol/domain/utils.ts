@@ -26,8 +26,10 @@ export function groupColor(group: string): string {
   return GROUP_PALETTE[Math.abs(hash) % GROUP_PALETTE.length]!;
 }
 
+import type { NodeType } from "./netpol.types";
+
 /** Badge colors for node types (service, database, etc.). */
-export const NODE_TYPE_COLORS: Record<string, string> = {
+export const NODE_TYPE_COLORS: Record<NodeType, string> = {
   service: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
   database: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
   messaging:
@@ -39,9 +41,6 @@ export const NODE_TYPE_COLORS: Record<string, string> = {
 
 /** Maximum number of search results shown in impact analysis. */
 export const MAX_SEARCH_RESULTS = 50;
-
-/** Maximum BFS depth for impact analysis. */
-export const MAX_IMPACT_DEPTH = 6;
 
 /** Maximum number of top cross-namespace flows displayed. */
 export const MAX_TOP_FLOWS = 20;

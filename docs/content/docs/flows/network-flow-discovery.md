@@ -89,4 +89,3 @@ Both `FlowNodeSet` and `FlowEdgeSet` CRs have owner references to the parent `Ne
 |---|---|
 | `list_network_flows` | List nodes and edges with optional portal/namespace/search filters (1-hop expansion) |
 | `get_service_flows` | Get all incoming and outgoing flows for a specific service |
-| `impact_analysis` | BFS blast radius analysis — which services are impacted if a resource goes down |

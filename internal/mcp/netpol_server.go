@@ -71,12 +71,13 @@ func NewNetpolServer(reader domainnetpol.FlowGraphReader) *NetpolServer {
 		server.WithHooks(hooks),
 	)
 
-	s.registerTools()
+	s.registerNetpolTools()
 
 	return s
 }
 
-func (s *NetpolServer) registerTools() {
+// registerNetpolTools registers network-policy-related MCP tools.
+func (s *NetpolServer) registerNetpolTools() {
 	s.mcpServer.AddTool(
 		mcp.NewTool("list_network_flows",
 			mcp.WithDescription("List all network flows between services, databases, crons, and external endpoints "+
@@ -111,23 +112,6 @@ func (s *NetpolServer) registerTools() {
 		withToolMetrics("netpol", "get_service_flows", s.handleGetServiceFlows),
 	)
 
-	s.mcpServer.AddTool(
-		mcp.NewTool("impact_analysis",
-			mcp.WithDescription("Analyze the blast radius of a resource going down. "+
-				"Given a resource (database, service, external), returns all services impacted, level by level."),
-			mcp.WithString("resource",
-				mcp.Required(),
-				mcp.Description("Resource name (database, service, or external endpoint)"),
-			),
-			mcp.WithString("portal",
-				mcp.Description("Filter by portal name (empty for all)"),
-			),
-			mcp.WithNumber("max_depth",
-				mcp.Description("Maximum depth for impact propagation (default 4)"),
-			),
-		),
-		withToolMetrics("netpol", "impact_analysis", s.handleImpactAnalysis),
-	)
 }
 
 // netpolResult types for JSON serialization.
@@ -329,91 +313,8 @@ func (s *NetpolServer) handleGetServiceFlows(ctx context.Context, request mcp.Ca
 	return mcp.NewToolResultText(string(jsonBytes)), nil
 }
 
-// ImpactLevel represents one level in the impact analysis.
-type ImpactLevel struct {
-	Depth int          `json:"depth"`
-	Nodes []ImpactNode `json:"nodes"`
-}
-
-// ImpactNode is a node in an impact level.
-type ImpactNode struct {
-	Node netpolNodeResult `json:"node"`
-	Via  string           `json:"via"`
-}
-
-func (s *NetpolServer) handleImpactAnalysis(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	resourceName := request.GetString("resource", "")
-	portal := request.GetString("portal", "")
-	maxDepth := int(request.GetFloat("max_depth", 4))
-
-	nodeMap, edgeMap, err := s.loadGraph(ctx, portal)
-	if err != nil {
-		return mcp.NewToolResultError(err.Error()), nil
-	}
-
-	var targetID string
-	for id, n := range nodeMap {
-		if strings.EqualFold(n.Label, resourceName) {
-			targetID = id
-
-			break
-		}
-	}
-
-	if targetID == "" {
-		return mcp.NewToolResultText(fmt.Sprintf("Resource %q not found.", resourceName)), nil
-	}
-
-	// Build reverse adjacency from edge map.
-	callsFrom := make(map[string][]netpolEdgeResult)
-	for _, e := range edgeMap {
-		callsFrom[e.To] = append(callsFrom[e.To], e)
-	}
-
-	// BFS
-	visited := map[string]bool{targetID: true}
-	currentLevel := map[string]bool{targetID: true}
-	levels := []ImpactLevel{{Depth: 0, Nodes: []ImpactNode{{Node: nodeMap[targetID]}}}}
-
-	for depth := 1; depth <= maxDepth; depth++ {
-		var nextNodes []ImpactNode
-		nextLevel := make(map[string]bool)
-
-		for nid := range currentLevel {
-			for _, e := range callsFrom[nid] {
-				if !visited[e.From] {
-					visited[e.From] = true
-					nextLevel[e.From] = true
-					via := nodeMap[nid].Label
-					nextNodes = append(nextNodes, ImpactNode{Node: nodeMap[e.From], Via: via})
-				}
-			}
-		}
-
-		if len(nextNodes) == 0 {
-			break
-		}
-
-		slices.SortFunc(nextNodes, func(a, b ImpactNode) int { return cmp.Compare(a.Node.Label, b.Node.Label) })
-		levels = append(levels, ImpactLevel{Depth: depth, Nodes: nextNodes})
-		currentLevel = nextLevel
-	}
-
-	result := map[string]any{
-		"resource":     nodeMap[targetID],
-		"blast_radius": len(visited) - 1,
-		"levels":       levels,
-	}
-
-	jsonBytes, err := json.MarshalIndent(result, "", "  ")
-	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal: %v", err)), nil
-	}
-
-	return mcp.NewToolResultText(string(jsonBytes)), nil
-}
-
 // Handler returns an http.Handler for the MCP Streamable HTTP transport.
+// Mount at /mcp/netpol.
 func (s *NetpolServer) Handler() http.Handler {
 	return server.NewStreamableHTTPServer(s.mcpServer)
 }

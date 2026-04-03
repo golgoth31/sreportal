@@ -285,7 +285,6 @@ The operator includes five built-in [Model Context Protocol](https://modelcontex
 |------|-------------|
 | `list_network_flows` | List network flow nodes and edges (optional filters: portal, namespace, search with 1-hop expansion) |
 | `get_service_flows` | Get all incoming and outgoing flows for a specific service |
-| `impact_analysis` | BFS blast radius analysis — which services are impacted if a resource goes down |
 
 **Status Page** (mounted at `/mcp/status`):
 
