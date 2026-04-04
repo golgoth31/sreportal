@@ -165,16 +165,16 @@ func (r *PortalReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 // portalToView converts a Portal CRD into a domain PortalView for the ReadStore.
 func portalToView(p *sreportalv1alpha1.Portal) domainportal.PortalView {
 	view := domainportal.PortalView{
-		Name:      p.Name,
-		Title:     p.Spec.Title,
-		Main:      p.Spec.Main,
-		SubPath:   p.Spec.SubPath,
-		Namespace: p.Namespace,
-		Ready:     p.Status.Ready,
-		IsRemote:  p.Spec.Remote != nil,
-		Auth:           authSpecToView(p.Spec.Auth),
-		AuthExplicit:   p.Spec.Auth != nil,
-		FeatureAuth:    featureAuthOverridesToView(p.Spec.Features),
+		Name:         p.Name,
+		Title:        p.Spec.Title,
+		Main:         p.Spec.Main,
+		SubPath:      p.Spec.SubPath,
+		Namespace:    p.Namespace,
+		Ready:        p.Status.Ready,
+		IsRemote:     p.Spec.Remote != nil,
+		Auth:         authSpecToView(p.Spec.Auth),
+		AuthExplicit: p.Spec.Auth != nil,
+		FeatureAuth:  featureAuthOverridesToView(p.Spec.Features),
 		Features: domainportal.PortalFeatures{
 			DNS:           p.Spec.Features.IsDNSEnabled(),
 			Releases:      p.Spec.Features.IsReleasesEnabled(),

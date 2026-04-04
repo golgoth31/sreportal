@@ -672,8 +672,8 @@ func main() {
 		MaintenanceReader:   maintenanceStore,
 		IncidentReader:      incidentStore,
 		StatusPageService:   statuspagesvc.NewService(mgr.GetClient(), portalNamespace),
-		EmojiReader:    emojiStore,
-		AuthResolver:   authResolver,
+		EmojiReader:         emojiStore,
+		AuthResolver:        authResolver,
 	}
 	if devMode {
 		setupLog.Info("dev mode enabled: serving web UI from filesystem", "web-root", webRoot)

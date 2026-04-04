@@ -26,8 +26,8 @@ import (
 	"connectrpc.com/connect"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -35,10 +35,10 @@ import (
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/auth"
+	domainportal "github.com/golgoth31/sreportal/internal/domain/portal"
 	svcgrpc "github.com/golgoth31/sreportal/internal/grpc"
 	releasev1 "github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1"
 	"github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1/sreportalv1connect"
-	domainportal "github.com/golgoth31/sreportal/internal/domain/portal"
 	readstorerelease "github.com/golgoth31/sreportal/internal/readstore/release"
 	releaseservice "github.com/golgoth31/sreportal/internal/release"
 )
@@ -124,9 +124,9 @@ func TestInterceptor_ProtectedEndpoint_NoAuth_Rejected(t *testing.T) {
 	r := auth.NewPortalResolver(k8s, &fakePortalReader{views: mainPortalWithAPIKeyAuth()}, "default")
 	defer r.Close()
 
-	client := setupReleaseServer(t, k8s, r)
+	releaseClient := setupReleaseServer(t, k8s, r)
 
-	_, err := client.AddRelease(context.Background(), connect.NewRequest(&releasev1.ReleaseEntry{
+	_, err := releaseClient.AddRelease(context.Background(), connect.NewRequest(&releasev1.ReleaseEntry{
 		Type:    "deployment",
 		Version: "v1.0.0",
 		Origin:  "ci",
@@ -151,7 +151,7 @@ func TestInterceptor_ProtectedEndpoint_ValidAuth_Passes(t *testing.T) {
 	r := auth.NewPortalResolver(k8s, &fakePortalReader{views: mainPortalWithAPIKeyAuth()}, "default")
 	defer r.Close()
 
-	client := setupReleaseServer(t, k8s, r)
+	releaseClient := setupReleaseServer(t, k8s, r)
 
 	req := connect.NewRequest(&releasev1.ReleaseEntry{
 		Type:    "deployment",
@@ -161,7 +161,7 @@ func TestInterceptor_ProtectedEndpoint_ValidAuth_Passes(t *testing.T) {
 	})
 	req.Header().Set("X-API-Key", "my-secret-key")
 
-	resp, err := client.AddRelease(context.Background(), req)
+	resp, err := releaseClient.AddRelease(context.Background(), req)
 	require.NoError(t, err)
 	assert.NotEmpty(t, resp.Msg.Day)
 }
@@ -180,9 +180,9 @@ func TestInterceptor_ReadEndpoint_NoAuth_Passes(t *testing.T) {
 	r := auth.NewPortalResolver(k8s, &fakePortalReader{views: mainPortalWithAPIKeyAuth()}, "default")
 	defer r.Close()
 
-	client := setupReleaseServer(t, k8s, r)
+	releaseClient := setupReleaseServer(t, k8s, r)
 
-	resp, err := client.ListReleaseDays(context.Background(), connect.NewRequest(&releasev1.ListReleaseDaysRequest{}))
+	resp, err := releaseClient.ListReleaseDays(context.Background(), connect.NewRequest(&releasev1.ListReleaseDaysRequest{}))
 	require.NoError(t, err)
 	assert.NotNil(t, resp.Msg)
 }
@@ -195,10 +195,10 @@ func TestInterceptor_NoResolver_NoProcedureProtection(t *testing.T) {
 	}
 	k8s := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).WithStatusSubresource(&sreportalv1alpha1.Release{}).Build()
 
-	client := setupReleaseServer(t, k8s, nil)
+	releaseClient := setupReleaseServer(t, k8s, nil)
 
 	date := time.Date(2026, 3, 25, 10, 0, 0, 0, time.UTC)
-	resp, err := client.AddRelease(context.Background(), connect.NewRequest(&releasev1.ReleaseEntry{
+	resp, err := releaseClient.AddRelease(context.Background(), connect.NewRequest(&releasev1.ReleaseEntry{
 		Type:    "deployment",
 		Version: "v1.0.0",
 		Origin:  "ci",
@@ -239,7 +239,7 @@ func TestInterceptor_APIKey_OnProtectedEndpoint(t *testing.T) {
 	r := auth.NewPortalResolver(k8s, &fakePortalReader{views: views}, "default")
 	defer r.Close()
 
-	client := setupReleaseServer(t, k8s, r)
+	releaseClient := setupReleaseServer(t, k8s, r)
 
 	req := connect.NewRequest(&releasev1.ReleaseEntry{
 		Type:    "deployment",
@@ -249,7 +249,7 @@ func TestInterceptor_APIKey_OnProtectedEndpoint(t *testing.T) {
 	})
 	req.Header().Set("X-Custom-Auth", "my-secret-key")
 
-	resp, err := client.AddRelease(context.Background(), req)
+	resp, err := releaseClient.AddRelease(context.Background(), req)
 	require.NoError(t, err)
 	assert.NotEmpty(t, resp.Msg.Day)
 }
@@ -268,9 +268,9 @@ func TestInterceptor_ListReleases_NoAuth_Passes(t *testing.T) {
 	r := auth.NewPortalResolver(k8s, &fakePortalReader{views: mainPortalWithAPIKeyAuth()}, "default")
 	defer r.Close()
 
-	client := setupReleaseServer(t, k8s, r)
+	releaseClient := setupReleaseServer(t, k8s, r)
 
-	resp, err := client.ListReleases(context.Background(), connect.NewRequest(&releasev1.ListReleasesRequest{
+	resp, err := releaseClient.ListReleases(context.Background(), connect.NewRequest(&releasev1.ListReleasesRequest{
 		Day: "2026-03-25",
 	}))
 	require.NoError(t, err)
