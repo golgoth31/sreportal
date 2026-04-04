@@ -8,50 +8,43 @@
     {
       "description": "Une PR pour toutes les mises à jour des actions GitHub",
       "matchManagers": ["github-actions"],
-      "groupName": "github-actions",
-      "priority": 30
+      "groupName": "github-actions"
     },
     {
       "description": "Image de base Docker (évite une PR par couche si extension ultérieure)",
       "matchManagers": ["dockerfile"],
-      "groupName": "dockerfile",
-      "priority": 30
+      "groupName": "dockerfile"
     },
     {
       "description": "Écosystème Kubernetes / kubebuilder (souvent aligné en version)",
       "matchManagers": ["gomod"],
       "matchPackageNames": ["k8s.io/*", "sigs.k8s.io/*", "istio.io/*"],
-      "groupName": "kubernetes",
-      "priority": 25
+      "groupName": "kubernetes"
     },
     {
       "description": "Connect RPC + protobuf côté Go",
       "matchManagers": ["gomod"],
       "matchPackageNames": ["connectrpc.com/*", "google.golang.org/protobuf"],
-      "groupName": "connect-go",
-      "priority": 25
+      "groupName": "connect-go"
     },
     {
       "description": "Prometheus / métriques",
       "matchManagers": ["gomod"],
       "matchPackageNames": ["github.com/prometheus/*"],
-      "groupName": "prometheus-go",
-      "priority": 25
+      "groupName": "prometheus-go"
     },
     {
       "description": "Tests Go (Ginkgo / Gomega / testify)",
       "matchManagers": ["gomod"],
       "matchPackageNames": ["github.com/onsi/*", "github.com/stretchr/testify"],
-      "groupName": "go-testing",
-      "priority": 25
+      "groupName": "go-testing"
     },
     {
       "description": "Connect + Buf côté frontend",
       "matchManagers": ["npm"],
       "matchFileNames": ["web/package.json"],
       "matchPackageNames": ["@connectrpc/*", "@bufbuild/*"],
-      "groupName": "connect-npm",
-      "priority": 25
+      "groupName": "connect-npm"
     },
     {
       "description": "Tailwind v4 + plugins associés",
@@ -63,8 +56,7 @@
         "tailwind-merge",
         "tw-animate-css"
       ],
-      "groupName": "tailwind",
-      "priority": 25
+      "groupName": "tailwind"
     }
   ]
 }
