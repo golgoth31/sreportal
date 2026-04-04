@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Node localStorage persistence (if ever used locally)
+.vitest-localstorage.json*
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

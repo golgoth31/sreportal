@@ -102,10 +102,12 @@ export function DashboardPage() {
 
       {/* Row 2 — Charts */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div className="md:col-span-2">
+        <div className="min-w-0 md:col-span-2">
           <FqdnBarChart data={barData} />
         </div>
-        <PortalDonutChart data={donutData} />
+        <div className="min-w-0">
+          <PortalDonutChart data={donutData} />
+        </div>
       </div>
 
       {/* Row 3 — Metric Families */}
