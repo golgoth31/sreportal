@@ -9,7 +9,7 @@ require (
 	github.com/cloudfoundry-community/go-cfclient v0.0.0-20220930021109-9c4e6c59ccf1
 	github.com/go-logr/logr v1.4.3
 	github.com/golang-jwt/jwt/v5 v5.3.1
-	github.com/labstack/echo/v5 v5.0.4
+	github.com/labstack/echo/v5 v5.1.0
 	github.com/mark3labs/mcp-go v0.46.0
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
