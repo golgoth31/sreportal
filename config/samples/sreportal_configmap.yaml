@@ -90,22 +90,3 @@ data:
       #     color: "#f97316"
       #   - name: hotfix
       #     color: "#ef4444"
-
-    # Authentication for write endpoints (e.g. AddRelease).
-    # Each method has an "enabled" flag. Multiple methods can coexist (chain).
-    # auth:
-    #   # API key authentication — the secret value is read from an environment variable.
-    #   apiKey:
-    #     enabled: true
-    #     headerName: "X-API-Key"        # HTTP header to check (default: "X-API-Key")
-    #     # The secret key value is read from the HEADER_API_KEY env var.
-    #   # JWT Bearer token authentication
-    #   jwt:
-    #     enabled: true
-    #     issuers:
-    #       - name: auth0
-    #         issuerURL: https://example.auth0.com/
-    #         audience: sreportal-api
-    #         jwksURL: https://example.auth0.com/.well-known/jwks.json
-    #         requiredClaims:
-    #           scope: "release:write"
