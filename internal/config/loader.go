@@ -146,16 +146,5 @@ func (c *OperatorConfig) LogSummary() map[string]any {
 		summary["sources.gatewayUDPRoute"] = nil
 	}
 
-	if c.Auth.Enabled() {
-		if c.Auth.APIKey != nil {
-			summary["auth.apiKey.headerName"] = c.Auth.APIKey.HeaderName
-		}
-		if c.Auth.JWT != nil {
-			summary["auth.jwt.issuers"] = len(c.Auth.JWT.Issuers)
-		}
-	} else {
-		summary["auth"] = "disabled"
-	}
-
 	return summary
 }

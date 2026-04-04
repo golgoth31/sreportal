@@ -172,6 +172,9 @@ func portalToView(p *sreportalv1alpha1.Portal) domainportal.PortalView {
 		Namespace: p.Namespace,
 		Ready:     p.Status.Ready,
 		IsRemote:  p.Spec.Remote != nil,
+		Auth:           authSpecToView(p.Spec.Auth),
+		AuthExplicit:   p.Spec.Auth != nil,
+		FeatureAuth:    featureAuthOverridesToView(p.Spec.Features),
 		Features: domainportal.PortalFeatures{
 			DNS:           p.Spec.Features.IsDNSEnabled(),
 			Releases:      p.Spec.Features.IsReleasesEnabled(),
@@ -211,6 +214,69 @@ func portalToView(p *sreportalv1alpha1.Portal) domainportal.PortalView {
 		view.RemoteSync = rs
 	}
 	return view
+}
+
+func authSpecToView(a *sreportalv1alpha1.PortalAuthSpec) *domainportal.PortalAuthView {
+	if a == nil {
+		return nil
+	}
+	v := &domainportal.PortalAuthView{}
+	if a.APIKey != nil {
+		sk := a.APIKey.SecretKey
+		if sk == "" {
+			sk = "api-key"
+		}
+		hn := a.APIKey.HeaderName
+		if hn == "" {
+			hn = "X-API-Key"
+		}
+		v.APIKey = &domainportal.PortalAPIKeyAuthView{
+			Enabled:    a.APIKey.Enabled,
+			HeaderName: hn,
+			SecretName: a.APIKey.SecretRef.Name,
+			SecretKey:  sk,
+		}
+	}
+	if a.JWT != nil {
+		issuers := make([]domainportal.PortalJWTIssuerView, len(a.JWT.Issuers))
+		for i := range a.JWT.Issuers {
+			iss := a.JWT.Issuers[i]
+			rc := iss.RequiredClaims
+			if rc == nil {
+				rc = map[string]string{}
+			}
+			issuers[i] = domainportal.PortalJWTIssuerView{
+				Name:           iss.Name,
+				IssuerURL:      iss.IssuerURL,
+				Audience:       iss.Audience,
+				JWKSURL:        iss.JWKSURL,
+				RequiredClaims: rc,
+			}
+		}
+		v.JWT = &domainportal.PortalJWTAuthView{
+			Enabled: a.JWT.Enabled,
+			Issuers: issuers,
+		}
+	}
+	return v
+}
+
+func featureAuthOverridesToView(f *sreportalv1alpha1.PortalFeatures) *domainportal.PortalFeatureAuthOverridesView {
+	if f == nil || f.Auth == nil {
+		return nil
+	}
+	a := f.Auth
+	out := &domainportal.PortalFeatureAuthOverridesView{
+		DNS:           authSpecToView(a.DNS),
+		Releases:      authSpecToView(a.Releases),
+		NetworkPolicy: authSpecToView(a.NetworkPolicy),
+		Alerts:        authSpecToView(a.Alerts),
+		StatusPage:    authSpecToView(a.StatusPage),
+	}
+	if out.DNS == nil && out.Releases == nil && out.NetworkPolicy == nil && out.Alerts == nil && out.StatusPage == nil {
+		return nil
+	}
+	return out
 }
 
 // SetupWithManager sets up the controller with the Manager.

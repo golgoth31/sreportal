@@ -191,39 +191,6 @@ func main() {
 	}
 	setupLog.Info("loaded configuration", "path", configPath, "config", operatorConfig.LogSummary())
 
-	// Build authentication chain from operator configuration.
-	// API key secret is read from an environment variable (populated by a K8s Secret).
-	var authChain *auth.Chain
-	if operatorConfig.Auth.Enabled() {
-		var authenticators []auth.Authenticator
-		if operatorConfig.Auth.APIKey != nil && operatorConfig.Auth.APIKey.Enabled {
-			const headerAPIKeyEnv = "HEADER_API_KEY"
-			apiKey := os.Getenv(headerAPIKeyEnv)
-			if apiKey == "" {
-				setupLog.Error(nil, "auth: HEADER_API_KEY env var is empty")
-				os.Exit(1)
-			}
-			authenticators = append(authenticators,
-				auth.NewAPIKeyAuthenticator(operatorConfig.Auth.APIKey.HeaderName, apiKey))
-			setupLog.Info("auth: API key auth enabled",
-				"header", operatorConfig.Auth.APIKey.HeaderName)
-		}
-		if operatorConfig.Auth.JWT != nil && operatorConfig.Auth.JWT.Enabled {
-			jwtAuth, err := auth.NewJWTAuthenticator(context.Background(), *operatorConfig.Auth.JWT)
-			if err != nil {
-				setupLog.Error(err, "failed to initialize JWT authenticator")
-				os.Exit(1)
-			}
-			defer jwtAuth.Close()
-			authenticators = append(authenticators, jwtAuth)
-			setupLog.Info("auth: JWT auth enabled", "issuers", len(operatorConfig.Auth.JWT.Issuers))
-		}
-		authChain = auth.NewChain(authenticators...)
-		setupLog.Info("auth: write endpoints protected", "methods", len(authenticators))
-	} else {
-		setupLog.Warn("auth: authentication is DISABLED — write endpoints are unprotected")
-	}
-
 	// if the enable-http2 flag is false (the default), http/2 should be disabled
 	// due to its vulnerabilities. More specifically, disabling http/2 will
 	// prevent from being vulnerable to the HTTP/2 Stream Cancellation and
@@ -660,6 +627,16 @@ func main() {
 	ctx, cancel := context.WithCancel(signalCtx)
 	defer cancel()
 
+	authResolver := auth.NewPortalResolver(mgr.GetClient(), portalStore, portalNamespace)
+	defer authResolver.Close()
+	go func() {
+		for {
+			ch := portalStore.Subscribe()
+			<-ch
+			authResolver.Invalidate()
+		}
+	}()
+
 	// Create Release service
 	releaseNamespace := operatorConfig.Release.Namespace
 	if releaseNamespace == "" {
@@ -695,8 +672,8 @@ func main() {
 		MaintenanceReader:   maintenanceStore,
 		IncidentReader:      incidentStore,
 		StatusPageService:   statuspagesvc.NewService(mgr.GetClient(), portalNamespace),
-		EmojiReader:         emojiStore,
-		AuthChain:           authChain,
+		EmojiReader:    emojiStore,
+		AuthResolver:   authResolver,
 	}
 	if devMode {
 		setupLog.Info("dev mode enabled: serving web UI from filesystem", "web-root", webRoot)
