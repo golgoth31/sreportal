@@ -1,5 +1,4 @@
-// hack/helmify is a post-processor that runs helmify then patches the generated
-// Helm chart to support optional auth configuration.
+// hack/helmify is a post-processor that runs helmify on the kustomize output.
 package main
 
 import (
@@ -7,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 )
 
 func main() {
@@ -23,22 +21,11 @@ func run() error {
 		return fmt.Errorf("getting working directory: %w", err)
 	}
 
-	helmDir := filepath.Join(rootDir, "helm")
-	valuesFile := filepath.Join(helmDir, "values.yaml")
-	deploymentFile := filepath.Join(helmDir, "templates", "deployment.yaml")
 	kustomize := filepath.Join(rootDir, "bin", "kustomize")
 	helmifyBin := filepath.Join(rootDir, "bin", "helmify")
 
 	if err := runHelmify(rootDir, kustomize, helmifyBin); err != nil {
 		return fmt.Errorf("running helmify: %w", err)
-	}
-
-	if err := patchFile(valuesFile, injectAuthBlock); err != nil {
-		return fmt.Errorf("patching values.yaml: %w", err)
-	}
-
-	if err := patchFile(deploymentFile, makeHeaderAPIKeyConditional); err != nil {
-		return fmt.Errorf("patching deployment.yaml: %w", err)
 	}
 
 	fmt.Println("helmify post-processing complete")
@@ -77,68 +64,4 @@ func runHelmify(rootDir, kustomize, helmifyBin string) error {
 	}
 
 	return nil
-}
-
-// patchFile reads a file, applies a transform function, and writes back the result.
-// If the transform returns the input unchanged, the file is not rewritten.
-func patchFile(path string, transform func(string) string) error {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return fmt.Errorf("reading %s: %w", path, err)
-	}
-
-	original := string(data)
-	patched := transform(original)
-
-	if patched == original {
-		return nil
-	}
-
-	if err := os.WriteFile(path, []byte(patched), 0o644); err != nil {
-		return fmt.Errorf("writing %s: %w", path, err)
-	}
-
-	return nil
-}
-
-const authBlock = `auth:
-  enabled: false
-  secretRef: ""
-  secretKey: ""
-`
-
-// injectAuthBlock appends the auth configuration block to values.yaml
-// if it is not already present.
-func injectAuthBlock(content string) string {
-	if strings.Contains(content, "\nauth:\n") || strings.HasPrefix(content, "auth:\n") {
-		return content
-	}
-
-	if !strings.HasSuffix(content, "\n") {
-		content += "\n"
-	}
-
-	return content + authBlock
-}
-
-const (
-	oldEnvBlock = `        - name: HEADER_API_KEY
-          valueFrom:
-            secretKeyRef:
-              key: HEADER_API_KEY
-              name: secret`
-
-	newEnvBlock = `        {{- if .Values.auth.enabled }}
-        - name: HEADER_API_KEY
-          valueFrom:
-            secretKeyRef:
-              key: {{ .Values.auth.secretKey | quote }}
-              name: {{ .Values.auth.secretRef | quote }}
-        {{- end }}`
-)
-
-// makeHeaderAPIKeyConditional replaces the hardcoded HEADER_API_KEY env var
-// with a Helm conditional block using auth values.
-func makeHeaderAPIKeyConditional(content string) string {
-	return strings.Replace(content, oldEnvBlock, newEnvBlock, 1)
 }

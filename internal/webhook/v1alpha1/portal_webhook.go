@@ -84,7 +84,44 @@ func (d *PortalCustomDefaulter) Default(_ context.Context, obj *sreportalv1alpha
 		obj.Spec.Features.StatusPage = &trueVal
 	}
 
+	defaultPortalAuthFields(obj.Spec.Auth)
+	if obj.Spec.Features != nil {
+		defaultPortalAuthFieldsForFeatures(obj.Spec.Features.Auth)
+	}
+
 	return nil
+}
+
+func defaultPortalAuthFields(a *sreportalv1alpha1.PortalAuthSpec) {
+	if a == nil {
+		return
+	}
+	if a.APIKey != nil && a.APIKey.Enabled {
+		if a.APIKey.HeaderName == "" {
+			a.APIKey.HeaderName = "X-API-Key"
+		}
+		if a.APIKey.SecretKey == "" {
+			a.APIKey.SecretKey = "api-key"
+		}
+	}
+	if a.JWT != nil {
+		for i := range a.JWT.Issuers {
+			if a.JWT.Issuers[i].RequiredClaims == nil {
+				a.JWT.Issuers[i].RequiredClaims = map[string]string{}
+			}
+		}
+	}
+}
+
+func defaultPortalAuthFieldsForFeatures(o *sreportalv1alpha1.PortalFeatureAuthOverrides) {
+	if o == nil {
+		return
+	}
+	defaultPortalAuthFields(o.DNS)
+	defaultPortalAuthFields(o.Releases)
+	defaultPortalAuthFields(o.NetworkPolicy)
+	defaultPortalAuthFields(o.Alerts)
+	defaultPortalAuthFields(o.StatusPage)
 }
 
 // +kubebuilder:webhook:path=/validate-sreportal-io-v1alpha1-portal,mutating=false,failurePolicy=fail,sideEffects=None,groups=sreportal.io,resources=portals,verbs=create;update,versions=v1alpha1,name=vportal-v1alpha1.kb.io,admissionReviewVersions=v1
@@ -124,5 +161,65 @@ func (v *PortalCustomValidator) validatePortal(obj *sreportalv1alpha1.Portal) (a
 		return nil, fmt.Errorf("spec.remote cannot be set when spec.main is true: the main portal must be local")
 	}
 
+	if obj.Spec.Remote != nil {
+		if obj.Spec.Auth == nil || !obj.Spec.Auth.Enabled() {
+			return nil, fmt.Errorf("spec.auth with at least one enabled method is required when spec.remote is set")
+		}
+	}
+
+	if err := validatePortalAuthSpec(obj.Spec.Auth); err != nil {
+		return nil, err
+	}
+	if obj.Spec.Features != nil {
+		if err := validatePortalFeatureAuthOverrides(obj.Spec.Features.Auth); err != nil {
+			return nil, err
+		}
+	}
+
 	return nil, nil
+}
+
+func validatePortalAuthSpec(p *sreportalv1alpha1.PortalAuthSpec) error {
+	if p == nil {
+		return nil
+	}
+	if p.JWT != nil && p.JWT.Enabled {
+		if len(p.JWT.Issuers) == 0 {
+			return fmt.Errorf("jwt.issuers is required when jwt.enabled is true")
+		}
+		for i, iss := range p.JWT.Issuers {
+			if iss.IssuerURL == "" {
+				return fmt.Errorf("jwt.issuers[%d].issuerURL is required", i)
+			}
+			if iss.JWKSURL == "" {
+				return fmt.Errorf("jwt.issuers[%d].jwksURL is required", i)
+			}
+		}
+	}
+	if p.APIKey != nil && p.APIKey.Enabled && p.APIKey.SecretRef.Name == "" {
+		return fmt.Errorf("apiKey.secretRef.name is required when apiKey.enabled is true")
+	}
+	return nil
+}
+
+func validatePortalFeatureAuthOverrides(o *sreportalv1alpha1.PortalFeatureAuthOverrides) error {
+	if o == nil {
+		return nil
+	}
+	if err := validatePortalAuthSpec(o.DNS); err != nil {
+		return fmt.Errorf("features.auth.dns: %w", err)
+	}
+	if err := validatePortalAuthSpec(o.Releases); err != nil {
+		return fmt.Errorf("features.auth.releases: %w", err)
+	}
+	if err := validatePortalAuthSpec(o.NetworkPolicy); err != nil {
+		return fmt.Errorf("features.auth.networkPolicy: %w", err)
+	}
+	if err := validatePortalAuthSpec(o.Alerts); err != nil {
+		return fmt.Errorf("features.auth.alerts: %w", err)
+	}
+	if err := validatePortalAuthSpec(o.StatusPage); err != nil {
+		return fmt.Errorf("features.auth.statusPage: %w", err)
+	}
+	return nil
 }

@@ -61,50 +61,22 @@ type OperatorConfig struct {
 	GroupMapping   GroupMappingConfig   `json:"groupMapping" yaml:"groupMapping"`
 	Reconciliation ReconciliationConfig `json:"reconciliation" yaml:"reconciliation"`
 	Release        ReleaseConfig        `json:"release,omitempty" yaml:"release,omitempty"`
-	Auth           AuthConfig           `json:"auth,omitempty" yaml:"auth,omitempty"`
 	Emoji          *EmojiConfig         `json:"emoji,omitempty" yaml:"emoji,omitempty"`
 }
 
-// AuthConfig configures authentication for write endpoints.
-type AuthConfig struct {
-	APIKey *APIKeyAuthConfig `json:"apiKey,omitempty" yaml:"apiKey,omitempty"`
-	JWT    *JWTAuthConfig    `json:"jwt,omitempty" yaml:"jwt,omitempty"`
-}
-
-// Enabled returns true if at least one authentication method is enabled.
-func (c *AuthConfig) Enabled() bool {
-	if c.APIKey != nil && c.APIKey.Enabled {
-		return true
-	}
-	if c.JWT != nil && c.JWT.Enabled {
-		return true
-	}
-	return false
-}
-
-// APIKeyAuthConfig configures header-based API key authentication.
-// The actual key value is read from the HEADER_API_KEY environment variable.
-type APIKeyAuthConfig struct {
-	// Enabled controls whether API key authentication is active.
-	Enabled bool `json:"enabled" yaml:"enabled"`
-	// HeaderName is the HTTP header to check (default: "X-API-Key").
-	HeaderName string `json:"headerName,omitempty" yaml:"headerName,omitempty"`
-}
-
-// JWTAuthConfig configures JWT Bearer token authentication.
-type JWTAuthConfig struct {
-	// Enabled controls whether JWT authentication is active.
-	Enabled bool              `json:"enabled" yaml:"enabled"`
-	Issuers []JWTIssuerConfig `json:"issuers" yaml:"issuers"`
-}
-
-// JWTIssuerConfig configures a single JWT issuer.
+// JWTIssuerConfig configures a single JWT issuer (used by portal-scoped JWT auth).
 type JWTIssuerConfig struct {
 	Name           string            `json:"name" yaml:"name"`
 	IssuerURL      string            `json:"issuerURL" yaml:"issuerURL"`
 	Audience       string            `json:"audience,omitempty" yaml:"audience,omitempty"`
 	JWKSURL        string            `json:"jwksURL" yaml:"jwksURL"`
 	RequiredClaims map[string]string `json:"requiredClaims,omitempty" yaml:"requiredClaims,omitempty"`
+}
+
+// JWTAuthConfig configures JWT Bearer token authentication.
+type JWTAuthConfig struct {
+	Enabled bool              `json:"enabled" yaml:"enabled"`
+	Issuers []JWTIssuerConfig `json:"issuers" yaml:"issuers"`
 }
 
 // EmojiConfig configures custom emoji resolution from external sources.
@@ -337,26 +309,6 @@ func (c *OperatorConfig) Validate() error {
 	}
 	if c.GroupMapping.DefaultGroup == "" {
 		return fmt.Errorf("groupMapping.defaultGroup: %w", ErrEmptyDefaultGroup)
-	}
-	if err := c.Auth.validate(); err != nil {
-		return fmt.Errorf("auth: %w", err)
-	}
-	return nil
-}
-
-func (c *AuthConfig) validate() error {
-	if c.JWT != nil && c.JWT.Enabled {
-		if len(c.JWT.Issuers) == 0 {
-			return fmt.Errorf("jwt: at least one issuer is required")
-		}
-		for i, iss := range c.JWT.Issuers {
-			if iss.IssuerURL == "" {
-				return fmt.Errorf("jwt.issuers[%d]: issuerURL is required", i)
-			}
-			if iss.JWKSURL == "" {
-				return fmt.Errorf("jwt.issuers[%d]: jwksURL is required", i)
-			}
-		}
 	}
 	return nil
 }

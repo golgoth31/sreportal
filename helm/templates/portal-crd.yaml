@@ -57,6 +57,89 @@ spec:
           spec:
             description: spec defines the desired state of Portal
             properties:
+              auth:
+                description: |-
+                  auth configures authentication for Connect write RPCs targeting this portal.
+                  Local portals with spec.auth unset inherit the main portal's auth (spec.main: true).
+                  Remote portals must set spec.auth explicitly (no inheritance from main).
+                properties:
+                  apiKey:
+                    description: |-
+                      apiKey configures header-based API key authentication.
+                      The secret value is read from the referenced Secret (key defaults to "api-key").
+                    properties:
+                      enabled:
+                        description: enabled controls whether API key authentication
+                          is active.
+                        type: boolean
+                      headerName:
+                        description: 'headerName is the HTTP header to check (default:
+                          "X-API-Key").'
+                        type: string
+                      secretKey:
+                        description: 'secretKey is the key within the Secret''s data
+                          (default: "api-key").'
+                        type: string
+                      secretRef:
+                        description: |-
+                          secretRef references a Secret in the portal's namespace containing the API key.
+                          Required when enabled is true.
+                        properties:
+                          name:
+                            description: name is the name of the Secret.
+                            minLength: 1
+                            type: string
+                        required:
+                        - name
+                        type: object
+                    required:
+                    - enabled
+                    - secretRef
+                    type: object
+                  jwt:
+                    description: jwt configures JWT Bearer token authentication (JWKS).
+                    properties:
+                      enabled:
+                        description: enabled controls whether JWT authentication is
+                          active.
+                        type: boolean
+                      issuers:
+                        description: issuers lists trusted JWT issuers (JWKS). Required
+                          when enabled is true.
+                        items:
+                          description: PortalJWTIssuerSpec configures a single JWT issuer.
+                          properties:
+                            audience:
+                              description: audience is the expected "aud" claim when
+                                non-empty.
+                              type: string
+                            issuerURL:
+                              description: issuerURL is the expected JWT "iss" claim.
+                              type: string
+                            jwksURL:
+                              description: jwksURL is the JWKS endpoint URL for this
+                                issuer.
+                              type: string
+                            name:
+                              description: name is a display name for this issuer.
+                              type: string
+                            requiredClaims:
+                              additionalProperties:
+                                type: string
+                              description: requiredClaims lists additional claim name/value
+                                pairs that must match.
+                              type: object
+                          required:
+                          - issuerURL
+                          - jwksURL
+                          - name
+                          type: object
+                        type: array
+                    required:
+                    - enabled
+                    - issuers
+                    type: object
+                type: object
               features:
                 description: |-
                   features controls which features are enabled for this portal.
@@ -66,6 +149,432 @@ spec:
                     default: true
                     description: alerts enables alertmanager integration for this portal.
                     type: boolean
+                  auth:
+                    description: |-
+                      auth overrides per feature (optional). When set for a feature, replaces portal-level
+                      and main inheritance for that feature's write RPCs only.
+                    properties:
+                      alerts:
+                        description: alerts overrides auth for alert-related write RPCs
+                          (reserved for future use).
+                        properties:
+                          apiKey:
+                            description: |-
+                              apiKey configures header-based API key authentication.
+                              The secret value is read from the referenced Secret (key defaults to "api-key").
+                            properties:
+                              enabled:
+                                description: enabled controls whether API key authentication
+                                  is active.
+                                type: boolean
+                              headerName:
+                                description: 'headerName is the HTTP header to check
+                                  (default: "X-API-Key").'
+                                type: string
+                              secretKey:
+                                description: 'secretKey is the key within the Secret''s
+                                  data (default: "api-key").'
+                                type: string
+                              secretRef:
+                                description: |-
+                                  secretRef references a Secret in the portal's namespace containing the API key.
+                                  Required when enabled is true.
+                                properties:
+                                  name:
+                                    description: name is the name of the Secret.
+                                    minLength: 1
+                                    type: string
+                                required:
+                                - name
+                                type: object
+                            required:
+                            - enabled
+                            - secretRef
+                            type: object
+                          jwt:
+                            description: jwt configures JWT Bearer token authentication
+                              (JWKS).
+                            properties:
+                              enabled:
+                                description: enabled controls whether JWT authentication
+                                  is active.
+                                type: boolean
+                              issuers:
+                                description: issuers lists trusted JWT issuers (JWKS).
+                                  Required when enabled is true.
+                                items:
+                                  description: PortalJWTIssuerSpec configures a single
+                                    JWT issuer.
+                                  properties:
+                                    audience:
+                                      description: audience is the expected "aud" claim
+                                        when non-empty.
+                                      type: string
+                                    issuerURL:
+                                      description: issuerURL is the expected JWT "iss"
+                                        claim.
+                                      type: string
+                                    jwksURL:
+                                      description: jwksURL is the JWKS endpoint URL
+                                        for this issuer.
+                                      type: string
+                                    name:
+                                      description: name is a display name for this issuer.
+                                      type: string
+                                    requiredClaims:
+                                      additionalProperties:
+                                        type: string
+                                      description: requiredClaims lists additional claim
+                                        name/value pairs that must match.
+                                      type: object
+                                  required:
+                                  - issuerURL
+                                  - jwksURL
+                                  - name
+                                  type: object
+                                type: array
+                            required:
+                            - enabled
+                            - issuers
+                            type: object
+                        type: object
+                      dns:
+                        description: dns overrides auth for DNS-related write RPCs (reserved
+                          for future use).
+                        properties:
+                          apiKey:
+                            description: |-
+                              apiKey configures header-based API key authentication.
+                              The secret value is read from the referenced Secret (key defaults to "api-key").
+                            properties:
+                              enabled:
+                                description: enabled controls whether API key authentication
+                                  is active.
+                                type: boolean
+                              headerName:
+                                description: 'headerName is the HTTP header to check
+                                  (default: "X-API-Key").'
+                                type: string
+                              secretKey:
+                                description: 'secretKey is the key within the Secret''s
+                                  data (default: "api-key").'
+                                type: string
+                              secretRef:
+                                description: |-
+                                  secretRef references a Secret in the portal's namespace containing the API key.
+                                  Required when enabled is true.
+                                properties:
+                                  name:
+                                    description: name is the name of the Secret.
+                                    minLength: 1
+                                    type: string
+                                required:
+                                - name
+                                type: object
+                            required:
+                            - enabled
+                            - secretRef
+                            type: object
+                          jwt:
+                            description: jwt configures JWT Bearer token authentication
+                              (JWKS).
+                            properties:
+                              enabled:
+                                description: enabled controls whether JWT authentication
+                                  is active.
+                                type: boolean
+                              issuers:
+                                description: issuers lists trusted JWT issuers (JWKS).
+                                  Required when enabled is true.
+                                items:
+                                  description: PortalJWTIssuerSpec configures a single
+                                    JWT issuer.
+                                  properties:
+                                    audience:
+                                      description: audience is the expected "aud" claim
+                                        when non-empty.
+                                      type: string
+                                    issuerURL:
+                                      description: issuerURL is the expected JWT "iss"
+                                        claim.
+                                      type: string
+                                    jwksURL:
+                                      description: jwksURL is the JWKS endpoint URL
+                                        for this issuer.
+                                      type: string
+                                    name:
+                                      description: name is a display name for this issuer.
+                                      type: string
+                                    requiredClaims:
+                                      additionalProperties:
+                                        type: string
+                                      description: requiredClaims lists additional claim
+                                        name/value pairs that must match.
+                                      type: object
+                                  required:
+                                  - issuerURL
+                                  - jwksURL
+                                  - name
+                                  type: object
+                                type: array
+                            required:
+                            - enabled
+                            - issuers
+                            type: object
+                        type: object
+                      networkPolicy:
+                        description: networkPolicy overrides auth for network policy
+                          write RPCs (reserved for future use).
+                        properties:
+                          apiKey:
+                            description: |-
+                              apiKey configures header-based API key authentication.
+                              The secret value is read from the referenced Secret (key defaults to "api-key").
+                            properties:
+                              enabled:
+                                description: enabled controls whether API key authentication
+                                  is active.
+                                type: boolean
+                              headerName:
+                                description: 'headerName is the HTTP header to check
+                                  (default: "X-API-Key").'
+                                type: string
+                              secretKey:
+                                description: 'secretKey is the key within the Secret''s
+                                  data (default: "api-key").'
+                                type: string
+                              secretRef:
+                                description: |-
+                                  secretRef references a Secret in the portal's namespace containing the API key.
+                                  Required when enabled is true.
+                                properties:
+                                  name:
+                                    description: name is the name of the Secret.
+                                    minLength: 1
+                                    type: string
+                                required:
+                                - name
+                                type: object
+                            required:
+                            - enabled
+                            - secretRef
+                            type: object
+                          jwt:
+                            description: jwt configures JWT Bearer token authentication
+                              (JWKS).
+                            properties:
+                              enabled:
+                                description: enabled controls whether JWT authentication
+                                  is active.
+                                type: boolean
+                              issuers:
+                                description: issuers lists trusted JWT issuers (JWKS).
+                                  Required when enabled is true.
+                                items:
+                                  description: PortalJWTIssuerSpec configures a single
+                                    JWT issuer.
+                                  properties:
+                                    audience:
+                                      description: audience is the expected "aud" claim
+                                        when non-empty.
+                                      type: string
+                                    issuerURL:
+                                      description: issuerURL is the expected JWT "iss"
+                                        claim.
+                                      type: string
+                                    jwksURL:
+                                      description: jwksURL is the JWKS endpoint URL
+                                        for this issuer.
+                                      type: string
+                                    name:
+                                      description: name is a display name for this issuer.
+                                      type: string
+                                    requiredClaims:
+                                      additionalProperties:
+                                        type: string
+                                      description: requiredClaims lists additional claim
+                                        name/value pairs that must match.
+                                      type: object
+                                  required:
+                                  - issuerURL
+                                  - jwksURL
+                                  - name
+                                  type: object
+                                type: array
+                            required:
+                            - enabled
+                            - issuers
+                            type: object
+                        type: object
+                      releases:
+                        description: releases overrides auth for release write RPCs
+                          (e.g. AddRelease).
+                        properties:
+                          apiKey:
+                            description: |-
+                              apiKey configures header-based API key authentication.
+                              The secret value is read from the referenced Secret (key defaults to "api-key").
+                            properties:
+                              enabled:
+                                description: enabled controls whether API key authentication
+                                  is active.
+                                type: boolean
+                              headerName:
+                                description: 'headerName is the HTTP header to check
+                                  (default: "X-API-Key").'
+                                type: string
+                              secretKey:
+                                description: 'secretKey is the key within the Secret''s
+                                  data (default: "api-key").'
+                                type: string
+                              secretRef:
+                                description: |-
+                                  secretRef references a Secret in the portal's namespace containing the API key.
+                                  Required when enabled is true.
+                                properties:
+                                  name:
+                                    description: name is the name of the Secret.
+                                    minLength: 1
+                                    type: string
+                                required:
+                                - name
+                                type: object
+                            required:
+                            - enabled
+                            - secretRef
+                            type: object
+                          jwt:
+                            description: jwt configures JWT Bearer token authentication
+                              (JWKS).
+                            properties:
+                              enabled:
+                                description: enabled controls whether JWT authentication
+                                  is active.
+                                type: boolean
+                              issuers:
+                                description: issuers lists trusted JWT issuers (JWKS).
+                                  Required when enabled is true.
+                                items:
+                                  description: PortalJWTIssuerSpec configures a single
+                                    JWT issuer.
+                                  properties:
+                                    audience:
+                                      description: audience is the expected "aud" claim
+                                        when non-empty.
+                                      type: string
+                                    issuerURL:
+                                      description: issuerURL is the expected JWT "iss"
+                                        claim.
+                                      type: string
+                                    jwksURL:
+                                      description: jwksURL is the JWKS endpoint URL
+                                        for this issuer.
+                                      type: string
+                                    name:
+                                      description: name is a display name for this issuer.
+                                      type: string
+                                    requiredClaims:
+                                      additionalProperties:
+                                        type: string
+                                      description: requiredClaims lists additional claim
+                                        name/value pairs that must match.
+                                      type: object
+                                  required:
+                                  - issuerURL
+                                  - jwksURL
+                                  - name
+                                  type: object
+                                type: array
+                            required:
+                            - enabled
+                            - issuers
+                            type: object
+                        type: object
+                      statusPage:
+                        description: statusPage overrides auth for status page write
+                          RPCs (components, incidents, maintenances).
+                        properties:
+                          apiKey:
+                            description: |-
+                              apiKey configures header-based API key authentication.
+                              The secret value is read from the referenced Secret (key defaults to "api-key").
+                            properties:
+                              enabled:
+                                description: enabled controls whether API key authentication
+                                  is active.
+                                type: boolean
+                              headerName:
+                                description: 'headerName is the HTTP header to check
+                                  (default: "X-API-Key").'
+                                type: string
+                              secretKey:
+                                description: 'secretKey is the key within the Secret''s
+                                  data (default: "api-key").'
+                                type: string
+                              secretRef:
+                                description: |-
+                                  secretRef references a Secret in the portal's namespace containing the API key.
+                                  Required when enabled is true.
+                                properties:
+                                  name:
+                                    description: name is the name of the Secret.
+                                    minLength: 1
+                                    type: string
+                                required:
+                                - name
+                                type: object
+                            required:
+                            - enabled
+                            - secretRef
+                            type: object
+                          jwt:
+                            description: jwt configures JWT Bearer token authentication
+                              (JWKS).
+                            properties:
+                              enabled:
+                                description: enabled controls whether JWT authentication
+                                  is active.
+                                type: boolean
+                              issuers:
+                                description: issuers lists trusted JWT issuers (JWKS).
+                                  Required when enabled is true.
+                                items:
+                                  description: PortalJWTIssuerSpec configures a single
+                                    JWT issuer.
+                                  properties:
+                                    audience:
+                                      description: audience is the expected "aud" claim
+                                        when non-empty.
+                                      type: string
+                                    issuerURL:
+                                      description: issuerURL is the expected JWT "iss"
+                                        claim.
+                                      type: string
+                                    jwksURL:
+                                      description: jwksURL is the JWKS endpoint URL
+                                        for this issuer.
+                                      type: string
+                                    name:
+                                      description: name is a display name for this issuer.
+                                      type: string
+                                    requiredClaims:
+                                      additionalProperties:
+                                        type: string
+                                      description: requiredClaims lists additional claim
+                                        name/value pairs that must match.
+                                      type: object
+                                  required:
+                                  - issuerURL
+                                  - jwksURL
+                                  - name
+                                  type: object
+                                type: array
+                            required:
+                            - enabled
+                            - issuers
+                            type: object
+                        type: object
+                    type: object
                   dns:
                     default: true
                     description: dns enables DNS discovery (controllers, gRPC, MCP,
