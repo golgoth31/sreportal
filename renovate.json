@@ -1,12 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended",
-    "group:recommended",
-    "group:monorepos",
-    ":dependencyDashboard",
-    "schedule:weekly"
-  ],
+  "extends": ["config:recommended", "schedule:weekly"],
   "timezone": "Europe/Paris",
   "prConcurrentLimit": 5,
   "prHourlyLimit": 2,
@@ -26,28 +20,28 @@
     {
       "description": "Écosystème Kubernetes / kubebuilder (souvent aligné en version)",
       "matchManagers": ["gomod"],
-      "matchPackagePatterns": ["^k8s\\.io/", "^sigs\\.k8s\\.io/", "^istio\\.io/"],
+      "matchPackageNames": ["k8s.io/*", "sigs.k8s.io/*", "istio.io/*"],
       "groupName": "kubernetes",
       "priority": 25
     },
     {
       "description": "Connect RPC + protobuf côté Go",
       "matchManagers": ["gomod"],
-      "matchPackagePatterns": ["^connectrpc\\.com/", "^google\\.golang\\.org/protobuf"],
+      "matchPackageNames": ["connectrpc.com/*", "google.golang.org/protobuf"],
       "groupName": "connect-go",
       "priority": 25
     },
     {
       "description": "Prometheus / métriques",
       "matchManagers": ["gomod"],
-      "matchPackagePatterns": ["^github\\.com/prometheus/"],
+      "matchPackageNames": ["github.com/prometheus/*"],
       "groupName": "prometheus-go",
       "priority": 25
     },
     {
       "description": "Tests Go (Ginkgo / Gomega / testify)",
       "matchManagers": ["gomod"],
-      "matchPackagePatterns": ["^github\\.com/onsi/", "^github\\.com/stretchr/testify"],
+      "matchPackageNames": ["github.com/onsi/*", "github.com/stretchr/testify"],
       "groupName": "go-testing",
       "priority": 25
     },
@@ -55,7 +49,7 @@
       "description": "Connect + Buf côté frontend",
       "matchManagers": ["npm"],
       "matchFileNames": ["web/package.json"],
-      "matchPackagePatterns": ["^@connectrpc/", "^@bufbuild/"],
+      "matchPackageNames": ["@connectrpc/*", "@bufbuild/*"],
       "groupName": "connect-npm",
       "priority": 25
     },
@@ -63,11 +57,11 @@
       "description": "Tailwind v4 + plugins associés",
       "matchManagers": ["npm"],
       "matchFileNames": ["web/package.json"],
-      "matchPackagePatterns": [
-        "^@tailwindcss/",
-        "^tailwindcss$",
-        "^tailwind-merge$",
-        "^tw-animate-css$"
+      "matchPackageNames": [
+        "@tailwindcss/*",
+        "tailwindcss",
+        "tailwind-merge",
+        "tw-animate-css"
       ],
       "groupName": "tailwind",
       "priority": 25
