@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.26.2](https://github.com/golgoth31/sreportal/compare/v1.26.1...v1.26.2) (2026-04-04)
+
+
+### Bug Fixes
+
+* **deps:** pin dependencies ([#189](https://github.com/golgoth31/sreportal/issues/189)) ([7c1db0a](https://github.com/golgoth31/sreportal/commit/7c1db0abc4a336deff30507ecb249412cd47812b))
+* **deps:** pin dependencies ([#192](https://github.com/golgoth31/sreportal/issues/192)) ([8a2143c](https://github.com/golgoth31/sreportal/commit/8a2143c1f59b341dd2d9bc64922865087b9cba01))
+* **deps:** pin dependencies ([#193](https://github.com/golgoth31/sreportal/issues/193)) ([26a6c51](https://github.com/golgoth31/sreportal/commit/26a6c5111beadefd0f2975998abc67729bbeab8b))
+* **deps:** update dependency @base-ui/react to v1.3.0 ([#199](https://github.com/golgoth31/sreportal/issues/199)) ([1887c62](https://github.com/golgoth31/sreportal/commit/1887c62bd05814921486f761066fb394ffd233d1))
+* **deps:** update dependency @tanstack/react-query to v5.96.2 ([#133](https://github.com/golgoth31/sreportal/issues/133)) ([1bf5e3f](https://github.com/golgoth31/sreportal/commit/1bf5e3ff9c8f4bc5f3f41a5342a391ff38f08280))
+* **deps:** update dependency lucide-react to v1 ([#183](https://github.com/golgoth31/sreportal/issues/183)) ([709589d](https://github.com/golgoth31/sreportal/commit/709589d842f3fc0f616b99d819fdb5602f33fe32))
+* **deps:** update dependency react-router to ^7.14.0 ([#174](https://github.com/golgoth31/sreportal/issues/174)) ([f0fc1d7](https://github.com/golgoth31/sreportal/commit/f0fc1d776b4db81c62ab42279b32da0acc4b123d))
+* **deps:** update dependency recharts to v3 ([#184](https://github.com/golgoth31/sreportal/issues/184)) ([53ad490](https://github.com/golgoth31/sreportal/commit/53ad490417b7fa56ea4c4276c18e89d042152273))
+* **deps:** update module github.com/labstack/echo/v5 to v5.1.0 ([#178](https://github.com/golgoth31/sreportal/issues/178)) ([e4b1e24](https://github.com/golgoth31/sreportal/commit/e4b1e24bb3cab9a6df8d3a2a8b2c46644919985a))
+* **deps:** update module github.com/mark3labs/mcp-go to v0.46.0 ([#179](https://github.com/golgoth31/sreportal/issues/179)) ([f79d83c](https://github.com/golgoth31/sreportal/commit/f79d83cd8a583f61aed8daa68fa4d7b68f63506e))
+* **deps:** update tailwind to v4.2.2 ([#194](https://github.com/golgoth31/sreportal/issues/194)) ([558c01d](https://github.com/golgoth31/sreportal/commit/558c01d0065816f94e59e84a727fd7a9add88c06))
+* remove invalid packageRules priority from Renovate config ([856d94c](https://github.com/golgoth31/sreportal/commit/856d94c60ba83c71a542a70e5abbe1436756ca34))
+* repair Renovate config (matchPackageNames, dedupe extends) ([90f5636](https://github.com/golgoth31/sreportal/commit/90f5636a89709400010d70abdb87f5d05eb30d95))
+* **test:** wait for cache sync in all controller test suites ([ed49c36](https://github.com/golgoth31/sreportal/commit/ed49c368b15d8e162ce0f733a9c96131b2e8e63e))
+* **web:** compatibilité TS 6 (baseUrl, types Recharts chart) ([232d6d7](https://github.com/golgoth31/sreportal/commit/232d6d73c52ea4378ceffa823d54d2b6c909d571))
+* **web:** Recharts charts, tests sans bruit console ([afbc48c](https://github.com/golgoth31/sreportal/commit/afbc48c697182bdf1b9f36521510c847c2aec849))
+
 ## [1.26.1](https://github.com/golgoth31/sreportal/compare/v1.26.0...v1.26.1) (2026-04-03)
 
 
