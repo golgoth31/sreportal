@@ -1,6 +1,76 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended"
+    "config:recommended",
+    "group:recommended",
+    "group:monorepos",
+    ":dependencyDashboard",
+    "schedule:weekly"
+  ],
+  "timezone": "Europe/Paris",
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "packageRules": [
+    {
+      "description": "Une PR pour toutes les mises à jour des actions GitHub",
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions",
+      "priority": 30
+    },
+    {
+      "description": "Image de base Docker (évite une PR par couche si extension ultérieure)",
+      "matchManagers": ["dockerfile"],
+      "groupName": "dockerfile",
+      "priority": 30
+    },
+    {
+      "description": "Écosystème Kubernetes / kubebuilder (souvent aligné en version)",
+      "matchManagers": ["gomod"],
+      "matchPackagePatterns": ["^k8s\\.io/", "^sigs\\.k8s\\.io/", "^istio\\.io/"],
+      "groupName": "kubernetes",
+      "priority": 25
+    },
+    {
+      "description": "Connect RPC + protobuf côté Go",
+      "matchManagers": ["gomod"],
+      "matchPackagePatterns": ["^connectrpc\\.com/", "^google\\.golang\\.org/protobuf"],
+      "groupName": "connect-go",
+      "priority": 25
+    },
+    {
+      "description": "Prometheus / métriques",
+      "matchManagers": ["gomod"],
+      "matchPackagePatterns": ["^github\\.com/prometheus/"],
+      "groupName": "prometheus-go",
+      "priority": 25
+    },
+    {
+      "description": "Tests Go (Ginkgo / Gomega / testify)",
+      "matchManagers": ["gomod"],
+      "matchPackagePatterns": ["^github\\.com/onsi/", "^github\\.com/stretchr/testify"],
+      "groupName": "go-testing",
+      "priority": 25
+    },
+    {
+      "description": "Connect + Buf côté frontend",
+      "matchManagers": ["npm"],
+      "matchFileNames": ["web/package.json"],
+      "matchPackagePatterns": ["^@connectrpc/", "^@bufbuild/"],
+      "groupName": "connect-npm",
+      "priority": 25
+    },
+    {
+      "description": "Tailwind v4 + plugins associés",
+      "matchManagers": ["npm"],
+      "matchFileNames": ["web/package.json"],
+      "matchPackagePatterns": [
+        "^@tailwindcss/",
+        "^tailwindcss$",
+        "^tailwind-merge$",
+        "^tw-animate-css$"
+      ],
+      "groupName": "tailwind",
+      "priority": 25
+    }
   ]
 }
