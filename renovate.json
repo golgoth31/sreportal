@@ -1,6 +1,12 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended", "schedule:weekly"],
+  "extends": [
+    "config:recommended",
+    "schedule:weekly",
+    ":pinAllExceptPeerDependencies",
+    "docker:pinDigests",
+    "helpers:pinGitHubActionDigests"
+  ],
   "timezone": "Europe/Paris",
   "prConcurrentLimit": 5,
   "prHourlyLimit": 2,
