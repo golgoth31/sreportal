@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	"github.com/golgoth31/sreportal/internal/config"
 	nfdchain "github.com/golgoth31/sreportal/internal/controller/networkflowdiscovery/chain"
 	portalfeatures "github.com/golgoth31/sreportal/internal/controller/portal/features"
 	domainnetpol "github.com/golgoth31/sreportal/internal/domain/netpol"
@@ -52,11 +53,14 @@ type NetworkFlowDiscoveryReconciler struct {
 }
 
 // NewNetworkFlowDiscoveryReconciler creates a new reconciler with the handler chain.
-func NewNetworkFlowDiscoveryReconciler(c client.Client, scheme *runtime.Scheme, remoteClientCache *remoteclient.Cache) *NetworkFlowDiscoveryReconciler {
+// observer may be nil (no flow observation provider available).
+// flowObsCfg may be nil (all defaults applied).
+func NewNetworkFlowDiscoveryReconciler(c client.Client, scheme *runtime.Scheme, remoteClientCache *remoteclient.Cache, observer domainnetpol.FlowObserver, flowObsCfg *config.FlowObservationConfig) *NetworkFlowDiscoveryReconciler {
 	updateStatus := nfdchain.NewUpdateStatusHandler(c)
 	handlers := []reconciler.Handler[*sreportalv1alpha1.NetworkFlowDiscovery, nfdchain.ChainData]{
 		nfdchain.NewFetchRemoteGraphHandler(c, remoteClientCache),
 		nfdchain.NewBuildGraphHandler(c),
+		nfdchain.NewObserveFlowsHandler(c, observer, flowObsCfg),
 		updateStatus,
 	}
 

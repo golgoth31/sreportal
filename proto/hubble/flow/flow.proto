@@ -1,0 +1,73 @@
+// Simplified subset of Hubble flow types from cilium/cilium v1.19.2.
+// Only the types and fields needed by the SRE Portal flow observer are included.
+// Original source: https://github.com/cilium/cilium/blob/v1.19.2/api/v1/flow/flow.proto
+//
+// SPDX-License-Identifier: Apache-2.0
+// Copyright Authors of Hubble
+
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+package flow;
+
+option go_package = "github.com/golgoth31/sreportal/internal/flowobserver/hubblegen/flow";
+
+// Verdict is the outcome of a flow (forwarded, dropped, etc.).
+enum Verdict {
+    VERDICT_UNKNOWN = 0;
+    FORWARDED = 1;
+    DROPPED = 2;
+    ERROR = 3;
+    AUDIT = 4;
+    REDIRECTED = 5;
+    TRACED = 6;
+    TRANSLATED = 7;
+}
+
+// Flow is a network flow event observed by Hubble.
+// Only fields used by the SRE Portal flow observer are included.
+message Flow {
+    google.protobuf.Timestamp time = 1;
+    Verdict verdict = 2;
+    // Fields 3-7 omitted (drop_reason, ethernet, IP, l4, reserved).
+    Endpoint source = 8;
+    Endpoint destination = 9;
+    // Remaining fields omitted.
+}
+
+// Endpoint identifies a network endpoint (pod, service, external).
+message Endpoint {
+    // Fields 1-2 omitted (id, identity).
+    string namespace = 3;
+    // Field 4 omitted (labels as uint32).
+    repeated string labels = 5;
+    repeated Workload workloads = 6;
+}
+
+// Workload identifies a Kubernetes workload (Deployment, DaemonSet, etc.).
+message Workload {
+    string name = 1;
+    string kind = 2;
+}
+
+// FlowFilter is used to filter flows in GetFlows requests.
+// Only the verdict field is used by the SRE Portal flow observer.
+message FlowFilter {
+    // Fields 1-4 omitted (source_ip, source_pod, source_fqdn, etc.).
+    repeated Verdict verdict = 5;
+    // Remaining fields omitted.
+}
+
+// LostEvent is emitted when Hubble drops events due to backpressure.
+message LostEvent {
+    enum Source {
+        UNKNOWN_LOST_EVENT_SOURCE = 0;
+        PERF_EVENT_RING_BUFFER = 1;
+        OBSERVER_EVENTS_QUEUE = 2;
+        HUBBLE_RING_BUFFER = 3;
+    }
+    Source source = 1;
+    uint64 num_events_lost = 2;
+    // Field 3 omitted (cpu).
+}

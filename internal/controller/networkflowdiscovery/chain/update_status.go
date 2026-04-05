@@ -201,6 +201,11 @@ func flowEdgesToViews(edges []sreportalv1alpha1.FlowEdge) []domainnetpol.FlowEdg
 			To:       e.To,
 			EdgeType: e.EdgeType,
 		}
+
+		if e.LastSeen != nil {
+			t := e.LastSeen.Time
+			views[i].LastSeen = &t
+		}
 	}
 
 	return views

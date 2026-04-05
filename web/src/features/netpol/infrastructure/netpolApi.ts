@@ -28,6 +28,7 @@ function toDomainEdge(e: ProtoEdge): NetpolEdge {
     from: e.from,
     to: e.to,
     edgeType: e.edgeType as NetpolEdge["edgeType"],
+    lastSeen: e.lastSeen ? new Date(Number(e.lastSeen.seconds) * 1000).toISOString() : null,
   };
 }
 

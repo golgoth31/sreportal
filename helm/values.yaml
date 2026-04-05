@@ -63,6 +63,19 @@ config:
       interval: 5m
       retryOnError: 30s
       disableDNSCheck: false
+    # Flow observation — populates LastSeen timestamps on network edges.
+    # Requires Hubble or a Prometheus instance with mesh/CNI metrics.
+    flowObservation:
+      provider: auto           # auto | hubble | prometheus | none
+      staleAfter: 5m           # re-query edges that have a LastSeen older than this
+      retryAfter: 1h           # re-query edges that never returned a result after this delay
+      maxBatch: 50             # max edges queried per reconciliation cycle
+      hubble:
+        address: "hubble-relay.kube-system.svc.cluster.local:4245"
+        flowWindow: 5m         # time window for Hubble GetFlows queries
+      prometheus:
+        address: "http://prometheus.monitoring.svc.cluster.local:9090"
+        queryWindow: 5m        # PromQL range window for flow queries
     # Authentication for write endpoints (e.g. AddRelease).
     # Each method has an "enabled" flag. Multiple methods can coexist (chain).
     auth:
@@ -77,20 +90,20 @@ config:
 controllerManager:
   manager:
     args:
-      - '--metrics-bind-address=:8443'
-      - '--leader-elect'
-      - '--health-probe-bind-address=:9090'
-      - '--webhook-cert-path=/tmp/k8s-webhook-server/serving-certs'
-      - '--enable-mcp'
+    - --metrics-bind-address=:8443
+    - --leader-elect
+    - --health-probe-bind-address=:9090
+    - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
+    - --enable-mcp
     containerSecurityContext:
       allowPrivilegeEscalation: false
       capabilities:
         drop:
-          - ALL
+        - ALL
       readOnlyRootFilesystem: true
     image:
       repository: ghcr.io/golgoth31/sreportal
-      tag: 1.26.2
+      tag: latest
     resources:
       limits:
         cpu: 500m
@@ -109,30 +122,30 @@ controllerManager:
 kubernetesClusterDomain: cluster.local
 metricsService:
   ports:
-    - name: metrics
-      port: 8443
-      protocol: TCP
-      targetPort: 8443
+  - name: metrics
+    port: 8443
+    protocol: TCP
+    targetPort: 8443
   type: ClusterIP
 serviceAccount:
   annotations: {}
   automount: true
   create: true
-  name: ''
+  name: ""
 webMcpService:
   ports:
-    - name: http
-      port: 8090
-      protocol: TCP
-      targetPort: 8090
+  - name: http
+    port: 8090
+    protocol: TCP
+    targetPort: 8090
   type: ClusterIP
 webhookService:
   ports:
-    - port: 443
-      protocol: TCP
-      targetPort: 9443
+  - port: 443
+    protocol: TCP
+    targetPort: 9443
   type: ClusterIP
 auth:
   enabled: false
-  secretRef: ''
-  secretKey: ''
+  secretRef: ""
+  secretKey: ""

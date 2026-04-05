@@ -1,0 +1,14 @@
+# Vendored Hubble Observer proto files from cilium/cilium v1.19.2.
+# Only used to generate a minimal gRPC client for flow observation.
+version: v2
+modules:
+  - path: .
+lint:
+  use:
+    - STANDARD
+  except:
+    - PACKAGE_DIRECTORY_MATCH
+    - PACKAGE_VERSION_SUFFIX
+breaking:
+  use:
+    - FILE

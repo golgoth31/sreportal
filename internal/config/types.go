@@ -57,12 +57,46 @@ func (d Duration) Duration() time.Duration {
 
 // OperatorConfig represents the complete operator configuration from ConfigMap.
 type OperatorConfig struct {
-	Sources        SourcesConfig        `json:"sources" yaml:"sources"`
-	GroupMapping   GroupMappingConfig   `json:"groupMapping" yaml:"groupMapping"`
-	Reconciliation ReconciliationConfig `json:"reconciliation" yaml:"reconciliation"`
-	Release        ReleaseConfig        `json:"release,omitempty" yaml:"release,omitempty"`
-	Auth           AuthConfig           `json:"auth,omitempty" yaml:"auth,omitempty"`
-	Emoji          *EmojiConfig         `json:"emoji,omitempty" yaml:"emoji,omitempty"`
+	Sources         SourcesConfig          `json:"sources" yaml:"sources"`
+	GroupMapping    GroupMappingConfig     `json:"groupMapping" yaml:"groupMapping"`
+	Reconciliation  ReconciliationConfig   `json:"reconciliation" yaml:"reconciliation"`
+	Release         ReleaseConfig          `json:"release,omitempty" yaml:"release,omitempty"`
+	Auth            AuthConfig             `json:"auth,omitempty" yaml:"auth,omitempty"`
+	Emoji           *EmojiConfig           `json:"emoji,omitempty" yaml:"emoji,omitempty"`
+	FlowObservation *FlowObservationConfig `json:"flowObservation,omitempty" yaml:"flowObservation,omitempty"`
+}
+
+// FlowObservationConfig configures real-time flow observation for network edges.
+type FlowObservationConfig struct {
+	// Provider selects the observation backend: "auto", "hubble", "prometheus", "none".
+	// Default: "auto" (try Hubble first, then Prometheus).
+	Provider string `json:"provider,omitempty" yaml:"provider,omitempty"`
+	// StaleAfter is how long before a previously-seen edge is re-queried (default: 5m).
+	StaleAfter Duration `json:"staleAfter,omitempty" yaml:"staleAfter,omitempty"`
+	// RetryAfter is how long before an edge with no result is re-queried (default: 1h).
+	RetryAfter Duration `json:"retryAfter,omitempty" yaml:"retryAfter,omitempty"`
+	// MaxBatch is the maximum number of edges queried per reconciliation cycle (default: 50).
+	MaxBatch int `json:"maxBatch,omitempty" yaml:"maxBatch,omitempty"`
+	// Prometheus configures the Prometheus-based observer.
+	Prometheus *PrometheusObserverConfig `json:"prometheus,omitempty" yaml:"prometheus,omitempty"`
+	// Hubble configures the Hubble gRPC observer.
+	Hubble *HubbleObserverConfig `json:"hubble,omitempty" yaml:"hubble,omitempty"`
+}
+
+// PrometheusObserverConfig configures the Prometheus flow observer.
+type PrometheusObserverConfig struct {
+	// Address is the Prometheus server URL (default: http://prometheus.monitoring.svc.cluster.local:9090).
+	Address string `json:"address,omitempty" yaml:"address,omitempty"`
+	// QueryWindow is the PromQL range window for flow queries (default: 5m).
+	QueryWindow Duration `json:"queryWindow,omitempty" yaml:"queryWindow,omitempty"`
+}
+
+// HubbleObserverConfig configures the Hubble gRPC flow observer.
+type HubbleObserverConfig struct {
+	// Address is the Hubble Relay gRPC endpoint (default: hubble-relay.kube-system.svc.cluster.local:4245).
+	Address string `json:"address,omitempty" yaml:"address,omitempty"`
+	// FlowWindow is the time window for Hubble GetFlows queries (default: 5m).
+	FlowWindow Duration `json:"flowWindow,omitempty" yaml:"flowWindow,omitempty"`
 }
 
 // AuthConfig configures authentication for write endpoints.

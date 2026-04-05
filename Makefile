@@ -108,6 +108,10 @@ lint-config: golangci-lint ## Verify golangci-lint linter configuration
 proto: ## Generate Go and TypeScript code from proto files.
 	cd proto && buf generate
 
+.PHONY: proto-hubble
+proto-hubble: ## Generate Go gRPC client from vendored Hubble proto files.
+	cd proto/hubble && buf generate
+
 .PHONY: proto-lint
 proto-lint: ## Lint proto files.
 	cd proto && buf lint
