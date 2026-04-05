@@ -1,3 +1,6 @@
+// Hubble Relay types from cilium/cilium v1.19.2.
+// Original source: https://github.com/cilium/cilium/blob/v1.19.2/api/v1/relay/relay.proto
+//
 // SPDX-License-Identifier: Apache-2.0
 // Copyright Authors of Cilium
 

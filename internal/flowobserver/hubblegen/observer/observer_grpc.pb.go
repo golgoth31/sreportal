@@ -1,3 +1,7 @@
+// Simplified subset of Hubble Observer service from cilium/cilium v1.19.2.
+// Only the RPCs and types needed by the SRE Portal flow observer are included.
+// Original source: https://github.com/cilium/cilium/blob/v1.19.2/api/v1/observer/observer.proto
+//
 // SPDX-License-Identifier: Apache-2.0
 // Copyright Authors of Hubble
 
@@ -22,35 +26,19 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Observer_GetFlows_FullMethodName       = "/observer.Observer/GetFlows"
-	Observer_GetAgentEvents_FullMethodName = "/observer.Observer/GetAgentEvents"
-	Observer_GetDebugEvents_FullMethodName = "/observer.Observer/GetDebugEvents"
-	Observer_GetNodes_FullMethodName       = "/observer.Observer/GetNodes"
-	Observer_GetNamespaces_FullMethodName  = "/observer.Observer/GetNamespaces"
-	Observer_ServerStatus_FullMethodName   = "/observer.Observer/ServerStatus"
+	Observer_GetFlows_FullMethodName     = "/observer.Observer/GetFlows"
+	Observer_ServerStatus_FullMethodName = "/observer.Observer/ServerStatus"
 )
 
 // ObserverClient is the client API for Observer service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// Observer returns a stream of Flows depending on which filter the user want
-// to observe.
+// Observer returns a stream of Flows from Hubble.
 type ObserverClient interface {
-	// GetFlows returning structured data, meant to eventually obsolete GetLastNFlows.
+	// GetFlows returns a stream of flows matching the given filters.
 	GetFlows(ctx context.Context, in *GetFlowsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[GetFlowsResponse], error)
-	// GetAgentEvents returns Cilium agent events.
-	GetAgentEvents(ctx context.Context, in *GetAgentEventsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[GetAgentEventsResponse], error)
-	// GetDebugEvents returns Cilium datapath debug events.
-	GetDebugEvents(ctx context.Context, in *GetDebugEventsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[GetDebugEventsResponse], error)
-	// GetNodes returns information about nodes in a cluster.
-	GetNodes(ctx context.Context, in *GetNodesRequest, opts ...grpc.CallOption) (*GetNodesResponse, error)
-	// GetNamespaces returns information about namespaces in a cluster.
-	// The namespaces returned are namespaces which have had network flows in
-	// the last hour. The namespaces are returned sorted by cluster name and
-	// namespace in ascending order.
-	GetNamespaces(ctx context.Context, in *GetNamespacesRequest, opts ...grpc.CallOption) (*GetNamespacesResponse, error)
-	// ServerStatus returns some details about the running hubble server.
+	// ServerStatus returns Hubble server health information.
 	ServerStatus(ctx context.Context, in *ServerStatusRequest, opts ...grpc.CallOption) (*ServerStatusResponse, error)
 }
 
@@ -81,64 +69,6 @@ func (c *observerClient) GetFlows(ctx context.Context, in *GetFlowsRequest, opts
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type Observer_GetFlowsClient = grpc.ServerStreamingClient[GetFlowsResponse]
 
-func (c *observerClient) GetAgentEvents(ctx context.Context, in *GetAgentEventsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[GetAgentEventsResponse], error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &Observer_ServiceDesc.Streams[1], Observer_GetAgentEvents_FullMethodName, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &grpc.GenericClientStream[GetAgentEventsRequest, GetAgentEventsResponse]{ClientStream: stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type Observer_GetAgentEventsClient = grpc.ServerStreamingClient[GetAgentEventsResponse]
-
-func (c *observerClient) GetDebugEvents(ctx context.Context, in *GetDebugEventsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[GetDebugEventsResponse], error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &Observer_ServiceDesc.Streams[2], Observer_GetDebugEvents_FullMethodName, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &grpc.GenericClientStream[GetDebugEventsRequest, GetDebugEventsResponse]{ClientStream: stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type Observer_GetDebugEventsClient = grpc.ServerStreamingClient[GetDebugEventsResponse]
-
-func (c *observerClient) GetNodes(ctx context.Context, in *GetNodesRequest, opts ...grpc.CallOption) (*GetNodesResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetNodesResponse)
-	err := c.cc.Invoke(ctx, Observer_GetNodes_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *observerClient) GetNamespaces(ctx context.Context, in *GetNamespacesRequest, opts ...grpc.CallOption) (*GetNamespacesResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetNamespacesResponse)
-	err := c.cc.Invoke(ctx, Observer_GetNamespaces_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *observerClient) ServerStatus(ctx context.Context, in *ServerStatusRequest, opts ...grpc.CallOption) (*ServerStatusResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ServerStatusResponse)
@@ -153,23 +83,11 @@ func (c *observerClient) ServerStatus(ctx context.Context, in *ServerStatusReque
 // All implementations must embed UnimplementedObserverServer
 // for forward compatibility.
 //
-// Observer returns a stream of Flows depending on which filter the user want
-// to observe.
+// Observer returns a stream of Flows from Hubble.
 type ObserverServer interface {
-	// GetFlows returning structured data, meant to eventually obsolete GetLastNFlows.
+	// GetFlows returns a stream of flows matching the given filters.
 	GetFlows(*GetFlowsRequest, grpc.ServerStreamingServer[GetFlowsResponse]) error
-	// GetAgentEvents returns Cilium agent events.
-	GetAgentEvents(*GetAgentEventsRequest, grpc.ServerStreamingServer[GetAgentEventsResponse]) error
-	// GetDebugEvents returns Cilium datapath debug events.
-	GetDebugEvents(*GetDebugEventsRequest, grpc.ServerStreamingServer[GetDebugEventsResponse]) error
-	// GetNodes returns information about nodes in a cluster.
-	GetNodes(context.Context, *GetNodesRequest) (*GetNodesResponse, error)
-	// GetNamespaces returns information about namespaces in a cluster.
-	// The namespaces returned are namespaces which have had network flows in
-	// the last hour. The namespaces are returned sorted by cluster name and
-	// namespace in ascending order.
-	GetNamespaces(context.Context, *GetNamespacesRequest) (*GetNamespacesResponse, error)
-	// ServerStatus returns some details about the running hubble server.
+	// ServerStatus returns Hubble server health information.
 	ServerStatus(context.Context, *ServerStatusRequest) (*ServerStatusResponse, error)
 	mustEmbedUnimplementedObserverServer()
 }
@@ -183,18 +101,6 @@ type UnimplementedObserverServer struct{}
 
 func (UnimplementedObserverServer) GetFlows(*GetFlowsRequest, grpc.ServerStreamingServer[GetFlowsResponse]) error {
 	return status.Error(codes.Unimplemented, "method GetFlows not implemented")
-}
-func (UnimplementedObserverServer) GetAgentEvents(*GetAgentEventsRequest, grpc.ServerStreamingServer[GetAgentEventsResponse]) error {
-	return status.Error(codes.Unimplemented, "method GetAgentEvents not implemented")
-}
-func (UnimplementedObserverServer) GetDebugEvents(*GetDebugEventsRequest, grpc.ServerStreamingServer[GetDebugEventsResponse]) error {
-	return status.Error(codes.Unimplemented, "method GetDebugEvents not implemented")
-}
-func (UnimplementedObserverServer) GetNodes(context.Context, *GetNodesRequest) (*GetNodesResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetNodes not implemented")
-}
-func (UnimplementedObserverServer) GetNamespaces(context.Context, *GetNamespacesRequest) (*GetNamespacesResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetNamespaces not implemented")
 }
 func (UnimplementedObserverServer) ServerStatus(context.Context, *ServerStatusRequest) (*ServerStatusResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ServerStatus not implemented")
@@ -231,64 +137,6 @@ func _Observer_GetFlows_Handler(srv interface{}, stream grpc.ServerStream) error
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type Observer_GetFlowsServer = grpc.ServerStreamingServer[GetFlowsResponse]
 
-func _Observer_GetAgentEvents_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(GetAgentEventsRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(ObserverServer).GetAgentEvents(m, &grpc.GenericServerStream[GetAgentEventsRequest, GetAgentEventsResponse]{ServerStream: stream})
-}
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type Observer_GetAgentEventsServer = grpc.ServerStreamingServer[GetAgentEventsResponse]
-
-func _Observer_GetDebugEvents_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(GetDebugEventsRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(ObserverServer).GetDebugEvents(m, &grpc.GenericServerStream[GetDebugEventsRequest, GetDebugEventsResponse]{ServerStream: stream})
-}
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type Observer_GetDebugEventsServer = grpc.ServerStreamingServer[GetDebugEventsResponse]
-
-func _Observer_GetNodes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetNodesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ObserverServer).GetNodes(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Observer_GetNodes_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ObserverServer).GetNodes(ctx, req.(*GetNodesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Observer_GetNamespaces_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetNamespacesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ObserverServer).GetNamespaces(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Observer_GetNamespaces_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ObserverServer).GetNamespaces(ctx, req.(*GetNamespacesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _Observer_ServerStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ServerStatusRequest)
 	if err := dec(in); err != nil {
@@ -315,14 +163,6 @@ var Observer_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*ObserverServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "GetNodes",
-			Handler:    _Observer_GetNodes_Handler,
-		},
-		{
-			MethodName: "GetNamespaces",
-			Handler:    _Observer_GetNamespaces_Handler,
-		},
-		{
 			MethodName: "ServerStatus",
 			Handler:    _Observer_ServerStatus_Handler,
 		},
@@ -331,16 +171,6 @@ var Observer_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "GetFlows",
 			Handler:       _Observer_GetFlows_Handler,
-			ServerStreams: true,
-		},
-		{
-			StreamName:    "GetAgentEvents",
-			Handler:       _Observer_GetAgentEvents_Handler,
-			ServerStreams: true,
-		},
-		{
-			StreamName:    "GetDebugEvents",
-			Handler:       _Observer_GetDebugEvents_Handler,
 			ServerStreams: true,
 		},
 	},

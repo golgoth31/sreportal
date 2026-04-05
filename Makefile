@@ -110,7 +110,7 @@ proto: ## Generate Go and TypeScript code from proto files.
 
 .PHONY: proto-hubble
 proto-hubble: ## Generate Go gRPC client from vendored Hubble proto files.
-	buf generate --template proto/hubble/buf.gen.yaml proto/hubble
+	cd proto/hubble && buf generate
 
 .PHONY: proto-lint
 proto-lint: ## Lint proto files.
