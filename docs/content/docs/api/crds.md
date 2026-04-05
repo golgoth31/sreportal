@@ -685,6 +685,7 @@ _Appears in:_
 | `from` _string_ | from is the source node id |   |   |
 | `to` _string_ | to is the target node id |   |   |
 | `edgeType` _string_ | edgeType describes the flow type (e.g. internal, cross-ns, cron, database, messaging, external) |   |   |
+| `lastSeen` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | lastSeen is the timestamp when traffic was last observed on this edge. Nil means traffic has never been observed (policy exists but no flow data). |   |   |
 
 
 

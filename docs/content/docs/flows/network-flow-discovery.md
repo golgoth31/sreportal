@@ -31,7 +31,8 @@ flowchart TD
     Start([Reconcile]) --> H1
     H1["① FetchRemoteGraph\n(no-op if local)\nFetch nodes+edges from remote portal"] --> H2
     H2["② BuildGraph\n(no-op if remote)\nParse NetworkPolicies\nBuild nodes + edges"] --> H3
-    H3["③ UpdateStatus\nCreate/Update FlowNodeSet + FlowEdgeSet CRs\nUpdate NFD status (nodeCount, edgeCount)\nProject to FlowGraphWriter"] --> Done([Done])
+    H3["③ ObserveFlows\n(no-op if no provider)\nQuery Hubble/Prometheus for LastSeen"] --> H4
+    H4["④ UpdateStatus\nCreate/Update FlowNodeSet + FlowEdgeSet CRs\nUpdate NFD status (nodeCount, edgeCount)\nProject to FlowGraphWriter"] --> Done([Done])
 ```
 
 ### Step 1 — FetchRemoteGraph (remote only)
@@ -72,7 +73,19 @@ For local NFDs:
 
 5. **Deduplicate** edges and sort nodes (by group, then label) and edges (by from, then to)
 
-### Step 3 — UpdateStatus
+### Step 3 — ObserveFlows (optional)
+
+Enriches edges with `lastSeen` timestamps from a flow observation provider:
+
+1. **No-op** if no `FlowObserver` is configured or if the resource is remote
+2. **Load previous timestamps** from the existing FlowEdgeSet CR to carry them forward
+3. **Filter stale edges** — only query edges whose `lastSeen` is nil or older than 1 hour
+4. **Query provider** (Hubble gRPC or Prometheus) for the filtered edges
+5. **Merge timestamps** into `ChainData.Edges`
+
+If the query fails, the handler logs a warning and continues without failing the chain.
+
+### Step 4 — UpdateStatus
 
 1. **Create/Update FlowNodeSet** CR (name: `{nfdName}-nodes`, owner: NFD)
 2. **Create/Update FlowEdgeSet** CR (name: `{nfdName}-edges`, owner: NFD)

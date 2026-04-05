@@ -75,6 +75,7 @@ Each edge has the following fields:
 | `from` | Source node id | `service:namespace-a:service-1` |
 | `to` | Target node id | `service:namespace-b:service-2` |
 | `edgeType` | Flow type (see below) | `cross-ns` |
+| `lastSeen` | When traffic was last observed (optional, nil = never) | `2026-04-05T12:30:00Z` |
 
 Deleting the parent `NetworkFlowDiscovery` automatically garbage-collects both children.
 
@@ -126,6 +127,8 @@ Select any resource (database, service, external endpoint) to see its direct inc
 - **Left column**: services that call the selected resource (incoming), grouped by namespace in collapsible sections
 - **Center**: the selected resource with incoming/outgoing counts
 - **Right column**: services/resources that the selected resource calls (outgoing), grouped by namespace in collapsible sections
+
+Each flow displays a **last seen** indicator showing when traffic was last observed (e.g. "2m ago", "never"). This timestamp is populated by an optional flow observer (Hubble gRPC or Prometheus) when available in the cluster.
 
 Click on any connected service to navigate to it and explore its own flows — this allows depth-first exploration without needing a multi-level BFS view.
 
