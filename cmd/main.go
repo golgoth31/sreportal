@@ -65,6 +65,7 @@ import (
 	portalfeatures "github.com/golgoth31/sreportal/internal/controller/portal/features"
 	releasectrl "github.com/golgoth31/sreportal/internal/controller/release"
 	sourcectrl "github.com/golgoth31/sreportal/internal/controller/source"
+	"github.com/golgoth31/sreportal/internal/flowobserver"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/mcp"
 	alertmanagerreadstore "github.com/golgoth31/sreportal/internal/readstore/alertmanager"
@@ -609,11 +610,21 @@ func main() {
 	}
 	flowGraphStore := netpolreadstore.NewFlowGraphStore()
 	portalReconciler.SetFlowGraphWriter(flowGraphStore)
+
+	// Auto-discover flow observation provider (Hubble gRPC or Prometheus).
+	var flowObservationCfg *config.FlowObservationConfig
+	if operatorConfig != nil {
+		flowObservationCfg = operatorConfig.FlowObservation
+	}
+	discoverCtx, discoverCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	flowObserver := flowobserver.Discover(discoverCtx, ctrl.Log.WithName("flow-observer"), flowObservationCfg)
+	discoverCancel()
+
 	nfdReconciler := nfdctrl.NewNetworkFlowDiscoveryReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),
 		remoteCache,
-		nil, // No flow observer yet — will be wired when providers are implemented.
+		flowObserver,
 	)
 	nfdReconciler.SetFlowGraphWriter(flowGraphStore)
 	if err := nfdReconciler.SetupWithManager(mgr); err != nil {

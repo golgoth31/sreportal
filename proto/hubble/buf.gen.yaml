@@ -1,0 +1,12 @@
+# Code generation for vendored Hubble proto files.
+# Output: internal/flowobserver/hubblegen/
+version: v2
+plugins:
+  - protoc_builtin: go
+    out: ../../internal/flowobserver/hubblegen
+    opt:
+      - paths=source_relative
+  - protoc_builtin: go-grpc
+    out: ../../internal/flowobserver/hubblegen
+    opt:
+      - paths=source_relative
