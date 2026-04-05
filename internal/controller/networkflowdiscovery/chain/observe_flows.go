@@ -18,6 +18,8 @@ package chain
 
 import (
 	"context"
+	"sort"
+	"sync"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -30,36 +32,54 @@ import (
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
+const (
+	defaultStaleAfter = 5 * time.Minute
+	defaultRetryAfter = 1 * time.Hour
+	defaultMaxBatch   = 50
+)
+
 // ObserveFlowsHandler enriches edges with LastSeen timestamps from a FlowObserver provider.
 // When the observer is nil or the resource is remote, this handler is a no-op.
+//
+// To avoid thundering-herd effects, edges are processed in batches and use two thresholds:
+//   - staleAfter: how long before a previously-seen edge is re-queried (default 5m)
+//   - retryAfter: how long before an edge with no result is re-queried (default 1h)
 type ObserveFlowsHandler struct {
 	k8sReader  client.Reader
 	observer   domainnetpol.FlowObserver
 	staleAfter time.Duration
+	retryAfter time.Duration
+	maxBatch   int
+
+	// In-memory tracker for edges that were queried but returned no result.
+	// Lost on operator restart — acceptable since it only affects query frequency.
+	missedMu sync.Mutex
+	missedAt map[string]time.Time // edge key → last time queried without result
 }
 
 // NewObserveFlowsHandler creates a new ObserveFlowsHandler.
 // observer may be nil (graceful degradation: no timestamps populated).
 func NewObserveFlowsHandler(k8sReader client.Reader, observer domainnetpol.FlowObserver, staleAfter time.Duration) *ObserveFlowsHandler {
 	if staleAfter <= 0 {
-		staleAfter = 1 * time.Hour
+		staleAfter = defaultStaleAfter
 	}
 
 	return &ObserveFlowsHandler{
 		k8sReader:  k8sReader,
 		observer:   observer,
 		staleAfter: staleAfter,
+		retryAfter: defaultRetryAfter,
+		maxBatch:   defaultMaxBatch,
+		missedAt:   make(map[string]time.Time),
 	}
 }
 
 // Handle implements reconciler.Handler.
 func (h *ObserveFlowsHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.NetworkFlowDiscovery, ChainData]) error {
-	// No observer available — no-op.
 	if h.observer == nil {
 		return nil
 	}
 
-	// Remote resources get LastSeen from the remote portal gRPC response.
 	if rc.Resource.Spec.IsRemote {
 		return nil
 	}
@@ -74,7 +94,17 @@ func (h *ObserveFlowsHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 	previousLastSeen := h.loadPreviousLastSeen(ctx, rc.Resource)
 
 	now := time.Now()
-	var staleEdges []domainnetpol.FlowEdge
+
+	// Candidate edges that need observation, with a priority score (older = higher priority).
+	type candidate struct {
+		index int // index in rc.Data.Edges
+		edge  domainnetpol.FlowEdge
+		age   time.Duration // time since last seen or last check
+	}
+
+	var candidates []candidate
+
+	h.missedMu.Lock()
 
 	for i := range rc.Data.Edges {
 		edge := &rc.Data.Edges[i]
@@ -85,43 +115,78 @@ func (h *ObserveFlowsHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 			edge.LastSeen = &prev
 		}
 
-		// Collect edges that need observation.
-		if edge.LastSeen == nil || now.Sub(edge.LastSeen.Time) > h.staleAfter {
-			staleEdges = append(staleEdges, domainnetpol.FlowEdge{
+		// Determine if this edge needs observation.
+		if edge.LastSeen != nil {
+			// Edge has been seen before — re-query if stale.
+			if age := now.Sub(edge.LastSeen.Time); age > h.staleAfter {
+				candidates = append(candidates, candidate{index: i, edge: domainnetpol.FlowEdge{
+					From: edge.From, To: edge.To, EdgeType: edge.EdgeType,
+				}, age: age})
+			}
+		} else {
+			// Edge never seen — check if we already queried recently without result.
+			if missed, ok := h.missedAt[key]; ok && now.Sub(missed) < h.retryAfter {
+				continue // Skip — we already tried recently and got nothing.
+			}
+
+			candidates = append(candidates, candidate{index: i, edge: domainnetpol.FlowEdge{
 				From: edge.From, To: edge.To, EdgeType: edge.EdgeType,
-			})
+			}, age: now.Sub(time.Time{})}) // max age — highest priority
 		}
 	}
 
-	if len(staleEdges) == 0 {
+	h.missedMu.Unlock()
+
+	if len(candidates) == 0 {
 		logger.V(1).Info("all edges have fresh timestamps, skipping observation")
 		return nil
 	}
 
-	// Query the observer for stale edges.
-	observed, err := h.observer.LastSeen(ctx, staleEdges)
-	if err != nil {
-		logger.Error(err, "flow observer query failed, continuing without timestamps")
-		return nil // Don't fail the chain.
+	// Sort by age descending (oldest first = highest priority) and cap at maxBatch.
+	sort.Slice(candidates, func(i, j int) bool {
+		return candidates[i].age > candidates[j].age
+	})
+
+	if len(candidates) > h.maxBatch {
+		candidates = candidates[:h.maxBatch]
 	}
 
-	// Merge observed timestamps back into rc.Data.Edges.
+	// Build the query batch.
+	queryEdges := make([]domainnetpol.FlowEdge, len(candidates))
+	for i, c := range candidates {
+		queryEdges[i] = c.edge
+	}
+
+	// Query the observer.
+	observed, err := h.observer.LastSeen(ctx, queryEdges)
+	if err != nil {
+		logger.Error(err, "flow observer query failed, continuing without timestamps")
+		return nil
+	}
+
+	// Merge results and update missed tracker.
 	updated := 0
 
-	for i := range rc.Data.Edges {
-		edge := &rc.Data.Edges[i]
-		key := edge.From + "|" + edge.To + "|" + edge.EdgeType
+	h.missedMu.Lock()
+
+	for _, c := range candidates {
+		key := c.edge.From + "|" + c.edge.To + "|" + c.edge.EdgeType
 
 		if t, ok := observed[key]; ok {
 			mt := metav1.NewTime(t)
-			edge.LastSeen = &mt
+			rc.Data.Edges[c.index].LastSeen = &mt
+			delete(h.missedAt, key) // Got a result — clear the miss tracker.
 			updated++
+		} else {
+			h.missedAt[key] = now // No result — track so we don't retry for retryAfter.
 		}
 	}
 
+	h.missedMu.Unlock()
+
 	logger.V(1).Info("flow observation complete",
 		"total", len(rc.Data.Edges),
-		"queried", len(staleEdges),
+		"queried", len(candidates),
 		"updated", updated,
 	)
 

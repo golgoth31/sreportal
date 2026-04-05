@@ -44,7 +44,7 @@ var meshDescriptors = []meshDescriptor{
 	{
 		Name:          "hubble",
 		ProbeQuery:    `count(hubble_flows_processed_total)`,
-		LastSeenQuery: `max by (source_workload, source_namespace, destination_workload, destination_namespace) (timestamp(hubble_flows_processed_total{verdict="FORWARDED"}))`,
+		LastSeenQuery: `max by (source_workload, source_namespace, destination_workload, destination_namespace) (max_over_time(hubble_flows_processed_total{verdict="FORWARDED"}[5m]))`,
 		SrcNamespace:  "source_namespace",
 		SrcWorkload:   "source_workload",
 		DstNamespace:  "destination_namespace",
@@ -53,7 +53,7 @@ var meshDescriptors = []meshDescriptor{
 	{
 		Name:          "istio",
 		ProbeQuery:    `count(istio_requests_total)`,
-		LastSeenQuery: `max by (source_workload, source_workload_namespace, destination_workload, destination_workload_namespace) (timestamp(istio_requests_total{reporter="destination"}))`,
+		LastSeenQuery: `max by (source_workload, source_workload_namespace, destination_workload, destination_workload_namespace) (max_over_time(istio_requests_total{reporter="destination"}[5m]))`,
 		SrcNamespace:  "source_workload_namespace",
 		SrcWorkload:   "source_workload",
 		DstNamespace:  "destination_workload_namespace",
@@ -62,7 +62,7 @@ var meshDescriptors = []meshDescriptor{
 	{
 		Name:          "linkerd",
 		ProbeQuery:    `count(request_total{direction="outbound"})`,
-		LastSeenQuery: `max by (namespace, deployment, dst_namespace, dst_deployment) (timestamp(request_total{direction="outbound"}))`,
+		LastSeenQuery: `max by (namespace, deployment, dst_namespace, dst_deployment) (max_over_time(request_total{direction="outbound"}[5m]))`,
 		SrcNamespace:  "namespace",
 		SrcWorkload:   "deployment",
 		DstNamespace:  "dst_namespace",
@@ -207,8 +207,9 @@ func (o *PrometheusObserver) LastSeen(ctx context.Context, edges []domainnetpol.
 			continue
 		}
 
-		// The sample value is the Unix timestamp (from PromQL timestamp() function).
-		ts := time.Unix(int64(sample.Value), 0)
+		// With max_over_time, the sample timestamp is when the metric was last scraped
+		// within the window. This is our "last seen" indicator.
+		ts := sample.Timestamp.Time()
 
 		for _, key := range keys {
 			if existing, ok := lastSeen[key]; !ok || ts.After(existing) {

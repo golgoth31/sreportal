@@ -35,7 +35,7 @@ import (
 const (
 	defaultHubbleAddress = "hubble-relay.kube-system.svc.cluster.local:4245"
 	hubbleDialTimeout    = 2 * time.Second
-	hubbleFlowWindow     = 1 * time.Hour
+	hubbleFlowWindow     = 5 * time.Minute
 )
 
 // HubbleObserver implements FlowObserver using the Hubble gRPC Observer API.
