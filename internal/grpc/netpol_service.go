@@ -22,6 +22,7 @@ import (
 	"slices"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	domainnetpol "github.com/golgoth31/sreportal/internal/domain/netpol"
 	domainportal "github.com/golgoth31/sreportal/internal/domain/portal"
@@ -86,11 +87,17 @@ func flowNodeToProto(n domainnetpol.FlowNode) *netpolv1.NetpolNode {
 }
 
 func flowEdgeToProto(e domainnetpol.FlowEdge) *netpolv1.NetpolEdge {
-	return &netpolv1.NetpolEdge{
+	proto := &netpolv1.NetpolEdge{
 		From:     e.From,
 		To:       e.To,
 		EdgeType: e.EdgeType,
 	}
+
+	if e.LastSeen != nil {
+		proto.LastSeen = timestamppb.New(*e.LastSeen)
+	}
+
+	return proto
 }
 
 func sortedProtoNodes(nodes []domainnetpol.FlowNode) []*netpolv1.NetpolNode {

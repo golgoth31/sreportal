@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { ChevronDownIcon } from "lucide-react";
 import type { NetpolNode, NetpolEdge } from "../domain/netpol.types";
-import { NODE_TYPE_COLORS, MAX_SEARCH_RESULTS, groupColor } from "../domain/utils";
+import { NODE_TYPE_COLORS, MAX_SEARCH_RESULTS, groupColor, formatLastSeen } from "../domain/utils";
 
 interface Props {
   nodes: readonly NetpolNode[];
@@ -23,6 +23,7 @@ interface Props {
 interface FlowItem {
   node: NetpolNode;
   edgeType: string;
+  lastSeen: string | null;
 }
 
 function groupByNamespace(items: readonly FlowItem[]): Map<string, FlowItem[]> {
@@ -88,6 +89,9 @@ function NamespaceGroup({
                 <Badge variant="outline" className="ml-auto text-[10px] shrink-0">
                   {item.edgeType}
                 </Badge>
+                <span className="text-muted-foreground text-[10px] shrink-0">
+                  {formatLastSeen(item.lastSeen)}
+                </span>
               </Button>
             ))}
           </div>
@@ -149,7 +153,7 @@ export function FlowExplorerView({ nodes, nodeMap, callsTo, callsFrom }: Props) 
   const incoming = useMemo(() => {
     if (!selectedId) return [];
     return (callsFrom.get(selectedId) ?? [])
-      .map((e) => ({ node: nodeMap.get(e.from)!, edgeType: e.edgeType }))
+      .map((e) => ({ node: nodeMap.get(e.from)!, edgeType: e.edgeType, lastSeen: e.lastSeen }))
       .filter((item) => item.node != null)
       .sort((a, b) => a.node.label.localeCompare(b.node.label));
   }, [selectedId, callsFrom, nodeMap]);
@@ -157,7 +161,7 @@ export function FlowExplorerView({ nodes, nodeMap, callsTo, callsFrom }: Props) 
   const outgoing = useMemo(() => {
     if (!selectedId) return [];
     return (callsTo.get(selectedId) ?? [])
-      .map((e) => ({ node: nodeMap.get(e.to)!, edgeType: e.edgeType }))
+      .map((e) => ({ node: nodeMap.get(e.to)!, edgeType: e.edgeType, lastSeen: e.lastSeen }))
       .filter((item) => item.node != null)
       .sort((a, b) => a.node.label.localeCompare(b.node.label));
   }, [selectedId, callsTo, nodeMap]);

@@ -9,6 +9,7 @@ package sreportalv1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -230,7 +231,9 @@ type NetpolEdge struct {
 	// to is the target node id
 	To string `protobuf:"bytes,2,opt,name=to,proto3" json:"to,omitempty"`
 	// edge_type is one of: internal, cross-pl, cron, database, external
-	EdgeType      string `protobuf:"bytes,3,opt,name=edge_type,json=edgeType,proto3" json:"edge_type,omitempty"`
+	EdgeType string `protobuf:"bytes,3,opt,name=edge_type,json=edgeType,proto3" json:"edge_type,omitempty"`
+	// last_seen is when traffic was last observed on this edge. Absent means never observed.
+	LastSeen      *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=last_seen,json=lastSeen,proto3" json:"last_seen,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -286,11 +289,18 @@ func (x *NetpolEdge) GetEdgeType() string {
 	return ""
 }
 
+func (x *NetpolEdge) GetLastSeen() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastSeen
+	}
+	return nil
+}
+
 var File_sreportal_v1_netpol_proto protoreflect.FileDescriptor
 
 const file_sreportal_v1_netpol_proto_rawDesc = "" +
 	"\n" +
-	"\x19sreportal/v1/netpol.proto\x12\fsreportal.v1\"j\n" +
+	"\x19sreportal/v1/netpol.proto\x12\fsreportal.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"j\n" +
 	"\x1aListNetworkPoliciesRequest\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x16\n" +
 	"\x06search\x18\x02 \x01(\tR\x06search\x12\x16\n" +
@@ -304,12 +314,13 @@ const file_sreportal_v1_netpol_proto_rawDesc = "" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12\x1c\n" +
 	"\tnamespace\x18\x03 \x01(\tR\tnamespace\x12\x1b\n" +
 	"\tnode_type\x18\x04 \x01(\tR\bnodeType\x12\x14\n" +
-	"\x05group\x18\x05 \x01(\tR\x05group\"M\n" +
+	"\x05group\x18\x05 \x01(\tR\x05group\"\x86\x01\n" +
 	"\n" +
 	"NetpolEdge\x12\x12\n" +
 	"\x04from\x18\x01 \x01(\tR\x04from\x12\x0e\n" +
 	"\x02to\x18\x02 \x01(\tR\x02to\x12\x1b\n" +
-	"\tedge_type\x18\x03 \x01(\tR\bedgeType2\x82\x01\n" +
+	"\tedge_type\x18\x03 \x01(\tR\bedgeType\x127\n" +
+	"\tlast_seen\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\blastSeen2\x82\x01\n" +
 	"\x14NetworkPolicyService\x12j\n" +
 	"\x13ListNetworkPolicies\x12(.sreportal.v1.ListNetworkPoliciesRequest\x1a).sreportal.v1.ListNetworkPoliciesResponseB\xbb\x01\n" +
 	"\x10com.sreportal.v1B\vNetpolProtoP\x01ZIgithub.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1;sreportalv1\xa2\x02\x03SXX\xaa\x02\fSreportal.V1\xca\x02\fSreportal\\V1\xe2\x02\x18Sreportal\\V1\\GPBMetadata\xea\x02\rSreportal::V1b\x06proto3"
@@ -332,17 +343,19 @@ var file_sreportal_v1_netpol_proto_goTypes = []any{
 	(*ListNetworkPoliciesResponse)(nil), // 1: sreportal.v1.ListNetworkPoliciesResponse
 	(*NetpolNode)(nil),                  // 2: sreportal.v1.NetpolNode
 	(*NetpolEdge)(nil),                  // 3: sreportal.v1.NetpolEdge
+	(*timestamppb.Timestamp)(nil),       // 4: google.protobuf.Timestamp
 }
 var file_sreportal_v1_netpol_proto_depIdxs = []int32{
 	2, // 0: sreportal.v1.ListNetworkPoliciesResponse.nodes:type_name -> sreportal.v1.NetpolNode
 	3, // 1: sreportal.v1.ListNetworkPoliciesResponse.edges:type_name -> sreportal.v1.NetpolEdge
-	0, // 2: sreportal.v1.NetworkPolicyService.ListNetworkPolicies:input_type -> sreportal.v1.ListNetworkPoliciesRequest
-	1, // 3: sreportal.v1.NetworkPolicyService.ListNetworkPolicies:output_type -> sreportal.v1.ListNetworkPoliciesResponse
-	3, // [3:4] is the sub-list for method output_type
-	2, // [2:3] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	4, // 2: sreportal.v1.NetpolEdge.last_seen:type_name -> google.protobuf.Timestamp
+	0, // 3: sreportal.v1.NetworkPolicyService.ListNetworkPolicies:input_type -> sreportal.v1.ListNetworkPoliciesRequest
+	1, // 4: sreportal.v1.NetworkPolicyService.ListNetworkPolicies:output_type -> sreportal.v1.ListNetworkPoliciesResponse
+	4, // [4:5] is the sub-list for method output_type
+	3, // [3:4] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_sreportal_v1_netpol_proto_init() }

@@ -19,6 +19,7 @@ export interface NetpolEdge {
   readonly from: string;
   readonly to: string;
   readonly edgeType: EdgeType;
+  readonly lastSeen: string | null;
 }
 
 export interface NetpolGraph {

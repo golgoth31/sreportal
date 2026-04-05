@@ -445,11 +445,18 @@ func (c *Client) doFetchNetworkPolicies(ctx context.Context, baseURL string) (*N
 
 	edges := make([]sreportalv1alpha1.FlowEdge, 0, len(resp.Msg.Edges))
 	for _, e := range resp.Msg.Edges {
-		edges = append(edges, sreportalv1alpha1.FlowEdge{
+		edge := sreportalv1alpha1.FlowEdge{
 			From:     e.From,
 			To:       e.To,
 			EdgeType: e.EdgeType,
-		})
+		}
+
+		if e.LastSeen != nil {
+			t := metav1.NewTime(e.LastSeen.AsTime())
+			edge.LastSeen = &t
+		}
+
+		edges = append(edges, edge)
 	}
 
 	return &NetworkFlowsFetchResult{
