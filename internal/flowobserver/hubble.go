@@ -1,3 +1,19 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package flowobserver
 
 import (
@@ -24,18 +40,38 @@ const (
 
 // HubbleObserver implements FlowObserver using the Hubble gRPC Observer API.
 type HubbleObserver struct {
-	address string
-	mu      sync.Mutex
-	conn    *grpc.ClientConn
+	address  string
+	dialOpts []grpc.DialOption
+	mu       sync.Mutex
+	conn     *grpc.ClientConn
+}
+
+// HubbleOption configures the HubbleObserver.
+type HubbleOption func(*HubbleObserver)
+
+// WithHubbleDialOptions overrides the default gRPC dial options.
+func WithHubbleDialOptions(opts ...grpc.DialOption) HubbleOption {
+	return func(o *HubbleObserver) {
+		o.dialOpts = opts
+	}
 }
 
 // NewHubbleObserver creates a new Hubble-based flow observer.
-func NewHubbleObserver(address string) *HubbleObserver {
+func NewHubbleObserver(address string, opts ...HubbleOption) *HubbleObserver {
 	if address == "" {
 		address = defaultHubbleAddress
 	}
 
-	return &HubbleObserver{address: address}
+	o := &HubbleObserver{
+		address:  address,
+		dialOpts: []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())},
+	}
+
+	for _, opt := range opts {
+		opt(o)
+	}
+
+	return o
 }
 
 // Available checks if the Hubble Relay is reachable via gRPC.
@@ -43,7 +79,7 @@ func (o *HubbleObserver) Available(ctx context.Context) (bool, error) {
 	dialCtx, cancel := context.WithTimeout(ctx, hubbleDialTimeout)
 	defer cancel()
 
-	conn, err := grpc.NewClient(o.address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(o.address, o.dialOpts...)
 	if err != nil {
 		return false, nil
 	}

@@ -1,3 +1,19 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package flowobserver
 
 import (
@@ -61,16 +77,35 @@ type PrometheusObserver struct {
 	mesh *meshDescriptor // detected mesh, nil until Available() succeeds
 }
 
+// PrometheusOption configures the PrometheusObserver.
+type PrometheusOption func(*PrometheusObserver)
+
+// WithPrometheusAPI overrides the default Prometheus API client (useful for testing).
+func WithPrometheusAPI(api promv1.API) PrometheusOption {
+	return func(o *PrometheusObserver) {
+		o.api = api
+	}
+}
+
 // NewPrometheusObserver creates a new Prometheus-based flow observer.
-func NewPrometheusObserver(address string) (*PrometheusObserver, error) {
-	client, err := promapi.NewClient(promapi.Config{Address: address})
-	if err != nil {
-		return nil, fmt.Errorf("create prometheus client: %w", err)
+func NewPrometheusObserver(address string, opts ...PrometheusOption) (*PrometheusObserver, error) {
+	o := &PrometheusObserver{}
+
+	for _, opt := range opts {
+		opt(o)
 	}
 
-	return &PrometheusObserver{
-		api: promv1.NewAPI(client),
-	}, nil
+	// Only create the default client if not overridden by an option.
+	if o.api == nil {
+		client, err := promapi.NewClient(promapi.Config{Address: address})
+		if err != nil {
+			return nil, fmt.Errorf("create prometheus client: %w", err)
+		}
+
+		o.api = promv1.NewAPI(client)
+	}
+
+	return o, nil
 }
 
 // Available probes Prometheus for known mesh metrics and returns true if any are found.
