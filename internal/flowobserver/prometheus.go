@@ -29,52 +29,55 @@ import (
 	domainnetpol "github.com/golgoth31/sreportal/internal/domain/netpol"
 )
 
+const defaultQueryWindow = 5 * time.Minute
+
 // meshDescriptor describes how a specific service mesh exposes flow metrics in Prometheus.
 type meshDescriptor struct {
-	Name          string // human-readable name
-	ProbeQuery    string // PromQL to check existence
-	LastSeenQuery string // PromQL returning max timestamp per src/dst pair
-	SrcNamespace  string // label name for source namespace
-	SrcWorkload   string // label name for source workload
-	DstNamespace  string // label name for destination namespace
-	DstWorkload   string // label name for destination workload
+	Name              string // human-readable name
+	ProbeQuery        string // PromQL to check existence
+	LastSeenQueryTmpl string // PromQL template with %s for range window (e.g. "5m")
+	SrcNamespace      string // label name for source namespace
+	SrcWorkload       string // label name for source workload
+	DstNamespace      string // label name for destination namespace
+	DstWorkload       string // label name for destination workload
 }
 
 var meshDescriptors = []meshDescriptor{
 	{
-		Name:          "hubble",
-		ProbeQuery:    `count(hubble_flows_processed_total)`,
-		LastSeenQuery: `max by (source_workload, source_namespace, destination_workload, destination_namespace) (max_over_time(hubble_flows_processed_total{verdict="FORWARDED"}[5m]))`,
-		SrcNamespace:  "source_namespace",
-		SrcWorkload:   "source_workload",
-		DstNamespace:  "destination_namespace",
-		DstWorkload:   "destination_workload",
+		Name:              "hubble",
+		ProbeQuery:        `count(hubble_flows_processed_total)`,
+		LastSeenQueryTmpl: `max by (source_workload, source_namespace, destination_workload, destination_namespace) (max_over_time(hubble_flows_processed_total{verdict="FORWARDED"}[%s]))`,
+		SrcNamespace:      "source_namespace",
+		SrcWorkload:       "source_workload",
+		DstNamespace:      "destination_namespace",
+		DstWorkload:       "destination_workload",
 	},
 	{
-		Name:          "istio",
-		ProbeQuery:    `count(istio_requests_total)`,
-		LastSeenQuery: `max by (source_workload, source_workload_namespace, destination_workload, destination_workload_namespace) (max_over_time(istio_requests_total{reporter="destination"}[5m]))`,
-		SrcNamespace:  "source_workload_namespace",
-		SrcWorkload:   "source_workload",
-		DstNamespace:  "destination_workload_namespace",
-		DstWorkload:   "destination_workload",
+		Name:              "istio",
+		ProbeQuery:        `count(istio_requests_total)`,
+		LastSeenQueryTmpl: `max by (source_workload, source_workload_namespace, destination_workload, destination_workload_namespace) (max_over_time(istio_requests_total{reporter="destination"}[%s]))`,
+		SrcNamespace:      "source_workload_namespace",
+		SrcWorkload:       "source_workload",
+		DstNamespace:      "destination_workload_namespace",
+		DstWorkload:       "destination_workload",
 	},
 	{
-		Name:          "linkerd",
-		ProbeQuery:    `count(request_total{direction="outbound"})`,
-		LastSeenQuery: `max by (namespace, deployment, dst_namespace, dst_deployment) (max_over_time(request_total{direction="outbound"}[5m]))`,
-		SrcNamespace:  "namespace",
-		SrcWorkload:   "deployment",
-		DstNamespace:  "dst_namespace",
-		DstWorkload:   "dst_deployment",
+		Name:              "linkerd",
+		ProbeQuery:        `count(request_total{direction="outbound"})`,
+		LastSeenQueryTmpl: `max by (namespace, deployment, dst_namespace, dst_deployment) (max_over_time(request_total{direction="outbound"}[%s]))`,
+		SrcNamespace:      "namespace",
+		SrcWorkload:       "deployment",
+		DstNamespace:      "dst_namespace",
+		DstWorkload:       "dst_deployment",
 	},
 }
 
 // PrometheusObserver implements FlowObserver using Prometheus queries.
 type PrometheusObserver struct {
-	api  promv1.API
-	mu   sync.Mutex
-	mesh *meshDescriptor // detected mesh, nil until Available() succeeds
+	api         promv1.API
+	queryWindow time.Duration
+	mu          sync.Mutex
+	mesh        *meshDescriptor // detected mesh, nil until Available() succeeds
 }
 
 // PrometheusOption configures the PrometheusObserver.
@@ -87,9 +90,18 @@ func WithPrometheusAPI(api promv1.API) PrometheusOption {
 	}
 }
 
+// WithPrometheusQueryWindow sets the PromQL range window for flow queries.
+func WithPrometheusQueryWindow(d time.Duration) PrometheusOption {
+	return func(o *PrometheusObserver) {
+		o.queryWindow = d
+	}
+}
+
 // NewPrometheusObserver creates a new Prometheus-based flow observer.
 func NewPrometheusObserver(address string, opts ...PrometheusOption) (*PrometheusObserver, error) {
-	o := &PrometheusObserver{}
+	o := &PrometheusObserver{
+		queryWindow: defaultQueryWindow,
+	}
 
 	for _, opt := range opts {
 		opt(o)
@@ -181,7 +193,11 @@ func (o *PrometheusObserver) LastSeen(ctx context.Context, edges []domainnetpol.
 	}
 
 	// Execute one aggregated query for all edges.
-	result, _, err := o.api.Query(ctx, mesh.LastSeenQuery, time.Now())
+	// Format the query window as a Prometheus duration string (e.g. "5m0s" → "5m").
+	window := formatPromDuration(o.queryWindow)
+	query := fmt.Sprintf(mesh.LastSeenQueryTmpl, window)
+
+	result, _, err := o.api.Query(ctx, query, time.Now())
 	if err != nil {
 		return nil, fmt.Errorf("prometheus query failed: %w", err)
 	}
@@ -219,4 +235,18 @@ func (o *PrometheusObserver) LastSeen(ctx context.Context, edges []domainnetpol.
 	}
 
 	return lastSeen, nil
+}
+
+// formatPromDuration converts a Go duration to a Prometheus-compatible duration string.
+// e.g. 5*time.Minute → "5m", 1*time.Hour → "1h", 90*time.Second → "90s".
+func formatPromDuration(d time.Duration) string {
+	if h := int(d.Hours()); h > 0 && d == time.Duration(h)*time.Hour {
+		return fmt.Sprintf("%dh", h)
+	}
+
+	if m := int(d.Minutes()); m > 0 && d == time.Duration(m)*time.Minute {
+		return fmt.Sprintf("%dm", m)
+	}
+
+	return fmt.Sprintf("%ds", int(d.Seconds()))
 }

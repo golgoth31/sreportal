@@ -35,15 +35,16 @@ import (
 const (
 	defaultHubbleAddress = "hubble-relay.kube-system.svc.cluster.local:4245"
 	hubbleDialTimeout    = 2 * time.Second
-	hubbleFlowWindow     = 5 * time.Minute
+	defaultFlowWindow    = 5 * time.Minute
 )
 
 // HubbleObserver implements FlowObserver using the Hubble gRPC Observer API.
 type HubbleObserver struct {
-	address  string
-	dialOpts []grpc.DialOption
-	mu       sync.Mutex
-	conn     *grpc.ClientConn
+	address    string
+	flowWindow time.Duration
+	dialOpts   []grpc.DialOption
+	mu         sync.Mutex
+	conn       *grpc.ClientConn
 }
 
 // HubbleOption configures the HubbleObserver.
@@ -56,6 +57,13 @@ func WithHubbleDialOptions(opts ...grpc.DialOption) HubbleOption {
 	}
 }
 
+// WithHubbleFlowWindow sets the time window for GetFlows queries.
+func WithHubbleFlowWindow(d time.Duration) HubbleOption {
+	return func(o *HubbleObserver) {
+		o.flowWindow = d
+	}
+}
+
 // NewHubbleObserver creates a new Hubble-based flow observer.
 func NewHubbleObserver(address string, opts ...HubbleOption) *HubbleObserver {
 	if address == "" {
@@ -63,8 +71,9 @@ func NewHubbleObserver(address string, opts ...HubbleOption) *HubbleObserver {
 	}
 
 	o := &HubbleObserver{
-		address:  address,
-		dialOpts: []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())},
+		address:    address,
+		flowWindow: defaultFlowWindow,
+		dialOpts:   []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())},
 	}
 
 	for _, opt := range opts {
@@ -132,7 +141,7 @@ func (o *HubbleObserver) LastSeen(ctx context.Context, edges []domainnetpol.Flow
 
 	// Query Hubble for recent forwarded flows.
 	client := observerpb.NewObserverClient(conn)
-	since := time.Now().Add(-hubbleFlowWindow)
+	since := time.Now().Add(-o.flowWindow)
 
 	stream, err := client.GetFlows(ctx, &observerpb.GetFlowsRequest{
 		Since:  timestamppb.New(since),

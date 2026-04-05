@@ -69,11 +69,20 @@ func Discover(ctx context.Context, logger logr.Logger, cfg *config.FlowObservati
 
 func discoverHubble(ctx context.Context, logger logr.Logger, cfg *config.HubbleObserverConfig) domainnetpol.FlowObserver {
 	address := defaultHubbleAddress
-	if cfg != nil && cfg.Address != "" {
-		address = cfg.Address
+
+	var opts []HubbleOption
+
+	if cfg != nil {
+		if cfg.Address != "" {
+			address = cfg.Address
+		}
+
+		if cfg.FlowWindow.Duration() > 0 {
+			opts = append(opts, WithHubbleFlowWindow(cfg.FlowWindow.Duration()))
+		}
 	}
 
-	obs := NewHubbleObserver(address)
+	obs := NewHubbleObserver(address, opts...)
 
 	ok, err := obs.Available(ctx)
 	if err != nil || !ok {
@@ -88,11 +97,20 @@ func discoverHubble(ctx context.Context, logger logr.Logger, cfg *config.HubbleO
 
 func discoverPrometheus(ctx context.Context, logger logr.Logger, cfg *config.PrometheusObserverConfig) domainnetpol.FlowObserver {
 	address := "http://prometheus.monitoring.svc.cluster.local:9090"
-	if cfg != nil && cfg.Address != "" {
-		address = cfg.Address
+
+	var opts []PrometheusOption
+
+	if cfg != nil {
+		if cfg.Address != "" {
+			address = cfg.Address
+		}
+
+		if cfg.QueryWindow.Duration() > 0 {
+			opts = append(opts, WithPrometheusQueryWindow(cfg.QueryWindow.Duration()))
+		}
 	}
 
-	obs, err := NewPrometheusObserver(address)
+	obs, err := NewPrometheusObserver(address, opts...)
 	if err != nil {
 		logger.V(1).Info("prometheus client creation failed", "address", address, "err", err)
 		return nil

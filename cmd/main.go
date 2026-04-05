@@ -625,6 +625,7 @@ func main() {
 		mgr.GetScheme(),
 		remoteCache,
 		flowObserver,
+		flowObservationCfg,
 	)
 	nfdReconciler.SetFlowGraphWriter(flowGraphStore)
 	if err := nfdReconciler.SetupWithManager(mgr); err != nil {

@@ -63,6 +63,19 @@ config:
       interval: 5m
       retryOnError: 30s
       disableDNSCheck: false
+    # Flow observation — populates LastSeen timestamps on network edges.
+    # Requires Hubble or a Prometheus instance with mesh/CNI metrics.
+    flowObservation:
+      provider: auto           # auto | hubble | prometheus | none
+      staleAfter: 5m           # re-query edges that have a LastSeen older than this
+      retryAfter: 1h           # re-query edges that never returned a result after this delay
+      maxBatch: 50             # max edges queried per reconciliation cycle
+      hubble:
+        address: "hubble-relay.kube-system.svc.cluster.local:4245"
+        flowWindow: 5m         # time window for Hubble GetFlows queries
+      prometheus:
+        address: "http://prometheus.monitoring.svc.cluster.local:9090"
+        queryWindow: 5m        # PromQL range window for flow queries
     # Authentication for write endpoints (e.g. AddRelease).
     # Each method has an "enabled" flag. Multiple methods can coexist (chain).
     auth:

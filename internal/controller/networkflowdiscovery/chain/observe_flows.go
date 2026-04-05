@@ -27,15 +27,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	"github.com/golgoth31/sreportal/internal/config"
 	domainnetpol "github.com/golgoth31/sreportal/internal/domain/netpol"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/reconciler"
-)
-
-const (
-	defaultStaleAfter = 5 * time.Minute
-	defaultRetryAfter = 1 * time.Hour
-	defaultMaxBatch   = 50
 )
 
 // ObserveFlowsHandler enriches edges with LastSeen timestamps from a FlowObserver provider.
@@ -59,17 +54,32 @@ type ObserveFlowsHandler struct {
 
 // NewObserveFlowsHandler creates a new ObserveFlowsHandler.
 // observer may be nil (graceful degradation: no timestamps populated).
-func NewObserveFlowsHandler(k8sReader client.Reader, observer domainnetpol.FlowObserver, staleAfter time.Duration) *ObserveFlowsHandler {
-	if staleAfter <= 0 {
-		staleAfter = defaultStaleAfter
+// cfg may be nil (all defaults applied).
+func NewObserveFlowsHandler(k8sReader client.Reader, observer domainnetpol.FlowObserver, cfg *config.FlowObservationConfig) *ObserveFlowsHandler {
+	staleAfter := 5 * time.Minute
+	retryAfter := 1 * time.Hour
+	maxBatch := 50
+
+	if cfg != nil {
+		if cfg.StaleAfter.Duration() > 0 {
+			staleAfter = cfg.StaleAfter.Duration()
+		}
+
+		if cfg.RetryAfter.Duration() > 0 {
+			retryAfter = cfg.RetryAfter.Duration()
+		}
+
+		if cfg.MaxBatch > 0 {
+			maxBatch = cfg.MaxBatch
+		}
 	}
 
 	return &ObserveFlowsHandler{
 		k8sReader:  k8sReader,
 		observer:   observer,
 		staleAfter: staleAfter,
-		retryAfter: defaultRetryAfter,
-		maxBatch:   defaultMaxBatch,
+		retryAfter: retryAfter,
+		maxBatch:   maxBatch,
 		missedAt:   make(map[string]time.Time),
 	}
 }
