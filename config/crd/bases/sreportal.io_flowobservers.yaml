@@ -125,6 +125,11 @@ spec:
                 required:
                 - address
                 type: object
+              reconcileInterval:
+                description: |-
+                  reconcileInterval is how often the observer queries for unused edges (e.g. "1m", "5m").
+                  Defaults to the NetworkFlowDiscovery reconcile interval (1m) when empty.
+                type: string
             required:
             - portalRef
             - prometheus

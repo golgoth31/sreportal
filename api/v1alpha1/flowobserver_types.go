@@ -27,6 +27,11 @@ type FlowObserverSpec struct {
 	// +kubebuilder:validation:MinLength=1
 	PortalRef string `json:"portalRef"`
 
+	// reconcileInterval is how often the observer queries for unused edges (e.g. "1m", "5m").
+	// Defaults to the NetworkFlowDiscovery reconcile interval (1m) when empty.
+	// +optional
+	ReconcileInterval string `json:"reconcileInterval,omitempty"`
+
 	// prometheus configures the Prometheus-based flow observation
 	// +required
 	Prometheus FlowObserverPrometheusConfig `json:"prometheus"`

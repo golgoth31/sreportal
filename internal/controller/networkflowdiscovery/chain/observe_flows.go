@@ -19,6 +19,7 @@ package chain
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -35,12 +36,15 @@ import (
 // FlowObserver. The observer is lazily initialized from a FlowObserver CRD matching
 // the portal ref. When no FlowObserver CRD exists, this handler is a no-op.
 // Edges already marked Used=true are never re-queried.
+// The query frequency is controlled by spec.reconcileInterval in the FlowObserver CRD.
 type ObserveFlowsHandler struct {
 	k8sReader client.Reader
 
-	mu       sync.Mutex
-	observer domainnetpol.FlowObserver
-	specHash string // tracks CRD changes to re-initialize
+	mu                sync.Mutex
+	observer          domainnetpol.FlowObserver
+	specHash          string        // tracks CRD changes to re-initialize
+	reconcileInterval time.Duration // from CRD spec
+	lastQueryTime     time.Time     // when we last queried the observer
 }
 
 // NewObserveFlowsHandler creates a new ObserveFlowsHandler.
@@ -65,6 +69,27 @@ func (h *ObserveFlowsHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 	// Resolve or create the observer from the FlowObserver CRD.
 	observer := h.resolveObserver(ctx, rc.Resource)
 	if observer == nil {
+		return nil
+	}
+
+	// Throttle: skip query if the last one was too recent.
+	h.mu.Lock()
+	sinceLastQuery := time.Since(h.lastQueryTime)
+	interval := h.reconcileInterval
+	h.mu.Unlock()
+
+	if interval > 0 && sinceLastQuery < interval {
+		logger.V(1).Info("skipping observation, next query in", "remaining", interval-sinceLastQuery)
+		// Still carry forward Used flags even when skipping the query.
+		previousUsed := h.loadPreviousUsed(ctx, rc.Resource)
+		for i := range rc.Data.Edges {
+			edge := &rc.Data.Edges[i]
+			key := edge.From + "|" + edge.To + "|" + edge.EdgeType
+			if previousUsed[key] {
+				edge.Used = true
+			}
+		}
+
 		return nil
 	}
 
@@ -98,6 +123,11 @@ func (h *ObserveFlowsHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 		logger.Error(err, "flow observer query failed, continuing without updates")
 		return nil
 	}
+
+	// Update last query time after successful query.
+	h.mu.Lock()
+	h.lastQueryTime = time.Now()
+	h.mu.Unlock()
 
 	updated := 0
 
@@ -154,6 +184,13 @@ func (h *ObserveFlowsHandler) resolveObserver(ctx context.Context, nfd *sreporta
 	obs := flowobserver.Discover(ctx, logr.FromContextOrDiscard(ctx).WithName("observe-flows"), fo.Spec)
 	h.observer = obs
 	h.specHash = fo.ResourceVersion
+
+	// Parse reconcile interval from CRD spec.
+	if fo.Spec.ReconcileInterval != "" {
+		if d, err := time.ParseDuration(fo.Spec.ReconcileInterval); err == nil && d > 0 {
+			h.reconcileInterval = d
+		}
+	}
 
 	return obs
 }
