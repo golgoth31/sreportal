@@ -4,7 +4,7 @@ import type { EdgeType, NetpolEdge } from "./netpol.types";
 import { buildFlowMaps } from "./netpol.types";
 
 function mkEdge(from: string, to: string, edgeType: EdgeType = "internal"): NetpolEdge {
-  return { from, to, edgeType, lastSeen: null };
+  return { from, to, edgeType, used: false };
 }
 
 describe("buildFlowMaps", () => {

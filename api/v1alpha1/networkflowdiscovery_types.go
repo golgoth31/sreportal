@@ -94,10 +94,9 @@ type FlowEdge struct {
 	// edgeType describes the flow type (e.g. internal, cross-ns, cron, database, messaging, external)
 	EdgeType string `json:"edgeType"`
 
-	// lastSeen is the timestamp when traffic was last observed on this edge.
-	// Nil means traffic has never been observed (policy exists but no flow data).
+	// used indicates whether traffic has been observed on this edge.
 	// +optional
-	LastSeen *metav1.Time `json:"lastSeen,omitempty"`
+	Used bool `json:"used,omitempty"`
 }
 
 // +kubebuilder:object:root=true

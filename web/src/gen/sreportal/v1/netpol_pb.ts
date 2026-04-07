@@ -4,15 +4,13 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { Timestamp } from "@bufbuild/protobuf/wkt";
-import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file sreportal/v1/netpol.proto.
  */
 export const file_sreportal_v1_netpol: GenFile = /*@__PURE__*/
-  fileDesc("ChlzcmVwb3J0YWwvdjEvbmV0cG9sLnByb3RvEgxzcmVwb3J0YWwudjEiTwoaTGlzdE5ldHdvcmtQb2xpY2llc1JlcXVlc3QSEQoJbmFtZXNwYWNlGAEgASgJEg4KBnNlYXJjaBgCIAEoCRIOCgZwb3J0YWwYAyABKAkibwobTGlzdE5ldHdvcmtQb2xpY2llc1Jlc3BvbnNlEicKBW5vZGVzGAEgAygLMhguc3JlcG9ydGFsLnYxLk5ldHBvbE5vZGUSJwoFZWRnZXMYAiADKAsyGC5zcmVwb3J0YWwudjEuTmV0cG9sRWRnZSJcCgpOZXRwb2xOb2RlEgoKAmlkGAEgASgJEg0KBWxhYmVsGAIgASgJEhEKCW5hbWVzcGFjZRgDIAEoCRIRCglub2RlX3R5cGUYBCABKAkSDQoFZ3JvdXAYBSABKAkiaAoKTmV0cG9sRWRnZRIMCgRmcm9tGAEgASgJEgoKAnRvGAIgASgJEhEKCWVkZ2VfdHlwZRgDIAEoCRItCglsYXN0X3NlZW4YBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wMoIBChROZXR3b3JrUG9saWN5U2VydmljZRJqChNMaXN0TmV0d29ya1BvbGljaWVzEiguc3JlcG9ydGFsLnYxLkxpc3ROZXR3b3JrUG9saWNpZXNSZXF1ZXN0Gikuc3JlcG9ydGFsLnYxLkxpc3ROZXR3b3JrUG9saWNpZXNSZXNwb25zZUK7AQoQY29tLnNyZXBvcnRhbC52MUILTmV0cG9sUHJvdG9QAVpJZ2l0aHViLmNvbS9nb2xnb3RoMzEvc3JlcG9ydGFsL2ludGVybmFsL2dycGMvZ2VuL3NyZXBvcnRhbC92MTtzcmVwb3J0YWx2MaICA1NYWKoCDFNyZXBvcnRhbC5WMcoCDFNyZXBvcnRhbFxWMeICGFNyZXBvcnRhbFxWMVxHUEJNZXRhZGF0YeoCDVNyZXBvcnRhbDo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
+  fileDesc("ChlzcmVwb3J0YWwvdjEvbmV0cG9sLnByb3RvEgxzcmVwb3J0YWwudjEiTwoaTGlzdE5ldHdvcmtQb2xpY2llc1JlcXVlc3QSEQoJbmFtZXNwYWNlGAEgASgJEg4KBnNlYXJjaBgCIAEoCRIOCgZwb3J0YWwYAyABKAkibwobTGlzdE5ldHdvcmtQb2xpY2llc1Jlc3BvbnNlEicKBW5vZGVzGAEgAygLMhguc3JlcG9ydGFsLnYxLk5ldHBvbE5vZGUSJwoFZWRnZXMYAiADKAsyGC5zcmVwb3J0YWwudjEuTmV0cG9sRWRnZSJcCgpOZXRwb2xOb2RlEgoKAmlkGAEgASgJEg0KBWxhYmVsGAIgASgJEhEKCW5hbWVzcGFjZRgDIAEoCRIRCglub2RlX3R5cGUYBCABKAkSDQoFZ3JvdXAYBSABKAkiRwoKTmV0cG9sRWRnZRIMCgRmcm9tGAEgASgJEgoKAnRvGAIgASgJEhEKCWVkZ2VfdHlwZRgDIAEoCRIMCgR1c2VkGAQgASgIMoIBChROZXR3b3JrUG9saWN5U2VydmljZRJqChNMaXN0TmV0d29ya1BvbGljaWVzEiguc3JlcG9ydGFsLnYxLkxpc3ROZXR3b3JrUG9saWNpZXNSZXF1ZXN0Gikuc3JlcG9ydGFsLnYxLkxpc3ROZXR3b3JrUG9saWNpZXNSZXNwb25zZUK7AQoQY29tLnNyZXBvcnRhbC52MUILTmV0cG9sUHJvdG9QAVpJZ2l0aHViLmNvbS9nb2xnb3RoMzEvc3JlcG9ydGFsL2ludGVybmFsL2dycGMvZ2VuL3NyZXBvcnRhbC92MTtzcmVwb3J0YWx2MaICA1NYWKoCDFNyZXBvcnRhbC5WMcoCDFNyZXBvcnRhbFxWMeICGFNyZXBvcnRhbFxWMVxHUEJNZXRhZGF0YeoCDVNyZXBvcnRhbDo6VjFiBnByb3RvMw");
 
 /**
  * ListNetworkPoliciesRequest is the request for listing network policies
@@ -154,11 +152,11 @@ export type NetpolEdge = Message<"sreportal.v1.NetpolEdge"> & {
   edgeType: string;
 
   /**
-   * last_seen is when traffic was last observed on this edge. Absent means never observed.
+   * used indicates whether traffic has been observed on this edge.
    *
-   * @generated from field: google.protobuf.Timestamp last_seen = 4;
+   * @generated from field: bool used = 4;
    */
-  lastSeen?: Timestamp;
+  used: boolean;
 };
 
 /**

@@ -24,7 +24,6 @@ import (
 	"net/http"
 	"slices"
 	"strings"
-	"time"
 
 	domainnetpol "github.com/golgoth31/sreportal/internal/domain/netpol"
 	"github.com/golgoth31/sreportal/internal/log"
@@ -125,10 +124,10 @@ type netpolNodeResult struct {
 }
 
 type netpolEdgeResult struct {
-	From     string  `json:"from"`
-	To       string  `json:"to"`
-	EdgeType string  `json:"edge_type"`
-	LastSeen *string `json:"last_seen,omitempty"`
+	From     string `json:"from"`
+	To       string `json:"to"`
+	EdgeType string `json:"edge_type"`
+	Used     bool   `json:"used"`
 }
 
 func flowNodeToMCPResult(n domainnetpol.FlowNode) netpolNodeResult {
@@ -138,13 +137,7 @@ func flowNodeToMCPResult(n domainnetpol.FlowNode) netpolNodeResult {
 }
 
 func flowEdgeToMCPResult(e domainnetpol.FlowEdge) netpolEdgeResult {
-	r := netpolEdgeResult{From: e.From, To: e.To, EdgeType: e.EdgeType}
-	if e.LastSeen != nil {
-		s := e.LastSeen.Format(time.RFC3339)
-		r.LastSeen = &s
-	}
-
-	return r
+	return netpolEdgeResult{From: e.From, To: e.To, EdgeType: e.EdgeType, Used: e.Used}
 }
 
 // loadGraph reads the full graph from the store for the given portal, returning maps for local processing.
@@ -263,7 +256,7 @@ func (s *NetpolServer) handleListFlows(ctx context.Context, request mcp.CallTool
 type FlowTarget struct {
 	Node     netpolNodeResult `json:"node"`
 	EdgeType string           `json:"edge_type"`
-	LastSeen *string          `json:"last_seen,omitempty"`
+	Used     bool             `json:"used"`
 }
 
 // ServiceFlows represents the incoming and outgoing flows for a service.
@@ -300,13 +293,13 @@ func (s *NetpolServer) handleGetServiceFlows(ctx context.Context, request mcp.Ca
 	for _, e := range edgeMap {
 		if e.From == found.ID {
 			if tgt, ok := nodeMap[e.To]; ok {
-				flows.CallsTo = append(flows.CallsTo, FlowTarget{Node: tgt, EdgeType: e.EdgeType, LastSeen: e.LastSeen})
+				flows.CallsTo = append(flows.CallsTo, FlowTarget{Node: tgt, EdgeType: e.EdgeType, Used: e.Used})
 			}
 		}
 
 		if e.To == found.ID {
 			if src, ok := nodeMap[e.From]; ok {
-				flows.CalledBy = append(flows.CalledBy, FlowTarget{Node: src, EdgeType: e.EdgeType, LastSeen: e.LastSeen})
+				flows.CalledBy = append(flows.CalledBy, FlowTarget{Node: src, EdgeType: e.EdgeType, Used: e.Used})
 			}
 		}
 	}

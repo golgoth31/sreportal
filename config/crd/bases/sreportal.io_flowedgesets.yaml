@@ -71,15 +71,13 @@ spec:
                     from:
                       description: from is the source node id
                       type: string
-                    lastSeen:
-                      description: |-
-                        lastSeen is the timestamp when traffic was last observed on this edge.
-                        Nil means traffic has never been observed (policy exists but no flow data).
-                      format: date-time
-                      type: string
                     to:
                       description: to is the target node id
                       type: string
+                    used:
+                      description: used indicates whether traffic has been observed
+                        on this edge.
+                      type: boolean
                   required:
                   - edgeType
                   - from

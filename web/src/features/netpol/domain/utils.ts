@@ -45,16 +45,6 @@ export const MAX_SEARCH_RESULTS = 50;
 /** Maximum number of top cross-namespace flows displayed. */
 export const MAX_TOP_FLOWS = 20;
 
-/** Format a lastSeen timestamp as a human-readable relative time. */
-export function formatLastSeen(lastSeen: string | null): string {
-  if (!lastSeen) return "never";
-  const diff = Date.now() - new Date(lastSeen).getTime();
-  if (diff < 60_000) return "just now";
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
-  return `${Math.floor(diff / 86_400_000)}d ago`;
-}
-
 /** Deduplicate edges by from|to|edgeType key. */
 export function dedup<
   T extends { readonly from: string; readonly to: string; readonly edgeType: string },

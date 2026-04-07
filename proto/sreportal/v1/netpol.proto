@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package sreportal.v1;
 
-import "google/protobuf/timestamp.proto";
-
 // NetworkPolicyService provides access to Kubernetes NetworkPolicy and FQDNNetworkPolicy resources
 service NetworkPolicyService {
   // ListNetworkPolicies returns all network policies with parsed ingress/egress relations
@@ -60,6 +58,6 @@ message NetpolEdge {
   // edge_type is one of: internal, cross-pl, cron, database, external
   string edge_type = 3;
 
-  // last_seen is when traffic was last observed on this edge. Absent means never observed.
-  google.protobuf.Timestamp last_seen = 4;
+  // used indicates whether traffic has been observed on this edge.
+  bool used = 4;
 }

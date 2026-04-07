@@ -18,10 +18,8 @@ package chain
 
 import (
 	"context"
-	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
@@ -30,36 +28,29 @@ import (
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
-// ObserveFlowsHandler enriches edges with LastSeen timestamps from a FlowObserver provider.
+// ObserveFlowsHandler enriches edges with the Used flag from a FlowObserver provider.
 // When the observer is nil or the resource is remote, this handler is a no-op.
+// Edges already marked Used=true are never re-queried.
 type ObserveFlowsHandler struct {
-	k8sReader  client.Reader
-	observer   domainnetpol.FlowObserver
-	staleAfter time.Duration
+	k8sReader client.Reader
+	observer  domainnetpol.FlowObserver
 }
 
 // NewObserveFlowsHandler creates a new ObserveFlowsHandler.
-// observer may be nil (graceful degradation: no timestamps populated).
-func NewObserveFlowsHandler(k8sReader client.Reader, observer domainnetpol.FlowObserver, staleAfter time.Duration) *ObserveFlowsHandler {
-	if staleAfter <= 0 {
-		staleAfter = 1 * time.Hour
-	}
-
+// observer may be nil (graceful degradation: Used stays false).
+func NewObserveFlowsHandler(k8sReader client.Reader, observer domainnetpol.FlowObserver) *ObserveFlowsHandler {
 	return &ObserveFlowsHandler{
-		k8sReader:  k8sReader,
-		observer:   observer,
-		staleAfter: staleAfter,
+		k8sReader: k8sReader,
+		observer:  observer,
 	}
 }
 
 // Handle implements reconciler.Handler.
 func (h *ObserveFlowsHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.NetworkFlowDiscovery, ChainData]) error {
-	// No observer available — no-op.
 	if h.observer == nil {
 		return nil
 	}
 
-	// Remote resources get LastSeen from the remote portal gRPC response.
 	if rc.Resource.Spec.IsRemote {
 		return nil
 	}
@@ -70,67 +61,68 @@ func (h *ObserveFlowsHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 		return nil
 	}
 
-	// Carry forward existing LastSeen from the previous FlowEdgeSet.
-	previousLastSeen := h.loadPreviousLastSeen(ctx, rc.Resource)
+	// Carry forward Used flag from the previous FlowEdgeSet.
+	previousUsed := h.loadPreviousUsed(ctx, rc.Resource)
 
-	now := time.Now()
-	var staleEdges []domainnetpol.FlowEdge
+	var unknownEdges []domainnetpol.FlowEdge
 
 	for i := range rc.Data.Edges {
 		edge := &rc.Data.Edges[i]
 		key := edge.From + "|" + edge.To + "|" + edge.EdgeType
 
-		// Carry forward the previous timestamp.
-		if prev, ok := previousLastSeen[key]; ok && edge.LastSeen == nil {
-			edge.LastSeen = &prev
+		// Carry forward from previous reconciliation.
+		if previousUsed[key] {
+			edge.Used = true
 		}
 
-		// Collect edges that need observation.
-		if edge.LastSeen == nil || now.Sub(edge.LastSeen.Time) > h.staleAfter {
-			staleEdges = append(staleEdges, domainnetpol.FlowEdge{
+		// Only query edges not yet marked as used.
+		if !edge.Used {
+			unknownEdges = append(unknownEdges, domainnetpol.FlowEdge{
 				From: edge.From, To: edge.To, EdgeType: edge.EdgeType,
 			})
 		}
 	}
 
-	if len(staleEdges) == 0 {
-		logger.V(1).Info("all edges have fresh timestamps, skipping observation")
+	if len(unknownEdges) == 0 {
+		logger.V(1).Info("all edges already marked as used, skipping observation")
 		return nil
 	}
 
-	// Query the observer for stale edges.
-	observed, err := h.observer.LastSeen(ctx, staleEdges)
+	// Query the observer for unknown edges.
+	observed, err := h.observer.Observed(ctx, unknownEdges)
 	if err != nil {
-		logger.Error(err, "flow observer query failed, continuing without timestamps")
-		return nil // Don't fail the chain.
+		logger.Error(err, "flow observer query failed, continuing without updates")
+		return nil
 	}
 
-	// Merge observed timestamps back into rc.Data.Edges.
+	// Merge results back into rc.Data.Edges.
 	updated := 0
 
 	for i := range rc.Data.Edges {
 		edge := &rc.Data.Edges[i]
-		key := edge.From + "|" + edge.To + "|" + edge.EdgeType
+		if edge.Used {
+			continue
+		}
 
-		if t, ok := observed[key]; ok {
-			mt := metav1.NewTime(t)
-			edge.LastSeen = &mt
+		key := edge.From + "|" + edge.To + "|" + edge.EdgeType
+		if observed[key] {
+			edge.Used = true
 			updated++
 		}
 	}
 
 	logger.V(1).Info("flow observation complete",
 		"total", len(rc.Data.Edges),
-		"queried", len(staleEdges),
+		"queried", len(unknownEdges),
 		"updated", updated,
 	)
 
 	return nil
 }
 
-// loadPreviousLastSeen reads the existing FlowEdgeSet to recover LastSeen timestamps
+// loadPreviousUsed reads the existing FlowEdgeSet to recover Used flags
 // from the previous reconciliation cycle.
-func (h *ObserveFlowsHandler) loadPreviousLastSeen(ctx context.Context, nfd *sreportalv1alpha1.NetworkFlowDiscovery) map[string]metav1.Time {
+func (h *ObserveFlowsHandler) loadPreviousUsed(ctx context.Context, nfd *sreportalv1alpha1.NetworkFlowDiscovery) map[string]bool {
 	name := nfd.Name + "-edges"
 	var edgeSet sreportalv1alpha1.FlowEdgeSet
 
@@ -142,11 +134,11 @@ func (h *ObserveFlowsHandler) loadPreviousLastSeen(ctx context.Context, nfd *sre
 		return nil
 	}
 
-	result := make(map[string]metav1.Time, len(edgeSet.Status.Edges))
+	result := make(map[string]bool, len(edgeSet.Status.Edges))
 	for _, e := range edgeSet.Status.Edges {
-		if e.LastSeen != nil {
+		if e.Used {
 			key := e.From + "|" + e.To + "|" + e.EdgeType
-			result[key] = *e.LastSeen
+			result[key] = true
 		}
 	}
 

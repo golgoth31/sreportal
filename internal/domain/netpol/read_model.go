@@ -1,7 +1,5 @@
 package netpol
 
-import "time"
-
 // FlowNode is the read model for a node in the network flow graph.
 type FlowNode struct {
 	ID        string
@@ -16,7 +14,7 @@ type FlowEdge struct {
 	From     string
 	To       string
 	EdgeType string
-	LastSeen *time.Time // nil = never observed
+	Used     bool // true if traffic was observed on this edge
 }
 
 // FlowGraphFilters specifies optional filters for querying the flow graph.

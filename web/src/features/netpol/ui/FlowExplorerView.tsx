@@ -9,9 +9,9 @@ import {
 } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { ChevronDownIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon, XIcon } from "lucide-react";
 import type { NetpolNode, NetpolEdge } from "../domain/netpol.types";
-import { NODE_TYPE_COLORS, MAX_SEARCH_RESULTS, groupColor, formatLastSeen } from "../domain/utils";
+import { NODE_TYPE_COLORS, MAX_SEARCH_RESULTS, groupColor } from "../domain/utils";
 
 interface Props {
   nodes: readonly NetpolNode[];
@@ -23,7 +23,7 @@ interface Props {
 interface FlowItem {
   node: NetpolNode;
   edgeType: string;
-  lastSeen: string | null;
+  used: boolean;
 }
 
 function groupByNamespace(items: readonly FlowItem[]): Map<string, FlowItem[]> {
@@ -89,9 +89,11 @@ function NamespaceGroup({
                 <Badge variant="outline" className="ml-auto text-[10px] shrink-0">
                   {item.edgeType}
                 </Badge>
-                <span className="text-muted-foreground text-[10px] shrink-0">
-                  {formatLastSeen(item.lastSeen)}
-                </span>
+                {item.used ? (
+                  <CheckIcon className="size-3.5 text-green-600 dark:text-green-400 shrink-0" />
+                ) : (
+                  <XIcon className="size-3.5 text-red-500 dark:text-red-400 shrink-0" />
+                )}
               </Button>
             ))}
           </div>
@@ -153,7 +155,7 @@ export function FlowExplorerView({ nodes, nodeMap, callsTo, callsFrom }: Props) 
   const incoming = useMemo(() => {
     if (!selectedId) return [];
     return (callsFrom.get(selectedId) ?? [])
-      .map((e) => ({ node: nodeMap.get(e.from)!, edgeType: e.edgeType, lastSeen: e.lastSeen }))
+      .map((e) => ({ node: nodeMap.get(e.from)!, edgeType: e.edgeType, used: e.used }))
       .filter((item) => item.node != null)
       .sort((a, b) => a.node.label.localeCompare(b.node.label));
   }, [selectedId, callsFrom, nodeMap]);
@@ -161,7 +163,7 @@ export function FlowExplorerView({ nodes, nodeMap, callsTo, callsFrom }: Props) 
   const outgoing = useMemo(() => {
     if (!selectedId) return [];
     return (callsTo.get(selectedId) ?? [])
-      .map((e) => ({ node: nodeMap.get(e.to)!, edgeType: e.edgeType, lastSeen: e.lastSeen }))
+      .map((e) => ({ node: nodeMap.get(e.to)!, edgeType: e.edgeType, used: e.used }))
       .filter((item) => item.node != null)
       .sort((a, b) => a.node.label.localeCompare(b.node.label));
   }, [selectedId, callsTo, nodeMap]);

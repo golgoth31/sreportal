@@ -58,7 +58,7 @@ func NewNetworkFlowDiscoveryReconciler(c client.Client, scheme *runtime.Scheme, 
 	handlers := []reconciler.Handler[*sreportalv1alpha1.NetworkFlowDiscovery, nfdchain.ChainData]{
 		nfdchain.NewFetchRemoteGraphHandler(c, remoteClientCache),
 		nfdchain.NewBuildGraphHandler(c),
-		nfdchain.NewObserveFlowsHandler(c, observer, 0), // 0 → default 1h
+		nfdchain.NewObserveFlowsHandler(c, observer),
 		updateStatus,
 	}
 

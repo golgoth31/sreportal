@@ -16,10 +16,7 @@ limitations under the License.
 
 package netpol
 
-import (
-	"context"
-	"time"
-)
+import "context"
 
 // FlowObserver detects real traffic on network edges.
 // Implementations include Hubble gRPC, Prometheus queries, etc.
@@ -27,9 +24,9 @@ type FlowObserver interface {
 	// Available reports whether this observer's data source is reachable.
 	Available(ctx context.Context) (bool, error)
 
-	// LastSeen returns the most recent traffic timestamp for each edge.
-	// The map is keyed by "from|to|edgeType". Missing keys mean no data.
-	LastSeen(ctx context.Context, edges []FlowEdge) (map[string]time.Time, error)
+	// Observed returns the set of edges for which traffic was detected.
+	// The map is keyed by "from|to|edgeType". Present keys mean traffic was observed.
+	Observed(ctx context.Context, edges []FlowEdge) (map[string]bool, error)
 }
 
 // EdgeKey returns the dedup key for an edge: "from|to|edgeType".

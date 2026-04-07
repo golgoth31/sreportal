@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { groupColor, dedup, formatLastSeen, GROUP_PALETTE } from "./utils";
+import { groupColor, dedup, GROUP_PALETTE } from "./utils";
 
 describe("groupColor", () => {
   it("returns a string from GROUP_PALETTE", () => {
@@ -22,32 +22,6 @@ describe("groupColor", () => {
   it("handles empty string without throwing", () => {
     expect(() => groupColor("")).not.toThrow();
     expect(GROUP_PALETTE).toContain(groupColor(""));
-  });
-});
-
-describe("formatLastSeen", () => {
-  it("returns 'never' for null", () => {
-    expect(formatLastSeen(null)).toBe("never");
-  });
-
-  it("returns 'just now' for timestamps less than 1 minute ago", () => {
-    const now = new Date().toISOString();
-    expect(formatLastSeen(now)).toBe("just now");
-  });
-
-  it("returns minutes ago for timestamps less than 1 hour ago", () => {
-    const fiveMinAgo = new Date(Date.now() - 5 * 60_000).toISOString();
-    expect(formatLastSeen(fiveMinAgo)).toBe("5m ago");
-  });
-
-  it("returns hours ago for timestamps less than 1 day ago", () => {
-    const twoHoursAgo = new Date(Date.now() - 2 * 3_600_000).toISOString();
-    expect(formatLastSeen(twoHoursAgo)).toBe("2h ago");
-  });
-
-  it("returns days ago for older timestamps", () => {
-    const threeDaysAgo = new Date(Date.now() - 3 * 86_400_000).toISOString();
-    expect(formatLastSeen(threeDaysAgo)).toBe("3d ago");
   });
 });
 
