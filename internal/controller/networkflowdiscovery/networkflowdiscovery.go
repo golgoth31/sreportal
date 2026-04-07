@@ -31,7 +31,7 @@ import (
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	nfdchain "github.com/golgoth31/sreportal/internal/controller/networkflowdiscovery/chain"
 	portalfeatures "github.com/golgoth31/sreportal/internal/controller/portal/features"
-	domainnetpol "github.com/golgoth31/sreportal/internal/domain/netpol"
+	domainnetpol "github.com/golgoth31/sreportal/internal/domain/netpol" // used by SetFlowGraphWriter
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/metrics"
 	"github.com/golgoth31/sreportal/internal/reconciler"
@@ -52,13 +52,12 @@ type NetworkFlowDiscoveryReconciler struct {
 }
 
 // NewNetworkFlowDiscoveryReconciler creates a new reconciler with the handler chain.
-// observer may be nil (no flow observation provider available).
-func NewNetworkFlowDiscoveryReconciler(c client.Client, scheme *runtime.Scheme, remoteClientCache *remoteclient.Cache, observer domainnetpol.FlowObserver) *NetworkFlowDiscoveryReconciler {
+func NewNetworkFlowDiscoveryReconciler(c client.Client, scheme *runtime.Scheme, remoteClientCache *remoteclient.Cache) *NetworkFlowDiscoveryReconciler {
 	updateStatus := nfdchain.NewUpdateStatusHandler(c)
 	handlers := []reconciler.Handler[*sreportalv1alpha1.NetworkFlowDiscovery, nfdchain.ChainData]{
 		nfdchain.NewFetchRemoteGraphHandler(c, remoteClientCache),
 		nfdchain.NewBuildGraphHandler(c),
-		nfdchain.NewObserveFlowsHandler(c, observer),
+		nfdchain.NewObserveFlowsHandler(c),
 		updateStatus,
 	}
 

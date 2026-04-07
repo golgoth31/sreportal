@@ -80,7 +80,6 @@ var _ = Describe("NetworkFlowDiscovery Controller", func() {
 				k8sClient,
 				k8sClient.Scheme(),
 				remoteclient.NewCache(),
-				nil,
 			)
 
 			Eventually(func(g Gomega) {
@@ -127,7 +126,7 @@ var _ = Describe("NetworkFlowDiscovery Controller", func() {
 
 		It("should purge flow graph data from the read store", func() {
 			store := netpolreadstore.NewFlowGraphStore()
-			reconciler := NewNetworkFlowDiscoveryReconciler(k8sClient, k8sClient.Scheme(), remoteclient.NewCache(), nil)
+			reconciler := NewNetworkFlowDiscoveryReconciler(k8sClient, k8sClient.Scheme(), remoteclient.NewCache())
 			reconciler.SetFlowGraphWriter(store)
 
 			By("creating a portal with networkPolicy disabled")

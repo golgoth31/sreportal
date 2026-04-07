@@ -18,39 +18,40 @@ package chain
 
 import (
 	"context"
+	"sync"
 
+	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	domainnetpol "github.com/golgoth31/sreportal/internal/domain/netpol"
+	"github.com/golgoth31/sreportal/internal/flowobserver"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
-// ObserveFlowsHandler enriches edges with the Used flag from a FlowObserver provider.
-// When the observer is nil or the resource is remote, this handler is a no-op.
+// ObserveFlowsHandler enriches edges with the Used flag by querying a Prometheus-based
+// FlowObserver. The observer is lazily initialized from a FlowObserver CRD matching
+// the portal ref. When no FlowObserver CRD exists, this handler is a no-op.
 // Edges already marked Used=true are never re-queried.
 type ObserveFlowsHandler struct {
 	k8sReader client.Reader
-	observer  domainnetpol.FlowObserver
+
+	mu       sync.Mutex
+	observer domainnetpol.FlowObserver
+	specHash string // tracks CRD changes to re-initialize
 }
 
 // NewObserveFlowsHandler creates a new ObserveFlowsHandler.
-// observer may be nil (graceful degradation: Used stays false).
-func NewObserveFlowsHandler(k8sReader client.Reader, observer domainnetpol.FlowObserver) *ObserveFlowsHandler {
+func NewObserveFlowsHandler(k8sReader client.Reader) *ObserveFlowsHandler {
 	return &ObserveFlowsHandler{
 		k8sReader: k8sReader,
-		observer:  observer,
 	}
 }
 
 // Handle implements reconciler.Handler.
 func (h *ObserveFlowsHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.NetworkFlowDiscovery, ChainData]) error {
-	if h.observer == nil {
-		return nil
-	}
-
 	if rc.Resource.Spec.IsRemote {
 		return nil
 	}
@@ -58,6 +59,12 @@ func (h *ObserveFlowsHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 	logger := log.FromContext(ctx).WithName("observe-flows")
 
 	if len(rc.Data.Edges) == 0 {
+		return nil
+	}
+
+	// Resolve or create the observer from the FlowObserver CRD.
+	observer := h.resolveObserver(ctx, rc.Resource)
+	if observer == nil {
 		return nil
 	}
 
@@ -70,12 +77,10 @@ func (h *ObserveFlowsHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 		edge := &rc.Data.Edges[i]
 		key := edge.From + "|" + edge.To + "|" + edge.EdgeType
 
-		// Carry forward from previous reconciliation.
 		if previousUsed[key] {
 			edge.Used = true
 		}
 
-		// Only query edges not yet marked as used.
 		if !edge.Used {
 			unknownEdges = append(unknownEdges, domainnetpol.FlowEdge{
 				From: edge.From, To: edge.To, EdgeType: edge.EdgeType,
@@ -88,14 +93,12 @@ func (h *ObserveFlowsHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 		return nil
 	}
 
-	// Query the observer for unknown edges.
-	observed, err := h.observer.Observed(ctx, unknownEdges)
+	observed, err := observer.Observed(ctx, unknownEdges)
 	if err != nil {
 		logger.Error(err, "flow observer query failed, continuing without updates")
 		return nil
 	}
 
-	// Merge results back into rc.Data.Edges.
 	updated := 0
 
 	for i := range rc.Data.Edges {
@@ -120,8 +123,42 @@ func (h *ObserveFlowsHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 	return nil
 }
 
-// loadPreviousUsed reads the existing FlowEdgeSet to recover Used flags
-// from the previous reconciliation cycle.
+// resolveObserver finds the FlowObserver CRD for the portal and lazily creates the observer.
+func (h *ObserveFlowsHandler) resolveObserver(ctx context.Context, nfd *sreportalv1alpha1.NetworkFlowDiscovery) domainnetpol.FlowObserver {
+	var list sreportalv1alpha1.FlowObserverList
+	if err := h.k8sReader.List(ctx, &list, client.InNamespace(nfd.Namespace)); err != nil {
+		logr.FromContextOrDiscard(ctx).V(1).Info("could not list FlowObserver CRDs", "err", err)
+		return nil
+	}
+
+	var fo *sreportalv1alpha1.FlowObserver
+
+	for i := range list.Items {
+		if list.Items[i].Spec.PortalRef == nfd.Spec.PortalRef {
+			fo = &list.Items[i]
+			break
+		}
+	}
+
+	if fo == nil {
+		return nil
+	}
+
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	if h.observer != nil && h.specHash == fo.ResourceVersion {
+		return h.observer
+	}
+
+	obs := flowobserver.Discover(ctx, logr.FromContextOrDiscard(ctx).WithName("observe-flows"), fo.Spec)
+	h.observer = obs
+	h.specHash = fo.ResourceVersion
+
+	return obs
+}
+
+// loadPreviousUsed reads the existing FlowEdgeSet to recover Used flags.
 func (h *ObserveFlowsHandler) loadPreviousUsed(ctx context.Context, nfd *sreportalv1alpha1.NetworkFlowDiscovery) map[string]bool {
 	name := nfd.Name + "-edges"
 	var edgeSet sreportalv1alpha1.FlowEdgeSet
