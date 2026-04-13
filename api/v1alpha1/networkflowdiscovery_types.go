@@ -93,6 +93,10 @@ type FlowEdge struct {
 
 	// edgeType describes the flow type (e.g. internal, cross-ns, cron, database, messaging, external)
 	EdgeType string `json:"edgeType"`
+
+	// used indicates whether traffic has been observed on this edge.
+	// +optional
+	Used bool `json:"used,omitempty"`
 }
 
 // +kubebuilder:object:root=true

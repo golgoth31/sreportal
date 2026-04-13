@@ -1890,6 +1890,10 @@
         "edgeType": {
           "type": "string",
           "title": "edge_type is one of: internal, cross-pl, cron, database, external"
+        },
+        "used": {
+          "type": "boolean",
+          "description": "used indicates whether traffic has been observed on this edge."
         }
       },
       "title": "NetpolEdge represents a directional flow between two nodes"

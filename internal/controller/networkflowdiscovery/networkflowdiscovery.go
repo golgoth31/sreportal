@@ -52,11 +52,13 @@ type NetworkFlowDiscoveryReconciler struct {
 }
 
 // NewNetworkFlowDiscoveryReconciler creates a new reconciler with the handler chain.
-func NewNetworkFlowDiscoveryReconciler(c client.Client, scheme *runtime.Scheme, remoteClientCache *remoteclient.Cache) *NetworkFlowDiscoveryReconciler {
+// observer may be nil (no flow observation provider available).
+func NewNetworkFlowDiscoveryReconciler(c client.Client, scheme *runtime.Scheme, remoteClientCache *remoteclient.Cache, observer domainnetpol.FlowObserver) *NetworkFlowDiscoveryReconciler {
 	updateStatus := nfdchain.NewUpdateStatusHandler(c)
 	handlers := []reconciler.Handler[*sreportalv1alpha1.NetworkFlowDiscovery, nfdchain.ChainData]{
 		nfdchain.NewFetchRemoteGraphHandler(c, remoteClientCache),
 		nfdchain.NewBuildGraphHandler(c),
+		nfdchain.NewObserveFlowsHandler(c, observer),
 		updateStatus,
 	}
 

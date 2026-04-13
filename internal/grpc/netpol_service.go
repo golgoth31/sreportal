@@ -90,6 +90,7 @@ func flowEdgeToProto(e domainnetpol.FlowEdge) *netpolv1.NetpolEdge {
 		From:     e.From,
 		To:       e.To,
 		EdgeType: e.EdgeType,
+		Used:     e.Used,
 	}
 }
 

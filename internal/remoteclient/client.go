@@ -449,6 +449,7 @@ func (c *Client) doFetchNetworkPolicies(ctx context.Context, baseURL string) (*N
 			From:     e.From,
 			To:       e.To,
 			EdgeType: e.EdgeType,
+			Used:     e.Used,
 		})
 	}
 

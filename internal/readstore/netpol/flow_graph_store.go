@@ -187,7 +187,9 @@ func (s *FlowGraphStore) mergedEdges(allowedKeys map[string]struct{}) map[string
 
 		for _, e := range s.edges.Get(key) {
 			edgeKey := e.From + "|" + e.To + "|" + e.EdgeType
-			if _, ok := edgeMap[edgeKey]; !ok {
+			if existing, ok := edgeMap[edgeKey]; !ok {
+				edgeMap[edgeKey] = e
+			} else if e.Used && !existing.Used {
 				edgeMap[edgeKey] = e
 			}
 		}

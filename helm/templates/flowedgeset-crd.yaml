@@ -74,6 +74,10 @@ spec:
                     to:
                       description: to is the target node id
                       type: string
+                    used:
+                      description: used indicates whether traffic has been observed
+                        on this edge.
+                      type: boolean
                   required:
                   - edgeType
                   - from

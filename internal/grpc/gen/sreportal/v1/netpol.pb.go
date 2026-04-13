@@ -230,7 +230,9 @@ type NetpolEdge struct {
 	// to is the target node id
 	To string `protobuf:"bytes,2,opt,name=to,proto3" json:"to,omitempty"`
 	// edge_type is one of: internal, cross-pl, cron, database, external
-	EdgeType      string `protobuf:"bytes,3,opt,name=edge_type,json=edgeType,proto3" json:"edge_type,omitempty"`
+	EdgeType string `protobuf:"bytes,3,opt,name=edge_type,json=edgeType,proto3" json:"edge_type,omitempty"`
+	// used indicates whether traffic has been observed on this edge.
+	Used          bool `protobuf:"varint,4,opt,name=used,proto3" json:"used,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -286,6 +288,13 @@ func (x *NetpolEdge) GetEdgeType() string {
 	return ""
 }
 
+func (x *NetpolEdge) GetUsed() bool {
+	if x != nil {
+		return x.Used
+	}
+	return false
+}
+
 var File_sreportal_v1_netpol_proto protoreflect.FileDescriptor
 
 const file_sreportal_v1_netpol_proto_rawDesc = "" +
@@ -304,12 +313,13 @@ const file_sreportal_v1_netpol_proto_rawDesc = "" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12\x1c\n" +
 	"\tnamespace\x18\x03 \x01(\tR\tnamespace\x12\x1b\n" +
 	"\tnode_type\x18\x04 \x01(\tR\bnodeType\x12\x14\n" +
-	"\x05group\x18\x05 \x01(\tR\x05group\"M\n" +
+	"\x05group\x18\x05 \x01(\tR\x05group\"a\n" +
 	"\n" +
 	"NetpolEdge\x12\x12\n" +
 	"\x04from\x18\x01 \x01(\tR\x04from\x12\x0e\n" +
 	"\x02to\x18\x02 \x01(\tR\x02to\x12\x1b\n" +
-	"\tedge_type\x18\x03 \x01(\tR\bedgeType2\x82\x01\n" +
+	"\tedge_type\x18\x03 \x01(\tR\bedgeType\x12\x12\n" +
+	"\x04used\x18\x04 \x01(\bR\x04used2\x82\x01\n" +
 	"\x14NetworkPolicyService\x12j\n" +
 	"\x13ListNetworkPolicies\x12(.sreportal.v1.ListNetworkPoliciesRequest\x1a).sreportal.v1.ListNetworkPoliciesResponseB\xbb\x01\n" +
 	"\x10com.sreportal.v1B\vNetpolProtoP\x01ZIgithub.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1;sreportalv1\xa2\x02\x03SXX\xaa\x02\fSreportal.V1\xca\x02\fSreportal\\V1\xe2\x02\x18Sreportal\\V1\\GPBMetadata\xea\x02\rSreportal::V1b\x06proto3"

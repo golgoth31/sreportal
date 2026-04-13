@@ -28,6 +28,7 @@ function toDomainEdge(e: ProtoEdge): NetpolEdge {
     from: e.from,
     to: e.to,
     edgeType: e.edgeType as NetpolEdge["edgeType"],
+    used: e.used,
   };
 }
 

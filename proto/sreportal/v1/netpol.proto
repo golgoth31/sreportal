@@ -57,4 +57,7 @@ message NetpolEdge {
 
   // edge_type is one of: internal, cross-pl, cron, database, external
   string edge_type = 3;
+
+  // used indicates whether traffic has been observed on this edge.
+  bool used = 4;
 }

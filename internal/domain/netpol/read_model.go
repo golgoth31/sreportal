@@ -14,6 +14,7 @@ type FlowEdge struct {
 	From     string
 	To       string
 	EdgeType string
+	Used     bool // true if traffic was observed on this edge
 }
 
 // FlowGraphFilters specifies optional filters for querying the flow graph.
