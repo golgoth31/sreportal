@@ -108,8 +108,8 @@ type Config struct {
 	// EmojiReader is the read-side interface for custom emoji data (provided by the ReadStore)
 	EmojiReader domainemoji.EmojiReader
 
-	// AuthChain is the authentication chain for write endpoints (nil = no auth)
-	AuthChain *auth.Chain
+	// AuthResolver enforces per-portal authentication for write endpoints (nil = no auth)
+	AuthResolver *auth.PortalResolver
 }
 
 // Server is the web server for the SRE Portal
@@ -190,8 +190,8 @@ func (s *Server) setupRoutes() {
 	if s.config.ReleaseReader != nil {
 		releaseGRPC := grpc.NewReleaseService(s.config.ReleaseReader, s.config.ReleaseService, s.config.ReleaseTTL, s.config.ReleaseAllowedTypes, s.config.PortalReader)
 		releaseOpts := []connect.HandlerOption{connectOpts}
-		if s.config.AuthChain != nil {
-			releaseOpts = append(releaseOpts, connect.WithInterceptors(auth.AuthInterceptor(s.config.AuthChain)))
+		if s.config.AuthResolver != nil {
+			releaseOpts = append(releaseOpts, connect.WithInterceptors(auth.PortalAuthInterceptor(s.config.AuthResolver)))
 		}
 		releasePath, releaseHandler := sreportalv1connect.NewReleaseServiceHandler(releaseGRPC, releaseOpts...)
 		s.echo.Any(releasePath+"*", echo.WrapHandler(releaseHandler))
@@ -207,8 +207,8 @@ func (s *Server) setupRoutes() {
 			s.config.PortalReader,
 		)
 		statusOpts := []connect.HandlerOption{connectOpts}
-		if s.config.AuthChain != nil {
-			statusOpts = append(statusOpts, connect.WithInterceptors(auth.AuthInterceptor(s.config.AuthChain)))
+		if s.config.AuthResolver != nil {
+			statusOpts = append(statusOpts, connect.WithInterceptors(auth.PortalAuthInterceptor(s.config.AuthResolver)))
 		}
 		statusPath, statusHandler := sreportalv1connect.NewStatusServiceHandler(statusService, statusOpts...)
 		s.echo.Any(statusPath+"*", echo.WrapHandler(statusHandler))

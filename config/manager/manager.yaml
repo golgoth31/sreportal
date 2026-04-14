@@ -74,11 +74,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
-            - name: HEADER_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: secret
-                  key: HEADER_API_KEY
           ports: []
           securityContext:
             readOnlyRootFilesystem: true

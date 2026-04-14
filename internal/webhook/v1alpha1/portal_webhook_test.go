@@ -119,6 +119,14 @@ var _ = Describe("Portal Webhook", func() {
 				Portal: "main",
 			}
 			obj.Spec.Main = false
+			obj.Spec.Auth = &sreportalv1alpha1.PortalAuthSpec{
+				APIKey: &sreportalv1alpha1.PortalAPIKeyAuth{
+					Enabled: true,
+					SecretRef: sreportalv1alpha1.SecretRef{
+						Name: "portal-auth",
+					},
+				},
+			}
 
 			By("validating the creation")
 			warnings, err := validator.ValidateCreate(context.Background(), obj)
@@ -156,6 +164,14 @@ var _ = Describe("Portal Webhook", func() {
 				URL: testRemoteURL,
 			}
 			obj.Spec.Main = false
+			obj.Spec.Auth = &sreportalv1alpha1.PortalAuthSpec{
+				APIKey: &sreportalv1alpha1.PortalAPIKeyAuth{
+					Enabled: true,
+					SecretRef: sreportalv1alpha1.SecretRef{
+						Name: "portal-auth",
+					},
+				},
+			}
 
 			By("validating the update")
 			warnings, err := validator.ValidateUpdate(context.Background(), oldObj, obj)
@@ -190,12 +206,21 @@ var _ = Describe("Portal Webhook", func() {
 				URL: testRemoteURL,
 			}
 			oldObj.Spec.Main = false
+			oldObj.Spec.Auth = &sreportalv1alpha1.PortalAuthSpec{
+				APIKey: &sreportalv1alpha1.PortalAPIKeyAuth{
+					Enabled: true,
+					SecretRef: sreportalv1alpha1.SecretRef{
+						Name: "portal-auth",
+					},
+				},
+			}
 
 			By("updating portal to be main (while keeping remote)")
 			obj.Spec.Remote = &sreportalv1alpha1.RemotePortalSpec{
 				URL: testRemoteURL,
 			}
 			obj.Spec.Main = true
+			obj.Spec.Auth = oldObj.Spec.Auth
 
 			By("validating the update")
 			_, err := validator.ValidateUpdate(context.Background(), oldObj, obj)
@@ -211,6 +236,14 @@ var _ = Describe("Portal Webhook", func() {
 				URL: testRemoteURL,
 			}
 			oldObj.Spec.Main = false
+			oldObj.Spec.Auth = &sreportalv1alpha1.PortalAuthSpec{
+				APIKey: &sreportalv1alpha1.PortalAPIKeyAuth{
+					Enabled: true,
+					SecretRef: sreportalv1alpha1.SecretRef{
+						Name: "portal-auth",
+					},
+				},
+			}
 
 			By("updating portal to be main and removing remote")
 			obj.Spec.Remote = nil

@@ -46,6 +46,12 @@ type PortalSpec struct {
 	// All features default to true when not specified.
 	// +optional
 	Features *PortalFeatures `json:"features,omitempty"`
+
+	// auth configures authentication for Connect write RPCs targeting this portal.
+	// Local portals with spec.auth unset inherit the main portal's auth (spec.main: true).
+	// Remote portals must set spec.auth explicitly (no inheritance from main).
+	// +optional
+	Auth *PortalAuthSpec `json:"auth,omitempty"`
 }
 
 // PortalFeatures controls which features are enabled for a portal.
@@ -75,6 +81,11 @@ type PortalFeatures struct {
 	// +optional
 	// +kubebuilder:default=true
 	StatusPage *bool `json:"statusPage,omitempty"`
+
+	// auth overrides per feature (optional). When set for a feature, replaces portal-level
+	// and main inheritance for that feature's write RPCs only.
+	// +optional
+	Auth *PortalFeatureAuthOverrides `json:"auth,omitempty"`
 }
 
 // IsDNSEnabled returns true if DNS feature is enabled (nil-safe, defaults to true).
@@ -145,6 +156,106 @@ type SecretRef struct {
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinLength=1
 	Name string `json:"name"`
+}
+
+// PortalAuthSpec configures authentication for Connect write endpoints (API key and/or JWT).
+// Multiple methods can be enabled; the server accepts a request if any method succeeds.
+type PortalAuthSpec struct {
+	// apiKey configures header-based API key authentication.
+	// The secret value is read from the referenced Secret (key defaults to "api-key").
+	// +optional
+	APIKey *PortalAPIKeyAuth `json:"apiKey,omitempty"`
+
+	// jwt configures JWT Bearer token authentication (JWKS).
+	// +optional
+	JWT *PortalJWTAuthSpec `json:"jwt,omitempty"`
+}
+
+// Enabled returns true if at least one authentication method is enabled.
+func (a *PortalAuthSpec) Enabled() bool {
+	if a == nil {
+		return false
+	}
+	if a.APIKey != nil && a.APIKey.Enabled {
+		return true
+	}
+	if a.JWT != nil && a.JWT.Enabled {
+		return true
+	}
+	return false
+}
+
+// PortalAPIKeyAuth configures API key authentication via an HTTP header and a Kubernetes Secret.
+type PortalAPIKeyAuth struct {
+	// enabled controls whether API key authentication is active.
+	Enabled bool `json:"enabled"`
+
+	// headerName is the HTTP header to check (default: "X-API-Key").
+	// +optional
+	HeaderName string `json:"headerName,omitempty"`
+
+	// secretRef references a Secret in the portal's namespace containing the API key.
+	// Required when enabled is true.
+	SecretRef SecretRef `json:"secretRef"`
+
+	// secretKey is the key within the Secret's data (default: "api-key").
+	// +optional
+	SecretKey string `json:"secretKey,omitempty"`
+}
+
+// PortalJWTAuthSpec configures JWT Bearer token authentication.
+type PortalJWTAuthSpec struct {
+	// enabled controls whether JWT authentication is active.
+	Enabled bool `json:"enabled"`
+
+	// issuers lists trusted JWT issuers (JWKS). Required when enabled is true.
+	Issuers []PortalJWTIssuerSpec `json:"issuers"`
+}
+
+// PortalJWTIssuerSpec configures a single JWT issuer.
+type PortalJWTIssuerSpec struct {
+	// name is a display name for this issuer.
+	// +kubebuilder:validation:Required
+	Name string `json:"name"`
+
+	// issuerURL is the expected JWT "iss" claim.
+	// +kubebuilder:validation:Required
+	IssuerURL string `json:"issuerURL"`
+
+	// audience is the expected "aud" claim when non-empty.
+	// +optional
+	Audience string `json:"audience,omitempty"`
+
+	// jwksURL is the JWKS endpoint URL for this issuer.
+	// +kubebuilder:validation:Required
+	JWKSURL string `json:"jwksURL"`
+
+	// requiredClaims lists additional claim name/value pairs that must match.
+	// +optional
+	RequiredClaims map[string]string `json:"requiredClaims,omitempty"`
+}
+
+// PortalFeatureAuthOverrides holds optional auth overrides per portal feature.
+type PortalFeatureAuthOverrides struct {
+	// dns overrides auth for DNS-related write RPCs (reserved for future use).
+	// +optional
+	DNS *PortalAuthSpec `json:"dns,omitempty"`
+
+	// releases overrides auth for release write RPCs (e.g. AddRelease).
+	// +optional
+	Releases *PortalAuthSpec `json:"releases,omitempty"`
+
+	// networkPolicy overrides auth for network policy write RPCs (reserved for future use).
+	// +optional
+	NetworkPolicy *PortalAuthSpec `json:"networkPolicy,omitempty"`
+
+	// alerts overrides auth for alert-related write RPCs (reserved for future use).
+	// +optional
+	Alerts *PortalAuthSpec `json:"alerts,omitempty"`
+
+	// statusPage overrides auth for status page write RPCs (components, incidents, maintenances).
+	// +optional
+	StatusPage *PortalAuthSpec `json:"statusPage,omitempty"`
 }
 
 // PortalStatus defines the observed state of Portal.
