@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.27.0](https://github.com/golgoth31/sreportal/compare/v1.26.2...v1.27.0) (2026-04-14)
+
+
+### Features
+
+* **netpol:** add FlowObserver CRD with Prometheus-based flow observation ([#202](https://github.com/golgoth31/sreportal/issues/202)) ([e302144](https://github.com/golgoth31/sreportal/commit/e302144c75ea5d6fea08a27f23e0e86cec2f296e))
+* **netpol:** add LastSeen timestamp to flow edges ([#201](https://github.com/golgoth31/sreportal/issues/201)) ([0780a08](https://github.com/golgoth31/sreportal/commit/0780a081ec28d5508b0d1b848fb4508c9db3aed7))
+
 ## [1.26.2](https://github.com/golgoth31/sreportal/compare/v1.26.1...v1.26.2) (2026-04-04)
 
 
