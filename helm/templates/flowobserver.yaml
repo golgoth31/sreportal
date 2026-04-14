@@ -1,0 +1,31 @@
+{{- if .Values.flowObserver.enabled }}
+apiVersion: sreportal.io/v1alpha1
+kind: FlowObserver
+metadata:
+  name: {{ .Values.flowObserver.name | default "flow-observer-main" }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "helm.labels" . | nindent 4 }}
+spec:
+  portalRef: {{ .Values.flowObserver.portalRef | default "main" }}
+  {{- if .Values.flowObserver.reconcileInterval }}
+  reconcileInterval: {{ .Values.flowObserver.reconcileInterval | quote }}
+  {{- end }}
+  prometheus:
+    address: {{ .Values.flowObserver.prometheus.address | quote }}
+    {{- if .Values.flowObserver.prometheus.queryWindow }}
+    queryWindow: {{ .Values.flowObserver.prometheus.queryWindow | quote }}
+    {{- end }}
+  {{- if .Values.flowObserver.metrics }}
+  metrics:
+    {{- range .Values.flowObserver.metrics }}
+    - name: {{ .name | quote }}
+      probeQuery: {{ .probeQuery | quote }}
+      observedQueryTemplate: {{ .observedQueryTemplate | quote }}
+      sourceNamespaceLabel: {{ .sourceNamespaceLabel | quote }}
+      sourceWorkloadLabel: {{ .sourceWorkloadLabel | quote }}
+      destinationNamespaceLabel: {{ .destinationNamespaceLabel | quote }}
+      destinationWorkloadLabel: {{ .destinationWorkloadLabel | quote }}
+    {{- end }}
+  {{- end }}
+{{- end }}

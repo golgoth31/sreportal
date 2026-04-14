@@ -37,6 +37,10 @@ func run() error {
 		return fmt.Errorf("patching values.yaml: %w", err)
 	}
 
+	if err := patchFile(valuesFile, injectFlowObserverBlock); err != nil {
+		return fmt.Errorf("patching values.yaml (flowObserver): %w", err)
+	}
+
 	if err := patchFile(deploymentFile, makeHeaderAPIKeyConditional); err != nil {
 		return fmt.Errorf("patching deployment.yaml: %w", err)
 	}
@@ -136,6 +140,31 @@ const (
               name: {{ .Values.auth.secretRef | quote }}
         {{- end }}`
 )
+
+const flowObserverBlock = `flowObserver:
+  enabled: false
+  name: flow-observer-main
+  portalRef: main
+  reconcileInterval: "5m"
+  prometheus:
+    address: "http://prometheus.internal"
+    queryWindow: "5m"
+  metrics: []
+`
+
+// injectFlowObserverBlock appends the flowObserver configuration block to values.yaml
+// if it is not already present.
+func injectFlowObserverBlock(content string) string {
+	if strings.Contains(content, "\nflowObserver:\n") || strings.HasPrefix(content, "flowObserver:\n") {
+		return content
+	}
+
+	if !strings.HasSuffix(content, "\n") {
+		content += "\n"
+	}
+
+	return content + flowObserverBlock
+}
 
 // makeHeaderAPIKeyConditional replaces the hardcoded HEADER_API_KEY env var
 // with a Helm conditional block using auth values.
