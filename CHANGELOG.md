@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.27.1](https://github.com/golgoth31/sreportal/compare/v1.27.0...v1.27.1) (2026-04-14)
+
+
+### Bug Fixes
+
+* **rbac:** allow controller to manage flowobserver resources ([b4fa3f0](https://github.com/golgoth31/sreportal/commit/b4fa3f0d8e20490acc1cd9956239b1bca7614c58))
+
 ## [1.27.0](https://github.com/golgoth31/sreportal/compare/v1.26.2...v1.27.0) (2026-04-14)
 
 
