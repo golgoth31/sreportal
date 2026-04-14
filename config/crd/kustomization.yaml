@@ -13,6 +13,7 @@ resources:
   - bases/sreportal.io_components.yaml
   - bases/sreportal.io_maintenances.yaml
   - bases/sreportal.io_incidents.yaml
+  - bases/sreportal.io_flowobservers.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches: []

@@ -10,4 +10,5 @@ resources:
 - v1alpha1_component.yaml
 - v1alpha1_maintenance.yaml
 - v1alpha1_incident.yaml
+- v1alpha1_flowobserver.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples

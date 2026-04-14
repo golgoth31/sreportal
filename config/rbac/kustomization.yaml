@@ -61,3 +61,6 @@ resources:
   # - incident_admin_role.yaml
   # - incident_editor_role.yaml
   # - incident_viewer_role.yaml
+  # - flowobserver_admin_role.yaml
+  # - flowobserver_editor_role.yaml
+  # - flowobserver_viewer_role.yaml

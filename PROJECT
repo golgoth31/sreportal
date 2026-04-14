@@ -109,4 +109,11 @@ resources:
   kind: Incident
   path: github.com/golgoth31/sreportal/api/v1alpha1
   version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: sreportal.io
+  kind: FlowObserver
+  path: github.com/golgoth31/sreportal/api/v1alpha1
+  version: v1alpha1
 version: "3"
