@@ -93,3 +93,62 @@ func TestMakeHeaderAPIKeyConditional_WhenAlreadyPatched_ReturnsUnchanged(t *test
 
 	assert.Equal(t, input, got)
 }
+
+func TestInjectExtraVolumesBlock_WhenAbsent_AppendsBlock(t *testing.T) {
+	input := "auth:\n  enabled: false\n"
+
+	got := injectExtraVolumesBlock(input)
+
+	assert.Contains(t, got, "extraVolumes: []")
+	assert.Contains(t, got, "extraVolumeMounts: []")
+	assert.True(t, len(got) > len(input))
+}
+
+func TestInjectExtraVolumesBlock_WhenAlreadyPresent_ReturnsUnchanged(t *testing.T) {
+	input := "auth:\n  enabled: false\nextraVolumes: []\n"
+
+	got := injectExtraVolumesBlock(input)
+
+	assert.Equal(t, input, got)
+}
+
+func TestInjectExtraVolumes_WhenBlockPresent_InjectsDirectives(t *testing.T) {
+	input := `        volumeMounts:
+        - mountPath: /tmp/k8s-webhook-server/serving-certs
+          name: webhook-certs
+          readOnly: true
+        - mountPath: /etc/sreportal
+          name: operator-config
+          readOnly: true
+      nodeSelector: {}
+      volumes:
+      - name: webhook-certs
+        secret:
+          secretName: webhook-server-cert
+      - configMap:
+          items:
+          - key: config.yaml
+            path: config.yaml
+          name: {{ include "helm.fullname" . }}-config
+        name: operator-config
+`
+
+	got := injectExtraVolumes(input)
+
+	assert.Contains(t, got, "{{- with .Values.extraVolumeMounts }}")
+	assert.Contains(t, got, "{{- with .Values.extraVolumes }}")
+}
+
+func TestInjectExtraVolumes_WhenAlreadyPatched_ReturnsUnchanged(t *testing.T) {
+	input := `        {{- with .Values.extraVolumeMounts }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.extraVolumes }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
+`
+
+	got := injectExtraVolumes(input)
+
+	assert.Equal(t, input, got)
+}

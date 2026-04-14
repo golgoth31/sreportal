@@ -76,6 +76,9 @@ spec:
         - mountPath: /etc/sreportal
           name: operator-config
           readOnly: true
+        {{- with .Values.extraVolumeMounts }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       nodeSelector: {{- toYaml .Values.controllerManager.nodeSelector | nindent 8 }}
       securityContext: {{- toYaml .Values.controllerManager.podSecurityContext | nindent
         8 }}
@@ -94,3 +97,6 @@ spec:
             path: config.yaml
           name: {{ include "helm.fullname" . }}-config
         name: operator-config
+      {{- with .Values.extraVolumes }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
