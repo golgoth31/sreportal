@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.28.1](https://github.com/golgoth31/sreportal/compare/v1.28.0...v1.28.1) (2026-04-14)
+
+
+### Bug Fixes
+
+* **helm:** add extraVolumes and extraVolumeMounts support ([#211](https://github.com/golgoth31/sreportal/issues/211)) ([efd8f64](https://github.com/golgoth31/sreportal/commit/efd8f64190a75af3cccb41c0d469e4f619c6e936))
+* **netpol:** add tri-state flow observation with evaluatedEdgeTypes ([#212](https://github.com/golgoth31/sreportal/issues/212)) ([77178e9](https://github.com/golgoth31/sreportal/commit/77178e9cca2e62033f5cc786b9aa937a1bfc67d2))
+
 ## [1.28.0](https://github.com/golgoth31/sreportal/compare/v1.27.1...v1.28.0) (2026-04-14)
 
 
