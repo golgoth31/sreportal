@@ -13,6 +13,7 @@
 - [sreportal.io/v1alpha1.DNSRecord](#sreportaliov1alpha1dnsrecord)
 - [sreportal.io/v1alpha1.FlowEdgeSet](#sreportaliov1alpha1flowedgeset)
 - [sreportal.io/v1alpha1.FlowNodeSet](#sreportaliov1alpha1flownodeset)
+- [sreportal.io/v1alpha1.FlowObserver](#sreportaliov1alpha1flowobserver)
 - [sreportal.io/v1alpha1.Incident](#sreportaliov1alpha1incident)
 - [sreportal.io/v1alpha1.Maintenance](#sreportaliov1alpha1maintenance)
 - [sreportal.io/v1alpha1.NetworkFlowDiscovery](#sreportaliov1alpha1networkflowdiscovery)
@@ -101,6 +102,20 @@ FlowNodeSet stores the discovered flow nodes for a NetworkFlowDiscovery resource
 | `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#objectmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |   |   |
 | `spec` _[sreportal.io/v1alpha1.FlowNodeSetSpec](#sreportaliov1alpha1flownodesetspec)_ |   |   |   |
 | `status` _[sreportal.io/v1alpha1.FlowNodeSetStatus](#sreportaliov1alpha1flownodesetstatus)_ |   |   |   |
+
+
+
+#### sreportal.io/v1alpha1.FlowObserver
+
+FlowObserver is the Schema for the flowobservers API. It configures how the operator detects real traffic on network edges by querying Prometheus for mesh/CNI flow metrics.
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `apiVersion` _string_ | `sreportal.io/v1alpha1` |   |   |
+| `kind` _string_ | `FlowObserver` |   |   |
+| `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#objectmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |   |   |
+| `spec` _[sreportal.io/v1alpha1.FlowObserverSpec](#sreportaliov1alpha1flowobserverspec)_ | spec defines the desired state of FlowObserver |   |   |
+| `status` _[sreportal.io/v1alpha1.FlowObserverStatus](#sreportaliov1alpha1flowobserverstatus)_ | status defines the observed state of FlowObserver |   |   |
 
 
 
@@ -540,6 +555,70 @@ _Appears in:_
 
 
 
+#### sreportal.io/v1alpha1.FlowObserverSpec
+
+FlowObserverSpec defines the desired state of FlowObserver.
+
+_Appears in:_
+- [sreportal.io/v1alpha1.FlowObserver](#sreportaliov1alpha1flowobserver)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `portalRef` _string_ | portalRef is the name of the Portal this observer is linked to |   |   |
+| `reconcileInterval` _string_ | reconcileInterval is how often the observer queries for unused edges (e.g. "1m", "5m"). Defaults to the NetworkFlowDiscovery reconcile interval (1m) when empty. |   |   |
+| `prometheus` _[sreportal.io/v1alpha1.FlowObserverPrometheusConfig](#sreportaliov1alpha1flowobserverprometheusconfig)_ | prometheus configures the Prometheus-based flow observation |   |   |
+| `metrics` _[sreportal.io/v1alpha1.FlowMetricDescriptor](#sreportaliov1alpha1flowmetricdescriptor) array_ | metrics defines the list of mesh metric descriptors to probe. Each descriptor describes how a specific CNI/mesh exposes flow metrics in Prometheus. When empty, the built-in defaults (Hubble, Istio, Linkerd) are used. The observer probes each descriptor in order and uses the first one that returns results. |   |   |
+
+
+
+#### sreportal.io/v1alpha1.FlowObserverPrometheusConfig
+
+FlowObserverPrometheusConfig configures the Prometheus connection.
+
+_Appears in:_
+- [sreportal.io/v1alpha1.FlowObserverSpec](#sreportaliov1alpha1flowobserverspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `address` _string_ | address is the Prometheus server URL |   |   |
+| `queryWindow` _string_ | queryWindow is the PromQL range window for flow queries (e.g. "5m") |   |   |
+
+
+
+#### sreportal.io/v1alpha1.FlowMetricDescriptor
+
+FlowMetricDescriptor describes how a specific CNI or service mesh exposes flow metrics in Prometheus. The observer probes each descriptor in order and uses the first one whose probeQuery returns results.
+
+_Appears in:_
+- [sreportal.io/v1alpha1.FlowObserverSpec](#sreportaliov1alpha1flowobserverspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `name` _string_ | name is a human-readable identifier for this mesh/CNI (e.g. "istio", "hubble", "linkerd") |   |   |
+| `probeQuery` _string_ | probeQuery is a PromQL query used to detect if this mesh is active. Should return a non-empty vector when the mesh is present (e.g. "count(istio_requests_total)"). |   |   |
+| `observedQueryTemplate` _string_ | observedQueryTemplate is a PromQL query template returning one result per source/destination pair. Use %s as placeholder for the query window (e.g. "5m"). Must use "max by" with the label names defined below. |   |   |
+| `sourceNamespaceLabel` _string_ | sourceNamespaceLabel is the Prometheus label name for the source namespace |   |   |
+| `sourceWorkloadLabel` _string_ | sourceWorkloadLabel is the Prometheus label name for the source workload |   |   |
+| `destinationNamespaceLabel` _string_ | destinationNamespaceLabel is the Prometheus label name for the destination namespace |   |   |
+| `destinationWorkloadLabel` _string_ | destinationWorkloadLabel is the Prometheus label name for the destination workload |   |   |
+
+
+
+#### sreportal.io/v1alpha1.FlowObserverStatus
+
+FlowObserverStatus defines the observed state of FlowObserver.
+destinationWorkloadLabel is the Prometheus label name for the destination workload
+
+_Appears in:_
+- [sreportal.io/v1alpha1.FlowObserver](#sreportaliov1alpha1flowobserver)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `activeMesh` _string_ | activeMesh is the name of the detected mesh provider (empty if none detected) |   |   |
+| `conditions` _[Condition](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#condition-v1-meta) array_ | conditions represent the current state of the FlowObserver resource. |   |   |
+
+
+
 #### sreportal.io/v1alpha1.IncidentUpdate
 
 IncidentUpdate represents a single timeline entry in the incident lifecycle.
@@ -685,7 +764,7 @@ _Appears in:_
 | `from` _string_ | from is the source node id |   |   |
 | `to` _string_ | to is the target node id |   |   |
 | `edgeType` _string_ | edgeType describes the flow type (e.g. internal, cross-ns, cron, database, messaging, external) |   |   |
-| `lastSeen` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | lastSeen is the timestamp when traffic was last observed on this edge. Nil means traffic has never been observed (policy exists but no flow data). |   |   |
+| `used` _boolean_ | used indicates whether traffic has been observed on this edge. |   |   |
 
 
 
