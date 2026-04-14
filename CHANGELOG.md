@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.28.0](https://github.com/golgoth31/sreportal/compare/v1.27.1...v1.28.0) (2026-04-14)
+
+
+### Features
+
+* **helm:** add FlowObserver CR template for flow observation configuration ([#209](https://github.com/golgoth31/sreportal/issues/209)) ([8a872f9](https://github.com/golgoth31/sreportal/commit/8a872f9553083a604743f412b618e1b117a74f6e))
+
 ## [1.27.1](https://github.com/golgoth31/sreportal/compare/v1.27.0...v1.27.1) (2026-04-14)
 
 
