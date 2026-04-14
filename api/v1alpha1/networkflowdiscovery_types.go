@@ -97,6 +97,11 @@ type FlowEdge struct {
 	// used indicates whether traffic has been observed on this edge.
 	// +optional
 	Used bool `json:"used,omitempty"`
+
+	// evaluated indicates whether the observer attempted to check this edge.
+	// When false, the Used field should be ignored (edge type is not observable).
+	// +optional
+	Evaluated bool `json:"evaluated,omitempty"`
 }
 
 // +kubebuilder:object:root=true

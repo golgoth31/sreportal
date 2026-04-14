@@ -446,10 +446,11 @@ func (c *Client) doFetchNetworkPolicies(ctx context.Context, baseURL string) (*N
 	edges := make([]sreportalv1alpha1.FlowEdge, 0, len(resp.Msg.Edges))
 	for _, e := range resp.Msg.Edges {
 		edges = append(edges, sreportalv1alpha1.FlowEdge{
-			From:     e.From,
-			To:       e.To,
-			EdgeType: e.EdgeType,
-			Used:     e.Used,
+			From:      e.From,
+			To:        e.To,
+			EdgeType:  e.EdgeType,
+			Used:      e.Used,
+			Evaluated: e.Evaluated,
 		})
 	}
 

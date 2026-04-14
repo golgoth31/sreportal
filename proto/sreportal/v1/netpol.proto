@@ -60,4 +60,8 @@ message NetpolEdge {
 
   // used indicates whether traffic has been observed on this edge.
   bool used = 4;
+
+  // evaluated indicates whether the observer attempted to check this edge.
+  // When false, the used field should be ignored.
+  bool evaluated = 5;
 }

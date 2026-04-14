@@ -11,10 +11,11 @@ type FlowNode struct {
 
 // FlowEdge is the read model for a directional edge in the network flow graph.
 type FlowEdge struct {
-	From     string
-	To       string
-	EdgeType string
-	Used     bool // true if traffic was observed on this edge
+	From      string
+	To        string
+	EdgeType  string
+	Used      bool // true if traffic was observed on this edge
+	Evaluated bool // true if the observer attempted to check this edge
 }
 
 // FlowGraphFilters specifies optional filters for querying the flow graph.

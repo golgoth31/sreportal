@@ -87,10 +87,11 @@ func flowNodeToProto(n domainnetpol.FlowNode) *netpolv1.NetpolNode {
 
 func flowEdgeToProto(e domainnetpol.FlowEdge) *netpolv1.NetpolEdge {
 	return &netpolv1.NetpolEdge{
-		From:     e.From,
-		To:       e.To,
-		EdgeType: e.EdgeType,
-		Used:     e.Used,
+		From:      e.From,
+		To:        e.To,
+		EdgeType:  e.EdgeType,
+		Used:      e.Used,
+		Evaluated: e.Evaluated,
 	}
 }
 

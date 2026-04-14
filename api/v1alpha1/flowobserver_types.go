@@ -42,6 +42,13 @@ type FlowObserverSpec struct {
 	// The observer probes each descriptor in order and uses the first one that returns results.
 	// +optional
 	Metrics []FlowMetricDescriptor `json:"metrics,omitempty"`
+
+	// evaluatedEdgeTypes is the list of node types whose edges the observer can evaluate.
+	// Only edges where both source and destination are of a listed type will be checked.
+	// Others are marked as not evaluated. Defaults to ["service"].
+	// +optional
+	// +kubebuilder:default={"service"}
+	EvaluatedEdgeTypes []string `json:"evaluatedEdgeTypes,omitempty"`
 }
 
 // FlowObserverPrometheusConfig configures the Prometheus connection.
