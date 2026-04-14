@@ -566,16 +566,15 @@ _Appears in:_
 | --- | --- | --- | --- |
 | `portalRef` _string_ | portalRef is the name of the Portal this observer is linked to |   |   |
 | `reconcileInterval` _string_ | reconcileInterval is how often the observer queries for unused edges (e.g. "1m", "5m"). Defaults to the NetworkFlowDiscovery reconcile interval (1m) when empty. |   |   |
+| `evaluatedEdgeTypes` _string array_ | evaluatedEdgeTypes is the list of node types whose edges the observer can evaluate. Only edges where both source and destination are of a listed type will be checked. Others are marked as not evaluated. Defaults to ["service"]. |   |   |
 | `prometheus` _[sreportal.io/v1alpha1.FlowObserverPrometheusConfig](#sreportaliov1alpha1flowobserverprometheusconfig)_ | prometheus configures the Prometheus-based flow observation |   |   |
 | `metrics` _[sreportal.io/v1alpha1.FlowMetricDescriptor](#sreportaliov1alpha1flowmetricdescriptor) array_ | metrics defines the list of mesh metric descriptors to probe. Each descriptor describes how a specific CNI/mesh exposes flow metrics in Prometheus. When empty, the built-in defaults (Hubble, Istio, Linkerd) are used. The observer probes each descriptor in order and uses the first one that returns results. |   |   |
-| `evaluatedEdgeTypes` _string array_ | evaluatedEdgeTypes is the list of node types whose edges the observer can evaluate. Only edges where both source and destination are of a listed type will be checked. Others are marked as not evaluated. Defaults to ["service"]. |   |   |
 
 
 
 #### sreportal.io/v1alpha1.FlowObserverPrometheusConfig
 
 FlowObserverPrometheusConfig configures the Prometheus connection.
-evaluatedEdgeTypes is the list of node types whose edges the observer can evaluate. Only edges where both source and destination are of a listed type will be checked. Others are marked as not evaluated. Defaults to ["service"].
 
 _Appears in:_
 - [sreportal.io/v1alpha1.FlowObserverSpec](#sreportaliov1alpha1flowobserverspec)

@@ -168,6 +168,30 @@ func TestFlowGraphStore_Subscribe(t *testing.T) {
 	}
 }
 
+func TestFlowGraphStore_MergeEvaluatedAndUsedAcrossKeys(t *testing.T) {
+	store := NewFlowGraphStore()
+	ctx := context.Background()
+
+	node := domainnetpol.FlowNode{ID: "svc:ns1:a", Label: "a", Namespace: "ns1", NodeType: "service", Group: "ns1"}
+	other := domainnetpol.FlowNode{ID: "svc:ns1:b", Label: "b", Namespace: "ns1", NodeType: "service", Group: "ns1"}
+	require.NoError(t, store.ReplaceNodes(ctx, "nfd-1", "", []domainnetpol.FlowNode{node, other}))
+	require.NoError(t, store.ReplaceNodes(ctx, "nfd-2", "", []domainnetpol.FlowNode{node, other}))
+
+	// nfd-1 has the edge as evaluated+used, nfd-2 has it as not evaluated.
+	require.NoError(t, store.ReplaceEdges(ctx, "nfd-1", "", []domainnetpol.FlowEdge{
+		{From: "svc:ns1:a", To: "svc:ns1:b", EdgeType: "internal", Used: true, Evaluated: true},
+	}))
+	require.NoError(t, store.ReplaceEdges(ctx, "nfd-2", "", []domainnetpol.FlowEdge{
+		{From: "svc:ns1:a", To: "svc:ns1:b", EdgeType: "internal", Used: false, Evaluated: false},
+	}))
+
+	edges, err := store.ListEdges(ctx, domainnetpol.FlowGraphFilters{})
+	require.NoError(t, err)
+	require.Len(t, edges, 1)
+	assert.True(t, edges[0].Used, "Used should be true (OR merge)")
+	assert.True(t, edges[0].Evaluated, "Evaluated should be true (OR merge)")
+}
+
 func TestFlowGraphStore_DeduplicationAcrossKeys(t *testing.T) {
 	store := NewFlowGraphStore()
 	ctx := context.Background()
