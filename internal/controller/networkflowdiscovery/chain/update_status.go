@@ -197,10 +197,11 @@ func flowEdgesToViews(edges []sreportalv1alpha1.FlowEdge) []domainnetpol.FlowEdg
 	views := make([]domainnetpol.FlowEdge, len(edges))
 	for i, e := range edges {
 		views[i] = domainnetpol.FlowEdge{
-			From:     e.From,
-			To:       e.To,
-			EdgeType: e.EdgeType,
-			Used:     e.Used,
+			From:      e.From,
+			To:        e.To,
+			EdgeType:  e.EdgeType,
+			Used:      e.Used,
+			Evaluated: e.Evaluated,
 		}
 	}
 

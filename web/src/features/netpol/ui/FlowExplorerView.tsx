@@ -24,6 +24,7 @@ interface FlowItem {
   node: NetpolNode;
   edgeType: string;
   used: boolean;
+  evaluated: boolean;
 }
 
 function groupByNamespace(items: readonly FlowItem[]): Map<string, FlowItem[]> {
@@ -89,11 +90,13 @@ function NamespaceGroup({
                 <Badge variant="outline" className="ml-auto text-[10px] shrink-0">
                   {item.edgeType}
                 </Badge>
-                {item.used ? (
-                  <CheckIcon className="size-3.5 text-green-600 dark:text-green-400 shrink-0" />
-                ) : (
-                  <XIcon className="size-3.5 text-red-500 dark:text-red-400 shrink-0" />
-                )}
+                {item.evaluated ? (
+                  item.used ? (
+                    <CheckIcon className="size-3.5 text-green-600 dark:text-green-400 shrink-0" />
+                  ) : (
+                    <XIcon className="size-3.5 text-red-500 dark:text-red-400 shrink-0" />
+                  )
+                ) : null}
               </Button>
             ))}
           </div>
@@ -155,7 +158,7 @@ export function FlowExplorerView({ nodes, nodeMap, callsTo, callsFrom }: Props) 
   const incoming = useMemo(() => {
     if (!selectedId) return [];
     return (callsFrom.get(selectedId) ?? [])
-      .map((e) => ({ node: nodeMap.get(e.from)!, edgeType: e.edgeType, used: e.used }))
+      .map((e) => ({ node: nodeMap.get(e.from)!, edgeType: e.edgeType, used: e.used, evaluated: e.evaluated }))
       .filter((item) => item.node != null)
       .sort((a, b) => a.node.label.localeCompare(b.node.label));
   }, [selectedId, callsFrom, nodeMap]);
@@ -163,7 +166,7 @@ export function FlowExplorerView({ nodes, nodeMap, callsTo, callsFrom }: Props) 
   const outgoing = useMemo(() => {
     if (!selectedId) return [];
     return (callsTo.get(selectedId) ?? [])
-      .map((e) => ({ node: nodeMap.get(e.to)!, edgeType: e.edgeType, used: e.used }))
+      .map((e) => ({ node: nodeMap.get(e.to)!, edgeType: e.edgeType, used: e.used, evaluated: e.evaluated }))
       .filter((item) => item.node != null)
       .sort((a, b) => a.node.label.localeCompare(b.node.label));
   }, [selectedId, callsTo, nodeMap]);

@@ -154,6 +154,8 @@ const flowObserverBlock = `flowObserver:
   name: flow-observer-main
   portalRef: main
   reconcileInterval: "5m"
+  evaluatedEdgeTypes:
+  - service
   prometheus:
     address: "http://prometheus.internal"
     queryWindow: "5m"

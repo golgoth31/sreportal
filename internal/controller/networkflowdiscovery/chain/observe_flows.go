@@ -40,11 +40,12 @@ import (
 type ObserveFlowsHandler struct {
 	k8sReader client.Reader
 
-	mu                sync.Mutex
-	observer          domainnetpol.FlowObserver
-	specHash          string        // tracks CRD changes to re-initialize
-	reconcileInterval time.Duration // from CRD spec
-	lastQueryTime     time.Time     // when we last queried the observer
+	mu                 sync.Mutex
+	observer           domainnetpol.FlowObserver
+	specHash           string        // tracks CRD changes to re-initialize
+	reconcileInterval  time.Duration // from CRD spec
+	lastQueryTime      time.Time     // when we last queried the observer
+	evaluatedEdgeTypes map[string]bool
 }
 
 // NewObserveFlowsHandler creates a new ObserveFlowsHandler.
@@ -78,14 +79,19 @@ func (h *ObserveFlowsHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 	interval := h.reconcileInterval
 	h.mu.Unlock()
 
+	// Snapshot evaluated edge types (replaced atomically by resolveObserver under lock).
+	h.mu.Lock()
+	evalTypes := h.evaluatedEdgeTypes
+	h.mu.Unlock()
+
 	if interval > 0 && sinceLastQuery < interval {
 		logger.V(1).Info("skipping observation, next query in", "remaining", interval-sinceLastQuery)
-		// Still carry forward Used flags even when skipping the query.
-		previousUsed := h.loadPreviousUsed(ctx, rc.Resource)
+		prev := h.loadPreviousUsed(ctx, rc.Resource)
 		for i := range rc.Data.Edges {
 			edge := &rc.Data.Edges[i]
+			edge.Evaluated = h.isEvaluable(edge, evalTypes)
 			key := edge.From + "|" + edge.To + "|" + edge.EdgeType
-			if previousUsed[key] {
+			if prev[key] {
 				edge.Used = true
 			}
 		}
@@ -94,23 +100,26 @@ func (h *ObserveFlowsHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 	}
 
 	// Carry forward Used flag from the previous FlowEdgeSet.
-	previousUsed := h.loadPreviousUsed(ctx, rc.Resource)
+	prev := h.loadPreviousUsed(ctx, rc.Resource)
 
 	var unknownEdges []domainnetpol.FlowEdge
 
 	for i := range rc.Data.Edges {
 		edge := &rc.Data.Edges[i]
+		edge.Evaluated = h.isEvaluable(edge, evalTypes)
 		key := edge.From + "|" + edge.To + "|" + edge.EdgeType
 
-		if previousUsed[key] {
+		if prev[key] {
 			edge.Used = true
 		}
 
-		if !edge.Used {
-			unknownEdges = append(unknownEdges, domainnetpol.FlowEdge{
-				From: edge.From, To: edge.To, EdgeType: edge.EdgeType,
-			})
+		if !edge.Evaluated || edge.Used {
+			continue
 		}
+
+		unknownEdges = append(unknownEdges, domainnetpol.FlowEdge{
+			From: edge.From, To: edge.To, EdgeType: edge.EdgeType,
+		})
 	}
 
 	if len(unknownEdges) == 0 {
@@ -192,7 +201,26 @@ func (h *ObserveFlowsHandler) resolveObserver(ctx context.Context, nfd *sreporta
 		}
 	}
 
+	// Store evaluated edge types.
+	evalTypes := fo.Spec.EvaluatedEdgeTypes
+	h.evaluatedEdgeTypes = make(map[string]bool, len(evalTypes))
+	for _, t := range evalTypes {
+		h.evaluatedEdgeTypes[t] = true
+	}
+
 	return obs
+}
+
+// isEvaluable returns true if both source and destination node types are in the evaluated set.
+func (h *ObserveFlowsHandler) isEvaluable(edge *sreportalv1alpha1.FlowEdge, evalTypes map[string]bool) bool {
+	if len(evalTypes) == 0 {
+		return false
+	}
+
+	srcType, _, _ := flowobserver.ParseNodeID(edge.From)
+	dstType, _, _ := flowobserver.ParseNodeID(edge.To)
+
+	return evalTypes[srcType] && evalTypes[dstType]
 }
 
 // loadPreviousUsed reads the existing FlowEdgeSet to recover Used flags.

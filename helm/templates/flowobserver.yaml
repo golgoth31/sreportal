@@ -16,6 +16,10 @@ spec:
     {{- if .Values.flowObserver.prometheus.queryWindow }}
     queryWindow: {{ .Values.flowObserver.prometheus.queryWindow | quote }}
     {{- end }}
+  {{- if .Values.flowObserver.evaluatedEdgeTypes }}
+  evaluatedEdgeTypes:
+    {{- toYaml .Values.flowObserver.evaluatedEdgeTypes | nindent 4 }}
+  {{- end }}
   {{- if .Values.flowObserver.metrics }}
   metrics:
     {{- range .Values.flowObserver.metrics }}

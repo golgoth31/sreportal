@@ -29,6 +29,7 @@ function toDomainEdge(e: ProtoEdge): NetpolEdge {
     to: e.to,
     edgeType: e.edgeType as NetpolEdge["edgeType"],
     used: e.used,
+    evaluated: e.evaluated,
   };
 }
 

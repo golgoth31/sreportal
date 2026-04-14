@@ -20,6 +20,7 @@ export interface NetpolEdge {
   readonly to: string;
   readonly edgeType: EdgeType;
   readonly used: boolean;
+  readonly evaluated: boolean;
 }
 
 export interface NetpolGraph {

@@ -68,6 +68,11 @@ spec:
                       description: edgeType describes the flow type (e.g. internal,
                         cross-ns, cron, database, messaging, external)
                       type: string
+                    evaluated:
+                      description: |-
+                        evaluated indicates whether the observer attempted to check this edge.
+                        When false, the Used field should be ignored (edge type is not observable).
+                      type: boolean
                     from:
                       description: from is the source node id
                       type: string
