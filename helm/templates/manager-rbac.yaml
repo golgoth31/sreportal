@@ -121,6 +121,7 @@ rules:
   - dnsrecords/status
   - flowedgesets/status
   - flownodesets/status
+  - flowobservers/status
   - incidents/status
   - maintenances/status
   - networkflowdiscoveries/status
@@ -135,6 +136,7 @@ rules:
   resources:
   - flowedgesets
   - flownodesets
+  - flowobservers
   verbs:
   - create
   - get

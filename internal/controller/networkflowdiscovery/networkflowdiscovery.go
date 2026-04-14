@@ -84,6 +84,8 @@ func (r *NetworkFlowDiscoveryReconciler) SetFlowGraphWriter(w domainnetpol.FlowG
 // +kubebuilder:rbac:groups=sreportal.io,resources=flownodesets/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=flowedgesets,verbs=get;list;watch;create;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=flowedgesets/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=sreportal.io,resources=flowobservers,verbs=get;list;watch;create;update;patch
+// +kubebuilder:rbac:groups=sreportal.io,resources=flowobservers/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch
 // +kubebuilder:rbac:groups=networking.gke.io,resources=fqdnnetworkpolicies,verbs=get;list;watch
 // +kubebuilder:rbac:groups=sreportal.io,resources=portals,verbs=get;list;watch
