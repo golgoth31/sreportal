@@ -45,6 +45,14 @@ func run() error {
 		return fmt.Errorf("patching deployment.yaml: %w", err)
 	}
 
+	if err := patchFile(deploymentFile, injectExtraVolumes); err != nil {
+		return fmt.Errorf("patching deployment.yaml (extraVolumes): %w", err)
+	}
+
+	if err := patchFile(valuesFile, injectExtraVolumesBlock); err != nil {
+		return fmt.Errorf("patching values.yaml (extraVolumes): %w", err)
+	}
+
 	fmt.Println("helmify post-processing complete")
 
 	return nil
@@ -170,4 +178,55 @@ func injectFlowObserverBlock(content string) string {
 // with a Helm conditional block using auth values.
 func makeHeaderAPIKeyConditional(content string) string {
 	return strings.Replace(content, oldEnvBlock, newEnvBlock, 1)
+}
+
+const extraVolumesValuesBlock = `extraVolumes: []
+extraVolumeMounts: []
+`
+
+// injectExtraVolumesBlock appends the extraVolumes/extraVolumeMounts configuration block
+// to values.yaml if it is not already present.
+func injectExtraVolumesBlock(content string) string {
+	if strings.Contains(content, "\nextraVolumes:") || strings.HasPrefix(content, "extraVolumes:") {
+		return content
+	}
+
+	if !strings.HasSuffix(content, "\n") {
+		content += "\n"
+	}
+
+	return content + extraVolumesValuesBlock
+}
+
+const (
+	oldVolumeMountsEnd = `        - mountPath: /etc/sreportal
+          name: operator-config
+          readOnly: true
+      nodeSelector:`
+
+	newVolumeMountsEnd = `        - mountPath: /etc/sreportal
+          name: operator-config
+          readOnly: true
+        {{- with .Values.extraVolumeMounts }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      nodeSelector:`
+
+	oldVolumesEnd = `          name: {{ include "helm.fullname" . }}-config
+        name: operator-config`
+
+	newVolumesEnd = `          name: {{ include "helm.fullname" . }}-config
+        name: operator-config
+      {{- with .Values.extraVolumes }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}`
+)
+
+// injectExtraVolumes patches the deployment template to support extra volumes and volumeMounts
+// from values.
+func injectExtraVolumes(content string) string {
+	content = strings.Replace(content, oldVolumeMountsEnd, newVolumeMountsEnd, 1)
+	content = strings.Replace(content, oldVolumesEnd, newVolumesEnd, 1)
+
+	return content
 }
