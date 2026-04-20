@@ -37,7 +37,6 @@ import (
 const (
 	defaultTTL = 30 * 24 * time.Hour
 	testPortal = "main"
-	testDay    = "2026-03-21"
 )
 
 func newReleaseScheme() *runtime.Scheme {
@@ -55,8 +54,10 @@ func testPortalCR() *sreportalv1alpha1.Portal {
 
 func TestReleaseReconciler_Reconcile_PushesEntriesToStore(t *testing.T) {
 	ctx := context.Background()
+	day := time.Now().UTC().Add(-24 * time.Hour).Format("2006-01-02")
+	crName := "release-" + day
 	existing := &sreportalv1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Name: "release-2026-03-21", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: crName, Namespace: "default"},
 		Spec: sreportalv1alpha1.ReleaseSpec{
 			PortalRef: testPortal,
 			Entries: []sreportalv1alpha1.ReleaseEntry{
@@ -82,13 +83,13 @@ func TestReleaseReconciler_Reconcile_PushesEntriesToStore(t *testing.T) {
 	r.SetReleaseWriter(store)
 
 	result, err := r.Reconcile(ctx, ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: "release-2026-03-21", Namespace: "default"},
+		NamespacedName: types.NamespacedName{Name: crName, Namespace: "default"},
 	})
 
 	require.NoError(t, err)
 	assert.Equal(t, 12*time.Hour, result.RequeueAfter)
 
-	entries, err := store.ListEntries(ctx, testDay, testPortal)
+	entries, err := store.ListEntries(ctx, day, testPortal)
 	require.NoError(t, err)
 	require.Len(t, entries, 2)
 	assert.Equal(t, "deployment", entries[0].Type)
@@ -99,11 +100,13 @@ func TestReleaseReconciler_Reconcile_PushesEntriesToStore(t *testing.T) {
 
 func TestReleaseReconciler_Reconcile_ReleasesDisabled_SkipsProjection(t *testing.T) {
 	ctx := context.Background()
+	day := time.Now().UTC().Add(-24 * time.Hour).Format("2006-01-02")
+	crName := "release-" + day
 	releasesFalse := false
 	portal := testPortalCR()
 	portal.Spec.Features = &sreportalv1alpha1.PortalFeatures{Releases: &releasesFalse}
 	rel := &sreportalv1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Name: "release-2026-03-21", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: crName, Namespace: "default"},
 		Spec: sreportalv1alpha1.ReleaseSpec{
 			PortalRef: testPortal,
 			Entries: []sreportalv1alpha1.ReleaseEntry{
@@ -118,13 +121,13 @@ func TestReleaseReconciler_Reconcile_ReleasesDisabled_SkipsProjection(t *testing
 	r.SetReleaseWriter(store)
 
 	result, err := r.Reconcile(ctx, ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: "release-2026-03-21", Namespace: "default"},
+		NamespacedName: types.NamespacedName{Name: crName, Namespace: "default"},
 	})
 	require.NoError(t, err)
 	assert.Equal(t, 12*time.Hour, result.RequeueAfter)
 
 	// Controller does not call Replace when disabled — store stays empty
-	entries, err := store.ListEntries(ctx, testDay, testPortal)
+	entries, err := store.ListEntries(ctx, day, testPortal)
 	require.NoError(t, err)
 	assert.Empty(t, entries)
 }
@@ -136,15 +139,16 @@ func TestReleaseReconciler_Reconcile_DeletedCR_RemovesFromStore(t *testing.T) {
 
 	r := releasectrl.NewReleaseReconciler(c, defaultTTL)
 	r.SetReleaseWriter(store)
+	day := time.Now().UTC().Add(-24 * time.Hour).Format("2006-01-02")
 
 	result, err := r.Reconcile(ctx, ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: "release-2026-03-21", Namespace: "default"},
+		NamespacedName: types.NamespacedName{Name: "release-" + day, Namespace: "default"},
 	})
 
 	require.NoError(t, err)
 	assert.Equal(t, ctrl.Result{}, result)
 
-	entries, err := store.ListEntries(ctx, testDay, "")
+	entries, err := store.ListEntries(ctx, day, "")
 	require.NoError(t, err)
 	assert.Empty(t, entries)
 }
@@ -216,8 +220,10 @@ func TestReleaseReconciler_Reconcile_PreservesNonExpiredCR(t *testing.T) {
 
 func TestReleaseReconciler_Reconcile_PortalNotFound_ReturnsError(t *testing.T) {
 	ctx := context.Background()
+	day := time.Now().UTC().Add(-24 * time.Hour).Format("2006-01-02")
+	crName := "release-" + day
 	rel := &sreportalv1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Name: "release-2026-03-21", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: crName, Namespace: "default"},
 		Spec: sreportalv1alpha1.ReleaseSpec{
 			PortalRef: "missing",
 			Entries: []sreportalv1alpha1.ReleaseEntry{
@@ -230,7 +236,7 @@ func TestReleaseReconciler_Reconcile_PortalNotFound_ReturnsError(t *testing.T) {
 	r.SetReleaseWriter(releasereadstore.NewReleaseStore())
 
 	_, err := r.Reconcile(ctx, ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: "release-2026-03-21", Namespace: "default"},
+		NamespacedName: types.NamespacedName{Name: crName, Namespace: "default"},
 	})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "get portal")

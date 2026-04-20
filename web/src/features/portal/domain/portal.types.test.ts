@@ -21,6 +21,7 @@ function portal(p: Partial<Portal> & Pick<Portal, "name" | "title">): Portal {
       networkPolicy: true,
       alerts: true,
       statusPage: true,
+      imageInventory: true,
     },
     ...p,
   };
