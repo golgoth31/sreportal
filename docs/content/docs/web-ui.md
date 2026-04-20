@@ -28,6 +28,7 @@ Then open [http://localhost:8090](http://localhost:8090) in your browser.
 | `/:portalName/netpol` | Displays network policy flow graph for the portal |
 | `/:portalName/releases` | Displays release events for a given day (main portal only) |
 | `/:portalName/status` | Status page with components, incidents, and maintenance tabs |
+| `/:portalName/images` | Displays Docker image inventory grouped by registry |
 | `/help` | MCP setup instructions (all MCP endpoints) and available tools |
 
 The root URL redirects to the `main` portal's links page. Each portal has its own DNS (links), Dashboard, Network Policies, and (when applicable) Releases and Alerts routes.
@@ -41,6 +42,7 @@ When viewing a portal, a left sidebar shows:
 - **Releases** — shown only on the main portal when at least one Release CR exists; navigates to `/:portalName/releases`
 - **Network Policies** — navigates to `/:portalName/netpol` (network flow graph)
 - **Status** — navigates to `/:portalName/status` (components, incidents, maintenances)
+- **Images** — navigates to `/:portalName/images` (image inventory grouped by registry)
 - **Alerts** — shown only if the portal has at least one Alertmanager resource; navigates to `/:portalName/alerts`
 
 ## Features
@@ -94,6 +96,18 @@ Features:
 - **Keyword search**: filter releases by type, version, origin, author, or message (case-insensitive)
 - **Compact layout**: each release is a single row showing time, type badge, version, origin, message, author, and an external link icon
 - **Configurable type colors**: type badge colors are driven by the operator's `release.types` configuration. When no types are configured, built-in default colors are used
+
+### Images Page
+
+![Image Inventory](/assets/img/dark/images.png)
+
+The Images page inventories Docker images used by workloads for the selected portal. Results are grouped by registry and each image shows repository, tag, tag type, and workload count.
+
+Features:
+- **Tag type summary**: quick filters for `semver`, `commit`, `digest`, and `latest`
+- **Search**: filter by repository path
+- **Registry grouping**: collapsible cards per registry
+- **Per-image details**: short name, full repository/tag, tag type badge, and workload usage count
 
 ### Status Page
 

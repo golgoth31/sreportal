@@ -63,6 +63,11 @@ import {
   IncidentPhase,
   IncidentSeverity,
 } from "../src/gen/sreportal/v1/status_pb.js";
+import {
+  ListImagesResponseSchema,
+  ImageSchema,
+  WorkloadRefSchema,
+} from "../src/gen/sreportal/v1/image_pb.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
@@ -292,6 +297,69 @@ const incidentsResponse = create(ListIncidentsResponseSchema, {
   ],
 });
 
+// Images
+const imagesResponse = create(ListImagesResponseSchema, {
+  images: [
+    create(ImageSchema, {
+      registry: "ghcr.io",
+      repository: "acme/api",
+      tag: "1.14.0",
+      tagType: "semver",
+      workloads: [
+        create(WorkloadRefSchema, {
+          kind: "Deployment",
+          namespace: "backend",
+          name: "api",
+          container: "main",
+        }),
+      ],
+    }),
+    create(ImageSchema, {
+      registry: "ghcr.io",
+      repository: "acme/worker",
+      tag: "latest",
+      tagType: "latest",
+      workloads: [
+        create(WorkloadRefSchema, {
+          kind: "Job",
+          namespace: "payments",
+          name: "payments-retry",
+          container: "worker",
+        }),
+      ],
+    }),
+    create(ImageSchema, {
+      registry: "europe-docker.pkg.dev",
+      repository: "platform/ops/vault",
+      tag: "sha256:8d84f87893b9",
+      tagType: "digest",
+      workloads: [
+        create(WorkloadRefSchema, {
+          kind: "StatefulSet",
+          namespace: "security",
+          name: "vault",
+          container: "vault",
+        }),
+      ],
+    }),
+    create(ImageSchema, {
+      registry: "docker.io",
+      repository: "library/nginx",
+      tag: "a1b2c3d4",
+      tagType: "commit",
+      workloads: [
+        create(WorkloadRefSchema, {
+          kind: "DaemonSet",
+          namespace: "ingress",
+          name: "ingress-nginx",
+          container: "controller",
+        }),
+      ],
+    }),
+  ],
+  totalCount: 4,
+});
+
 // ── Route matching ─────────────────────────────────────────────────────
 
 const API_ROUTES: Array<{ pattern: RegExp; schema: DescMessage; msg: MessageShape<DescMessage> }> = [
@@ -306,6 +374,7 @@ const API_ROUTES: Array<{ pattern: RegExp; schema: DescMessage; msg: MessageShap
   { pattern: /StatusService\/ListComponents/, schema: ListComponentsResponseSchema, msg: componentsResponse },
   { pattern: /StatusService\/ListMaintenances/, schema: ListMaintenancesResponseSchema, msg: maintenancesResponse },
   { pattern: /StatusService\/ListIncidents/, schema: ListIncidentsResponseSchema, msg: incidentsResponse },
+  { pattern: /ImageService\/ListImages/, schema: ListImagesResponseSchema, msg: imagesResponse },
 ];
 
 // ── Pages to screenshot ────────────────────────────────────────────────
@@ -315,6 +384,7 @@ const PAGES = [
   { name: "alerts", path: "/main/alerts", waitFor: "text=HighCPU" },
   { name: "dashboard", path: "/main/dashboard", waitFor: "text=Portal Statistics" },
   { name: "releases", path: "/main/releases", waitFor: "text=Releases" },
+  { name: "images", path: "/main/images", waitFor: "text=Image Inventory" },
   { name: "netpol-matrix", path: "/main/netpol", waitFor: "text=api-server", tab: "flow matrix" },
   { name: "netpol-cross-ns", path: "/main/netpol", waitFor: "text=Cross-Namespace Flows", tab: "cross-namespace" },
   { name: "netpol-flow-explorer", path: "/main/netpol", waitFor: "text=Select a service or resource", tab: "flow explorer" },
