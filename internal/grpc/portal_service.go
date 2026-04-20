@@ -88,11 +88,12 @@ func portalViewToProto(v domainportal.PortalView) *portalv1.Portal {
 	}
 
 	portal.Features = &portalv1.PortalFeatures{
-		Dns:           v.Features.DNS,
-		Releases:      v.Features.Releases,
-		NetworkPolicy: v.Features.NetworkPolicy,
-		Alerts:        v.Features.Alerts,
-		StatusPage:    v.Features.StatusPage,
+		Dns:            v.Features.DNS,
+		Releases:       v.Features.Releases,
+		NetworkPolicy:  v.Features.NetworkPolicy,
+		Alerts:         v.Features.Alerts,
+		StatusPage:     v.Features.StatusPage,
+		ImageInventory: v.Features.ImageInventory,
 	}
 
 	return portal

@@ -11,6 +11,7 @@ export interface PortalFeatures {
   readonly networkPolicy: boolean;
   readonly alerts: boolean;
   readonly statusPage: boolean;
+  readonly imageInventory: boolean;
 }
 
 export interface Portal {

@@ -1,4 +1,4 @@
-import { ActivityIcon, AlertTriangleIcon, BarChart3Icon, LinkIcon, RocketIcon, ShieldIcon } from "lucide-react";
+import { ActivityIcon, AlertTriangleIcon, BarChart3Icon, ContainerIcon, LinkIcon, RocketIcon, ShieldIcon } from "lucide-react";
 import { NavLink } from "react-router";
 
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +26,7 @@ export function PortalSidebar({
   const showNetworkPolicy = currentPortal?.features.networkPolicy !== false;
   const showAlerts = currentPortal?.features.alerts === true;
   const showStatusPage = currentPortal?.features.statusPage !== false;
+  const showImageInventory = currentPortal?.features.imageInventory !== false;
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
@@ -91,6 +92,12 @@ export function PortalSidebar({
             <ActivityIcon className="size-4 shrink-0" aria-hidden="true" />
             <span>Status</span>
             <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0">alpha</Badge>
+          </NavLink>
+        )}
+        {showImageInventory && (
+          <NavLink to={`${basePath}/images`} className={linkClass}>
+            <ContainerIcon className="size-4 shrink-0" aria-hidden="true" />
+            <span>Images</span>
           </NavLink>
         )}
       </nav>

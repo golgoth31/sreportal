@@ -2,11 +2,12 @@ package portal
 
 // PortalFeatures contains the feature toggles for a portal.
 type PortalFeatures struct {
-	DNS           bool
-	Releases      bool
-	NetworkPolicy bool
-	Alerts        bool
-	StatusPage    bool
+	DNS            bool
+	Releases       bool
+	NetworkPolicy  bool
+	Alerts         bool
+	StatusPage     bool
+	ImageInventory bool
 }
 
 // PortalView is the read-side projection of a Portal, pre-aggregated by the controller.

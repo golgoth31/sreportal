@@ -116,4 +116,12 @@ resources:
   kind: FlowObserver
   path: github.com/golgoth31/sreportal/api/v1alpha1
   version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: sreportal.io
+  kind: ImageInventory
+  path: github.com/golgoth31/sreportal/api/v1alpha1
+  version: v1alpha1
 version: "3"

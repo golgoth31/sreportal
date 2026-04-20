@@ -15,6 +15,9 @@
       "name": "EmojiService"
     },
     {
+      "name": "ImageService"
+    },
+    {
       "name": "MetricsService"
     },
     {
@@ -178,6 +181,38 @@
         ],
         "tags": [
           "EmojiService"
+        ]
+      }
+    },
+    "/sreportal.v1.ImageService/ListImages": {
+      "post": {
+        "operationId": "ImageService_ListImages",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListImagesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1ListImagesRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ImageService"
         ]
       }
     },
@@ -1316,6 +1351,30 @@
       },
       "title": "HistogramValue holds histogram-specific data"
     },
+    "v1Image": {
+      "type": "object",
+      "properties": {
+        "registry": {
+          "type": "string"
+        },
+        "repository": {
+          "type": "string"
+        },
+        "tag": {
+          "type": "string"
+        },
+        "tagType": {
+          "type": "string"
+        },
+        "workloads": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1WorkloadRef"
+          }
+        }
+      }
+    },
     "v1IncidentPhase": {
       "type": "string",
       "enum": [
@@ -1532,6 +1591,39 @@
         }
       },
       "title": "ListFQDNsResponse contains the list of FQDNs"
+    },
+    "v1ListImagesRequest": {
+      "type": "object",
+      "properties": {
+        "portal": {
+          "type": "string"
+        },
+        "search": {
+          "type": "string"
+        },
+        "registryFilter": {
+          "type": "string"
+        },
+        "tagTypeFilter": {
+          "type": "string"
+        }
+      }
+    },
+    "v1ListImagesResponse": {
+      "type": "object",
+      "properties": {
+        "images": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Image"
+          }
+        },
+        "totalCount": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
     },
     "v1ListIncidentsRequest": {
       "type": "object",
@@ -2014,6 +2106,10 @@
         "statusPage": {
           "type": "boolean",
           "title": "status_page enables the status page (components, incidents, maintenances) for this portal"
+        },
+        "imageInventory": {
+          "type": "boolean",
+          "title": "image_inventory enables the image inventory page for this portal"
         }
       },
       "title": "PortalFeatures controls which features are enabled for a portal"
@@ -2302,6 +2398,23 @@
       ],
       "default": "UPDATE_TYPE_UNSPECIFIED",
       "title": "UpdateType represents the type of update"
+    },
+    "v1WorkloadRef": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "container": {
+          "type": "string"
+        }
+      }
     }
   }
 }

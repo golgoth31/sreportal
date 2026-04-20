@@ -173,11 +173,12 @@ func portalToView(p *sreportalv1alpha1.Portal) domainportal.PortalView {
 		Ready:     p.Status.Ready,
 		IsRemote:  p.Spec.Remote != nil,
 		Features: domainportal.PortalFeatures{
-			DNS:           p.Spec.Features.IsDNSEnabled(),
-			Releases:      p.Spec.Features.IsReleasesEnabled(),
-			NetworkPolicy: p.Spec.Features.IsNetworkPolicyEnabled(),
-			Alerts:        p.Spec.Features.IsAlertsEnabled(),
-			StatusPage:    p.Spec.Features.IsStatusPageEnabled(),
+			DNS:            p.Spec.Features.IsDNSEnabled(),
+			Releases:       p.Spec.Features.IsReleasesEnabled(),
+			NetworkPolicy:  p.Spec.Features.IsNetworkPolicyEnabled(),
+			Alerts:         p.Spec.Features.IsAlertsEnabled(),
+			StatusPage:     p.Spec.Features.IsStatusPageEnabled(),
+			ImageInventory: p.Spec.Features.IsImageInventoryEnabled(),
 		},
 	}
 	if p.Spec.Remote != nil {
@@ -195,11 +196,12 @@ func portalToView(p *sreportalv1alpha1.Portal) domainportal.PortalView {
 		if p.Status.RemoteSync.Features != nil {
 			rf := p.Status.RemoteSync.Features
 			rs.RemoteFeatures = &domainportal.PortalFeatures{
-				DNS:           rf.DNS,
-				Releases:      rf.Releases,
-				NetworkPolicy: rf.NetworkPolicy,
-				Alerts:        rf.Alerts,
-				StatusPage:    rf.StatusPage,
+				DNS:            rf.DNS,
+				Releases:       rf.Releases,
+				NetworkPolicy:  rf.NetworkPolicy,
+				Alerts:         rf.Alerts,
+				StatusPage:     rf.StatusPage,
+				ImageInventory: rf.ImageInventory,
 			}
 			// Effective features for remote portals: local AND remote.
 			view.Features.DNS = view.Features.DNS && rf.DNS
@@ -207,6 +209,7 @@ func portalToView(p *sreportalv1alpha1.Portal) domainportal.PortalView {
 			view.Features.NetworkPolicy = view.Features.NetworkPolicy && rf.NetworkPolicy
 			view.Features.Alerts = view.Features.Alerts && rf.Alerts
 			view.Features.StatusPage = view.Features.StatusPage && rf.StatusPage
+			view.Features.ImageInventory = view.Features.ImageInventory && rf.ImageInventory
 		}
 		view.RemoteSync = rs
 	}

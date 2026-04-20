@@ -84,6 +84,7 @@ rules:
   - components
   - dns
   - dnsrecords
+  - imageinventories
   - incidents
   - maintenances
   - networkflowdiscoveries
@@ -104,6 +105,7 @@ rules:
   - components/finalizers
   - dns/finalizers
   - dnsrecords/finalizers
+  - imageinventories/finalizers
   - incidents/finalizers
   - maintenances/finalizers
   - networkflowdiscoveries/finalizers
@@ -121,6 +123,7 @@ rules:
   - flowedgesets/status
   - flownodesets/status
   - flowobservers/status
+  - imageinventories/status
   - incidents/status
   - maintenances/status
   - networkflowdiscoveries/status

@@ -64,3 +64,10 @@ resources:
   # - flowobserver_admin_role.yaml
   # - flowobserver_editor_role.yaml
   # - flowobserver_viewer_role.yaml
+  # For each CRD, "Admin", "Editor" and "Viewer" roles are scaffolded by
+  # default, aiding admins in cluster management. Those roles are
+  # not used by the sreportal itself. You can comment the following lines
+  # if you do not want those helpers be installed with your Project.
+  - imageinventory_admin_role.yaml
+  - imageinventory_editor_role.yaml
+  - imageinventory_viewer_role.yaml

@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package sreportal.v1;
+
+service ImageService {
+  rpc ListImages(ListImagesRequest) returns (ListImagesResponse);
+}
+
+message ListImagesRequest {
+  string portal = 1;
+  string search = 2;
+  string registry_filter = 3;
+  string tag_type_filter = 4;
+}
+
+message ListImagesResponse {
+  repeated Image images = 1;
+  int32 total_count = 2;
+}
+
+message Image {
+  string registry = 1;
+  string repository = 2;
+  string tag = 3;
+  string tag_type = 4;
+  repeated WorkloadRef workloads = 5;
+}
+
+message WorkloadRef {
+  string kind = 1;
+  string namespace = 2;
+  string name = 3;
+  string container = 4;
+}

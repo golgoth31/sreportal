@@ -50,12 +50,14 @@ import (
 	"github.com/golgoth31/sreportal/internal/alertmanagerclient"
 	"github.com/golgoth31/sreportal/internal/auth"
 	"github.com/golgoth31/sreportal/internal/config"
+	"github.com/golgoth31/sreportal/internal/controller"
 	alertmanagerctrl "github.com/golgoth31/sreportal/internal/controller/alertmanager"
 	componentctrl "github.com/golgoth31/sreportal/internal/controller/component"
 	dnsctrl "github.com/golgoth31/sreportal/internal/controller/dns"
 	dnschain "github.com/golgoth31/sreportal/internal/controller/dns/chain"
 	dnsrecordsctrl "github.com/golgoth31/sreportal/internal/controller/dnsrecords"
 	emojictrl "github.com/golgoth31/sreportal/internal/controller/emoji"
+	imagectrl "github.com/golgoth31/sreportal/internal/controller/image"
 	incidentctrl "github.com/golgoth31/sreportal/internal/controller/incident"
 	maintenancectrl "github.com/golgoth31/sreportal/internal/controller/maintenance"
 	nfdctrl "github.com/golgoth31/sreportal/internal/controller/networkflowdiscovery"
@@ -71,6 +73,7 @@ import (
 	componentreadstore "github.com/golgoth31/sreportal/internal/readstore/component"
 	dnsreadstore "github.com/golgoth31/sreportal/internal/readstore/dns"
 	emojireadstore "github.com/golgoth31/sreportal/internal/readstore/emoji"
+	imagereadstore "github.com/golgoth31/sreportal/internal/readstore/image"
 	incidentreadstore "github.com/golgoth31/sreportal/internal/readstore/incident"
 	maintenancereadstore "github.com/golgoth31/sreportal/internal/readstore/maintenance"
 	netpolreadstore "github.com/golgoth31/sreportal/internal/readstore/netpol"
@@ -458,6 +461,24 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Add field indexer for ImageInventory.spec.portalRef
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&sreportalv1alpha1.ImageInventory{},
+		portalfeatures.FieldIndexPortalRef,
+		func(o client.Object) []string {
+			inv := o.(*sreportalv1alpha1.ImageInventory)
+			if inv.Spec.PortalRef == "" {
+				return nil
+			}
+			return []string{inv.Spec.PortalRef}
+		},
+	); err != nil {
+		setupLog.Error(err, "unable to create field indexer",
+			"field", portalfeatures.FieldIndexPortalRef, "kind", "ImageInventory")
+		os.Exit(1)
+	}
+
 	// Create kubernetes clientset for external-dns sources
 	restConfig := ctrl.GetConfigOrDie()
 	kubeClient, err := kubernetes.NewForConfig(restConfig)
@@ -482,6 +503,7 @@ func main() {
 	portalStore := portalreadstore.NewPortalStore()
 	releaseStore := releasereadstore.NewReleaseStore()
 	alertmanagerStore := alertmanagerreadstore.NewAlertmanagerStore()
+	imageStore := imagereadstore.NewStore()
 	emojiStore := emojireadstore.NewEmojiStore()
 
 	// Emoji: Slack custom emoji sync (optional, async at startup + periodic refresh)
@@ -643,6 +665,17 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Incident")
 		os.Exit(1)
 	}
+	if err := mgr.Add(imagectrl.NewScanner(mgr.GetClient(), imageStore, 5*time.Minute)); err != nil {
+		setupLog.Error(err, "unable to add image scanner")
+		os.Exit(1)
+	}
+	if err := (&controller.ImageInventoryReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "Failed to create controller", "controller", "ImageInventory")
+		os.Exit(1)
+	}
 	// +kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
@@ -694,6 +727,7 @@ func main() {
 		ComponentReader:     componentStore,
 		MaintenanceReader:   maintenanceStore,
 		IncidentReader:      incidentStore,
+		ImageReader:         imageStore,
 		StatusPageService:   statuspagesvc.NewService(mgr.GetClient(), portalNamespace),
 		EmojiReader:         emojiStore,
 		AuthChain:           authChain,
