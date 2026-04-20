@@ -50,7 +50,6 @@ import (
 	"github.com/golgoth31/sreportal/internal/alertmanagerclient"
 	"github.com/golgoth31/sreportal/internal/auth"
 	"github.com/golgoth31/sreportal/internal/config"
-	"github.com/golgoth31/sreportal/internal/controller"
 	alertmanagerctrl "github.com/golgoth31/sreportal/internal/controller/alertmanager"
 	componentctrl "github.com/golgoth31/sreportal/internal/controller/component"
 	dnsctrl "github.com/golgoth31/sreportal/internal/controller/dns"
@@ -58,6 +57,7 @@ import (
 	dnsrecordsctrl "github.com/golgoth31/sreportal/internal/controller/dnsrecords"
 	emojictrl "github.com/golgoth31/sreportal/internal/controller/emoji"
 	imagectrl "github.com/golgoth31/sreportal/internal/controller/image"
+	imageinventoryctrl "github.com/golgoth31/sreportal/internal/controller/imageinventory"
 	incidentctrl "github.com/golgoth31/sreportal/internal/controller/incident"
 	maintenancectrl "github.com/golgoth31/sreportal/internal/controller/maintenance"
 	nfdctrl "github.com/golgoth31/sreportal/internal/controller/networkflowdiscovery"
@@ -669,10 +669,7 @@ func main() {
 		setupLog.Error(err, "unable to add image scanner")
 		os.Exit(1)
 	}
-	if err := (&controller.ImageInventoryReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	if err := imageinventoryctrl.NewImageInventoryReconciler(mgr.GetClient()).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Failed to create controller", "controller", "ImageInventory")
 		os.Exit(1)
 	}

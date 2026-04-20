@@ -1071,7 +1071,7 @@ func (in *ImageInventorySpec) DeepCopyInto(out *ImageInventorySpec) {
 	*out = *in
 	if in.WatchedKinds != nil {
 		in, out := &in.WatchedKinds, &out.WatchedKinds
-		*out = make([]string, len(*in))
+		*out = make([]ImageInventoryKind, len(*in))
 		copy(*out, *in)
 	}
 	out.Interval = in.Interval

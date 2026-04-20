@@ -124,14 +124,15 @@ func (s *Scanner) scanInventory(ctx context.Context, inv *sreportalv1alpha1.Imag
 	return out, nil
 }
 
-func (s *Scanner) scanKind(ctx context.Context, portalRef, kind string, opts ...client.ListOption) ([]domainimage.ImageView, error) {
+func (s *Scanner) scanKind(ctx context.Context, portalRef string, kind sreportalv1alpha1.ImageInventoryKind, opts ...client.ListOption) ([]domainimage.ImageView, error) {
+	kindStr := string(kind)
 	switch kind {
 	case sreportalv1alpha1.ImageInventoryKindDeployment:
 		var list appsv1.DeploymentList
 		if err := s.client.List(ctx, &list, opts...); err != nil {
 			return nil, err
 		}
-		return fromPodSpecList(portalRef, kind, list.Items, func(d appsv1.Deployment) (string, string, corev1.PodSpec) {
+		return fromPodSpecList(portalRef, kindStr, list.Items, func(d appsv1.Deployment) (string, string, corev1.PodSpec) {
 			return d.Namespace, d.Name, d.Spec.Template.Spec
 		}), nil
 	case sreportalv1alpha1.ImageInventoryKindStatefulSet:
@@ -139,7 +140,7 @@ func (s *Scanner) scanKind(ctx context.Context, portalRef, kind string, opts ...
 		if err := s.client.List(ctx, &list, opts...); err != nil {
 			return nil, err
 		}
-		return fromPodSpecList(portalRef, kind, list.Items, func(d appsv1.StatefulSet) (string, string, corev1.PodSpec) {
+		return fromPodSpecList(portalRef, kindStr, list.Items, func(d appsv1.StatefulSet) (string, string, corev1.PodSpec) {
 			return d.Namespace, d.Name, d.Spec.Template.Spec
 		}), nil
 	case sreportalv1alpha1.ImageInventoryKindDaemonSet:
@@ -147,7 +148,7 @@ func (s *Scanner) scanKind(ctx context.Context, portalRef, kind string, opts ...
 		if err := s.client.List(ctx, &list, opts...); err != nil {
 			return nil, err
 		}
-		return fromPodSpecList(portalRef, kind, list.Items, func(d appsv1.DaemonSet) (string, string, corev1.PodSpec) {
+		return fromPodSpecList(portalRef, kindStr, list.Items, func(d appsv1.DaemonSet) (string, string, corev1.PodSpec) {
 			return d.Namespace, d.Name, d.Spec.Template.Spec
 		}), nil
 	case sreportalv1alpha1.ImageInventoryKindCronJob:
@@ -155,7 +156,7 @@ func (s *Scanner) scanKind(ctx context.Context, portalRef, kind string, opts ...
 		if err := s.client.List(ctx, &list, opts...); err != nil {
 			return nil, err
 		}
-		return fromPodSpecList(portalRef, kind, list.Items, func(d batchv1.CronJob) (string, string, corev1.PodSpec) {
+		return fromPodSpecList(portalRef, kindStr, list.Items, func(d batchv1.CronJob) (string, string, corev1.PodSpec) {
 			return d.Namespace, d.Name, d.Spec.JobTemplate.Spec.Template.Spec
 		}), nil
 	case sreportalv1alpha1.ImageInventoryKindJob:
@@ -163,7 +164,7 @@ func (s *Scanner) scanKind(ctx context.Context, portalRef, kind string, opts ...
 		if err := s.client.List(ctx, &list, opts...); err != nil {
 			return nil, err
 		}
-		return fromPodSpecList(portalRef, kind, list.Items, func(d batchv1.Job) (string, string, corev1.PodSpec) {
+		return fromPodSpecList(portalRef, kindStr, list.Items, func(d batchv1.Job) (string, string, corev1.PodSpec) {
 			return d.Namespace, d.Name, d.Spec.Template.Spec
 		}), nil
 	default:

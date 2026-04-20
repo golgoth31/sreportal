@@ -645,7 +645,7 @@ _Appears in:_
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
 | `portalRef` _string_ | portalRef is the Portal name this inventory belongs to. |   |   |
-| `watchedKinds` _string array_ | watchedKinds declares which workload kinds are scanned for images. Empty means all supported defaults. |   |   |
+| `watchedKinds` _[sreportal.io/v1alpha1.ImageInventoryKind](#sreportaliov1alpha1imageinventorykind) array_ | watchedKinds declares which workload kinds are scanned for images. Empty means all supported defaults. |   |   |
 | `namespaceFilter` _string_ | namespaceFilter restricts scan to a single namespace when set. Empty means all namespaces. |   |   |
 | `labelSelector` _string_ | labelSelector is a Kubernetes label selector string used to filter workloads. Empty means no label filtering. |   |   |
 | `interval` _[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#duration-v1-meta)_ | interval controls how often this inventory is refreshed. Empty means default 5m. |   |   |

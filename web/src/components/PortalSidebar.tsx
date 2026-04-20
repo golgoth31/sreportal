@@ -26,7 +26,7 @@ export function PortalSidebar({
   const showNetworkPolicy = currentPortal?.features.networkPolicy !== false;
   const showAlerts = currentPortal?.features.alerts === true;
   const showStatusPage = currentPortal?.features.statusPage !== false;
-  const showImageInventory = currentPortal?.features.imageInventory !== false;
+  const showImageInventory = currentPortal?.features.imageInventory === true;
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     cn(

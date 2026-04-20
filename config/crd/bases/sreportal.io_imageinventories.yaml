@@ -77,6 +77,14 @@ spec:
                   watchedKinds declares which workload kinds are scanned for images.
                   Empty means all supported defaults.
                 items:
+                  description: ImageInventoryKind names a Kubernetes workload kind
+                    that can be scanned for images.
+                  enum:
+                  - Deployment
+                  - StatefulSet
+                  - DaemonSet
+                  - CronJob
+                  - Job
                   type: string
                 type: array
             required:

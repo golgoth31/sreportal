@@ -22,20 +22,24 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// ImageInventoryKind names a Kubernetes workload kind that can be scanned for images.
+// +kubebuilder:validation:Enum=Deployment;StatefulSet;DaemonSet;CronJob;Job
+type ImageInventoryKind string
+
 const (
 	// ImageInventoryKindDeployment scans apps/v1 Deployments.
-	ImageInventoryKindDeployment = "Deployment"
+	ImageInventoryKindDeployment ImageInventoryKind = "Deployment"
 	// ImageInventoryKindStatefulSet scans apps/v1 StatefulSets.
-	ImageInventoryKindStatefulSet = "StatefulSet"
+	ImageInventoryKindStatefulSet ImageInventoryKind = "StatefulSet"
 	// ImageInventoryKindDaemonSet scans apps/v1 DaemonSets.
-	ImageInventoryKindDaemonSet = "DaemonSet"
+	ImageInventoryKindDaemonSet ImageInventoryKind = "DaemonSet"
 	// ImageInventoryKindCronJob scans batch/v1 CronJobs.
-	ImageInventoryKindCronJob = "CronJob"
+	ImageInventoryKindCronJob ImageInventoryKind = "CronJob"
 	// ImageInventoryKindJob scans batch/v1 Jobs.
-	ImageInventoryKindJob = "Job"
+	ImageInventoryKindJob ImageInventoryKind = "Job"
 )
 
-var defaultImageInventoryWatchedKinds = []string{
+var defaultImageInventoryWatchedKinds = []ImageInventoryKind{
 	ImageInventoryKindDeployment,
 	ImageInventoryKindStatefulSet,
 	ImageInventoryKindDaemonSet,
@@ -53,7 +57,7 @@ type ImageInventorySpec struct {
 	// watchedKinds declares which workload kinds are scanned for images.
 	// Empty means all supported defaults.
 	// +optional
-	WatchedKinds []string `json:"watchedKinds,omitempty"`
+	WatchedKinds []ImageInventoryKind `json:"watchedKinds,omitempty"`
 
 	// namespaceFilter restricts scan to a single namespace when set.
 	// Empty means all namespaces.
@@ -126,18 +130,26 @@ type ImageInventoryList struct {
 	Items           []ImageInventory `json:"items"`
 }
 
+// GetConditions returns the status conditions.
+func (i *ImageInventory) GetConditions() []metav1.Condition { return i.Status.Conditions }
+
+// SetConditions sets the status conditions.
+func (i *ImageInventory) SetConditions(conditions []metav1.Condition) {
+	i.Status.Conditions = conditions
+}
+
 func init() {
 	SchemeBuilder.Register(&ImageInventory{}, &ImageInventoryList{})
 }
 
 // EffectiveWatchedKinds returns configured workload kinds or defaults.
-func (s ImageInventorySpec) EffectiveWatchedKinds() []string {
+func (s ImageInventorySpec) EffectiveWatchedKinds() []ImageInventoryKind {
 	if len(s.WatchedKinds) == 0 {
-		out := make([]string, len(defaultImageInventoryWatchedKinds))
+		out := make([]ImageInventoryKind, len(defaultImageInventoryWatchedKinds))
 		copy(out, defaultImageInventoryWatchedKinds)
 		return out
 	}
-	out := make([]string, len(s.WatchedKinds))
+	out := make([]ImageInventoryKind, len(s.WatchedKinds))
 	copy(out, s.WatchedKinds)
 	return out
 }
