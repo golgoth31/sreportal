@@ -15,7 +15,8 @@ import (
 
 func TestListImages(t *testing.T) {
 	store := imagestore.NewStore()
-	require.NoError(t, store.Replace(context.Background(), "main", []domainimage.ImageView{
+	wk := domainimage.WorkloadKey{Kind: "Deployment", Namespace: "default", Name: "api"}
+	require.NoError(t, store.ReplaceWorkload(context.Background(), "main", wk, []domainimage.ImageView{
 		{
 			PortalRef:  "main",
 			Registry:   "ghcr.io",
