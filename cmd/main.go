@@ -56,7 +56,6 @@ import (
 	dnschain "github.com/golgoth31/sreportal/internal/controller/dns/chain"
 	dnsrecordsctrl "github.com/golgoth31/sreportal/internal/controller/dnsrecords"
 	emojictrl "github.com/golgoth31/sreportal/internal/controller/emoji"
-	imagectrl "github.com/golgoth31/sreportal/internal/controller/image"
 	imageinventoryctrl "github.com/golgoth31/sreportal/internal/controller/imageinventory"
 	incidentctrl "github.com/golgoth31/sreportal/internal/controller/incident"
 	maintenancectrl "github.com/golgoth31/sreportal/internal/controller/maintenance"
@@ -663,10 +662,6 @@ func main() {
 	incidentReconciler := incidentctrl.NewIncidentReconciler(mgr.GetClient(), incidentStore)
 	if err := incidentReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Incident")
-		os.Exit(1)
-	}
-	if err := mgr.Add(imagectrl.NewScanner(mgr.GetClient(), imageStore, 5*time.Minute)); err != nil {
-		setupLog.Error(err, "unable to add image scanner")
 		os.Exit(1)
 	}
 	if err := imageinventoryctrl.NewImageInventoryReconciler(mgr.GetClient()).SetupWithManager(mgr); err != nil {
