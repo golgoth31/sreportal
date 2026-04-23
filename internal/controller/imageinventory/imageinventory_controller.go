@@ -26,6 +26,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	imageinventorychain "github.com/golgoth31/sreportal/internal/controller/imageinventory/chain"
@@ -34,6 +35,11 @@ import (
 	"github.com/golgoth31/sreportal/internal/metrics"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
+
+// finalizerName is the finalizer added to ImageInventory CRs so the controller
+// can purge the portal's projection from the in-memory store before the CR is
+// actually removed from the API server.
+const finalizerName = "sreportal.io/imageinventory"
 
 // ImageInventoryReconciler reconciles an ImageInventory object using a chain of handlers.
 type ImageInventoryReconciler struct {
@@ -69,18 +75,29 @@ func (r *ImageInventoryReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	var inv sreportalv1alpha1.ImageInventory
 	if err := r.Get(ctx, req.NamespacedName, &inv); err != nil {
 		if apierrors.IsNotFound(err) {
-			// The CR was deleted; purge its projection. We don't know the
-			// portalRef here, so rely on a finalizer-free, best-effort
-			// delete-by-name via a side-channel: we keep a defensive sweep
-			// inside the handler chain instead. Nothing to do.
+			// The finalizer pathway below owns store cleanup; a missing CR
+			// means we already ran it (or the CR never held our finalizer).
 			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, fmt.Errorf("get image inventory CR: %w", err)
 	}
 
 	if !inv.DeletionTimestamp.IsZero() {
-		if err := r.store.DeletePortal(ctx, inv.Spec.PortalRef); err != nil {
-			return ctrl.Result{}, fmt.Errorf("delete portal projection: %w", err)
+		if controllerutil.ContainsFinalizer(&inv, finalizerName) {
+			if err := r.store.DeletePortal(ctx, inv.Spec.PortalRef); err != nil {
+				return ctrl.Result{}, fmt.Errorf("delete portal projection: %w", err)
+			}
+			controllerutil.RemoveFinalizer(&inv, finalizerName)
+			if err := r.Update(ctx, &inv); err != nil {
+				return ctrl.Result{}, fmt.Errorf("remove finalizer: %w", err)
+			}
+		}
+		return ctrl.Result{}, nil
+	}
+
+	if controllerutil.AddFinalizer(&inv, finalizerName) {
+		if err := r.Update(ctx, &inv); err != nil {
+			return ctrl.Result{}, fmt.Errorf("add finalizer: %w", err)
 		}
 		return ctrl.Result{}, nil
 	}

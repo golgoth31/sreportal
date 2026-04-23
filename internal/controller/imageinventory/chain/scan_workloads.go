@@ -23,11 +23,13 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	imagectrl "github.com/golgoth31/sreportal/internal/controller/image"
+	"github.com/golgoth31/sreportal/internal/controller/statusutil"
 	domainimage "github.com/golgoth31/sreportal/internal/domain/image"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
@@ -51,9 +53,16 @@ func (h *ScanWorkloadsHandler) Handle(ctx context.Context, rc *reconciler.Reconc
 	inv := rc.Resource
 	byWorkload, err := h.scanAll(ctx, inv)
 	if err != nil {
-		return fmt.Errorf("full scan: %w", err)
+		wrapped := fmt.Errorf("full scan: %w", err)
+		_ = statusutil.SetConditionAndPatch(ctx, h.client, inv, ReadyConditionType, metav1.ConditionFalse, ReasonScanFailed, wrapped.Error())
+		return wrapped
 	}
-	return h.store.ReplaceAll(ctx, inv.Spec.PortalRef, byWorkload)
+	if err := h.store.ReplaceAll(ctx, inv.Spec.PortalRef, byWorkload); err != nil {
+		wrapped := fmt.Errorf("replace store projection: %w", err)
+		_ = statusutil.SetConditionAndPatch(ctx, h.client, inv, ReadyConditionType, metav1.ConditionFalse, ReasonScanFailed, wrapped.Error())
+		return wrapped
+	}
+	return nil
 }
 
 func (h *ScanWorkloadsHandler) scanAll(ctx context.Context, inv *sreportalv1alpha1.ImageInventory) (map[domainimage.WorkloadKey][]domainimage.ImageView, error) {

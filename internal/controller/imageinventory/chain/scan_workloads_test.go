@@ -10,6 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -98,21 +99,49 @@ func TestScanWorkloadsReplacesAll(t *testing.T) {
 	}
 }
 
-func TestScanWorkloadsPropagatesErrorWithoutReplace(t *testing.T) {
+func TestScanWorkloadsPropagatesErrorAndPatchesNotReady(t *testing.T) {
 	t.Parallel()
 	sch := newChainScheme(t)
-	c := fake.NewClientBuilder().WithScheme(sch).Build()
-	writer := &fakeImageWriter{replaceErr: errors.New("boom")}
-	h := NewScanWorkloadsHandler(c, writer)
 
 	inv := &sreportalv1alpha1.ImageInventory{
 		ObjectMeta: metav1.ObjectMeta{Name: "inv", Namespace: "sre"},
 		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: "portal-a"},
 	}
+	c := fake.NewClientBuilder().WithScheme(sch).
+		WithObjects(inv).
+		WithStatusSubresource(&sreportalv1alpha1.ImageInventory{}).
+		Build()
+	writer := &fakeImageWriter{replaceErr: errors.New("boom")}
+	h := NewScanWorkloadsHandler(c, writer)
+
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageInventory, ChainData]{Resource: inv}
 
 	err := h.Handle(context.Background(), rc)
 	if err == nil {
 		t.Fatalf("expected error")
 	}
+
+	var got sreportalv1alpha1.ImageInventory
+	if err := c.Get(context.Background(), types.NamespacedName{Namespace: "sre", Name: "inv"}, &got); err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	cond := findCondition(got.Status.Conditions, ReadyConditionType)
+	if cond == nil {
+		t.Fatalf("want Ready condition, got none")
+	}
+	if cond.Status != metav1.ConditionFalse {
+		t.Fatalf("Ready status=%q want False", cond.Status)
+	}
+	if cond.Reason != ReasonScanFailed {
+		t.Fatalf("Ready reason=%q want %q", cond.Reason, ReasonScanFailed)
+	}
+}
+
+func findCondition(conds []metav1.Condition, t string) *metav1.Condition {
+	for i := range conds {
+		if conds[i].Type == t {
+			return &conds[i]
+		}
+	}
+	return nil
 }

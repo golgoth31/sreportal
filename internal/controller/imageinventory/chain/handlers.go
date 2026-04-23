@@ -42,6 +42,7 @@ const ReadyConditionType = "Ready"
 const (
 	ReasonInvalidSpec    = "InvalidSpec"
 	ReasonPortalNotFound = "PortalNotFound"
+	ReasonScanFailed     = "ScanFailed"
 	ReasonReconciled     = "Reconciled"
 	ReconciledMessage    = "image inventory ready"
 )
