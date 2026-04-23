@@ -56,6 +56,7 @@ import (
 	dnschain "github.com/golgoth31/sreportal/internal/controller/dns/chain"
 	dnsrecordsctrl "github.com/golgoth31/sreportal/internal/controller/dnsrecords"
 	emojictrl "github.com/golgoth31/sreportal/internal/controller/emoji"
+	imagectrl "github.com/golgoth31/sreportal/internal/controller/image"
 	imageinventoryctrl "github.com/golgoth31/sreportal/internal/controller/imageinventory"
 	incidentctrl "github.com/golgoth31/sreportal/internal/controller/incident"
 	maintenancectrl "github.com/golgoth31/sreportal/internal/controller/maintenance"
@@ -664,7 +665,13 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Incident")
 		os.Exit(1)
 	}
-	if err := imageinventoryctrl.NewImageInventoryReconciler(mgr.GetClient()).SetupWithManager(mgr); err != nil {
+	imageWorkloadHandler := imagectrl.NewWorkloadHandler(mgr.GetClient(), imageStore)
+	if err := imagectrl.SetupWorkloadReconcilersWithManager(mgr, imageWorkloadHandler); err != nil {
+		setupLog.Error(err, "unable to set up workload image reconcilers")
+		os.Exit(1)
+	}
+	imageInventoryReconciler := imageinventoryctrl.NewImageInventoryReconciler(mgr.GetClient(), imageStore)
+	if err := imageInventoryReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Failed to create controller", "controller", "ImageInventory")
 		os.Exit(1)
 	}
