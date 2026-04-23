@@ -135,6 +135,7 @@ func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 		return err
 	}
 
+	rc.Result.RequeueAfter = inv.Spec.EffectiveInterval()
 	return nil
 }
 

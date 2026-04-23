@@ -29,6 +29,7 @@ import (
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	imageinventorychain "github.com/golgoth31/sreportal/internal/controller/imageinventory/chain"
+	domainimage "github.com/golgoth31/sreportal/internal/domain/image"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/metrics"
 	"github.com/golgoth31/sreportal/internal/reconciler"
@@ -37,18 +38,21 @@ import (
 // ImageInventoryReconciler reconciles an ImageInventory object using a chain of handlers.
 type ImageInventoryReconciler struct {
 	client.Client
+	store domainimage.ImageWriter
 	chain *reconciler.Chain[*sreportalv1alpha1.ImageInventory, imageinventorychain.ChainData]
 }
 
 // NewImageInventoryReconciler creates a new ImageInventoryReconciler with the handler chain.
-func NewImageInventoryReconciler(c client.Client) *ImageInventoryReconciler {
+func NewImageInventoryReconciler(c client.Client, store domainimage.ImageWriter) *ImageInventoryReconciler {
 	chain := reconciler.NewChain(
 		imageinventorychain.NewValidateSpecHandler(c),
 		imageinventorychain.NewValidatePortalRefHandler(c),
+		imageinventorychain.NewScanWorkloadsHandler(c, store),
 		imageinventorychain.NewUpdateStatusHandler(c),
 	)
 	return &ImageInventoryReconciler{
 		Client: c,
+		store:  store,
 		chain:  chain,
 	}
 }
@@ -65,9 +69,20 @@ func (r *ImageInventoryReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	var inv sreportalv1alpha1.ImageInventory
 	if err := r.Get(ctx, req.NamespacedName, &inv); err != nil {
 		if apierrors.IsNotFound(err) {
+			// The CR was deleted; purge its projection. We don't know the
+			// portalRef here, so rely on a finalizer-free, best-effort
+			// delete-by-name via a side-channel: we keep a defensive sweep
+			// inside the handler chain instead. Nothing to do.
 			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, fmt.Errorf("get image inventory CR: %w", err)
+	}
+
+	if !inv.DeletionTimestamp.IsZero() {
+		if err := r.store.DeletePortal(ctx, inv.Spec.PortalRef); err != nil {
+			return ctrl.Result{}, fmt.Errorf("delete portal projection: %w", err)
+		}
+		return ctrl.Result{}, nil
 	}
 
 	logger.V(1).Info("reconciling ImageInventory", "name", inv.Name, "portalRef", inv.Spec.PortalRef)
@@ -80,8 +95,6 @@ func (r *ImageInventoryReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		logger.Error(err, "reconciliation chain failed")
 		metrics.ReconcileTotal.WithLabelValues("imageinventory", "error").Inc()
 		metrics.ReconcileDuration.WithLabelValues("imageinventory").Observe(time.Since(start).Seconds())
-		// Invalid spec / unknown portal are surfaced via status conditions; no requeue needed
-		// since the chain will re-run when the resource (or the referenced portal) changes.
 		if errors.Is(err, imageinventorychain.ErrInvalidSpec) || errors.Is(err, imageinventorychain.ErrPortalNotFound) {
 			return ctrl.Result{}, nil
 		}
@@ -91,10 +104,7 @@ func (r *ImageInventoryReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	metrics.ReconcileTotal.WithLabelValues("imageinventory", "success").Inc()
 	metrics.ReconcileDuration.WithLabelValues("imageinventory").Observe(time.Since(start).Seconds())
 
-	if rc.Result.RequeueAfter > 0 {
-		return rc.Result, nil
-	}
-	return ctrl.Result{}, nil
+	return rc.Result, nil
 }
 
 // SetupWithManager registers the controller with the manager.
