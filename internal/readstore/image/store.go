@@ -3,6 +3,7 @@ package image
 import (
 	"cmp"
 	"context"
+	"maps"
 	"slices"
 	"strings"
 	"sync"
@@ -68,9 +69,7 @@ func (s *Store) DeleteWorkloadAllPortals(_ context.Context, wk domainimage.Workl
 func (s *Store) ReplaceAll(_ context.Context, portalRef string, byWorkload map[domainimage.WorkloadKey][]domainimage.ImageView) error {
 	// Defensive copy so the caller can't mutate the stored map after the call.
 	copyMap := make(map[domainimage.WorkloadKey][]domainimage.ImageView, len(byWorkload))
-	for k, v := range byWorkload {
-		copyMap[k] = v
-	}
+	maps.Copy(copyMap, byWorkload)
 
 	s.mu.Lock()
 	s.data[portalRef] = copyMap

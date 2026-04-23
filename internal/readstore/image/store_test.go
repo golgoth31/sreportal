@@ -171,13 +171,13 @@ func TestConcurrentReadDuringReplaceAll(t *testing.T) {
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			_, _ = s.List(context.Background(), domainimage.ImageFilters{Portal: "portal-a"})
 		}
 	}()
 	go func() {
 		defer wg.Done()
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			_ = s.ReplaceAll(context.Background(), "portal-a", map[domainimage.WorkloadKey][]domainimage.ImageView{
 				wk: {mkView("portal-a", "library/nginx", "1.0.0", wk, "web")},
 			})
