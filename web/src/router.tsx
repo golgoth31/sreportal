@@ -50,6 +50,9 @@ const NetpolPage = lazy(() =>
 const StatusPage = lazy(() =>
   import("@/pages/StatusPage").then((m) => ({ default: m.StatusPage }))
 );
+const ImagesPage = lazy(() =>
+  import("@/pages/ImagesPage").then((m) => ({ default: m.ImagesPage }))
+);
 
 export const router = createBrowserRouter([
   {
@@ -112,6 +115,15 @@ export const router = createBrowserRouter([
         element: (
           <Suspense fallback={<PageSkeleton />}>
             <AlertsPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: ":portalName/images",
+        errorElement: <ErrorPage />,
+        element: (
+          <Suspense fallback={<PageSkeleton />}>
+            <ImagesPage />
           </Suspense>
         ),
       },

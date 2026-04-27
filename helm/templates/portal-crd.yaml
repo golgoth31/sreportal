@@ -71,6 +71,11 @@ spec:
                     description: dns enables DNS discovery (controllers, gRPC, MCP,
                       web page) for this portal.
                     type: boolean
+                  imageInventory:
+                    default: true
+                    description: imageInventory enables the image inventory page for
+                      this portal.
+                    type: boolean
                   networkPolicy:
                     default: true
                     description: networkPolicy enables network policy visualization
@@ -240,6 +245,10 @@ spec:
                         description: dns indicates whether the remote portal has DNS
                           discovery enabled.
                         type: boolean
+                      imageInventory:
+                        description: imageInventory indicates whether the remote portal
+                          has image inventory enabled.
+                        type: boolean
                       networkPolicy:
                         description: networkPolicy indicates whether the remote portal
                           has network policy visualization enabled.
@@ -255,6 +264,7 @@ spec:
                     required:
                     - alerts
                     - dns
+                    - imageInventory
                     - networkPolicy
                     - releases
                     - statusPage

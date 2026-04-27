@@ -42,6 +42,7 @@ import (
 	domaincomponent "github.com/golgoth31/sreportal/internal/domain/component"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 	domainemoji "github.com/golgoth31/sreportal/internal/domain/emoji"
+	domainimage "github.com/golgoth31/sreportal/internal/domain/image"
 	domainincident "github.com/golgoth31/sreportal/internal/domain/incident"
 	domainmaint "github.com/golgoth31/sreportal/internal/domain/maintenance"
 	domainnetpol "github.com/golgoth31/sreportal/internal/domain/netpol"
@@ -101,6 +102,9 @@ type Config struct {
 
 	// IncidentReader is the read-side interface for Incident data (provided by the ReadStore)
 	IncidentReader domainincident.IncidentReader
+
+	// ImageReader is the read-side interface for Image inventory data.
+	ImageReader domainimage.ImageReader
 
 	// StatusPageService is the write-path service for status page CRs (nil = read-only)
 	StatusPageService *statuspagesvc.Service
@@ -180,6 +184,12 @@ func (s *Server) setupRoutes() {
 	emojiService := grpc.NewEmojiService(s.config.EmojiReader)
 	emojiPath, emojiHandler := sreportalv1connect.NewEmojiServiceHandler(emojiService, connectOpts)
 	s.echo.Any(emojiPath+"*", echo.WrapHandler(emojiHandler))
+
+	if s.config.ImageReader != nil {
+		imageService := grpc.NewImageService(s.config.ImageReader, s.config.PortalReader)
+		imagePath, imageHandler := sreportalv1connect.NewImageServiceHandler(imageService, connectOpts)
+		s.echo.Any(imagePath+"*", echo.WrapHandler(imageHandler))
+	}
 
 	if s.config.Gatherer != nil {
 		metricsService := grpc.NewMetricsService(s.config.Gatherer)

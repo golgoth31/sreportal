@@ -252,9 +252,11 @@ type PortalFeatures struct {
 	// alerts enables alertmanager integration for this portal
 	Alerts bool `protobuf:"varint,4,opt,name=alerts,proto3" json:"alerts,omitempty"`
 	// status_page enables the status page (components, incidents, maintenances) for this portal
-	StatusPage    bool `protobuf:"varint,5,opt,name=status_page,json=statusPage,proto3" json:"status_page,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	StatusPage bool `protobuf:"varint,5,opt,name=status_page,json=statusPage,proto3" json:"status_page,omitempty"`
+	// image_inventory enables the image inventory page for this portal
+	ImageInventory bool `protobuf:"varint,6,opt,name=image_inventory,json=imageInventory,proto3" json:"image_inventory,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *PortalFeatures) Reset() {
@@ -318,6 +320,13 @@ func (x *PortalFeatures) GetAlerts() bool {
 func (x *PortalFeatures) GetStatusPage() bool {
 	if x != nil {
 		return x.StatusPage
+	}
+	return false
+}
+
+func (x *PortalFeatures) GetImageInventory() bool {
+	if x != nil {
+		return x.ImageInventory
 	}
 	return false
 }
@@ -416,14 +425,15 @@ const file_sreportal_v1_portal_proto_rawDesc = "" +
 	"\vremote_sync\x18\t \x01(\v2\x1e.sreportal.v1.RemoteSyncStatusR\n" +
 	"remoteSync\x128\n" +
 	"\bfeatures\x18\n" +
-	" \x01(\v2\x1c.sreportal.v1.PortalFeaturesR\bfeatures\"\x9e\x01\n" +
+	" \x01(\v2\x1c.sreportal.v1.PortalFeaturesR\bfeatures\"\xc7\x01\n" +
 	"\x0ePortalFeatures\x12\x10\n" +
 	"\x03dns\x18\x01 \x01(\bR\x03dns\x12\x1a\n" +
 	"\breleases\x18\x02 \x01(\bR\breleases\x12%\n" +
 	"\x0enetwork_policy\x18\x03 \x01(\bR\rnetworkPolicy\x12\x16\n" +
 	"\x06alerts\x18\x04 \x01(\bR\x06alerts\x12\x1f\n" +
 	"\vstatus_page\x18\x05 \x01(\bR\n" +
-	"statusPage\"\xa2\x01\n" +
+	"statusPage\x12'\n" +
+	"\x0fimage_inventory\x18\x06 \x01(\bR\x0eimageInventory\"\xa2\x01\n" +
 	"\x10RemoteSyncStatus\x12$\n" +
 	"\x0elast_sync_time\x18\x01 \x01(\tR\flastSyncTime\x12&\n" +
 	"\x0flast_sync_error\x18\x02 \x01(\tR\rlastSyncError\x12!\n" +

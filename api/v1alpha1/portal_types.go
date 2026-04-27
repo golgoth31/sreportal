@@ -75,6 +75,11 @@ type PortalFeatures struct {
 	// +optional
 	// +kubebuilder:default=true
 	StatusPage *bool `json:"statusPage,omitempty"`
+
+	// imageInventory enables the image inventory page for this portal.
+	// +optional
+	// +kubebuilder:default=true
+	ImageInventory *bool `json:"imageInventory,omitempty"`
 }
 
 // IsDNSEnabled returns true if DNS feature is enabled (nil-safe, defaults to true).
@@ -100,6 +105,11 @@ func (f *PortalFeatures) IsAlertsEnabled() bool {
 // IsStatusPageEnabled returns true if status page feature is enabled (nil-safe, defaults to true).
 func (f *PortalFeatures) IsStatusPageEnabled() bool {
 	return f == nil || f.StatusPage == nil || *f.StatusPage
+}
+
+// IsImageInventoryEnabled returns true if image inventory feature is enabled (nil-safe, defaults to true).
+func (f *PortalFeatures) IsImageInventoryEnabled() bool {
+	return f == nil || f.ImageInventory == nil || *f.ImageInventory
 }
 
 // RemotePortalSpec defines the configuration for fetching data from a remote portal.
@@ -207,6 +217,9 @@ type PortalFeaturesStatus struct {
 
 	// statusPage indicates whether the remote portal has the status page enabled.
 	StatusPage bool `json:"statusPage"`
+
+	// imageInventory indicates whether the remote portal has image inventory enabled.
+	ImageInventory bool `json:"imageInventory"`
 }
 
 // +kubebuilder:object:root=true

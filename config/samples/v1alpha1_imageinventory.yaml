@@ -1,0 +1,17 @@
+apiVersion: sreportal.io/v1alpha1
+kind: ImageInventory
+metadata:
+  labels:
+    app.kubernetes.io/name: sreportal
+    app.kubernetes.io/managed-by: kustomize
+  name: imageinventory-sample
+spec:
+  portalRef: main
+  watchedKinds:
+    - Deployment
+    - StatefulSet
+    - DaemonSet
+    - CronJob
+    - Job
+  namespaceFilter: ""
+  labelSelector: ""

@@ -14,6 +14,7 @@
 - [sreportal.io/v1alpha1.FlowEdgeSet](#sreportaliov1alpha1flowedgeset)
 - [sreportal.io/v1alpha1.FlowNodeSet](#sreportaliov1alpha1flownodeset)
 - [sreportal.io/v1alpha1.FlowObserver](#sreportaliov1alpha1flowobserver)
+- [sreportal.io/v1alpha1.ImageInventory](#sreportaliov1alpha1imageinventory)
 - [sreportal.io/v1alpha1.Incident](#sreportaliov1alpha1incident)
 - [sreportal.io/v1alpha1.Maintenance](#sreportaliov1alpha1maintenance)
 - [sreportal.io/v1alpha1.NetworkFlowDiscovery](#sreportaliov1alpha1networkflowdiscovery)
@@ -116,6 +117,20 @@ FlowObserver is the Schema for the flowobservers API. It configures how the oper
 | `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#objectmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |   |   |
 | `spec` _[sreportal.io/v1alpha1.FlowObserverSpec](#sreportaliov1alpha1flowobserverspec)_ | spec defines the desired state of FlowObserver |   |   |
 | `status` _[sreportal.io/v1alpha1.FlowObserverStatus](#sreportaliov1alpha1flowobserverstatus)_ | status defines the observed state of FlowObserver |   |   |
+
+
+
+#### sreportal.io/v1alpha1.ImageInventory
+
+ImageInventory is the Schema for the imageinventories API
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `apiVersion` _string_ | `sreportal.io/v1alpha1` |   |   |
+| `kind` _string_ | `ImageInventory` |   |   |
+| `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#objectmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |   |   |
+| `spec` _[sreportal.io/v1alpha1.ImageInventorySpec](#sreportaliov1alpha1imageinventoryspec)_ | spec defines the desired state of ImageInventory |   |   |
+| `status` _[sreportal.io/v1alpha1.ImageInventoryStatus](#sreportaliov1alpha1imageinventorystatus)_ | status defines the observed state of ImageInventory |   |   |
 
 
 
@@ -620,6 +635,39 @@ _Appears in:_
 
 
 
+#### sreportal.io/v1alpha1.ImageInventorySpec
+
+ImageInventorySpec defines the desired state of ImageInventory.
+
+_Appears in:_
+- [sreportal.io/v1alpha1.ImageInventory](#sreportaliov1alpha1imageinventory)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `portalRef` _string_ | portalRef is the Portal name this inventory belongs to. |   |   |
+| `watchedKinds` _[sreportal.io/v1alpha1.ImageInventoryKind](#sreportaliov1alpha1imageinventorykind) array_ | watchedKinds declares which workload kinds are scanned for images. Empty means all supported defaults. |   |   |
+| `namespaceFilter` _string_ | namespaceFilter restricts scan to a single namespace when set. Empty means all namespaces. |   |   |
+| `labelSelector` _string_ | labelSelector is a Kubernetes label selector string used to filter workloads. Empty means no label filtering. |   |   |
+| `interval` _[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#duration-v1-meta)_ | interval controls how often this inventory is refreshed. Empty means default 5m. |   |   |
+
+
+
+#### sreportal.io/v1alpha1.ImageInventoryStatus
+
+ImageInventoryStatus defines the observed state of ImageInventory.
+
+_Appears in:_
+- [sreportal.io/v1alpha1.ImageInventory](#sreportaliov1alpha1imageinventory)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `observedGeneration` _integer_ | observedGeneration is the most recently observed generation. |   |   |
+| `lastScanTime` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | lastScanTime is the timestamp of the latest completed scan. |   |   |
+| `lastScanError` _string_ | lastScanError contains the latest scan error, if any. |   |   |
+| `conditions` _[Condition](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#condition-v1-meta) array_ | conditions represent the current state of the ImageInventory resource. |   |   |
+
+
+
 #### sreportal.io/v1alpha1.IncidentUpdate
 
 IncidentUpdate represents a single timeline entry in the incident lifecycle.
@@ -801,6 +849,7 @@ _Appears in:_
 | `networkPolicy` _boolean_ | networkPolicy enables network policy visualization for this portal. |   |   |
 | `alerts` _boolean_ | alerts enables alertmanager integration for this portal. |   |   |
 | `statusPage` _boolean_ | statusPage enables the status page (components, incidents, maintenances) for this portal. |   |   |
+| `imageInventory` _boolean_ | imageInventory enables the image inventory page for this portal. |   |   |
 
 
 
@@ -895,6 +944,7 @@ _Appears in:_
 | `networkPolicy` _boolean_ | networkPolicy indicates whether the remote portal has network policy visualization enabled. |   |   |
 | `alerts` _boolean_ | alerts indicates whether the remote portal has alertmanager integration enabled. |   |   |
 | `statusPage` _boolean_ | statusPage indicates whether the remote portal has the status page enabled. |   |   |
+| `imageInventory` _boolean_ | imageInventory indicates whether the remote portal has image inventory enabled. |   |   |
 
 
 

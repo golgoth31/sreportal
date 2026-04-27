@@ -132,7 +132,8 @@ test-web: install-web ## Run web UI unit tests (Vitest).
 
 .PHONY: screenshots
 screenshots: install-web ## Generate PNG screenshots of each web page with mock data.
-	cd web && ./node_modules/.bin/tsx scripts/screenshots.ts
+	cd web && PLAYWRIGHT_BROWSERS_PATH=.playwright npm exec playwright install chromium
+	cd web && PLAYWRIGHT_BROWSERS_PATH=.playwright ./node_modules/.bin/tsx scripts/screenshots.ts
 
 ##@ Build
 
