@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.29.0](https://github.com/golgoth31/sreportal/compare/v1.28.1...v1.29.0) (2026-04-27)
+
+
+### Features
+
+* **image:** add portal-scoped image inventory CRD ([#214](https://github.com/golgoth31/sreportal/issues/214)) ([ea9150a](https://github.com/golgoth31/sreportal/commit/ea9150a88a837c96bcc49a28365de188f6d3a828))
+
 ## [1.28.1](https://github.com/golgoth31/sreportal/compare/v1.28.0...v1.28.1) (2026-04-14)
 
 
