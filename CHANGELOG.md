@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.30.0](https://github.com/golgoth31/sreportal/compare/v1.29.0...v1.30.0) (2026-04-30)
+
+
+### Features
+
+* **image:** MCP server, validating webhook, metrics, colored UI badges ([#218](https://github.com/golgoth31/sreportal/issues/218)) ([42546b0](https://github.com/golgoth31/sreportal/commit/42546b02532c8b61374dce6ed695a8ab95b30aea))
+
 ## [1.29.0](https://github.com/golgoth31/sreportal/compare/v1.28.1...v1.29.0) (2026-04-27)
 
 
