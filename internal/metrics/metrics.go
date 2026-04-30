@@ -127,7 +127,35 @@ var (
 		},
 		[]string{"alertmanager"},
 	)
+)
 
+// --- Image inventory metrics ---
+
+var (
+	// ImageImagesTotal tracks the number of distinct images per portal and tag type.
+	ImageImagesTotal = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: "image",
+			Name:      "images_total",
+			Help:      "Number of distinct images per portal and tag type.",
+		},
+		[]string{"portal", "tag_type"},
+	)
+
+	// ImageInventoryScanTotal counts full scan attempts per ImageInventory resource and result.
+	ImageInventoryScanTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: "image",
+			Name:      "inventory_scan_total",
+			Help:      "Total number of full scan attempts per ImageInventory resource and result (success, error).",
+		},
+		[]string{"inventory", "result"},
+	)
+)
+
+var (
 	// PortalsTotal tracks the total number of portals by type.
 	PortalsTotal = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -347,6 +375,9 @@ func init() {
 		// Alertmanager
 		AlertsActive,
 		AlertsFetchErrorsTotal,
+		// Image
+		ImageImagesTotal,
+		ImageInventoryScanTotal,
 		// Portal
 		PortalsTotal,
 		PortalRemoteSyncErrorsTotal,
