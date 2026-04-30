@@ -67,32 +67,25 @@ interface CopyableImageRefProps {
 function CopyableImageRef({ display, fullRef, className }: CopyableImageRefProps) {
   const { copied, copy } = useCopyToClipboard(fullRef);
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          onClick={copy}
-          className={cn(
-            "group/copy -mx-1.5 inline-flex w-fit items-start gap-1 rounded-md border border-transparent px-1.5 py-0.5",
-            "text-left text-xs text-muted-foreground font-mono break-all transition-colors",
-            "hover:border-border hover:bg-muted/60 hover:text-foreground",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-            className,
-          )}
-          aria-label={`Copy ${fullRef} to clipboard`}
-        >
-          <span className="flex-1">{display}</span>
-          {copied ? (
-            <CheckIcon className="mt-0.5 size-3 shrink-0 text-green-600" />
-          ) : (
-            <CopyIcon className="mt-0.5 size-3 shrink-0 opacity-0 transition-opacity group-hover/copy:opacity-70" />
-          )}
-        </button>
-      </TooltipTrigger>
-      <TooltipContent side="top" align="start">
-        {copied ? "Copied!" : "Copy image reference"}
-      </TooltipContent>
-    </Tooltip>
+    <button
+      type="button"
+      onClick={copy}
+      className={cn(
+        "group/copy -mx-1.5 inline-flex w-fit items-start gap-1 rounded-md border border-transparent px-1.5 py-0.5",
+        "text-left text-xs text-muted-foreground font-mono break-all transition-colors",
+        "hover:border-border hover:bg-muted/60 hover:text-foreground",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        className,
+      )}
+      aria-label={`Copy ${fullRef} to clipboard`}
+    >
+      <span className="flex-1">{display}</span>
+      {copied ? (
+        <CheckIcon className="mt-0.5 size-3 shrink-0 text-green-600" />
+      ) : (
+        <CopyIcon className="mt-0.5 size-3 shrink-0 opacity-0 transition-opacity group-hover/copy:opacity-70" />
+      )}
+    </button>
   );
 }
 
