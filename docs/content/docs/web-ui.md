@@ -104,7 +104,7 @@ Features:
 The Images page inventories Docker images used by workloads for the selected portal. Results are grouped by registry and each image shows repository, tag, tag type, and workload count.
 
 Features:
-- **Tag type summary**: quick filters for `semver`, `commit`, `digest`, and `latest`
+- **Tag type summary**: quick filters for `semver`, `commit`, `digest`, `latest`, and `other`
 - **Search**: filter by repository path
 - **Registry grouping**: collapsible cards per registry
 - **Per-image details**: short name, full repository/tag, tag type badge, and workload usage count

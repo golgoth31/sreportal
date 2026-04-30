@@ -85,6 +85,7 @@ func emitImageTotals(portalRef string, byWorkload map[domainimage.WorkloadKey][]
 		domainimage.TagTypeCommit,
 		domainimage.TagTypeDigest,
 		domainimage.TagTypeLatest,
+		domainimage.TagTypeOther,
 	} {
 		metrics.ImageImagesTotal.WithLabelValues(portalRef, string(tt)).Set(tagCounts[tt])
 	}

@@ -76,7 +76,7 @@ func (s *ImageServer) registerImageTools() {
 	s.mcpServer.AddTool(
 		mcp.NewTool("list_images",
 			mcp.WithDescription("List container images discovered by ImageInventory resources in the SRE Portal. "+
-				"Returns images with their tag type (semver, commit, digest, latest), registry, repository, and the workloads using them."),
+				"Returns images with their tag type (semver, commit, digest, latest, other), registry, repository, and the workloads using them."),
 			mcp.WithString("portal",
 				mcp.Description("Filter by portal name (portalRef)"),
 			),
@@ -87,7 +87,7 @@ func (s *ImageServer) registerImageTools() {
 				mcp.Description("Filter by registry hostname (e.g. docker.io, ghcr.io)"),
 			),
 			mcp.WithString("tag_type",
-				mcp.Description("Filter by tag type: semver, commit, digest, or latest"),
+				mcp.Description("Filter by tag type: semver, commit, digest, latest, or other"),
 			),
 		),
 		withToolMetrics("image", "list_images", s.handleListImages),

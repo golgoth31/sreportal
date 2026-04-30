@@ -25,19 +25,23 @@ describe("image.types", () => {
 });
 
 describe("tagTypeBadgeClass", () => {
-  it("returns green classes for semver", () => {
-    expect(tagTypeBadgeClass("semver")).toContain("green");
+  it("returns blue classes for semver", () => {
+    expect(tagTypeBadgeClass("semver")).toContain("blue");
   });
 
   it("returns blue classes for commit", () => {
     expect(tagTypeBadgeClass("commit")).toContain("blue");
   });
 
-  it("returns purple classes for digest", () => {
-    expect(tagTypeBadgeClass("digest")).toContain("purple");
+  it("returns green classes for digest", () => {
+    expect(tagTypeBadgeClass("digest")).toContain("green");
   });
 
-  it("returns amber classes for latest", () => {
-    expect(tagTypeBadgeClass("latest")).toContain("amber");
+  it("returns red classes for latest", () => {
+    expect(tagTypeBadgeClass("latest")).toContain("red");
+  });
+
+  it("returns gray classes for other", () => {
+    expect(tagTypeBadgeClass("other")).toContain("gray");
   });
 });

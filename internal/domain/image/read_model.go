@@ -8,6 +8,7 @@ const (
 	TagTypeCommit TagType = "commit"
 	TagTypeDigest TagType = "digest"
 	TagTypeLatest TagType = "latest"
+	TagTypeOther  TagType = "other"
 )
 
 // WorkloadRef identifies a workload/container using an image.

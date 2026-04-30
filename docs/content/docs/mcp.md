@@ -52,7 +52,7 @@ Base URL: `http://<sreportal-host>:8090`.
 
 | Tool | Description | Parameters |
 |------|-------------|------------|
-| `list_images` | List container images discovered by ImageInventory resources. Returns images with tag type (semver, commit, digest, latest), registry, repository, and the workloads using them | `portal`, `search`, `registry`, `tag_type` (all optional) |
+| `list_images` | List container images discovered by ImageInventory resources. Returns images with tag type (semver, commit, digest, latest, other), registry, repository, and the workloads using them | `portal`, `search`, `registry`, `tag_type` (all optional) |
 
 ## Setup
 

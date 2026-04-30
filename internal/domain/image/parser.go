@@ -8,7 +8,10 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 )
 
-var semverRE = regexp.MustCompile(`^v?\d+\.\d+\.\d+(?:[-+][0-9A-Za-z\.-]+)?$`)
+var (
+	semverRE = regexp.MustCompile(`^v?\d+\.\d+\.\d+(?:[-+][0-9A-Za-z\.-]+)?$`)
+	commitRE = regexp.MustCompile(`^[a-f0-9]{7,40}$`)
+)
 
 // ParsedReference is a normalized image reference.
 type ParsedReference struct {
@@ -54,7 +57,9 @@ func ClassifyTag(tag string) TagType {
 		return TagTypeLatest
 	case semverRE.MatchString(tag):
 		return TagTypeSemver
-	default:
+	case commitRE.MatchString(tag):
 		return TagTypeCommit
+	default:
+		return TagTypeOther
 	}
 }

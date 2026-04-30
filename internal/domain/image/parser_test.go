@@ -14,7 +14,11 @@ func TestClassifyTag(t *testing.T) {
 		{name: "latest", tag: "latest", want: TagTypeLatest},
 		{name: "semver plain", tag: "1.2.3", want: TagTypeSemver},
 		{name: "semver with v", tag: "v1.2.3", want: TagTypeSemver},
-		{name: "commit", tag: "abcdef12", want: TagTypeCommit},
+		{name: "commit short", tag: "abcdef1", want: TagTypeCommit},
+		{name: "commit long", tag: "abcdef0123456789abcdef0123456789abcdef01", want: TagTypeCommit},
+		{name: "other branch", tag: "main", want: TagTypeOther},
+		{name: "other custom", tag: "nightly-2024-01-15", want: TagTypeOther},
+		{name: "other uppercase hex", tag: "ABCDEF1", want: TagTypeOther},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
