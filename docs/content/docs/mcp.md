@@ -7,7 +7,7 @@ SRE Portal includes built-in [Model Context Protocol](https://modelcontextprotoc
 
 ## Endpoints
 
-Four MCP servers are mounted on the same port as the web UI (8090 by default). All use **Streamable HTTP** transport.
+Several MCP servers are mounted on the same port as the web UI (8090 by default). All use **Streamable HTTP** transport.
 
 | Endpoint | Description |
 |----------|-------------|
@@ -16,6 +16,7 @@ Four MCP servers are mounted on the same port as the web UI (8090 by default). A
 | `/mcp/alerts` | Alertmanager alerts tools |
 | `/mcp/metrics` | Prometheus metrics tools |
 | `/mcp/releases` | Release tracking tools |
+| `/mcp/image` | Image inventory tools |
 
 Base URL: `http://<sreportal-host>:8090`.
 
@@ -47,6 +48,12 @@ Base URL: `http://<sreportal-host>:8090`.
 |------|-------------|------------|
 | `list_releases` | List release entries for a day | `day` (optional, YYYY-MM-DD; defaults to the latest day with data). Response includes `previous_day` and `next_day` |
 
+### Image Inventory (at `/mcp/image`)
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `list_images` | List container images discovered by ImageInventory resources. Returns images with tag type (semver, commit, digest, latest), registry, repository, and the workloads using them | `portal`, `search`, `registry`, `tag_type` (all optional) |
+
 ## Setup
 
 ### Claude Code
@@ -71,6 +78,11 @@ claude mcp add sreportal-metrics --transport http http://localhost:8090/mcp/metr
 claude mcp add sreportal-releases --transport http http://localhost:8090/mcp/releases
 ```
 
+**Image inventory:**
+```bash
+claude mcp add sreportal-image --transport http http://localhost:8090/mcp/image
+```
+
 ### Claude Desktop
 
 Add to your `claude_desktop_config.json`:
@@ -93,6 +105,10 @@ Add to your `claude_desktop_config.json`:
     "sreportal-releases": {
       "transport": "http",
       "url": "http://localhost:8090/mcp/releases"
+    },
+    "sreportal-image": {
+      "transport": "http",
+      "url": "http://localhost:8090/mcp/image"
     }
   }
 }
@@ -106,6 +122,7 @@ Add MCP servers:
 - **Alerts**: Type URL, URL: `http://localhost:8090/mcp/alerts`
 - **Metrics**: Type URL, URL: `http://localhost:8090/mcp/metrics`
 - **Releases**: Type URL, URL: `http://localhost:8090/mcp/releases`
+- **Image inventory**: Type URL, URL: `http://localhost:8090/mcp/image`
 
 ## Example Queries
 
@@ -133,6 +150,13 @@ With the releases server:
 - "List today's releases"
 - "Add a deployment release for v2.1.0 from CI/CD"
 - "Show releases for 2026-03-19"
+
+With the image inventory server:
+
+- "List all container images in the main portal"
+- "Which workloads use images tagged `latest`?"
+- "Show images from `ghcr.io`"
+- "List images with semver tags"
 
 ## In-App Help
 

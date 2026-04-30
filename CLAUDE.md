@@ -15,7 +15,7 @@ SRE Portal is a Kubernetes operator with a web dashboard for managing service st
 - Web UI: React 19 app (Vite + shadcn/ui) with Links page (FQDN display), Alerts page (per-portal), left sidebar (Links / Alerts)
 - Connect protocol gRPC API (DNSService, PortalService, AlertmanagerService)
 - ConfigMap-driven operator configuration
-- MCP: two servers — DNS/portals at `/mcp` and `/mcp/dns`, alerts at `/mcp/alerts` (Streamable HTTP)
+- MCP: Streamable HTTP servers at `/mcp` and `/mcp/dns` (DNS/portals), `/mcp/alerts`, `/mcp/metrics`, `/mcp/releases`, `/mcp/netpol`, `/mcp/status`, `/mcp/image`
 
 **Not yet implemented:**
 - Status pages (Component, Incident, Maintenance CRDs)

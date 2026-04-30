@@ -69,6 +69,15 @@ const MCP_RELEASES_TOOLS: McpTool[] = [
   },
 ];
 
+const MCP_IMAGE_TOOLS: McpTool[] = [
+  {
+    name: "list_images",
+    description:
+      "List container images discovered by ImageInventory resources. Returns images with their tag type (semver, commit, digest, latest), registry, repository, and the workloads using them.",
+    filters: ["portal", "search", "registry", "tag_type"],
+  },
+];
+
 interface McpEndpointSection {
   id: string;
   title: string;
@@ -102,6 +111,12 @@ const MCP_SECTIONS: McpEndpointSection[] = [
     title: "Releases",
     path: "/mcp/releases",
     tools: MCP_RELEASES_TOOLS,
+  },
+  {
+    id: "image",
+    title: "Image Inventory",
+    path: "/mcp/image",
+    tools: MCP_IMAGE_TOOLS,
   },
 ];
 
