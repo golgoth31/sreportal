@@ -31,6 +31,7 @@ import (
 	imagectrl "github.com/golgoth31/sreportal/internal/controller/image"
 	"github.com/golgoth31/sreportal/internal/controller/statusutil"
 	domainimage "github.com/golgoth31/sreportal/internal/domain/image"
+	"github.com/golgoth31/sreportal/internal/metrics"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
@@ -53,16 +54,40 @@ func (h *ScanWorkloadsHandler) Handle(ctx context.Context, rc *reconciler.Reconc
 	inv := rc.Resource
 	byWorkload, err := h.scanAll(ctx, inv)
 	if err != nil {
+		metrics.ImageInventoryScanTotal.WithLabelValues(inv.Name, "error").Inc()
 		wrapped := fmt.Errorf("full scan: %w", err)
 		_ = statusutil.SetConditionAndPatch(ctx, h.client, inv, ReadyConditionType, metav1.ConditionFalse, ReasonScanFailed, wrapped.Error())
 		return wrapped
 	}
 	if err := h.store.ReplaceAll(ctx, inv.Spec.PortalRef, byWorkload); err != nil {
+		metrics.ImageInventoryScanTotal.WithLabelValues(inv.Name, "error").Inc()
 		wrapped := fmt.Errorf("replace store projection: %w", err)
 		_ = statusutil.SetConditionAndPatch(ctx, h.client, inv, ReadyConditionType, metav1.ConditionFalse, ReasonScanFailed, wrapped.Error())
 		return wrapped
 	}
+
+	metrics.ImageInventoryScanTotal.WithLabelValues(inv.Name, "success").Inc()
+	emitImageTotals(inv.Spec.PortalRef, byWorkload)
 	return nil
+}
+
+// emitImageTotals updates the ImageImagesTotal gauge for the given portal.
+// It resets all known tag-type counters first so stale values don't linger.
+func emitImageTotals(portalRef string, byWorkload map[domainimage.WorkloadKey][]domainimage.ImageView) {
+	tagCounts := map[domainimage.TagType]float64{}
+	for _, views := range byWorkload {
+		for _, v := range views {
+			tagCounts[v.TagType]++
+		}
+	}
+	for _, tt := range []domainimage.TagType{
+		domainimage.TagTypeSemver,
+		domainimage.TagTypeCommit,
+		domainimage.TagTypeDigest,
+		domainimage.TagTypeLatest,
+	} {
+		metrics.ImageImagesTotal.WithLabelValues(portalRef, string(tt)).Set(tagCounts[tt])
+	}
 }
 
 func (h *ScanWorkloadsHandler) scanAll(ctx context.Context, inv *sreportalv1alpha1.ImageInventory) (map[domainimage.WorkloadKey][]domainimage.ImageView, error) {
