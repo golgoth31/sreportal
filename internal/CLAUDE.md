@@ -27,7 +27,7 @@ Registers:
 3. **PortalReconciler** - Simple status updates + EnsureMainPortalRunnable
 4. **AlertmanagerReconciler** - Chain FetchAlerts → UpdateStatus (Alertmanager API client injected)
 5. **DNSWebhook** - Validates `spec.portalRef` exists
-6. **Web server** (goroutine) - Echo v5 with h2c serving Connect handlers + React SPA + MCP at `/mcp`, `/mcp/dns`, `/mcp/alerts`, `/mcp/metrics`, `/mcp/releases`, `/mcp/netpol`
+6. **Web server** (goroutine) - Echo v5 with h2c serving Connect handlers + React SPA + MCP at `/mcp`, `/mcp/dns`, `/mcp/alerts`, `/mcp/metrics`, `/mcp/releases`, `/mcp/netpol`, `/mcp/status`, `/mcp/image`
 
 All ReadStores are created in `cmd/main.go` and wired: controllers receive writers, gRPC/MCP receive readers.
 

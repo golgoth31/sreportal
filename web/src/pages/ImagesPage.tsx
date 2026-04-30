@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useImages } from "@/features/image/hooks/useImages";
 import { ImageGroupList } from "@/features/image/ui/ImageGroupList";
+import { tagTypeBadgeClass, tagTypeBadgeMutedClass } from "@/features/image/ui/ImageCard";
+import { cn } from "@/lib/utils";
 
 export function ImagesPage() {
   const { portalName = "main" } = useParams<{ portalName: string }>();
@@ -48,11 +50,16 @@ export function ImagesPage() {
       </div>
 
       <div className="flex gap-2 flex-wrap">
-        {(["semver", "commit", "digest", "latest"] as const).map((tag) => (
+        {(["semver", "commit", "digest", "latest", "other"] as const).map((tag) => (
           <Badge
             key={tag}
-            variant={tagTypeFilter === tag ? "default" : "outline"}
-            className="cursor-pointer"
+            variant="outline"
+            className={cn(
+              "cursor-pointer transition-colors",
+              tagTypeFilter === tag
+                ? tagTypeBadgeClass(tag)
+                : tagTypeBadgeMutedClass(tag),
+            )}
             onClick={() => setTagTypeFilter(tagTypeFilter === tag ? "" : tag)}
           >
             {tag}

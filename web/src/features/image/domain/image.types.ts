@@ -1,4 +1,4 @@
-export type TagType = "semver" | "commit" | "digest" | "latest";
+export type TagType = "semver" | "commit" | "digest" | "latest" | "other";
 
 export interface WorkloadRef {
   readonly kind: string;

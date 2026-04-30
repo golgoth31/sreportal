@@ -33,6 +33,26 @@ webhooks:
     service:
       name: '{{ include "helm.fullname" . }}-webhook-service'
       namespace: '{{ .Release.Namespace }}'
+      path: /validate-sreportal-io-v1alpha1-imageinventory
+  failurePolicy: Fail
+  name: vimageinventory-v1alpha1.kb.io
+  rules:
+  - apiGroups:
+    - sreportal.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - imageinventories
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: '{{ include "helm.fullname" . }}-webhook-service'
+      namespace: '{{ .Release.Namespace }}'
       path: /validate-sreportal-io-v1alpha1-portal
   failurePolicy: Fail
   name: vportal-v1alpha1.kb.io

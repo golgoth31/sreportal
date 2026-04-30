@@ -22,6 +22,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -31,6 +32,7 @@ import (
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	domainimage "github.com/golgoth31/sreportal/internal/domain/image"
+	"github.com/golgoth31/sreportal/internal/metrics"
 )
 
 type trackingImageWriter struct {
@@ -123,5 +125,63 @@ func TestReconcileDeletesPortalProjectionOnDeletion(t *testing.T) {
 
 	if len(writer.deleted) != 1 || writer.deleted[0] != "portal-a" {
 		t.Fatalf("deleted=%v want [portal-a]", writer.deleted)
+	}
+}
+
+func TestReconcileDeletesMetricsOnDeletion(t *testing.T) {
+	// NOTE: this test mutates global Prometheus metric state, so it MUST NOT
+	// run with t.Parallel(). Unique label values prevent collision with the
+	// other tests in this package that also touch image metrics.
+	const (
+		portalRef     = "metrics-cleanup-portal"
+		inventoryName = "metrics-cleanup-inv"
+	)
+
+	// Pre-seed the metrics so we can later assert they were cleaned up.
+	metrics.ImageImagesTotal.WithLabelValues(portalRef, "semver").Set(7)
+	metrics.ImageImagesTotal.WithLabelValues(portalRef, "digest").Set(3)
+	metrics.ImageInventoryScanTotal.WithLabelValues(inventoryName, "success").Inc()
+
+	// Sanity check: the gauges/counters are populated before reconciliation.
+	if got := testutil.ToFloat64(metrics.ImageImagesTotal.WithLabelValues(portalRef, "semver")); got != 7 {
+		t.Fatalf("pre-condition: ImageImagesTotal{semver}=%v want 7", got)
+	}
+	if got := testutil.ToFloat64(metrics.ImageInventoryScanTotal.WithLabelValues(inventoryName, "success")); got != 1 {
+		t.Fatalf("pre-condition: ImageInventoryScanTotal{success}=%v want 1", got)
+	}
+
+	sch := newControllerScheme(t)
+	now := metav1.Now()
+	inv := &sreportalv1alpha1.ImageInventory{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              inventoryName,
+			Namespace:         "sre",
+			Finalizers:        []string{finalizerName},
+			DeletionTimestamp: &now,
+		},
+		Spec: sreportalv1alpha1.ImageInventorySpec{PortalRef: portalRef},
+	}
+	c := fake.NewClientBuilder().WithScheme(sch).
+		WithObjects(inv).
+		WithStatusSubresource(&sreportalv1alpha1.ImageInventory{}).
+		Build()
+	writer := &trackingImageWriter{}
+
+	r := NewImageInventoryReconciler(c, writer)
+	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "sre", Name: inventoryName}})
+	if err != nil {
+		t.Fatalf("Reconcile: %v", err)
+	}
+
+	// After DeletePartialMatch, every child labelled with the deleted portal
+	// must be gone. We probe this directly via partial-match deletion: a
+	// second call must return 0 because the entries were already removed.
+	// We must NOT call WithLabelValues here — that would re-create a zeroed
+	// child and mask the bug we are guarding against.
+	if remaining := metrics.ImageImagesTotal.DeletePartialMatch(map[string]string{"portal": portalRef}); remaining != 0 {
+		t.Fatalf("ImageImagesTotal still had %d children for portal=%q after deletion", remaining, portalRef)
+	}
+	if remaining := metrics.ImageInventoryScanTotal.DeletePartialMatch(map[string]string{"inventory": inventoryName}); remaining != 0 {
+		t.Fatalf("ImageInventoryScanTotal still had %d children for inventory=%q after deletion", remaining, inventoryName)
 	}
 }

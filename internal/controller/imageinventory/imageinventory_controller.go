@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -87,6 +88,12 @@ func (r *ImageInventoryReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			if err := r.store.DeletePortal(ctx, inv.Spec.PortalRef); err != nil {
 				return ctrl.Result{}, fmt.Errorf("delete portal projection: %w", err)
 			}
+			// Drop stale metric children for the deleted CR. If another
+			// ImageInventory still targets the same portalRef, the next
+			// reconciliation will repopulate the gauge — this mirrors the
+			// readstore cleanup model above.
+			metrics.ImageImagesTotal.DeletePartialMatch(prometheus.Labels{"portal": inv.Spec.PortalRef})
+			metrics.ImageInventoryScanTotal.DeletePartialMatch(prometheus.Labels{"inventory": inv.Name})
 			controllerutil.RemoveFinalizer(&inv, finalizerName)
 			if err := r.Update(ctx, &inv); err != nil {
 				return ctrl.Result{}, fmt.Errorf("remove finalizer: %w", err)
