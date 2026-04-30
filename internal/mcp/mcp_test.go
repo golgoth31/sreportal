@@ -31,10 +31,12 @@ import (
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
+	domainimage "github.com/golgoth31/sreportal/internal/domain/image"
 	domainmetrics "github.com/golgoth31/sreportal/internal/domain/metrics"
 	domainportal "github.com/golgoth31/sreportal/internal/domain/portal"
 	domainrelease "github.com/golgoth31/sreportal/internal/domain/release"
 	dnsstore "github.com/golgoth31/sreportal/internal/readstore/dns"
+	imagestore "github.com/golgoth31/sreportal/internal/readstore/image"
 	portalstore "github.com/golgoth31/sreportal/internal/readstore/portal"
 	releasestore "github.com/golgoth31/sreportal/internal/readstore/release"
 )
@@ -903,6 +905,145 @@ var _ = Describe("MCP Server", func() {
 				Expect(isErrorResult(result)).To(BeFalse())
 				text := extractTextContent(result)
 				Expect(text).To(ContainSubstring("No releases found"))
+			})
+		})
+	})
+
+	Describe("ImageServer", func() {
+		var store *imagestore.Store
+
+		BeforeEach(func() {
+			store = imagestore.NewStore()
+		})
+
+		Describe("creation", func() {
+			It("should create server with list_images tool registered", func() {
+				s := NewImageServer(store)
+				Expect(s).NotTo(BeNil())
+				Expect(s.mcpServer).NotTo(BeNil())
+				Expect(s.reader).NotTo(BeNil())
+			})
+		})
+
+		Describe("handleListImages", func() {
+			Context("with images in the store", func() {
+				BeforeEach(func() {
+					_ = store.ReplaceAll(ctx, "main", map[domainimage.WorkloadKey][]domainimage.ImageView{
+						{Kind: "Deployment", Namespace: "default", Name: "api"}: {
+							{
+								PortalRef:  "main",
+								Registry:   "docker.io",
+								Repository: "myorg/api",
+								Tag:        "v1.2.3",
+								TagType:    domainimage.TagTypeSemver,
+								Workloads: []domainimage.WorkloadRef{
+									{Kind: "Deployment", Namespace: "default", Name: "api", Container: "api"},
+								},
+							},
+						},
+						{Kind: "Deployment", Namespace: "default", Name: "worker"}: {
+							{
+								PortalRef:  "main",
+								Registry:   "ghcr.io",
+								Repository: "myorg/worker",
+								Tag:        "abc1234",
+								TagType:    domainimage.TagTypeCommit,
+								Workloads: []domainimage.WorkloadRef{
+									{Kind: "Deployment", Namespace: "default", Name: "worker", Container: "worker"},
+								},
+							},
+						},
+					})
+				})
+
+				It("should return all images when no filters", func() {
+					s := NewImageServer(store)
+					req := newCallToolRequest("list_images", map[string]any{})
+
+					result, err := s.handleListImages(ctx, req)
+
+					Expect(err).NotTo(HaveOccurred())
+					Expect(isErrorResult(result)).To(BeFalse())
+					text := extractTextContent(result)
+					Expect(text).To(ContainSubstring("Found 2 image(s)"))
+					Expect(text).To(ContainSubstring("myorg/api"))
+					Expect(text).To(ContainSubstring("myorg/worker"))
+				})
+
+				It("should filter by portal", func() {
+					_ = store.ReplaceAll(ctx, "dev", map[domainimage.WorkloadKey][]domainimage.ImageView{
+						{Kind: "Deployment", Namespace: "dev", Name: "svc"}: {
+							{
+								PortalRef:  "dev",
+								Registry:   "docker.io",
+								Repository: "myorg/svc",
+								Tag:        "latest",
+								TagType:    domainimage.TagTypeLatest,
+								Workloads:  []domainimage.WorkloadRef{{Kind: "Deployment", Namespace: "dev", Name: "svc", Container: "svc"}},
+							},
+						},
+					})
+					s := NewImageServer(store)
+					req := newCallToolRequest("list_images", map[string]any{"portal": "dev"})
+
+					result, err := s.handleListImages(ctx, req)
+
+					Expect(err).NotTo(HaveOccurred())
+					text := extractTextContent(result)
+					Expect(text).To(ContainSubstring("Found 1 image(s)"))
+					Expect(text).To(ContainSubstring("myorg/svc"))
+					Expect(text).NotTo(ContainSubstring("myorg/api"))
+				})
+
+				It("should filter by registry", func() {
+					s := NewImageServer(store)
+					req := newCallToolRequest("list_images", map[string]any{"registry": "ghcr.io"})
+
+					result, err := s.handleListImages(ctx, req)
+
+					Expect(err).NotTo(HaveOccurred())
+					text := extractTextContent(result)
+					Expect(text).To(ContainSubstring("Found 1 image(s)"))
+					Expect(text).To(ContainSubstring("myorg/worker"))
+					Expect(text).NotTo(ContainSubstring("myorg/api"))
+				})
+
+				It("should filter by tag_type", func() {
+					s := NewImageServer(store)
+					req := newCallToolRequest("list_images", map[string]any{"tag_type": "semver"})
+
+					result, err := s.handleListImages(ctx, req)
+
+					Expect(err).NotTo(HaveOccurred())
+					text := extractTextContent(result)
+					Expect(text).To(ContainSubstring("Found 1 image(s)"))
+					Expect(text).To(ContainSubstring("myorg/api"))
+				})
+
+				It("should filter by search substring", func() {
+					s := NewImageServer(store)
+					req := newCallToolRequest("list_images", map[string]any{"search": "worker"})
+
+					result, err := s.handleListImages(ctx, req)
+
+					Expect(err).NotTo(HaveOccurred())
+					text := extractTextContent(result)
+					Expect(text).To(ContainSubstring("Found 1 image(s)"))
+					Expect(text).To(ContainSubstring("myorg/worker"))
+				})
+			})
+
+			Context("with empty store", func() {
+				It("should return no images message", func() {
+					s := NewImageServer(store)
+					req := newCallToolRequest("list_images", map[string]any{})
+
+					result, err := s.handleListImages(ctx, req)
+
+					Expect(err).NotTo(HaveOccurred())
+					text := extractTextContent(result)
+					Expect(text).To(Equal("No images found matching the criteria."))
+				})
 			})
 		})
 	})
