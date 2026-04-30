@@ -766,6 +766,7 @@ func main() {
 		releasesMcpServer := mcp.NewReleasesServer(releaseStore)
 		netpolMcpServer := mcp.NewNetpolServer(flowGraphStore)
 		statusMcpServer := mcp.NewStatusServer(componentStore, maintenanceStore, incidentStore)
+		imageMcpServer := mcp.NewImageServer(imageStore)
 
 		switch mcpTransport {
 		case "stdio":
@@ -784,6 +785,7 @@ func main() {
 				"releases", "/mcp/releases",
 				"netpol", "/mcp/netpol",
 				"status", "/mcp/status",
+				"image", "/mcp/image",
 			)
 			webServer.MountHandler("/mcp", dnsMcpServer.Handler())
 			webServer.MountHandler("/mcp/dns", dnsMcpServer.Handler())
@@ -792,6 +794,7 @@ func main() {
 			webServer.MountHandler("/mcp/releases", releasesMcpServer.Handler())
 			webServer.MountHandler("/mcp/netpol", netpolMcpServer.Handler())
 			webServer.MountHandler("/mcp/status", statusMcpServer.Handler())
+			webServer.MountHandler("/mcp/image", imageMcpServer.Handler())
 		default:
 			setupLog.Error(nil, "unknown MCP transport", "transport", mcpTransport)
 			os.Exit(1)
