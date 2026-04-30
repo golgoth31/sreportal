@@ -581,6 +581,10 @@ func main() {
 			setupLog.Error(err, "unable to create webhook", "webhook", "Release")
 			os.Exit(1)
 		}
+		if err := webhookv1alpha1.SetupImageInventoryWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "ImageInventory")
+			os.Exit(1)
+		}
 	}
 	remoteCache := remoteclient.NewCache()
 	portalReconciler := portalctrl.NewPortalReconciler(

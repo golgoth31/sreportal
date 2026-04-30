@@ -116,6 +116,9 @@ var _ = BeforeSuite(func() {
 	err = SetupDNSWebhookWithManager(mgr)
 	Expect(err).NotTo(HaveOccurred())
 
+	err = SetupImageInventoryWebhookWithManager(mgr)
+	Expect(err).NotTo(HaveOccurred())
+
 	// +kubebuilder:scaffold:webhook
 
 	go func() {
