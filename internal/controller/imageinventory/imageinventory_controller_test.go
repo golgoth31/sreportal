@@ -33,6 +33,7 @@ import (
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	domainimage "github.com/golgoth31/sreportal/internal/domain/image"
 	"github.com/golgoth31/sreportal/internal/metrics"
+	"github.com/golgoth31/sreportal/internal/remoteclient"
 )
 
 type trackingImageWriter struct {
@@ -82,7 +83,7 @@ func TestReconcileAddsFinalizerOnFirstPass(t *testing.T) {
 		Build()
 	writer := &trackingImageWriter{}
 
-	r := NewImageInventoryReconciler(c, writer)
+	r := NewImageInventoryReconciler(c, writer, remoteclient.NewCache())
 	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "sre", Name: "inv"}})
 	if err != nil {
 		t.Fatalf("Reconcile: %v", err)
@@ -117,7 +118,7 @@ func TestReconcileDeletesPortalProjectionOnDeletion(t *testing.T) {
 		Build()
 	writer := &trackingImageWriter{}
 
-	r := NewImageInventoryReconciler(c, writer)
+	r := NewImageInventoryReconciler(c, writer, remoteclient.NewCache())
 	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "sre", Name: "inv"}})
 	if err != nil {
 		t.Fatalf("Reconcile: %v", err)
@@ -167,7 +168,7 @@ func TestReconcileDeletesMetricsOnDeletion(t *testing.T) {
 		Build()
 	writer := &trackingImageWriter{}
 
-	r := NewImageInventoryReconciler(c, writer)
+	r := NewImageInventoryReconciler(c, writer, remoteclient.NewCache())
 	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "sre", Name: inventoryName}})
 	if err != nil {
 		t.Fatalf("Reconcile: %v", err)

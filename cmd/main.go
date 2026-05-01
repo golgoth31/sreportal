@@ -674,7 +674,7 @@ func main() {
 		setupLog.Error(err, "unable to set up workload image reconcilers")
 		os.Exit(1)
 	}
-	imageInventoryReconciler := imageinventoryctrl.NewImageInventoryReconciler(mgr.GetClient(), imageStore)
+	imageInventoryReconciler := imageinventoryctrl.NewImageInventoryReconciler(mgr.GetClient(), imageStore, remoteCache)
 	if err := imageInventoryReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Failed to create controller", "controller", "ImageInventory")
 		os.Exit(1)

@@ -35,6 +35,7 @@ import (
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/metrics"
 	"github.com/golgoth31/sreportal/internal/reconciler"
+	"github.com/golgoth31/sreportal/internal/remoteclient"
 )
 
 // finalizerName is the finalizer added to ImageInventory CRs so the controller
@@ -50,10 +51,11 @@ type ImageInventoryReconciler struct {
 }
 
 // NewImageInventoryReconciler creates a new ImageInventoryReconciler with the handler chain.
-func NewImageInventoryReconciler(c client.Client, store domainimage.ImageWriter) *ImageInventoryReconciler {
+func NewImageInventoryReconciler(c client.Client, store domainimage.ImageWriter, remoteClientCache *remoteclient.Cache) *ImageInventoryReconciler {
 	chain := reconciler.NewChain(
 		imageinventorychain.NewValidateSpecHandler(c),
 		imageinventorychain.NewValidatePortalRefHandler(c),
+		imageinventorychain.NewFetchRemoteImagesHandler(c, remoteClientCache),
 		imageinventorychain.NewScanWorkloadsHandler(c),
 		imageinventorychain.NewProjectImagesHandler(c, store),
 		imageinventorychain.NewUpdateStatusHandler(c),
