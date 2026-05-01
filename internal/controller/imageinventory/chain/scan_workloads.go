@@ -61,7 +61,7 @@ func (h *ScanWorkloadsHandler) Handle(ctx context.Context, rc *reconciler.Reconc
 
 	byWorkload, err := h.scanAll(ctx, inv)
 	if err != nil {
-		metrics.ImageInventoryScanTotal.WithLabelValues(inv.Name, "error").Inc()
+		metrics.ImageInventorySyncTotal.WithLabelValues(inv.Name, "error").Inc()
 		wrapped := fmt.Errorf("full scan: %w", err)
 		_ = statusutil.SetConditionAndPatch(ctx, h.client, inv, ReadyConditionType, metav1.ConditionFalse, ReasonScanFailed, wrapped.Error())
 		return wrapped

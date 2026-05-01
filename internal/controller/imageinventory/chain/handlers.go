@@ -41,11 +41,12 @@ const ReadyConditionType = "Ready"
 
 // Reason codes used on the Ready condition.
 const (
-	ReasonInvalidSpec    = "InvalidSpec"
-	ReasonPortalNotFound = "PortalNotFound"
-	ReasonScanFailed     = "ScanFailed"
-	ReasonReconciled     = "Reconciled"
-	ReconciledMessage    = "image inventory ready"
+	ReasonInvalidSpec      = "InvalidSpec"
+	ReasonPortalNotFound   = "PortalNotFound"
+	ReasonScanFailed       = "ScanFailed"
+	ReasonProjectionFailed = "ProjectionFailed"
+	ReasonReconciled       = "Reconciled"
+	ReconciledMessage      = "image inventory ready"
 )
 
 // ErrInvalidSpec is returned by the spec validation handler when the spec is invalid.

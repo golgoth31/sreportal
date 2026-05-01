@@ -94,7 +94,7 @@ func (r *ImageInventoryReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			// reconciliation will repopulate the gauge — this mirrors the
 			// readstore cleanup model above.
 			metrics.ImageImagesTotal.DeletePartialMatch(prometheus.Labels{"portal": inv.Spec.PortalRef})
-			metrics.ImageInventoryScanTotal.DeletePartialMatch(prometheus.Labels{"inventory": inv.Name})
+			metrics.ImageInventorySyncTotal.DeletePartialMatch(prometheus.Labels{"inventory": inv.Name})
 			controllerutil.RemoveFinalizer(&inv, finalizerName)
 			if err := r.Update(ctx, &inv); err != nil {
 				return ctrl.Result{}, fmt.Errorf("remove finalizer: %w", err)

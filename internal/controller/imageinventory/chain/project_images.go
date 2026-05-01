@@ -51,13 +51,13 @@ func (h *ProjectImagesHandler) Handle(ctx context.Context, rc *reconciler.Reconc
 	}
 
 	if err := h.store.ReplaceAll(ctx, inv.Spec.PortalRef, byWorkload); err != nil {
-		metrics.ImageInventoryScanTotal.WithLabelValues(inv.Name, "error").Inc()
+		metrics.ImageInventorySyncTotal.WithLabelValues(inv.Name, "error").Inc()
 		wrapped := fmt.Errorf("replace store projection: %w", err)
-		_ = statusutil.SetConditionAndPatch(ctx, h.client, inv, ReadyConditionType, metav1.ConditionFalse, ReasonScanFailed, wrapped.Error())
+		_ = statusutil.SetConditionAndPatch(ctx, h.client, inv, ReadyConditionType, metav1.ConditionFalse, ReasonProjectionFailed, wrapped.Error())
 		return wrapped
 	}
 
-	metrics.ImageInventoryScanTotal.WithLabelValues(inv.Name, "success").Inc()
+	metrics.ImageInventorySyncTotal.WithLabelValues(inv.Name, "success").Inc()
 	emitImageTotals(inv.Spec.PortalRef, byWorkload)
 	return nil
 }
