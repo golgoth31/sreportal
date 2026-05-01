@@ -54,7 +54,8 @@ func NewImageInventoryReconciler(c client.Client, store domainimage.ImageWriter)
 	chain := reconciler.NewChain(
 		imageinventorychain.NewValidateSpecHandler(c),
 		imageinventorychain.NewValidatePortalRefHandler(c),
-		imageinventorychain.NewScanWorkloadsHandler(c, store),
+		imageinventorychain.NewScanWorkloadsHandler(c),
+		imageinventorychain.NewProjectImagesHandler(c, store),
 		imageinventorychain.NewUpdateStatusHandler(c),
 	)
 	return &ImageInventoryReconciler{

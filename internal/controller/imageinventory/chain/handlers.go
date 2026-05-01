@@ -32,6 +32,7 @@ import (
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/controller/statusutil"
+	domainimage "github.com/golgoth31/sreportal/internal/domain/image"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
@@ -53,8 +54,14 @@ var ErrInvalidSpec = errors.New("invalid ImageInventory spec")
 // ErrPortalNotFound is returned by the portalRef validation handler when the portal does not exist.
 var ErrPortalNotFound = errors.New("portal not found")
 
-// ChainData holds shared state between handlers (currently unused, reserved for future use).
-type ChainData struct{}
+// ChainData holds shared state between handlers.
+type ChainData struct {
+	// ByWorkload is the per-workload image projection for the inventory's
+	// portal, populated either by ScanWorkloadsHandler (local) or by
+	// FetchRemoteImagesHandler (remote, future task), and consumed by
+	// ProjectImagesHandler.
+	ByWorkload map[domainimage.WorkloadKey][]domainimage.ImageView
+}
 
 // --- Handler 1: ValidateSpec ---
 
