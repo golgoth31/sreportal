@@ -1,4 +1,4 @@
-import { BoxIcon, WandSparklesIcon } from "lucide-react";
+import { BoxIcon, PackagePlusIcon, WandSparklesIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { WorkloadRef } from "../domain/image.types";
@@ -28,6 +28,12 @@ export function groupWorkloadsByNamespace(
     }));
 }
 
+function refTone(w: WorkloadRef): "mutated" | "injected" | "default" {
+  if (w.mutated) return "mutated";
+  if (w.injected) return "injected";
+  return "default";
+}
+
 export function WorkloadList({
   workloads,
   variant = "full",
@@ -38,25 +44,33 @@ export function WorkloadList({
   if (variant === "compact") {
     return (
       <ul className={cn("flex flex-col gap-1", className)}>
-        {visible.map((w, i) => (
-          <li
-            key={`${w.kind}/${w.namespace}/${w.name}/${w.container}/${i}`}
-            className={cn(
-              "flex items-center gap-1.5 font-mono text-[11px] leading-tight",
-              w.mutated && "text-amber-700 dark:text-amber-400",
-            )}
-          >
-            {w.mutated ? (
-              <WandSparklesIcon className="size-3 shrink-0" />
-            ) : (
-              <BoxIcon className="size-3 shrink-0 opacity-60" />
-            )}
-            <span className="truncate">
-              <span className="opacity-70">{w.kind}</span>{" "}
-              <span>{w.namespace}/{w.name}</span>
-            </span>
-          </li>
-        ))}
+        {visible.map((w, i) => {
+          const tone = refTone(w);
+          return (
+            <li
+              key={`${w.kind}/${w.namespace}/${w.name}/${w.container}/${i}`}
+              className={cn(
+                "flex items-center gap-1.5 font-mono text-[11px] leading-tight",
+                tone === "mutated" && "text-amber-700 dark:text-amber-400",
+                tone === "injected" && "text-violet-700 dark:text-violet-400",
+              )}
+            >
+              {tone === "mutated" ? (
+                <WandSparklesIcon className="size-3 shrink-0" />
+              ) : tone === "injected" ? (
+                <PackagePlusIcon className="size-3 shrink-0" />
+              ) : (
+                <BoxIcon className="size-3 shrink-0 opacity-60" />
+              )}
+              <span className="truncate">
+                <span className="opacity-70">{w.kind}</span>{" "}
+                <span>
+                  {w.namespace}/{w.name}
+                </span>
+              </span>
+            </li>
+          );
+        })}
       </ul>
     );
   }
@@ -75,49 +89,65 @@ export function WorkloadList({
             </span>
           </header>
           <ul className="flex flex-col gap-1.5">
-            {group.items.map((w, i) => (
-              <li
-                key={`${w.kind}/${w.name}/${w.container}/${i}`}
-                className={cn(
-                  "flex items-start gap-2 rounded-md border bg-card/50 px-2.5 py-1.5",
-                  w.mutated &&
-                    "border-amber-300 bg-amber-50 dark:border-amber-700/60 dark:bg-amber-900/20",
-                )}
-              >
-                {w.mutated ? (
-                  <WandSparklesIcon className="mt-0.5 size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
-                ) : (
-                  <BoxIcon className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 text-xs">
-                    <span
+            {group.items.map((w, i) => {
+              const tone = refTone(w);
+              return (
+                <li
+                  key={`${w.kind}/${w.name}/${w.container}/${i}`}
+                  className={cn(
+                    "flex items-start gap-2 rounded-md border bg-card/50 px-2.5 py-1.5",
+                    tone === "mutated" &&
+                      "border-amber-300 bg-amber-50 dark:border-amber-700/60 dark:bg-amber-900/20",
+                    tone === "injected" &&
+                      "border-violet-300 bg-violet-50 dark:border-violet-700/60 dark:bg-violet-900/20",
+                  )}
+                >
+                  {tone === "mutated" ? (
+                    <WandSparklesIcon className="mt-0.5 size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                  ) : tone === "injected" ? (
+                    <PackagePlusIcon className="mt-0.5 size-3.5 shrink-0 text-violet-600 dark:text-violet-400" />
+                  ) : (
+                    <BoxIcon className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <span
+                        className={cn(
+                          "rounded bg-muted px-1 py-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground",
+                          tone === "mutated" &&
+                            "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
+                          tone === "injected" &&
+                            "bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300",
+                        )}
+                      >
+                        {w.kind}
+                      </span>
+                      <span className="truncate font-mono text-xs">{w.name}</span>
+                      {tone === "mutated" && (
+                        <span className="ml-auto rounded bg-amber-100 px-1 py-0.5 font-mono text-[10px] uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                          mutated
+                        </span>
+                      )}
+                      {tone === "injected" && (
+                        <span className="ml-auto rounded bg-violet-100 px-1 py-0.5 font-mono text-[10px] uppercase tracking-wide text-violet-800 dark:bg-violet-900/40 dark:text-violet-300">
+                          injected
+                        </span>
+                      )}
+                    </div>
+                    <p
                       className={cn(
-                        "rounded bg-muted px-1 py-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground",
-                        w.mutated &&
-                          "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
+                        "mt-0.5 truncate font-mono text-[10px] text-muted-foreground",
+                        tone === "mutated" && "text-amber-700/80 dark:text-amber-400/80",
+                        tone === "injected" &&
+                          "text-violet-700/80 dark:text-violet-400/80",
                       )}
                     >
-                      {w.kind}
-                    </span>
-                    <span className="truncate font-mono text-xs">{w.name}</span>
-                    {w.mutated && (
-                      <span className="ml-auto rounded bg-amber-100 px-1 py-0.5 font-mono text-[10px] uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-                        mutated
-                      </span>
-                    )}
+                      container: {w.container}
+                    </p>
                   </div>
-                  <p
-                    className={cn(
-                      "mt-0.5 truncate font-mono text-[10px] text-muted-foreground",
-                      w.mutated && "text-amber-700/80 dark:text-amber-400/80",
-                    )}
-                  >
-                    container: {w.container}
-                  </p>
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         </section>
       ))}

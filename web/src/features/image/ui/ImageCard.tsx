@@ -4,6 +4,7 @@ import {
   CopyIcon,
   ExternalLinkIcon,
   LayersIcon,
+  PackagePlusIcon,
   WandSparklesIcon,
 } from "lucide-react";
 
@@ -112,6 +113,8 @@ export function ImageCard({ image }: ImageCardProps) {
           "group rounded-lg border border-border/70 bg-card/60 backdrop-blur-sm p-4 flex flex-col gap-2 transition-all hover:border-primary/40 hover:bg-card hover:shadow-md hover:shadow-primary/5",
           image.hasMutation &&
             "border-amber-300/70 dark:border-amber-700/60 hover:border-amber-400 dark:hover:border-amber-600",
+          !image.hasMutation && image.hasInjection &&
+            "border-violet-300/70 dark:border-violet-700/60 hover:border-violet-400 dark:hover:border-violet-600",
         )}
       >
         <div className="flex items-center justify-between gap-2">
@@ -129,6 +132,21 @@ export function ImageCard({ image }: ImageCardProps) {
                 </TooltipTrigger>
                 <TooltipContent side="top">
                   <p className="text-xs">Image mutated by a MutatingWebhook</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+            {image.hasInjection && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    className="inline-flex items-center text-violet-600 dark:text-violet-400"
+                    aria-label="Container injected by a MutatingWebhook"
+                  >
+                    <PackagePlusIcon className="size-3.5" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p className="text-xs">Container injected by a MutatingWebhook</p>
                 </TooltipContent>
               </Tooltip>
             )}

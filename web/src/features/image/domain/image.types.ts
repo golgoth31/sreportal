@@ -12,6 +12,10 @@ export interface WorkloadRef {
   // image (same workload+container, different image). The card displaying this
   // ref is the "actual running" image after webhook mutation.
   readonly mutated?: boolean;
+  // injected: true on a pod-source ref with no matching spec ref anywhere —
+  // the container was added to the pod by a MutatingWebhook (e.g. Istio
+  // sidecar) and never appeared in the workload template.
+  readonly injected?: boolean;
   // hidden: true on a spec-source ref whose image was replaced by a webhook
   // mutation. UI omits these from listings; the matching pod-source ref takes
   // priority.
@@ -27,6 +31,9 @@ export interface Image {
   // hasMutation: true when at least one of this image's workload refs is the
   // mutated (pod-source) side of a webhook mutation.
   readonly hasMutation?: boolean;
+  // hasInjection: true when at least one of this image's workload refs is a
+  // webhook-injected container (pod-only, no spec counterpart).
+  readonly hasInjection?: boolean;
 }
 
 export interface ImageFilters {
@@ -43,17 +50,18 @@ export interface ImageGroup {
 const containerKey = (w: WorkloadRef): string =>
   `${w.kind}/${w.namespace}/${w.name}/${w.container}`;
 
-// annotateMutations enriches the API response with mutation/hidden flags.
+// annotateImages enriches the API response with webhook-activity flags.
 //
-// Mutation detection: when the same workload+container appears in both a
-// spec-source ref (image A) and a pod-source ref (image B), the backend only
-// emits the pod ref when A != B — so any (spec, pod) pair for the same
-// container *is* a mutation. The pod ref is marked mutated, the spec ref
-// hidden so that the UI displays the actual running image with priority.
-//
-// Pod-source refs without any matching spec ref are injected sidecars; they
-// stay visible and unmarked.
-export function annotateMutations(images: readonly Image[]): Image[] {
+// Pod-source refs come in two flavors:
+//   - Mutated: same workload+container appears in both a spec-source ref
+//     (image A) and a pod-source ref (image B). The backend only emits the
+//     pod ref when A != B, so any (spec, pod) pair for the same container is
+//     a mutation. The pod ref is marked `mutated`, the matching spec ref is
+//     `hidden` so the UI shows the actual running image with priority.
+//   - Injected: pod-source ref with no spec counterpart anywhere — the
+//     container was added by a MutatingWebhook (e.g. Istio sidecar). The ref
+//     is marked `injected` so the UI can display it distinctly.
+export function annotateImages(images: readonly Image[]): Image[] {
   const specByContainer = new Map<string, Array<{ imgIdx: number; refIdx: number }>>();
   const podByContainer = new Map<string, Array<{ imgIdx: number; refIdx: number }>>();
 
@@ -69,25 +77,39 @@ export function annotateMutations(images: readonly Image[]): Image[] {
 
   const mutated = new Set<string>();
   const hidden = new Set<string>();
+  const injected = new Set<string>();
   for (const [k, podLocs] of podByContainer) {
     const specLocs = specByContainer.get(k);
-    if (!specLocs?.length) continue;
-    for (const l of podLocs) mutated.add(`${l.imgIdx}:${l.refIdx}`);
-    for (const l of specLocs) hidden.add(`${l.imgIdx}:${l.refIdx}`);
+    if (specLocs?.length) {
+      for (const l of podLocs) mutated.add(`${l.imgIdx}:${l.refIdx}`);
+      for (const l of specLocs) hidden.add(`${l.imgIdx}:${l.refIdx}`);
+    } else {
+      for (const l of podLocs) injected.add(`${l.imgIdx}:${l.refIdx}`);
+    }
   }
 
   return images.map((img, imgIdx) => {
     const workloads = img.workloads.map((w, refIdx) => {
       const key = `${imgIdx}:${refIdx}`;
       const isMutated = mutated.has(key);
+      const isInjected = injected.has(key);
       const isHidden = hidden.has(key);
-      if (!isMutated && !isHidden) return w;
-      return { ...w, mutated: isMutated || undefined, hidden: isHidden || undefined };
+      if (!isMutated && !isInjected && !isHidden) return w;
+      return {
+        ...w,
+        mutated: isMutated || undefined,
+        injected: isInjected || undefined,
+        hidden: isHidden || undefined,
+      };
     });
     const hasMutation = workloads.some((w) => w.mutated);
-    return hasMutation === Boolean(img.hasMutation) && workloads === img.workloads
-      ? img
-      : { ...img, workloads, hasMutation: hasMutation || undefined };
+    const hasInjection = workloads.some((w) => w.injected);
+    return {
+      ...img,
+      workloads,
+      hasMutation: hasMutation || undefined,
+      hasInjection: hasInjection || undefined,
+    };
   });
 }
 

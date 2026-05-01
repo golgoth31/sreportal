@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  annotateMutations,
+  annotateImages,
   filterImages,
   groupImagesByRegistry,
   hasVisibleWorkloads,
@@ -52,7 +52,7 @@ describe("image.types", () => {
   });
 });
 
-describe("annotateMutations", () => {
+describe("annotateImages", () => {
   it("does nothing when there are only spec workloads", () => {
     const input: Image[] = [
       {
@@ -65,7 +65,7 @@ describe("annotateMutations", () => {
         ],
       },
     ];
-    const out = annotateMutations(input);
+    const out = annotateImages(input);
     expect(out[0]?.workloads[0]?.mutated).toBeUndefined();
     expect(out[0]?.workloads[0]?.hidden).toBeUndefined();
     expect(out[0]?.hasMutation).toBeUndefined();
@@ -92,14 +92,14 @@ describe("annotateMutations", () => {
         ],
       },
     ];
-    const out = annotateMutations(input);
+    const out = annotateImages(input);
     expect(out[0]?.workloads[0]?.hidden).toBe(true);
     expect(out[1]?.workloads[0]?.mutated).toBe(true);
     expect(out[1]?.hasMutation).toBe(true);
     expect(out[0]?.hasMutation).toBeUndefined();
   });
 
-  it("does not mark injected sidecars as mutations", () => {
+  it("marks injected sidecars (pod-only) as injected, not mutated", () => {
     const input: Image[] = [
       {
         registry: "ghcr.io",
@@ -126,9 +126,55 @@ describe("annotateMutations", () => {
         ],
       },
     ];
-    const out = annotateMutations(input);
+    const out = annotateImages(input);
     expect(out[1]?.workloads[0]?.mutated).toBeUndefined();
+    expect(out[1]?.workloads[0]?.injected).toBe(true);
     expect(out[1]?.hasMutation).toBeUndefined();
+    expect(out[1]?.hasInjection).toBe(true);
+  });
+
+  it("does not mark spec refs as injected", () => {
+    const input: Image[] = [
+      {
+        registry: "ghcr.io",
+        repository: "acme/api",
+        tag: "1.0.0",
+        tagType: "semver",
+        workloads: [
+          { kind: "Deployment", namespace: "default", name: "api", container: "web", source: "spec" },
+        ],
+      },
+    ];
+    const out = annotateImages(input);
+    expect(out[0]?.workloads[0]?.injected).toBeUndefined();
+    expect(out[0]?.hasInjection).toBeUndefined();
+  });
+
+  it("does not mark mutated pod refs as injected", () => {
+    const input: Image[] = [
+      {
+        registry: "ghcr.io",
+        repository: "acme/api",
+        tag: "1.0.0",
+        tagType: "semver",
+        workloads: [
+          { kind: "Deployment", namespace: "default", name: "api", container: "web", source: "spec" },
+        ],
+      },
+      {
+        registry: "ghcr.io",
+        repository: "acme/api",
+        tag: "1.0.1-pinned",
+        tagType: "semver",
+        workloads: [
+          { kind: "Deployment", namespace: "default", name: "api", container: "web", source: "pod" },
+        ],
+      },
+    ];
+    const out = annotateImages(input);
+    expect(out[1]?.workloads[0]?.mutated).toBe(true);
+    expect(out[1]?.workloads[0]?.injected).toBeUndefined();
+    expect(out[1]?.hasInjection).toBeUndefined();
   });
 
   it("hasVisibleWorkloads drops images whose every ref is hidden", () => {
@@ -152,7 +198,7 @@ describe("annotateMutations", () => {
         ],
       },
     ];
-    const out = annotateMutations(input).filter(hasVisibleWorkloads);
+    const out = annotateImages(input).filter(hasVisibleWorkloads);
     expect(out).toHaveLength(1);
     expect(out[0]?.tag).toBe("1.0.1-pinned");
   });
@@ -179,7 +225,7 @@ describe("annotateMutations", () => {
         ],
       },
     ];
-    const out = annotateMutations(input).filter(hasVisibleWorkloads);
+    const out = annotateImages(input).filter(hasVisibleWorkloads);
     // Spec image still visible thanks to "worker" ref; "web" hidden.
     expect(out).toHaveLength(2);
     const spec = out.find((i) => i.tag === "1.0.0");

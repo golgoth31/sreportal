@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 
 import {
-  annotateMutations,
+  annotateImages,
   filterImages,
   groupImagesByRegistry,
   hasVisibleWorkloads,
@@ -15,7 +15,7 @@ export function useImages(portal: string) {
   const { images: rawImages, isLoading, isFetching, error, refetch } = useImageQuery(portal);
 
   const images = useMemo(
-    () => annotateMutations(rawImages).filter(hasVisibleWorkloads),
+    () => annotateImages(rawImages).filter(hasVisibleWorkloads),
     [rawImages],
   );
 
