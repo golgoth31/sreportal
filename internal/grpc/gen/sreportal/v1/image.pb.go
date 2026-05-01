@@ -218,11 +218,15 @@ func (x *Image) GetWorkloads() []*WorkloadRef {
 }
 
 type WorkloadRef struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Kind          string                 `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
-	Namespace     string                 `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	Container     string                 `protobuf:"bytes,4,opt,name=container,proto3" json:"container,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Kind      string                 `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
+	Namespace string                 `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	Name      string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Container string                 `protobuf:"bytes,4,opt,name=container,proto3" json:"container,omitempty"`
+	// source is "spec" when the container is declared in the workload template,
+	// or "pod" when it was only observed in the running pod (typically because
+	// a MutatingWebhook injected or mutated it).
+	Source        string `protobuf:"bytes,5,opt,name=source,proto3" json:"source,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -285,6 +289,13 @@ func (x *WorkloadRef) GetContainer() string {
 	return ""
 }
 
+func (x *WorkloadRef) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
 var File_sreportal_v1_image_proto protoreflect.FileDescriptor
 
 const file_sreportal_v1_image_proto_rawDesc = "" +
@@ -306,12 +317,13 @@ const file_sreportal_v1_image_proto_rawDesc = "" +
 	"repository\x12\x10\n" +
 	"\x03tag\x18\x03 \x01(\tR\x03tag\x12\x19\n" +
 	"\btag_type\x18\x04 \x01(\tR\atagType\x127\n" +
-	"\tworkloads\x18\x05 \x03(\v2\x19.sreportal.v1.WorkloadRefR\tworkloads\"q\n" +
+	"\tworkloads\x18\x05 \x03(\v2\x19.sreportal.v1.WorkloadRefR\tworkloads\"\x89\x01\n" +
 	"\vWorkloadRef\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x1c\n" +
 	"\tnamespace\x18\x02 \x01(\tR\tnamespace\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x1c\n" +
-	"\tcontainer\x18\x04 \x01(\tR\tcontainer2_\n" +
+	"\tcontainer\x18\x04 \x01(\tR\tcontainer\x12\x16\n" +
+	"\x06source\x18\x05 \x01(\tR\x06source2_\n" +
 	"\fImageService\x12O\n" +
 	"\n" +
 	"ListImages\x12\x1f.sreportal.v1.ListImagesRequest\x1a .sreportal.v1.ListImagesResponseB\xba\x01\n" +

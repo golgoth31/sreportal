@@ -8,13 +8,23 @@ import {
   type WorkloadRef as ProtoWorkloadRef,
   type Image as ProtoImage,
 } from "@/gen/sreportal/v1/image_pb";
-import type { Image, WorkloadRef } from "../domain/image.types";
+import type { ContainerSource, Image, WorkloadRef } from "../domain/image.types";
 
 const transport = createGrpcWebTransport({ baseUrl: window.location.origin });
 const client = createClient(ImageService, transport);
 
+function toDomainSource(value: string): ContainerSource {
+  return value === "pod" ? "pod" : "spec";
+}
+
 function toDomainWorkload(w: ProtoWorkloadRef): WorkloadRef {
-  return { kind: w.kind, namespace: w.namespace, name: w.name, container: w.container };
+  return {
+    kind: w.kind,
+    namespace: w.namespace,
+    name: w.name,
+    container: w.container,
+    source: toDomainSource(w.source),
+  };
 }
 
 function toDomainImage(i: ProtoImage): Image {

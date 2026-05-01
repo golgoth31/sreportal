@@ -31,4 +31,8 @@ message WorkloadRef {
   string namespace = 2;
   string name = 3;
   string container = 4;
+  // source is "spec" when the container is declared in the workload template,
+  // or "pod" when it was only observed in the running pod (typically because
+  // a MutatingWebhook injected or mutated it).
+  string source = 5;
 }

@@ -76,7 +76,9 @@ func (s *ImageServer) registerImageTools() {
 	s.mcpServer.AddTool(
 		mcp.NewTool("list_images",
 			mcp.WithDescription("List container images discovered by ImageInventory resources in the SRE Portal. "+
-				"Returns images with their tag type (semver, commit, digest, latest, other), registry, repository, and the workloads using them."),
+				"Returns images with their tag type (semver, commit, digest, latest, other), registry, repository, and the workloads using them. "+
+				"Each workload entry has a `source` field: \"spec\" when the container is declared in the workload template, "+
+				"or \"pod\" when it was only observed in the running pod (e.g. injected/mutated by a MutatingWebhook)."),
 			mcp.WithString("portal",
 				mcp.Description("Filter by portal name (portalRef)"),
 			),
@@ -100,6 +102,10 @@ type ImageWorkloadResult struct {
 	Namespace string `json:"namespace"`
 	Name      string `json:"name"`
 	Container string `json:"container"`
+	// Source is "spec" when the container is declared in the workload template,
+	// or "pod" when it was only observed in the running pod (typically because
+	// a MutatingWebhook injected or mutated it).
+	Source string `json:"source"`
 }
 
 // ImageResult represents a single image entry in the list results.
@@ -135,6 +141,7 @@ func (s *ImageServer) handleListImages(ctx context.Context, request mcp.CallTool
 				Namespace: w.Namespace,
 				Name:      w.Name,
 				Container: w.Container,
+				Source:    string(w.Source),
 			})
 		}
 		results = append(results, ImageResult{

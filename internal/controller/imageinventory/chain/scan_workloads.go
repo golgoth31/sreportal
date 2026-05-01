@@ -31,6 +31,7 @@ import (
 	imagectrl "github.com/golgoth31/sreportal/internal/controller/image"
 	"github.com/golgoth31/sreportal/internal/controller/statusutil"
 	domainimage "github.com/golgoth31/sreportal/internal/domain/image"
+	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/metrics"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
@@ -117,10 +118,23 @@ func (h *ScanWorkloadsHandler) scanAll(ctx context.Context, inv *sreportalv1alph
 
 func (h *ScanWorkloadsHandler) scanKind(ctx context.Context, portalRef string, kind sreportalv1alpha1.ImageInventoryKind, out map[domainimage.WorkloadKey][]domainimage.ImageView, opts ...client.ListOption) error {
 	kindStr := string(kind)
-	collect := func(ns, name string, spec corev1.PodSpec) {
+	logger := log.FromContext(ctx).WithValues("kind", kindStr, "portalRef", portalRef)
+
+	collect := func(ns, name string, spec corev1.PodSpec, podSelector *metav1.LabelSelector) {
 		wk := domainimage.WorkloadKey{Kind: kindStr, Namespace: ns, Name: name}
-		out[wk] = imagectrl.ImageViewsFromPodSpec(portalRef, kindStr, ns, name, spec)
+		views := imagectrl.ImageViewsFromPodSpec(portalRef, kindStr, ns, name, spec, domainimage.ContainerSourceSpec)
+
+		if sel := selectorFromLabelSelector(podSelector); sel != nil {
+			pod, err := imagectrl.FindRunningPodForWorkload(ctx, h.client, ns, sel)
+			if err != nil {
+				logger.Error(err, "find running pod failed; falling back to spec", "workload", wk)
+			} else if pod != nil {
+				views = append(views, imagectrl.ImageViewsFromPodDiff(portalRef, kindStr, ns, name, spec, pod.Spec)...)
+			}
+		}
+		out[wk] = views
 	}
+
 	switch kind {
 	case sreportalv1alpha1.ImageInventoryKindDeployment:
 		var list appsv1.DeploymentList
@@ -129,7 +143,7 @@ func (h *ScanWorkloadsHandler) scanKind(ctx context.Context, portalRef string, k
 		}
 		for i := range list.Items {
 			it := &list.Items[i]
-			collect(it.Namespace, it.Name, it.Spec.Template.Spec)
+			collect(it.Namespace, it.Name, it.Spec.Template.Spec, it.Spec.Selector)
 		}
 	case sreportalv1alpha1.ImageInventoryKindStatefulSet:
 		var list appsv1.StatefulSetList
@@ -138,7 +152,7 @@ func (h *ScanWorkloadsHandler) scanKind(ctx context.Context, portalRef string, k
 		}
 		for i := range list.Items {
 			it := &list.Items[i]
-			collect(it.Namespace, it.Name, it.Spec.Template.Spec)
+			collect(it.Namespace, it.Name, it.Spec.Template.Spec, it.Spec.Selector)
 		}
 	case sreportalv1alpha1.ImageInventoryKindDaemonSet:
 		var list appsv1.DaemonSetList
@@ -147,7 +161,7 @@ func (h *ScanWorkloadsHandler) scanKind(ctx context.Context, portalRef string, k
 		}
 		for i := range list.Items {
 			it := &list.Items[i]
-			collect(it.Namespace, it.Name, it.Spec.Template.Spec)
+			collect(it.Namespace, it.Name, it.Spec.Template.Spec, it.Spec.Selector)
 		}
 	case sreportalv1alpha1.ImageInventoryKindCronJob:
 		var list batchv1.CronJobList
@@ -156,7 +170,8 @@ func (h *ScanWorkloadsHandler) scanKind(ctx context.Context, portalRef string, k
 		}
 		for i := range list.Items {
 			it := &list.Items[i]
-			collect(it.Namespace, it.Name, it.Spec.JobTemplate.Spec.Template.Spec)
+			// CronJobs: pod lookup skipped — pods belong to Jobs (transient workloads).
+			collect(it.Namespace, it.Name, it.Spec.JobTemplate.Spec.Template.Spec, nil)
 		}
 	case sreportalv1alpha1.ImageInventoryKindJob:
 		var list batchv1.JobList
@@ -165,10 +180,27 @@ func (h *ScanWorkloadsHandler) scanKind(ctx context.Context, portalRef string, k
 		}
 		for i := range list.Items {
 			it := &list.Items[i]
-			collect(it.Namespace, it.Name, it.Spec.Template.Spec)
+			collect(it.Namespace, it.Name, it.Spec.Template.Spec, it.Spec.Selector)
 		}
 	default:
 		return fmt.Errorf("unsupported kind %q", kind)
 	}
 	return nil
+}
+
+// selectorFromLabelSelector converts a *metav1.LabelSelector to a labels.Selector,
+// returning nil for empty/invalid selectors so the caller skips pod lookup
+// rather than matching every pod in the namespace.
+func selectorFromLabelSelector(s *metav1.LabelSelector) labels.Selector {
+	if s == nil {
+		return nil
+	}
+	if len(s.MatchLabels) == 0 && len(s.MatchExpressions) == 0 {
+		return nil
+	}
+	sel, err := metav1.LabelSelectorAsSelector(s)
+	if err != nil {
+		return nil
+	}
+	return sel
 }
