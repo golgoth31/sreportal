@@ -26,7 +26,6 @@ import (
 	"connectrpc.com/connect"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	sreportalv1 "github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1"
@@ -68,6 +67,26 @@ func (m *mockPortalServiceHandler) ListPortals(
 	}
 	return connect.NewResponse(&sreportalv1.ListPortalsResponse{
 		Portals: m.portals,
+	}), nil
+}
+
+// mockImageServiceHandler implements the Image service for testing.
+type mockImageServiceHandler struct {
+	sreportalv1connect.UnimplementedImageServiceHandler
+	images []*sreportalv1.Image
+	err    error
+}
+
+func (m *mockImageServiceHandler) ListImages(
+	_ context.Context,
+	_ *connect.Request[sreportalv1.ListImagesRequest],
+) (*connect.Response[sreportalv1.ListImagesResponse], error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return connect.NewResponse(&sreportalv1.ListImagesResponse{
+		Images:     m.images,
+		TotalCount: int32(len(m.images)),
 	}), nil
 }
 
@@ -494,30 +513,23 @@ func TestConvertToGroups(t *testing.T) {
 
 func TestFetchImages(t *testing.T) {
 	t.Run("returns images from remote ImageService", func(t *testing.T) {
-		mux := http.NewServeMux()
-		mux.HandleFunc("/sreportal.v1.ImageService/ListImages", func(w http.ResponseWriter, r *http.Request) {
-			resp := &sreportalv1.ListImagesResponse{
-				Images: []*sreportalv1.Image{
-					{
-						Registry:   "ghcr.io",
-						Repository: "acme/api",
-						Tag:        "1.2.3",
-						TagType:    "semver",
-						Workloads: []*sreportalv1.WorkloadRef{
-							{Kind: "Deployment", Namespace: "default", Name: "api", Container: "main", Source: "spec"},
-						},
+		imageHandler := &mockImageServiceHandler{
+			images: []*sreportalv1.Image{
+				{
+					Registry:   "ghcr.io",
+					Repository: "acme/api",
+					Tag:        "1.2.3",
+					TagType:    "semver",
+					Workloads: []*sreportalv1.WorkloadRef{
+						{Kind: "Deployment", Namespace: "default", Name: "api", Container: "main", Source: "spec"},
 					},
 				},
-				TotalCount: 1,
-			}
-			body, err := proto.Marshal(resp)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			w.Header().Set("Content-Type", "application/proto")
-			_, _ = w.Write(body)
-		})
+			},
+		}
+
+		mux := http.NewServeMux()
+		mux.Handle(sreportalv1connect.NewImageServiceHandler(imageHandler))
+
 		server := httptest.NewServer(mux)
 		defer server.Close()
 
@@ -534,13 +546,19 @@ func TestFetchImages(t *testing.T) {
 	})
 
 	t.Run("returns error when remote returns failure", func(t *testing.T) {
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			http.Error(w, "boom", http.StatusInternalServerError)
-		}))
+		imageHandler := &mockImageServiceHandler{
+			err: connect.NewError(connect.CodeInternal, assert.AnError),
+		}
+
+		mux := http.NewServeMux()
+		mux.Handle(sreportalv1connect.NewImageServiceHandler(imageHandler))
+
+		server := httptest.NewServer(mux)
 		defer server.Close()
 
 		client := NewClient(WithRetryAttempts(1))
 		_, err := client.FetchImages(context.Background(), server.URL, "main")
 		require.Error(t, err)
+		assert.Contains(t, err.Error(), "fetch images failed after 1 attempts")
 	})
 }
