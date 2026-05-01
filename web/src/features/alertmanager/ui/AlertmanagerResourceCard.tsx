@@ -41,7 +41,7 @@ export function AlertmanagerResourceCard({ resource }: AlertmanagerResourceCardP
           >
             <div className="flex items-center gap-3 flex-wrap">
               <AlertTriangleIcon className="size-4 text-primary/70 shrink-0" />
-              <span className="font-display italic text-base text-foreground tracking-tight">
+              <span className="font-mono text-sm font-semibold text-foreground tracking-tight">
                 {resource.name}
               </span>
               <span className="text-muted-foreground text-[11px] font-mono">

@@ -32,7 +32,7 @@ export function FqdnGroupCard({ group }: FqdnGroupCardProps) {
           >
             <div className="flex items-center gap-3">
               <SourceIcon className="size-4 text-primary/70 shrink-0" />
-              <span className="font-display italic text-base text-foreground tracking-tight">
+              <span className="font-mono text-sm font-semibold text-foreground tracking-tight">
                 {group.name}
               </span>
               <span className="text-muted-foreground text-[11px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-muted/60">
