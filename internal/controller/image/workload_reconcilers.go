@@ -26,6 +26,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	domainimage "github.com/golgoth31/sreportal/internal/domain/image"
 )
@@ -155,33 +157,41 @@ func (r *JobImageReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 // SetupWorkloadReconcilersWithManager registers the five thin reconcilers with
 // the controller manager. Each one watches a single workload kind and shares
 // the passed WorkloadHandler.
+//
+// We attach GenerationChangedPredicate to the watched workload so we don't
+// re-scan on status-only updates (very common for Deployments controlled by
+// other operators). Image discovery only depends on spec.template — which
+// bumps generation when it changes. Pod-level drift is picked up by the
+// periodic ImageInventory full scan.
 func SetupWorkloadReconcilersWithManager(mgr ctrl.Manager, h *WorkloadHandler) error {
+	specOnly := builder.WithPredicates(predicate.GenerationChangedPredicate{})
+
 	if err := ctrl.NewControllerManagedBy(mgr).
-		For(&appsv1.Deployment{}).
+		For(&appsv1.Deployment{}, specOnly).
 		Named("deployment-image").
 		Complete(&DeploymentImageReconciler{handler: h}); err != nil {
 		return fmt.Errorf("setup deployment-image reconciler: %w", err)
 	}
 	if err := ctrl.NewControllerManagedBy(mgr).
-		For(&appsv1.StatefulSet{}).
+		For(&appsv1.StatefulSet{}, specOnly).
 		Named("statefulset-image").
 		Complete(&StatefulSetImageReconciler{handler: h}); err != nil {
 		return fmt.Errorf("setup statefulset-image reconciler: %w", err)
 	}
 	if err := ctrl.NewControllerManagedBy(mgr).
-		For(&appsv1.DaemonSet{}).
+		For(&appsv1.DaemonSet{}, specOnly).
 		Named("daemonset-image").
 		Complete(&DaemonSetImageReconciler{handler: h}); err != nil {
 		return fmt.Errorf("setup daemonset-image reconciler: %w", err)
 	}
 	if err := ctrl.NewControllerManagedBy(mgr).
-		For(&batchv1.CronJob{}).
+		For(&batchv1.CronJob{}, specOnly).
 		Named("cronjob-image").
 		Complete(&CronJobImageReconciler{handler: h}); err != nil {
 		return fmt.Errorf("setup cronjob-image reconciler: %w", err)
 	}
 	if err := ctrl.NewControllerManagedBy(mgr).
-		For(&batchv1.Job{}).
+		For(&batchv1.Job{}, specOnly).
 		Named("job-image").
 		Complete(&JobImageReconciler{handler: h}); err != nil {
 		return fmt.Errorf("setup job-image reconciler: %w", err)
