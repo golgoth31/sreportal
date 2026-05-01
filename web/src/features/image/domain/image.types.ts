@@ -40,6 +40,12 @@ export interface ImageFilters {
   readonly search: string;
   readonly registryFilter: string;
   readonly tagTypeFilter: string;
+  // When true, restrict to images touched by a MutatingWebhook in the
+  // matching way. mutatedFilter and injectedFilter combine with OR — any
+  // image matching at least one enabled flag is kept. When neither is on,
+  // webhook activity is not used as a filter.
+  readonly mutatedFilter?: boolean;
+  readonly injectedFilter?: boolean;
 }
 
 export interface ImageGroup {
@@ -122,10 +128,16 @@ export function hasVisibleWorkloads(img: Image): boolean {
 
 export function filterImages(images: readonly Image[], filters: ImageFilters): Image[] {
   const search = filters.search.toLowerCase();
+  const webhookFilterActive = Boolean(filters.mutatedFilter || filters.injectedFilter);
   return images.filter((img) => {
     if (filters.registryFilter && img.registry !== filters.registryFilter) return false;
     if (filters.tagTypeFilter && img.tagType !== filters.tagTypeFilter) return false;
     if (search && !img.repository.toLowerCase().includes(search)) return false;
+    if (webhookFilterActive) {
+      const matchesMutated = filters.mutatedFilter && img.hasMutation;
+      const matchesInjected = filters.injectedFilter && img.hasInjection;
+      if (!matchesMutated && !matchesInjected) return false;
+    }
     return true;
   });
 }

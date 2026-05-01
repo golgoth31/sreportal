@@ -12,6 +12,8 @@ export function useImages(portal: string) {
   const [search, setSearch] = useState("");
   const [registryFilter, setRegistryFilter] = useState("");
   const [tagTypeFilter, setTagTypeFilter] = useState("");
+  const [mutatedFilter, setMutatedFilter] = useState(false);
+  const [injectedFilter, setInjectedFilter] = useState(false);
   const { images: rawImages, isLoading, isFetching, error, refetch } = useImageQuery(portal);
 
   const images = useMemo(
@@ -20,8 +22,15 @@ export function useImages(portal: string) {
   );
 
   const filtered = useMemo(
-    () => filterImages(images, { search, registryFilter, tagTypeFilter }),
-    [images, search, registryFilter, tagTypeFilter],
+    () =>
+      filterImages(images, {
+        search,
+        registryFilter,
+        tagTypeFilter,
+        mutatedFilter,
+        injectedFilter,
+      }),
+    [images, search, registryFilter, tagTypeFilter, mutatedFilter, injectedFilter],
   );
   const groupedByRegistry = useMemo(() => groupImagesByRegistry(filtered), [filtered]);
   const registries = useMemo(
@@ -39,12 +48,21 @@ export function useImages(portal: string) {
     );
   }, [filtered]);
 
+  const webhookCounts = useMemo(
+    () => ({
+      mutated: images.reduce((n, img) => n + (img.hasMutation ? 1 : 0), 0),
+      injected: images.reduce((n, img) => n + (img.hasInjection ? 1 : 0), 0),
+    }),
+    [images],
+  );
+
   return {
     images,
     filtered,
     groupedByRegistry,
     registries,
     countsByTag,
+    webhookCounts,
     totalCount: images.length,
     filteredCount: filtered.length,
     isLoading,
@@ -53,9 +71,13 @@ export function useImages(portal: string) {
     search,
     registryFilter,
     tagTypeFilter,
+    mutatedFilter,
+    injectedFilter,
     setSearch,
     setRegistryFilter,
     setTagTypeFilter,
+    setMutatedFilter,
+    setInjectedFilter,
     refetch,
   };
 }

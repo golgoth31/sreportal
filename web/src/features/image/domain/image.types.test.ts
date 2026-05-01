@@ -52,6 +52,86 @@ describe("image.types", () => {
   });
 });
 
+describe("filterImages — webhook filters", () => {
+  const dataset: Image[] = [
+    {
+      registry: "ghcr.io",
+      repository: "acme/api",
+      tag: "1.0.0",
+      tagType: "semver",
+      workloads: [],
+    },
+    {
+      registry: "ghcr.io",
+      repository: "acme/api",
+      tag: "1.0.1-pinned",
+      tagType: "semver",
+      workloads: [],
+      hasMutation: true,
+    },
+    {
+      registry: "docker.io",
+      repository: "istio/proxyv2",
+      tag: "1.20.0",
+      tagType: "semver",
+      workloads: [],
+      hasInjection: true,
+    },
+  ];
+
+  it("returns everything when no webhook filter is active", () => {
+    const out = filterImages(dataset, { search: "", registryFilter: "", tagTypeFilter: "" });
+    expect(out).toHaveLength(3);
+  });
+
+  it("keeps only mutated images when mutatedFilter is on", () => {
+    const out = filterImages(dataset, {
+      search: "",
+      registryFilter: "",
+      tagTypeFilter: "",
+      mutatedFilter: true,
+    });
+    expect(out).toHaveLength(1);
+    expect(out[0]?.tag).toBe("1.0.1-pinned");
+  });
+
+  it("keeps only injected images when injectedFilter is on", () => {
+    const out = filterImages(dataset, {
+      search: "",
+      registryFilter: "",
+      tagTypeFilter: "",
+      injectedFilter: true,
+    });
+    expect(out).toHaveLength(1);
+    expect(out[0]?.repository).toBe("istio/proxyv2");
+  });
+
+  it("ORs mutated and injected when both filters are on", () => {
+    const out = filterImages(dataset, {
+      search: "",
+      registryFilter: "",
+      tagTypeFilter: "",
+      mutatedFilter: true,
+      injectedFilter: true,
+    });
+    expect(out).toHaveLength(2);
+    expect(out.map((i) => i.repository).sort()).toEqual(["acme/api", "istio/proxyv2"]);
+  });
+
+  it("combines webhook filters with search/registry/tagType", () => {
+    const out = filterImages(dataset, {
+      search: "",
+      registryFilter: "ghcr.io",
+      tagTypeFilter: "",
+      mutatedFilter: true,
+      injectedFilter: true,
+    });
+    // Only the mutated ghcr.io entry remains; the injected one is on docker.io.
+    expect(out).toHaveLength(1);
+    expect(out[0]?.tag).toBe("1.0.1-pinned");
+  });
+});
+
 describe("annotateImages", () => {
   it("does nothing when there are only spec workloads", () => {
     const input: Image[] = [
