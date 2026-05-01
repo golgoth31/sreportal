@@ -73,6 +73,18 @@ type ImageInventorySpec struct {
 	// Empty means default 5m.
 	// +optional
 	Interval metav1.Duration `json:"interval,omitempty"`
+
+	// isRemote marks this inventory as a shadow projection of a remote portal.
+	// When true, the controller fetches images from the remote portal via the
+	// ImageService Connect API instead of scanning the local cluster.
+	// +optional
+	IsRemote bool `json:"isRemote,omitempty"`
+
+	// remoteURL is the base URL of the remote SRE Portal to fetch images from.
+	// Only meaningful when isRemote is true. Populated by the Portal controller
+	// from spec.remote.url on the Portal CR.
+	// +optional
+	RemoteURL string `json:"remoteURL,omitempty"`
 }
 
 // ImageInventoryStatus defines the observed state of ImageInventory.
