@@ -28,7 +28,7 @@ export function ComponentSection({
     <div className="space-y-6">
       {groupedComponents.map(({ group, components }) => (
         <div key={group}>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+          <h3 className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground mb-3">
             {group}
           </h3>
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">

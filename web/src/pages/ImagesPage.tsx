@@ -38,12 +38,14 @@ export function ImagesPage() {
   return (
     <div className="max-w-screen-xl mx-auto px-4 py-6 space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h1 className="text-xl font-semibold tracking-tight">Image Inventory</h1>
+        <h1 className="font-display text-3xl tracking-tight">
+          Image <span className="italic text-primary">inventory</span>
+        </h1>
         <div className="flex items-center gap-2 ml-auto flex-wrap justify-end">
           <PageRefreshButton onRefresh={() => void refetch()} isFetching={isFetching} />
           {!isLoading && !error && (
-            <span className="text-muted-foreground text-sm">
-              {hasFilters ? `${filteredCount} of ${totalCount} images` : `${totalCount} images`}
+            <span className="text-muted-foreground text-sm font-mono">
+              {hasFilters ? `${filteredCount} / ${totalCount} images` : `${totalCount} images`}
             </span>
           )}
         </div>

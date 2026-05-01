@@ -27,12 +27,14 @@ export function NetpolPage() {
   return (
     <div className="max-w-screen-xl mx-auto px-4 py-6 space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h1 className="text-xl font-semibold tracking-tight">Network Policies</h1>
+        <h1 className="font-display text-3xl tracking-tight">
+          Network <span className="italic text-primary">policies</span>
+        </h1>
         <div className="flex items-center gap-2 ml-auto">
           <PageRefreshButton onRefresh={refetch} isFetching={isFetching} />
           {graph && (
-            <span className="text-muted-foreground text-sm">
-              {graph.nodes.length} nodes, {graph.edges.length} edges
+            <span className="text-muted-foreground text-sm font-mono">
+              {graph.nodes.length} nodes · {graph.edges.length} edges
             </span>
           )}
         </div>

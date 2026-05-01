@@ -11,12 +11,12 @@ export function ErrorAlert({ title, error }: ErrorAlertProps) {
   return (
     <div
       role="alert"
-      className="flex items-center gap-3 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-destructive"
+      className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-destructive"
     >
-      <AlertCircleIcon className="size-5 shrink-0" />
-      <div>
+      <AlertCircleIcon className="size-5 shrink-0 mt-0.5" />
+      <div className="min-w-0">
         <p className="font-medium text-sm">{title}</p>
-        <p className="text-xs mt-0.5 opacity-80">{message}</p>
+        <p className="text-xs mt-0.5 opacity-80 font-mono break-words">{message}</p>
       </div>
     </div>
   );

@@ -28,7 +28,7 @@ export function IncidentSection({ incidents }: IncidentSectionProps) {
 
   return (
     <div className="space-y-3">
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <h3 className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground">
         Incidents
       </h3>
       {active.map((inc) => (
@@ -55,23 +55,23 @@ function IncidentCard({
   return (
     <div
       className={cn(
-        "rounded-lg border p-4",
+        "rounded-lg border p-4 backdrop-blur-sm",
         isActive
-          ? "border-red-300 bg-red-50/50 dark:border-red-700 dark:bg-red-950/30"
-          : "bg-card"
+          ? "border-rose-500/40 bg-rose-500/5 dark:border-rose-500/30 dark:bg-rose-500/10"
+          : "border-border/70 bg-card/60"
       )}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h4 className="font-medium text-sm">{incident.title}</h4>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h4 className="font-medium text-sm tracking-tight">{incident.title}</h4>
             <span
               className={cn(
-                "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider",
                 severityColor
               )}
             >
-              {incident.severity.toUpperCase()}
+              {incident.severity}
             </span>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -135,11 +135,11 @@ function IncidentPhaseBadge({ phase }: { phase: IncidentPhase }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap",
+        "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider whitespace-nowrap",
         styles[phase]
       )}
     >
-      {phase.toUpperCase()}
+      {phase}
     </span>
   );
 }
