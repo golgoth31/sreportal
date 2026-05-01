@@ -83,6 +83,7 @@ spec:
                   remoteURL is the base URL of the remote SRE Portal to fetch images from.
                   Only meaningful when isRemote is true. Populated by the Portal controller
                   from spec.remote.url on the Portal CR.
+                pattern: ^https?://.*
                 type: string
               watchedKinds:
                 description: |-
