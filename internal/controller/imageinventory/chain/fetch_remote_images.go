@@ -86,18 +86,16 @@ func (h *FetchRemoteImagesHandler) Handle(ctx context.Context, rc *reconciler.Re
 
 // remoteImagesToByWorkload converts remote ImageService responses into the
 // per-workload domain projection consumed by ProjectImagesHandler.
+//
+// Each (image, workload) pair produces a fresh ImageView with a single
+// WorkloadRef. This mirrors the shape produced by the local scan path
+// (ImageViewsFromPodSpec) so deduplication in the readstore concatenates
+// non-overlapping workload sets.
 func remoteImagesToByWorkload(portalRef string, images []*remoteclient.RemoteImage) map[domainimage.WorkloadKey][]domainimage.ImageView {
 	out := make(map[domainimage.WorkloadKey][]domainimage.ImageView)
 	for _, img := range images {
 		if img == nil {
 			continue
-		}
-		view := domainimage.ImageView{
-			PortalRef:  portalRef,
-			Registry:   img.Registry,
-			Repository: img.Repository,
-			Tag:        img.Tag,
-			TagType:    domainimage.TagType(img.TagType),
 		}
 		for _, w := range img.Workloads {
 			ref := domainimage.WorkloadRef{
@@ -107,7 +105,14 @@ func remoteImagesToByWorkload(portalRef string, images []*remoteclient.RemoteIma
 				Container: w.Container,
 				Source:    domainimage.ContainerSource(w.Source),
 			}
-			view.Workloads = append(view.Workloads, ref)
+			view := domainimage.ImageView{
+				PortalRef:  portalRef,
+				Registry:   img.Registry,
+				Repository: img.Repository,
+				Tag:        img.Tag,
+				TagType:    domainimage.TagType(img.TagType),
+				Workloads:  []domainimage.WorkloadRef{ref},
+			}
 			wk := domainimage.WorkloadKey{Kind: w.Kind, Namespace: w.Namespace, Name: w.Name}
 			out[wk] = append(out[wk], view)
 		}

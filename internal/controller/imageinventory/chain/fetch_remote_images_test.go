@@ -171,3 +171,72 @@ func TestFetchRemoteImagesHandlerErrorWhenPortalNotRemote(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "no remote configuration")
 }
+
+func TestFetchRemoteImagesHandlerBucketsWorkloadsCorrectly(t *testing.T) {
+	scheme := newFetchRemoteImagesScheme(t)
+
+	mux := http.NewServeMux()
+	mockSvc := &fetchRemoteImagesMockService{
+		images: []*sreportalv1.Image{
+			{
+				Registry:   "ghcr.io",
+				Repository: "acme/api",
+				Tag:        "1.2.3",
+				TagType:    "semver",
+				Workloads: []*sreportalv1.WorkloadRef{
+					{Kind: "Deployment", Namespace: "default", Name: "api", Container: "main", Source: "spec"},
+					{Kind: "Deployment", Namespace: "default", Name: "web", Container: "main", Source: "spec"},
+				},
+			},
+			{
+				Registry:   "ghcr.io",
+				Repository: "acme/web",
+				Tag:        "2.0.0",
+				TagType:    "semver",
+				Workloads: []*sreportalv1.WorkloadRef{
+					{Kind: "Deployment", Namespace: "default", Name: "api", Container: "sidecar", Source: "spec"},
+				},
+			},
+		},
+	}
+	mux.Handle(sreportalv1connect.NewImageServiceHandler(mockSvc))
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	portal := &sreportalv1alpha1.Portal{
+		ObjectMeta: metav1.ObjectMeta{Name: "remote-portal", Namespace: "default"},
+		Spec: sreportalv1alpha1.PortalSpec{
+			Title:  "Remote",
+			Remote: &sreportalv1alpha1.RemotePortalSpec{URL: server.URL, Portal: "main"},
+		},
+	}
+	cli := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
+
+	h := NewFetchRemoteImagesHandler(cli, remoteclient.NewCache())
+	inv := &sreportalv1alpha1.ImageInventory{
+		ObjectMeta: metav1.ObjectMeta{Name: "remote-remote-portal", Namespace: "default"},
+		Spec: sreportalv1alpha1.ImageInventorySpec{
+			PortalRef: "remote-portal",
+			IsRemote:  true,
+			RemoteURL: server.URL,
+		},
+	}
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageInventory, ChainData]{Resource: inv}
+	require.NoError(t, h.Handle(context.Background(), rc))
+	require.NotNil(t, rc.Data.ByWorkload)
+
+	w1 := domainimage.WorkloadKey{Kind: "Deployment", Namespace: "default", Name: "api"}
+	w2 := domainimage.WorkloadKey{Kind: "Deployment", Namespace: "default", Name: "web"}
+
+	require.Len(t, rc.Data.ByWorkload[w1], 2, "expected 2 views in bucket W1 (one per image referencing it)")
+	require.Len(t, rc.Data.ByWorkload[w2], 1, "expected 1 view in bucket W2")
+
+	for _, v := range rc.Data.ByWorkload[w1] {
+		require.Len(t, v.Workloads, 1, "each ImageView must hold exactly one WorkloadRef")
+		require.Equal(t, "api", v.Workloads[0].Name)
+	}
+	for _, v := range rc.Data.ByWorkload[w2] {
+		require.Len(t, v.Workloads, 1, "each ImageView must hold exactly one WorkloadRef")
+		require.Equal(t, "web", v.Workloads[0].Name)
+	}
+}
