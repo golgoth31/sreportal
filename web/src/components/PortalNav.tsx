@@ -39,17 +39,22 @@ function PortalSelect({
 
   if (sortedPortals.length === 0) return null;
 
+  const isActive = activePortalName !== "";
+
   return (
     <Select value={activePortalName} onValueChange={onSelect}>
       <SelectTrigger
         className={cn(
-          "h-8 min-w-[8rem] border-none bg-transparent shadow-none hover:bg-accent focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent",
-          activePortalName && "bg-primary/10 text-primary font-semibold"
+          "h-8 min-w-[10rem] gap-2 rounded-md border bg-background shadow-none transition-colors hover:bg-accent",
+          "focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0",
+          isActive
+            ? "border-primary/40 bg-primary/8 text-primary font-semibold"
+            : "border-border text-muted-foreground"
         )}
       >
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
-      <SelectContent position="popper" >
+      <SelectContent position="popper">
         {sortedPortals.map((portal) => (
           <SelectItem key={portal.name} value={portal.name}>
             {portal.title}
@@ -94,14 +99,18 @@ export function PortalNav({ portals, isLoading }: PortalNavProps) {
   }
 
   return (
-    <nav className="flex items-center gap-1 flex-wrap" aria-label="Portal navigation">
+    <nav
+      className="flex items-center gap-3 flex-wrap"
+      aria-label="Portal navigation"
+    >
       {mainPortal && (
         <Button
           variant="ghost"
           size="sm"
           className={cn(
+            "h-8 px-3",
             (mainPortal.subPath || mainPortal.name) === portalName &&
-            "bg-primary/10 text-primary font-semibold shadow-primary"
+              "bg-primary/10 text-primary font-semibold"
           )}
           asChild
         >
@@ -111,30 +120,44 @@ export function PortalNav({ portals, isLoading }: PortalNavProps) {
         </Button>
       )}
 
-      <PortalSelect
-        portals={localPortals}
-        activePortalName={activeLocalPortalName}
-        placeholder="Local portals"
-        onSelect={handlePortalSelect}
-      />
+      {localPortals.length > 0 && (
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
+            Local
+          </span>
+          <PortalSelect
+            portals={localPortals}
+            activePortalName={activeLocalPortalName}
+            placeholder="Select…"
+            onSelect={handlePortalSelect}
+          />
+        </div>
+      )}
 
-      <PortalSelect
-        portals={remotePortals}
-        activePortalName={activeRemotePortalName}
-        placeholder="Remote portals"
-        onSelect={handlePortalSelect}
-      />
-      {activeRemotePortal?.url && (
-        <Button variant="outline" size="sm" asChild>
-          <a
-            href={activeRemotePortal.url}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Go to portal UI
-            <ExternalLinkIcon className="size-3" />
-          </a>
-        </Button>
+      {remotePortals.length > 0 && (
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
+            Remote
+          </span>
+          <PortalSelect
+            portals={remotePortals}
+            activePortalName={activeRemotePortalName}
+            placeholder="Select…"
+            onSelect={handlePortalSelect}
+          />
+          {activeRemotePortal?.url && (
+            <Button variant="outline" size="sm" className="h-8" asChild>
+              <a
+                href={activeRemotePortal.url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Open
+                <ExternalLinkIcon className="size-3" />
+              </a>
+            </Button>
+          )}
+        </div>
       )}
     </nav>
   );

@@ -68,7 +68,9 @@ export function LinksPage() {
     <div className="max-w-screen-xl mx-auto px-4 py-6 space-y-6">
       {/* Page header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h1 className="text-xl font-semibold tracking-tight">DNS Links</h1>
+        <h1 className="font-display text-3xl tracking-tight">
+          DNS <span className="italic text-primary">Links</span>
+        </h1>
 
         <div className="flex items-center gap-2 ml-auto flex-wrap justify-end">
           <PageRefreshButton

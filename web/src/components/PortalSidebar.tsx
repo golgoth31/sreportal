@@ -30,31 +30,26 @@ export function PortalSidebar({
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
-      "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+      "relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+      "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-4 before:w-[2px] before:rounded-r before:bg-primary before:opacity-0 before:transition-opacity",
       isActive
-        ? "bg-accent text-accent-foreground"
-        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+        ? "bg-primary/10 text-foreground before:opacity-100"
+        : "text-muted-foreground hover:bg-accent hover:text-foreground"
     );
 
   return (
     <aside
-      className="w-48 shrink-0 border-r bg-muted/30 flex flex-col py-4 overflow-y-auto"
+      className="w-48 shrink-0 border-r border-border/60 bg-sidebar/40 flex flex-col py-4 overflow-y-auto"
       aria-label="Portal menu"
     >
+      <div className="px-3 pb-3 mb-2 border-b border-border/60">
+        <p className="text-[10px] font-mono uppercase tracking-[0.16em] text-muted-foreground">
+          Resources
+        </p>
+      </div>
       <nav className="flex flex-col gap-0.5 px-2" aria-label="Links and Alerts">
         {showDNS && (
-          <NavLink
-            to={`${basePath}/links`}
-            end
-            className={({ isActive }) =>
-              cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )
-            }
-          >
+          <NavLink to={`${basePath}/links`} end className={linkClass}>
             <LinkIcon className="size-4 shrink-0" aria-hidden="true" />
             <span>DNS</span>
           </NavLink>
@@ -66,17 +61,7 @@ export function PortalSidebar({
           </NavLink>
         )}
         {showNetworkPolicy && (
-          <NavLink
-            to={`${basePath}/netpol`}
-            className={({ isActive }) =>
-              cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )
-            }
-          >
+          <NavLink to={`${basePath}/netpol`} className={linkClass}>
             <ShieldIcon className="size-4 shrink-0" aria-hidden="true" />
             <span>Network Policies</span>
           </NavLink>
@@ -91,7 +76,7 @@ export function PortalSidebar({
           <NavLink to={`${basePath}/status`} className={linkClass}>
             <ActivityIcon className="size-4 shrink-0" aria-hidden="true" />
             <span>Status</span>
-            <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0">alpha</Badge>
+            <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0 font-mono uppercase tracking-wider">alpha</Badge>
           </NavLink>
         )}
         {showImageInventory && (
@@ -101,11 +86,16 @@ export function PortalSidebar({
           </NavLink>
         )}
       </nav>
-      <nav className="mt-auto px-2" aria-label="Portal statistics">
+      <div className="mt-auto px-3 pt-3 mb-2 border-t border-border/60">
+        <p className="text-[10px] font-mono uppercase tracking-[0.16em] text-muted-foreground">
+          System
+        </p>
+      </div>
+      <nav className="px-2" aria-label="Portal statistics">
         <NavLink to={`${basePath}/dashboard`} className={linkClass}>
           <BarChart3Icon className="size-4 shrink-0" aria-hidden="true" />
-          <span>Portal Statistics</span>
-          <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0">beta</Badge>
+          <span>Statistics</span>
+          <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0 font-mono uppercase tracking-wider">beta</Badge>
         </NavLink>
       </nav>
     </aside>
