@@ -29,7 +29,7 @@ interface AlertGroupCardProps {
 }
 
 const silencedBadgeClassName =
-  "text-xs bg-blue-500/10 text-blue-600 border-blue-200 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-800";
+  "text-[10px] font-mono uppercase tracking-wider bg-primary/10 text-primary border-primary/30";
 
 export function AlertGroupCard({ group }: AlertGroupCardProps) {
   const [open, setOpen] = useState(false);
@@ -54,24 +54,24 @@ export function AlertGroupCard({ group }: AlertGroupCardProps) {
               )}
               aria-hidden="true"
             />
-            <span className="font-medium text-sm">{group.name}</span>
+            <span className="font-medium text-sm tracking-tight">{group.name}</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {activeCount > 0 && (
-              <Badge variant="destructive" className="text-xs">
+              <Badge variant="destructive" className="text-[10px] font-mono uppercase tracking-wider">
                 {activeCount}
               </Badge>
             )}
             {silencedCount > 0 && (
               <Badge
                 variant="outline"
-                className={cn("text-xs", silencedBadgeClassName)}
+                className={silencedBadgeClassName}
               >
                 {silencedCount}
               </Badge>
             )}
             {activeCount === 0 && silencedCount === 0 && (
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="text-[10px] font-mono uppercase tracking-wider">
                 {group.alerts.length}
               </Badge>
             )}
