@@ -26,6 +26,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	sreportalv1 "github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1"
@@ -488,5 +489,58 @@ func TestConvertToGroups(t *testing.T) {
 		assert.Len(t, groups[0].FQDNs, 1)
 		// LastSeen should be set to approximately now
 		assert.WithinDuration(t, time.Now(), groups[0].FQDNs[0].LastSeen.Time, 5*time.Second)
+	})
+}
+
+func TestFetchImages(t *testing.T) {
+	t.Run("returns images from remote ImageService", func(t *testing.T) {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/sreportal.v1.ImageService/ListImages", func(w http.ResponseWriter, r *http.Request) {
+			resp := &sreportalv1.ListImagesResponse{
+				Images: []*sreportalv1.Image{
+					{
+						Registry:   "ghcr.io",
+						Repository: "acme/api",
+						Tag:        "1.2.3",
+						TagType:    "semver",
+						Workloads: []*sreportalv1.WorkloadRef{
+							{Kind: "Deployment", Namespace: "default", Name: "api", Container: "main", Source: "spec"},
+						},
+					},
+				},
+				TotalCount: 1,
+			}
+			body, err := proto.Marshal(resp)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/proto")
+			_, _ = w.Write(body)
+		})
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := NewClient(WithRetryAttempts(1))
+		result, err := client.FetchImages(context.Background(), server.URL, "main")
+		require.NoError(t, err)
+		require.Len(t, result.Images, 1)
+		require.Equal(t, "ghcr.io", result.Images[0].Registry)
+		require.Equal(t, "acme/api", result.Images[0].Repository)
+		require.Equal(t, "1.2.3", result.Images[0].Tag)
+		require.Equal(t, "semver", result.Images[0].TagType)
+		require.Len(t, result.Images[0].Workloads, 1)
+		require.Equal(t, "spec", result.Images[0].Workloads[0].Source)
+	})
+
+	t.Run("returns error when remote returns failure", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, "boom", http.StatusInternalServerError)
+		}))
+		defer server.Close()
+
+		client := NewClient(WithRetryAttempts(1))
+		_, err := client.FetchImages(context.Background(), server.URL, "main")
+		require.Error(t, err)
 	})
 }
