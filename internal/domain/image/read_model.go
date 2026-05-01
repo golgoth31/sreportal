@@ -11,12 +11,26 @@ const (
 	TagTypeOther  TagType = "other"
 )
 
+// ContainerSource indicates whether a container/image was discovered from
+// the workload template spec or only observed in the running pod (typically
+// because a MutatingWebhook injected or mutated it).
+type ContainerSource string
+
+const (
+	// ContainerSourceSpec marks containers declared in the workload's PodSpec template.
+	ContainerSourceSpec ContainerSource = "spec"
+	// ContainerSourcePod marks containers observed only in the running pod —
+	// either added by a MutatingWebhook or whose image was mutated post-admission.
+	ContainerSourcePod ContainerSource = "pod"
+)
+
 // WorkloadRef identifies a workload/container using an image.
 type WorkloadRef struct {
 	Kind      string
 	Namespace string
 	Name      string
 	Container string
+	Source    ContainerSource
 }
 
 // ImageView is the read-side projection of images in a portal scope.

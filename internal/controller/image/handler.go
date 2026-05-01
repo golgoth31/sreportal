@@ -45,12 +45,16 @@ func NewWorkloadHandler(c client.Client, store domainimage.ImageWriter) *Workloa
 }
 
 // HandleUpsert updates the per-workload contribution of `wk` in every
-// ImageInventory that selects it.
+// ImageInventory that selects it. When `podSelector` is non-nil, the handler
+// also looks up a running pod matching the selector and adds pod-sourced
+// ImageViews for containers that are injected (not in spec) or whose image
+// was mutated (image differs from spec).
 func (h *WorkloadHandler) HandleUpsert(
 	ctx context.Context,
 	wk domainimage.WorkloadKey,
 	spec corev1.PodSpec,
 	objLabels labels.Set,
+	podSelector labels.Selector,
 ) error {
 	logger := log.FromContext(ctx).WithValues("workload", wk)
 
@@ -59,13 +63,28 @@ func (h *WorkloadHandler) HandleUpsert(
 		return fmt.Errorf("list ImageInventory: %w", err)
 	}
 
+	// Look up a running pod once — its containers are identical regardless of
+	// which inventory selects the workload.
+	var podSpec *corev1.PodSpec
+	if podSelector != nil {
+		pod, err := findRunningPodForWorkload(ctx, h.client, wk.Namespace, podSelector)
+		if err != nil {
+			logger.Error(err, "find running pod failed; falling back to spec only")
+		} else if pod != nil {
+			podSpec = &pod.Spec
+		}
+	}
+
 	var firstErr error
 	for i := range invList.Items {
 		inv := &invList.Items[i]
 		if !matchesInventory(inv, wk, objLabels) {
 			continue
 		}
-		images := imageViewsFromPodSpec(inv.Spec.PortalRef, wk.Kind, wk.Namespace, wk.Name, spec)
+		images := imageViewsFromPodSpec(inv.Spec.PortalRef, wk.Kind, wk.Namespace, wk.Name, spec, domainimage.ContainerSourceSpec)
+		if podSpec != nil {
+			images = append(images, imageViewsFromPodDiff(inv.Spec.PortalRef, wk.Kind, wk.Namespace, wk.Name, spec, *podSpec)...)
+		}
 		if err := h.store.ReplaceWorkload(ctx, inv.Spec.PortalRef, wk, images); err != nil {
 			logger.Error(err, "store.ReplaceWorkload failed", "portalRef", inv.Spec.PortalRef)
 			if firstErr == nil {
@@ -107,8 +126,14 @@ func matchesInventory(inv *sreportalv1alpha1.ImageInventory, wk domainimage.Work
 }
 
 // imageViewsFromPodSpec converts a PodSpec into the per-container ImageView
-// projections contributed by one workload. (Previously lived in scanner.go.)
-func imageViewsFromPodSpec(portalRef, kind, namespace, name string, spec corev1.PodSpec) []domainimage.ImageView {
+// projections contributed by one workload. Each ImageView's WorkloadRef is
+// tagged with `source` so callers can distinguish spec-declared containers
+// from pod-observed ones.
+func imageViewsFromPodSpec(
+	portalRef, kind, namespace, name string,
+	spec corev1.PodSpec,
+	source domainimage.ContainerSource,
+) []domainimage.ImageView {
 	out := make([]domainimage.ImageView, 0, len(spec.Containers)+len(spec.InitContainers))
 	appendContainer := func(c corev1.Container) {
 		ref, err := domainimage.ParseReference(c.Image)
@@ -126,6 +151,7 @@ func imageViewsFromPodSpec(portalRef, kind, namespace, name string, spec corev1.
 				Namespace: namespace,
 				Name:      name,
 				Container: c.Name,
+				Source:    source,
 			}},
 		})
 	}
@@ -138,8 +164,83 @@ func imageViewsFromPodSpec(portalRef, kind, namespace, name string, spec corev1.
 	return out
 }
 
+// imageViewsFromPodDiff returns ImageViews tagged ContainerSourcePod for
+// containers that are present in the pod but either (a) not declared in the
+// workload spec (injected by a webhook) or (b) declared with a different
+// image (mutated by a webhook).
+//
+// Containers that exist in both spec and pod with the same image are NOT
+// duplicated — they are already covered by the spec-sourced views.
+func imageViewsFromPodDiff(
+	portalRef, kind, namespace, name string,
+	spec corev1.PodSpec,
+	pod corev1.PodSpec,
+) []domainimage.ImageView {
+	declared := buildContainerImageMap(spec)
+
+	out := make([]domainimage.ImageView, 0)
+	appendIfNew := func(c corev1.Container) {
+		declaredImage, ok := declared[c.Name]
+		if ok && declaredImage == c.Image {
+			return
+		}
+		ref, err := domainimage.ParseReference(c.Image)
+		if err != nil {
+			return
+		}
+		out = append(out, domainimage.ImageView{
+			PortalRef:  portalRef,
+			Registry:   ref.Registry,
+			Repository: ref.Repository,
+			Tag:        ref.Tag,
+			TagType:    ref.TagType,
+			Workloads: []domainimage.WorkloadRef{{
+				Kind:      kind,
+				Namespace: namespace,
+				Name:      name,
+				Container: c.Name,
+				Source:    domainimage.ContainerSourcePod,
+			}},
+		})
+	}
+	for _, c := range pod.Containers {
+		appendIfNew(c)
+	}
+	for _, c := range pod.InitContainers {
+		appendIfNew(c)
+	}
+	return out
+}
+
+// buildContainerImageMap returns containerName -> image for every container
+// (regular and init) declared in spec.
+func buildContainerImageMap(spec corev1.PodSpec) map[string]string {
+	m := make(map[string]string, len(spec.Containers)+len(spec.InitContainers))
+	for _, c := range spec.Containers {
+		m[c.Name] = c.Image
+	}
+	for _, c := range spec.InitContainers {
+		m[c.Name] = c.Image
+	}
+	return m
+}
+
 // ImageViewsFromPodSpec is an exported wrapper used by the ImageInventory
 // chain's full-scan handler.
-func ImageViewsFromPodSpec(portalRef, kind, namespace, name string, spec corev1.PodSpec) []domainimage.ImageView {
-	return imageViewsFromPodSpec(portalRef, kind, namespace, name, spec)
+func ImageViewsFromPodSpec(
+	portalRef, kind, namespace, name string,
+	spec corev1.PodSpec,
+	source domainimage.ContainerSource,
+) []domainimage.ImageView {
+	return imageViewsFromPodSpec(portalRef, kind, namespace, name, spec, source)
+}
+
+// ImageViewsFromPodDiff is an exported wrapper used by the ImageInventory
+// chain's full-scan handler. See imageViewsFromPodDiff for semantics.
+func ImageViewsFromPodDiff(
+	portalRef, kind, namespace, name string,
+	spec corev1.PodSpec,
+	pod corev1.PodSpec,
+) []domainimage.ImageView {
+	return imageViewsFromPodDiff(portalRef, kind, namespace, name, spec, pod)
 }

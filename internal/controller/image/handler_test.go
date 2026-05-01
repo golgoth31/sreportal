@@ -87,7 +87,7 @@ func TestHandleUpsertMatchesNamespaceFilter(t *testing.T) {
 	spec := corev1.PodSpec{Containers: []corev1.Container{{Name: "web", Image: "ghcr.io/acme/api:v1.2.3"}}}
 	wk := domainimage.WorkloadKey{Kind: "Deployment", Namespace: "default", Name: "api"}
 
-	if err := h.HandleUpsert(context.Background(), wk, spec, labels.Set(nil)); err != nil {
+	if err := h.HandleUpsert(context.Background(), wk, spec, labels.Set(nil), nil); err != nil {
 		t.Fatalf("HandleUpsert: %v", err)
 	}
 
@@ -118,7 +118,7 @@ func TestHandleUpsertRespectsLabelSelector(t *testing.T) {
 	wk := domainimage.WorkloadKey{Kind: "Deployment", Namespace: "default", Name: "api"}
 
 	// Labels do not match the selector.
-	if err := h.HandleUpsert(context.Background(), wk, spec, labels.Set{"team": "other"}); err != nil {
+	if err := h.HandleUpsert(context.Background(), wk, spec, labels.Set{"team": "other"}, nil); err != nil {
 		t.Fatalf("HandleUpsert: %v", err)
 	}
 	if len(writer.replaces) != 0 {
@@ -126,7 +126,7 @@ func TestHandleUpsertRespectsLabelSelector(t *testing.T) {
 	}
 
 	// Labels match the selector.
-	if err := h.HandleUpsert(context.Background(), wk, spec, labels.Set{"team": "platform"}); err != nil {
+	if err := h.HandleUpsert(context.Background(), wk, spec, labels.Set{"team": "platform"}, nil); err != nil {
 		t.Fatalf("HandleUpsert: %v", err)
 	}
 	if len(writer.replaces) != 1 {
@@ -152,7 +152,7 @@ func TestHandleUpsertRespectsWatchedKinds(t *testing.T) {
 	spec := corev1.PodSpec{Containers: []corev1.Container{{Name: "web", Image: "ghcr.io/acme/api:v1.2.3"}}}
 	// Deployment is not in WatchedKinds -> no replace.
 	wk := domainimage.WorkloadKey{Kind: "Deployment", Namespace: "default", Name: "api"}
-	if err := h.HandleUpsert(context.Background(), wk, spec, labels.Set(nil)); err != nil {
+	if err := h.HandleUpsert(context.Background(), wk, spec, labels.Set(nil), nil); err != nil {
 		t.Fatalf("HandleUpsert: %v", err)
 	}
 	if len(writer.replaces) != 0 {
@@ -173,6 +173,184 @@ func TestHandleDeleteCallsStore(t *testing.T) {
 	}
 	if len(writer.deletes) != 1 || writer.deletes[0] != wk {
 		t.Fatalf("deletes=%+v", writer.deletes)
+	}
+}
+
+func TestHandleUpsertAddsPodInjectedContainers(t *testing.T) {
+	t.Parallel()
+	sch := newTestScheme(t)
+
+	inv := &sreportalv1alpha1.ImageInventory{
+		ObjectMeta: metav1.ObjectMeta{Name: "inv", Namespace: "sre"},
+		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: "portal-a"},
+	}
+	wkLabels := map[string]string{"app": "api"}
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "api-1", Namespace: "default", Labels: wkLabels},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{Name: "web", Image: "ghcr.io/acme/api:v1.2.3"},
+				{Name: "istio-proxy", Image: "docker.io/istio/proxyv2:1.20.0"},
+			},
+			InitContainers: []corev1.Container{
+				{Name: "istio-init", Image: "docker.io/istio/proxyv2:1.20.0"},
+			},
+		},
+		Status: corev1.PodStatus{Phase: corev1.PodRunning},
+	}
+	c := fake.NewClientBuilder().WithScheme(sch).WithObjects(inv, pod).Build()
+	writer := &fakeImageWriter{}
+	h := NewWorkloadHandler(c, writer)
+
+	spec := corev1.PodSpec{Containers: []corev1.Container{{Name: "web", Image: "ghcr.io/acme/api:v1.2.3"}}}
+	wk := domainimage.WorkloadKey{Kind: "Deployment", Namespace: "default", Name: "api"}
+	sel := labels.SelectorFromSet(labels.Set(wkLabels))
+
+	if err := h.HandleUpsert(context.Background(), wk, spec, labels.Set(nil), sel); err != nil {
+		t.Fatalf("HandleUpsert: %v", err)
+	}
+
+	if len(writer.replaces) != 1 {
+		t.Fatalf("replaces=%d want 1", len(writer.replaces))
+	}
+	images := writer.replaces[0].images
+	// Expected: 1 spec container (web) + 2 pod-injected (istio-proxy, istio-init).
+	if len(images) != 3 {
+		t.Fatalf("images=%d want 3: %+v", len(images), images)
+	}
+
+	specCount, podCount := 0, 0
+	for _, iv := range images {
+		if len(iv.Workloads) != 1 {
+			t.Fatalf("each image should have exactly 1 workload ref, got %+v", iv.Workloads)
+		}
+		switch iv.Workloads[0].Source {
+		case domainimage.ContainerSourceSpec:
+			specCount++
+		case domainimage.ContainerSourcePod:
+			podCount++
+		default:
+			t.Fatalf("unexpected source %q", iv.Workloads[0].Source)
+		}
+	}
+	if specCount != 1 || podCount != 2 {
+		t.Fatalf("specCount=%d podCount=%d want 1, 2", specCount, podCount)
+	}
+}
+
+func TestHandleUpsertDoesNotDuplicateUnchangedContainer(t *testing.T) {
+	t.Parallel()
+	sch := newTestScheme(t)
+
+	inv := &sreportalv1alpha1.ImageInventory{
+		ObjectMeta: metav1.ObjectMeta{Name: "inv", Namespace: "sre"},
+		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: "portal-a"},
+	}
+	wkLabels := map[string]string{"app": "api"}
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "api-1", Namespace: "default", Labels: wkLabels},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{Name: "web", Image: "ghcr.io/acme/api:v1.2.3"},
+			},
+		},
+		Status: corev1.PodStatus{Phase: corev1.PodRunning},
+	}
+	c := fake.NewClientBuilder().WithScheme(sch).WithObjects(inv, pod).Build()
+	writer := &fakeImageWriter{}
+	h := NewWorkloadHandler(c, writer)
+
+	spec := corev1.PodSpec{Containers: []corev1.Container{{Name: "web", Image: "ghcr.io/acme/api:v1.2.3"}}}
+	wk := domainimage.WorkloadKey{Kind: "Deployment", Namespace: "default", Name: "api"}
+	sel := labels.SelectorFromSet(labels.Set(wkLabels))
+
+	if err := h.HandleUpsert(context.Background(), wk, spec, labels.Set(nil), sel); err != nil {
+		t.Fatalf("HandleUpsert: %v", err)
+	}
+
+	images := writer.replaces[0].images
+	if len(images) != 1 {
+		t.Fatalf("images=%d want 1 (no duplicate from pod): %+v", len(images), images)
+	}
+	if images[0].Workloads[0].Source != domainimage.ContainerSourceSpec {
+		t.Fatalf("source=%q want %q", images[0].Workloads[0].Source, domainimage.ContainerSourceSpec)
+	}
+}
+
+func TestHandleUpsertDetectsImageMutation(t *testing.T) {
+	t.Parallel()
+	sch := newTestScheme(t)
+
+	inv := &sreportalv1alpha1.ImageInventory{
+		ObjectMeta: metav1.ObjectMeta{Name: "inv", Namespace: "sre"},
+		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: "portal-a"},
+	}
+	wkLabels := map[string]string{"app": "api"}
+	// Pod has same container name but a different (mutated) image.
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "api-1", Namespace: "default", Labels: wkLabels},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{Name: "web", Image: "ghcr.io/acme/api:v1.2.4-pinned"},
+			},
+		},
+		Status: corev1.PodStatus{Phase: corev1.PodRunning},
+	}
+	c := fake.NewClientBuilder().WithScheme(sch).WithObjects(inv, pod).Build()
+	writer := &fakeImageWriter{}
+	h := NewWorkloadHandler(c, writer)
+
+	spec := corev1.PodSpec{Containers: []corev1.Container{{Name: "web", Image: "ghcr.io/acme/api:v1.2.3"}}}
+	wk := domainimage.WorkloadKey{Kind: "Deployment", Namespace: "default", Name: "api"}
+	sel := labels.SelectorFromSet(labels.Set(wkLabels))
+
+	if err := h.HandleUpsert(context.Background(), wk, spec, labels.Set(nil), sel); err != nil {
+		t.Fatalf("HandleUpsert: %v", err)
+	}
+
+	images := writer.replaces[0].images
+	// Expected: spec image (v1.2.3, source=spec) + mutated image (v1.2.4-pinned, source=pod)
+	if len(images) != 2 {
+		t.Fatalf("images=%d want 2: %+v", len(images), images)
+	}
+	tags := map[string]domainimage.ContainerSource{}
+	for _, iv := range images {
+		tags[iv.Tag] = iv.Workloads[0].Source
+	}
+	if tags["v1.2.3"] != domainimage.ContainerSourceSpec {
+		t.Fatalf("v1.2.3 source=%q want spec", tags["v1.2.3"])
+	}
+	if tags["v1.2.4-pinned"] != domainimage.ContainerSourcePod {
+		t.Fatalf("v1.2.4-pinned source=%q want pod", tags["v1.2.4-pinned"])
+	}
+}
+
+func TestHandleUpsertNoRunningPodFallsBackToSpec(t *testing.T) {
+	t.Parallel()
+	sch := newTestScheme(t)
+
+	inv := &sreportalv1alpha1.ImageInventory{
+		ObjectMeta: metav1.ObjectMeta{Name: "inv", Namespace: "sre"},
+		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: "portal-a"},
+	}
+	c := fake.NewClientBuilder().WithScheme(sch).WithObjects(inv).Build()
+	writer := &fakeImageWriter{}
+	h := NewWorkloadHandler(c, writer)
+
+	spec := corev1.PodSpec{Containers: []corev1.Container{{Name: "web", Image: "ghcr.io/acme/api:v1.2.3"}}}
+	wk := domainimage.WorkloadKey{Kind: "Deployment", Namespace: "default", Name: "api"}
+	sel := labels.SelectorFromSet(labels.Set{"app": "api"})
+
+	if err := h.HandleUpsert(context.Background(), wk, spec, labels.Set(nil), sel); err != nil {
+		t.Fatalf("HandleUpsert: %v", err)
+	}
+
+	images := writer.replaces[0].images
+	if len(images) != 1 {
+		t.Fatalf("images=%d want 1 (spec only): %+v", len(images), images)
+	}
+	if images[0].Workloads[0].Source != domainimage.ContainerSourceSpec {
+		t.Fatalf("source=%q want spec", images[0].Workloads[0].Source)
 	}
 }
 

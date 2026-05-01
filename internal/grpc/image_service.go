@@ -51,6 +51,7 @@ func (s *ImageService) ListImages(
 				Namespace: w.Namespace,
 				Name:      w.Name,
 				Container: w.Container,
+				Source:    string(w.Source),
 			})
 		}
 		images = append(images, &imagev1.Image{

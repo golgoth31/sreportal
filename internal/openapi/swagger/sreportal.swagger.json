@@ -2413,6 +2413,10 @@
         },
         "container": {
           "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "description": "source is \"spec\" when the container is declared in the workload template,\nor \"pod\" when it was only observed in the running pod (typically because\na MutatingWebhook injected or mutated it)."
         }
       }
     }

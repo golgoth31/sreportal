@@ -23,6 +23,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -34,6 +35,7 @@ import (
 // +kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=get;list;watch
 // +kubebuilder:rbac:groups=batch,resources=cronjobs,verbs=get;list;watch
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch
+// +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch
 
 // DeploymentImageReconciler reconciles Deployment changes into the image inventory.
 type DeploymentImageReconciler struct {
@@ -60,6 +62,22 @@ type JobImageReconciler struct {
 	handler *WorkloadHandler
 }
 
+// selectorOrNil converts a *metav1.LabelSelector to a labels.Selector.
+// Returns nil when the input is nil/empty (avoids matching every pod).
+func selectorOrNil(s *metav1.LabelSelector) labels.Selector {
+	if s == nil {
+		return nil
+	}
+	if len(s.MatchLabels) == 0 && len(s.MatchExpressions) == 0 {
+		return nil
+	}
+	sel, err := metav1.LabelSelectorAsSelector(s)
+	if err != nil {
+		return nil
+	}
+	return sel
+}
+
 // Reconcile implements reconcile.Reconciler for Deployment.
 func (r *DeploymentImageReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	var obj appsv1.Deployment
@@ -71,7 +89,7 @@ func (r *DeploymentImageReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, fmt.Errorf("get Deployment: %w", err)
 	}
 	wk := domainimage.WorkloadKey{Kind: "Deployment", Namespace: obj.Namespace, Name: obj.Name}
-	return ctrl.Result{}, r.handler.HandleUpsert(ctx, wk, obj.Spec.Template.Spec, labels.Set(obj.Labels))
+	return ctrl.Result{}, r.handler.HandleUpsert(ctx, wk, obj.Spec.Template.Spec, labels.Set(obj.Labels), selectorOrNil(obj.Spec.Selector))
 }
 
 // Reconcile implements reconcile.Reconciler for StatefulSet.
@@ -85,7 +103,7 @@ func (r *StatefulSetImageReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, fmt.Errorf("get StatefulSet: %w", err)
 	}
 	wk := domainimage.WorkloadKey{Kind: "StatefulSet", Namespace: obj.Namespace, Name: obj.Name}
-	return ctrl.Result{}, r.handler.HandleUpsert(ctx, wk, obj.Spec.Template.Spec, labels.Set(obj.Labels))
+	return ctrl.Result{}, r.handler.HandleUpsert(ctx, wk, obj.Spec.Template.Spec, labels.Set(obj.Labels), selectorOrNil(obj.Spec.Selector))
 }
 
 // Reconcile implements reconcile.Reconciler for DaemonSet.
@@ -99,10 +117,14 @@ func (r *DaemonSetImageReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, fmt.Errorf("get DaemonSet: %w", err)
 	}
 	wk := domainimage.WorkloadKey{Kind: "DaemonSet", Namespace: obj.Namespace, Name: obj.Name}
-	return ctrl.Result{}, r.handler.HandleUpsert(ctx, wk, obj.Spec.Template.Spec, labels.Set(obj.Labels))
+	return ctrl.Result{}, r.handler.HandleUpsert(ctx, wk, obj.Spec.Template.Spec, labels.Set(obj.Labels), selectorOrNil(obj.Spec.Selector))
 }
 
 // Reconcile implements reconcile.Reconciler for CronJob.
+//
+// CronJobs do not have a direct pod selector — pods belong to Jobs owned by
+// the CronJob. We deliberately skip pod-level lookup for CronJobs (transient
+// workloads, webhook injection less common); the spec is the source of truth.
 func (r *CronJobImageReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	var obj batchv1.CronJob
 	if err := r.handler.client.Get(ctx, req.NamespacedName, &obj); err != nil {
@@ -113,7 +135,7 @@ func (r *CronJobImageReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, fmt.Errorf("get CronJob: %w", err)
 	}
 	wk := domainimage.WorkloadKey{Kind: "CronJob", Namespace: obj.Namespace, Name: obj.Name}
-	return ctrl.Result{}, r.handler.HandleUpsert(ctx, wk, obj.Spec.JobTemplate.Spec.Template.Spec, labels.Set(obj.Labels))
+	return ctrl.Result{}, r.handler.HandleUpsert(ctx, wk, obj.Spec.JobTemplate.Spec.Template.Spec, labels.Set(obj.Labels), nil)
 }
 
 // Reconcile implements reconcile.Reconciler for Job.
@@ -127,7 +149,7 @@ func (r *JobImageReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, fmt.Errorf("get Job: %w", err)
 	}
 	wk := domainimage.WorkloadKey{Kind: "Job", Namespace: obj.Namespace, Name: obj.Name}
-	return ctrl.Result{}, r.handler.HandleUpsert(ctx, wk, obj.Spec.Template.Spec, labels.Set(obj.Labels))
+	return ctrl.Result{}, r.handler.HandleUpsert(ctx, wk, obj.Spec.Template.Spec, labels.Set(obj.Labels), selectorOrNil(obj.Spec.Selector))
 }
 
 // SetupWorkloadReconcilersWithManager registers the five thin reconcilers with
