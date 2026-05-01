@@ -33,27 +33,35 @@ export function AlertmanagerResourceCard({ resource }: AlertmanagerResourceCardP
 
   return (
     <Collapsible open={open} onOpenChange={setOpen} className="w-full">
-      <div className="rounded-lg border bg-card shadow-xs overflow-hidden">
+      <div className="rounded-lg border border-border/70 bg-card/40 backdrop-blur-sm overflow-hidden">
         <CollapsibleTrigger asChild>
           <Button
             variant="ghost"
-            className="w-full flex items-center justify-between px-4 py-3 h-auto rounded-none hover:bg-muted/50"
+            className="w-full flex items-center justify-between px-4 py-3 h-auto rounded-none hover:bg-muted/40 bg-gradient-to-r from-primary/[0.04] to-transparent"
           >
             <div className="flex items-center gap-3 flex-wrap">
-              <AlertTriangleIcon className="size-4 text-muted-foreground shrink-0" />
-              <span className="font-semibold text-sm">{resource.name}</span>
-              <span className="text-muted-foreground text-xs">
+              <AlertTriangleIcon className="size-4 text-primary/70 shrink-0" />
+              <span className="font-mono text-sm font-semibold text-foreground tracking-tight">
+                {resource.name}
+              </span>
+              <span className="text-muted-foreground text-[11px] font-mono">
                 {resource.namespace}
               </span>
-              <span className="text-muted-foreground text-xs">
+              <span className="text-muted-foreground text-[11px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-muted/60">
                 {alertCount} {alertCount === 1 ? "alert" : "alerts"}
               </span>
               {resource.ready ? (
-                <Badge variant="secondary" className="text-xs">
+                <Badge
+                  variant="secondary"
+                  className="text-[10px] font-mono uppercase tracking-wider bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20"
+                >
                   Ready
                 </Badge>
               ) : (
-                <Badge variant="outline" className="text-xs text-muted-foreground">
+                <Badge
+                  variant="outline"
+                  className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground"
+                >
                   Not ready
                 </Badge>
               )}

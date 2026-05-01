@@ -55,7 +55,9 @@ export function AlertsPage() {
   return (
     <div className="max-w-screen-xl mx-auto px-4 py-6 space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h1 className="text-xl font-semibold tracking-tight">Alerts</h1>
+        <h1 className="font-display text-3xl tracking-tight">
+          Active <span className="italic text-primary">alerts</span>
+        </h1>
         <div className="flex items-center gap-2 ml-auto flex-wrap justify-end">
           <PageRefreshButton onRefresh={refetch} isFetching={isFetching} />
           {!isLoading && !error && (

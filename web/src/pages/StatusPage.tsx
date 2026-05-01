@@ -41,7 +41,9 @@ export function StatusPage() {
   const page = (
     <div className="max-w-screen-xl mx-auto px-4 py-6 space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h1 className="text-xl font-semibold tracking-tight">Status</h1>
+        <h1 className="font-display text-3xl tracking-tight">
+          System <span className="italic text-primary">status</span>
+        </h1>
         <div className="flex items-center gap-2 shrink-0">
           <PageRefreshButton onRefresh={refetch} isFetching={isFetching} />
           {isStandalone && <ThemeToggle />}
@@ -75,7 +77,7 @@ export function StatusPage() {
               <TabsTrigger value="maintenance" className="gap-1.5">
                 Maintenance
                 {ongoingMaintenanceCount > 0 && (
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-blue-500 text-blue-500">
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/40 text-primary bg-primary/10">
                     {ongoingMaintenanceCount}
                   </Badge>
                 )}

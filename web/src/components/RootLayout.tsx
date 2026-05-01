@@ -30,13 +30,16 @@ export function RootLayout() {
     <TooltipProvider>
       <div className="h-screen flex flex-col bg-background">
         {/* Header */}
-        <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur-sm">
+        <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
           <div className="flex h-14 items-center gap-4 px-4 max-w-screen-xl mx-auto w-full">
             {/* Brand */}
-            <div className="flex items-center gap-2 font-semibold text-sm shrink-0">
+            <div className="flex items-center gap-2 shrink-0">
               <SrePortalIcon className="size-5" />
-              <span>SRE Portal</span>
+              <span className="font-display text-lg leading-none tracking-tight">
+                SRE <span className="italic text-primary">Portal</span>
+              </span>
             </div>
+            <span className="h-6 w-px bg-border/80 shrink-0" aria-hidden="true" />
 
             {/* Portal navigation */}
             <div className="flex-1 min-w-0 overflow-x-auto">
@@ -83,9 +86,9 @@ export function RootLayout() {
         </div>
 
         {/* Footer */}
-        <footer className="border-t py-4 px-4">
-          <p className="text-center text-xs text-muted-foreground">
-            SRE Portal{version ? ` — ${version}` : ""}
+        <footer className="border-t border-border/60 py-3 px-4">
+          <p className="text-center text-[11px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
+            SRE Portal{version ? ` · ${version}` : ""}
           </p>
         </footer>
 

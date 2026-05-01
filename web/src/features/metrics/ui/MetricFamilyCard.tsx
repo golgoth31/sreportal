@@ -53,20 +53,20 @@ export function MetricFamilyCard({ family }: MetricFamilyCardProps) {
 
   return (
     <Collapsible open={open} onOpenChange={setOpen} className="w-full">
-      <div className="rounded-lg border bg-card shadow-xs overflow-hidden">
+      <div className="rounded-lg border border-border/70 bg-card/40 backdrop-blur-sm overflow-hidden">
         <CollapsibleTrigger asChild>
           <Button
             variant="ghost"
-            className="w-full flex items-center justify-between px-4 py-3 h-auto rounded-none hover:bg-muted/50"
+            className="w-full flex items-center justify-between px-4 py-3 h-auto rounded-none hover:bg-muted/40"
           >
             <div className="flex items-center gap-3 flex-wrap min-w-0">
-              <span className="font-mono font-semibold text-sm truncate">
+              <span className="font-mono font-semibold text-[13px] truncate text-foreground">
                 {displayName}
               </span>
-              <Badge variant={typeBadgeVariant(family.type)} className="text-xs">
+              <Badge variant={typeBadgeVariant(family.type)} className="text-[10px] font-mono uppercase tracking-wider">
                 {family.type}
               </Badge>
-              <span className="text-muted-foreground text-xs">
+              <span className="text-muted-foreground text-[11px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-muted/60">
                 {family.metrics.length}{" "}
                 {family.metrics.length === 1 ? "series" : "series"}
               </span>

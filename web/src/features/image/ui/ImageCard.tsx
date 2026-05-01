@@ -100,10 +100,10 @@ export function ImageCard({ image }: ImageCardProps) {
 
   return (
     <>
-      <div className="rounded-lg border bg-card p-4 flex flex-col gap-2 shadow-xs">
+      <div className="group rounded-lg border border-border/70 bg-card/60 backdrop-blur-sm p-4 flex flex-col gap-2 transition-all hover:border-primary/40 hover:bg-card hover:shadow-md hover:shadow-primary/5">
         <div className="flex items-center justify-between gap-2">
-          <p className="font-medium text-sm">{shortName}</p>
-          <Badge variant="outline" className={cn(tagTypeBadgeClass(image.tagType))}>
+          <p className="font-medium text-sm tracking-tight">{shortName}</p>
+          <Badge variant="outline" className={cn("font-mono uppercase text-[10px] tracking-wider", tagTypeBadgeClass(image.tagType))}>
             {image.tagType}
           </Badge>
         </div>

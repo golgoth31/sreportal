@@ -22,7 +22,7 @@ export function MaintenanceSection({ maintenances }: MaintenanceSectionProps) {
 
   return (
     <div className="space-y-3">
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <h3 className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground">
         Maintenances
       </h3>
       {maintenances.map((m) => (
@@ -38,17 +38,17 @@ function MaintenanceCard({ maintenance }: { maintenance: Maintenance }) {
   return (
     <div
       className={cn(
-        "rounded-lg border p-4",
+        "rounded-lg border p-4 backdrop-blur-sm",
         isActive
-          ? "border-blue-300 bg-blue-50/50 dark:border-blue-700 dark:bg-blue-950/30"
-          : "bg-card"
+          ? "border-primary/40 bg-primary/5"
+          : "border-border/70 bg-card/60"
       )}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-2 min-w-0">
-          <WrenchIcon className="size-4 shrink-0 mt-0.5 text-blue-500" />
+          <WrenchIcon className="size-4 shrink-0 mt-0.5 text-primary" />
           <div className="min-w-0">
-            <h4 className="font-medium text-sm">{maintenance.title}</h4>
+            <h4 className="font-medium text-sm tracking-tight">{maintenance.title}</h4>
             <p className="text-xs text-muted-foreground mt-0.5">
               {formatDateRange(maintenance.scheduledStart, maintenance.scheduledEnd)}
             </p>
@@ -73,23 +73,23 @@ function MaintenanceCard({ maintenance }: { maintenance: Maintenance }) {
 function PhaseBadge({ phase }: { phase: MaintenancePhase }) {
   const styles: Record<MaintenancePhase, string> = {
     in_progress:
-      "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900 dark:text-blue-300 dark:border-blue-700",
+      "bg-primary/10 text-primary border-primary/30",
     upcoming:
-      "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900 dark:text-yellow-300 dark:border-yellow-700",
+      "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30",
     completed:
-      "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700",
+      "bg-muted text-muted-foreground border-border",
   };
 
   const labels: Record<MaintenancePhase, string> = {
-    in_progress: "IN PROGRESS",
-    upcoming: "UPCOMING",
-    completed: "COMPLETED",
+    in_progress: "in progress",
+    upcoming: "upcoming",
+    completed: "completed",
   };
 
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap",
+        "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider whitespace-nowrap",
         styles[phase]
       )}
     >

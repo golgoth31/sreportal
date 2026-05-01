@@ -22,10 +22,10 @@ export function ComponentCard({ component }: ComponentCardProps) {
   const label = getStatusLabel(status);
 
   return (
-    <div className="rounded-lg border bg-card p-4 shadow-sm">
+    <div className="group rounded-lg border border-border/70 bg-card/60 backdrop-blur-sm p-4 transition-all hover:border-primary/40 hover:bg-card hover:shadow-md hover:shadow-primary/5">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <h4 className="font-medium text-sm truncate">
+          <h4 className="font-medium text-sm truncate tracking-tight">
             {component.displayName}
           </h4>
           {component.description && (
@@ -35,7 +35,7 @@ export function ComponentCard({ component }: ComponentCardProps) {
           )}
         </div>
         <span
-          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap ${colorClass}`}
+          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider whitespace-nowrap ${colorClass}`}
         >
           {label}
         </span>

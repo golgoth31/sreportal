@@ -20,10 +20,18 @@ const queryClient = new QueryClient({
 const rootEl = document.getElementById("root");
 if (!rootEl) throw new Error("Root element #root not found");
 
-createRoot(rootEl).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
-  </StrictMode>
-);
+async function bootstrap() {
+  if (import.meta.env.VITE_MOCK === "1") {
+    const { startBrowserMocks } = await import("./dev/browserMock");
+    await startBrowserMocks();
+  }
+  createRoot(rootEl!).render(
+    <StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    </StrictMode>,
+  );
+}
+
+void bootstrap();

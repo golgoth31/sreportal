@@ -54,8 +54,10 @@ export function DashboardPage() {
     <div className="max-w-screen-xl mx-auto px-4 py-6 space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-2">
-          <h1 className="text-xl font-semibold tracking-tight">Portal Statistics</h1>
-          <Badge variant="outline">beta</Badge>
+          <h1 className="font-display text-3xl tracking-tight">
+            Portal <span className="italic text-primary">statistics</span>
+          </h1>
+          <Badge variant="outline" className="font-mono uppercase tracking-wider text-[10px]">beta</Badge>
         </div>
         <PageRefreshButton
           className="ml-auto"
