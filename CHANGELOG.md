@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.31.0](https://github.com/golgoth31/sreportal/compare/v1.30.0...v1.31.0) (2026-05-01)
+
+
+### Features
+
+* **image:** observe webhook-mutated and injected pod containers ([#222](https://github.com/golgoth31/sreportal/issues/222)) ([23624ba](https://github.com/golgoth31/sreportal/commit/23624ba542e2bf291abf8df726b8547321c1e6ea))
+* **web:** apply shadcn Mira/Mist/Indigo/Cyan theme with display serif accents ([#220](https://github.com/golgoth31/sreportal/issues/220)) ([28ae227](https://github.com/golgoth31/sreportal/commit/28ae2271aeb27ecdfe4f1bc58fb1a0af5d763001))
+
 ## [1.30.0](https://github.com/golgoth31/sreportal/compare/v1.29.0...v1.30.0) (2026-04-30)
 
 
