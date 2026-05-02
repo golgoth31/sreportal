@@ -20,9 +20,10 @@ import (
 	"context"
 	"testing"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
@@ -140,4 +141,88 @@ func TestSyncRemoteImageInventoryNoOpWhenFeatureDisabled(t *testing.T) {
 	var list sreportalv1alpha1.ImageInventoryList
 	require.NoError(t, cli.List(context.Background(), &list))
 	require.Empty(t, list.Items)
+}
+
+func TestCleanupDisabledFeaturesHandlerDeletesRemoteImageInventoryWhenFeatureDisabled(t *testing.T) {
+	scheme := newSchemeForSyncRemoteImageInventoryTest(t)
+	disabled := false
+	portal := &sreportalv1alpha1.Portal{
+		ObjectMeta: metav1.ObjectMeta{Name: "remote-cleanup", Namespace: "default", UID: "uid-clean"},
+		Spec: sreportalv1alpha1.PortalSpec{
+			Title:    "Cleanup",
+			Remote:   &sreportalv1alpha1.RemotePortalSpec{URL: "http://remote.example/", Portal: "main"},
+			Features: &sreportalv1alpha1.PortalFeatures{ImageInventory: &disabled},
+		},
+	}
+	shadow := &sreportalv1alpha1.ImageInventory{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      chain.RemoteImageInventoryName(portal.Name),
+			Namespace: portal.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				{APIVersion: "sreportal.io/v1alpha1", Kind: "Portal", Name: portal.Name, UID: portal.UID},
+			},
+		},
+		Spec: sreportalv1alpha1.ImageInventorySpec{PortalRef: portal.Name, IsRemote: true, RemoteURL: portal.Spec.Remote.URL},
+	}
+	cli := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal, shadow).Build()
+	h := chain.NewCleanupDisabledFeaturesHandler(cli)
+
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.Portal, chain.ChainData]{Resource: portal}
+	require.NoError(t, h.Handle(context.Background(), rc))
+
+	got := &sreportalv1alpha1.ImageInventory{}
+	err := cli.Get(context.Background(), types.NamespacedName{
+		Name:      chain.RemoteImageInventoryName(portal.Name),
+		Namespace: portal.Namespace,
+	}, got)
+	require.True(t, apierrors.IsNotFound(err), "expected shadow ImageInventory to be deleted, got: %v", err)
+}
+
+func TestCleanupDisabledFeaturesHandlerSkipsRemoteImageInventoryNotOwned(t *testing.T) {
+	scheme := newSchemeForSyncRemoteImageInventoryTest(t)
+	disabled := false
+	portal := &sreportalv1alpha1.Portal{
+		ObjectMeta: metav1.ObjectMeta{Name: "remote-cleanup", Namespace: "default", UID: "uid-clean"},
+		Spec: sreportalv1alpha1.PortalSpec{
+			Title:    "Cleanup",
+			Remote:   &sreportalv1alpha1.RemotePortalSpec{URL: "http://remote.example/", Portal: "main"},
+			Features: &sreportalv1alpha1.PortalFeatures{ImageInventory: &disabled},
+		},
+	}
+	// Shadow CR exists but owned by a different portal.
+	shadow := &sreportalv1alpha1.ImageInventory{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      chain.RemoteImageInventoryName(portal.Name),
+			Namespace: portal.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				{APIVersion: "sreportal.io/v1alpha1", Kind: "Portal", Name: "other-portal", UID: "uid-other"},
+			},
+		},
+		Spec: sreportalv1alpha1.ImageInventorySpec{PortalRef: "other-portal", IsRemote: true, RemoteURL: "http://other.example/"},
+	}
+	cli := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal, shadow).Build()
+	h := chain.NewCleanupDisabledFeaturesHandler(cli)
+
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.Portal, chain.ChainData]{Resource: portal}
+	require.NoError(t, h.Handle(context.Background(), rc))
+
+	got := &sreportalv1alpha1.ImageInventory{}
+	require.NoError(t, cli.Get(context.Background(), types.NamespacedName{
+		Name:      chain.RemoteImageInventoryName(portal.Name),
+		Namespace: portal.Namespace,
+	}, got), "expected shadow ImageInventory to remain (not owned)")
+}
+
+func TestCleanupDisabledFeaturesHandlerNoOpWhenRemoteImageInventoryAbsent(t *testing.T) {
+	scheme := newSchemeForSyncRemoteImageInventoryTest(t)
+	portal := &sreportalv1alpha1.Portal{
+		ObjectMeta: metav1.ObjectMeta{Name: "local-portal", Namespace: "default"},
+		Spec:       sreportalv1alpha1.PortalSpec{Title: "Local", Main: true},
+	}
+	cli := fake.NewClientBuilder().WithScheme(scheme).Build()
+	h := chain.NewCleanupDisabledFeaturesHandler(cli)
+
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.Portal, chain.ChainData]{Resource: portal}
+	require.NoError(t, h.Handle(context.Background(), rc))
+	// No assertion needed beyond the lack of an error.
 }
