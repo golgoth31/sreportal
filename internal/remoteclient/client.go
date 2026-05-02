@@ -182,11 +182,12 @@ func (c *Client) doFetchFQDNs(ctx context.Context, baseURL string, portalName st
 			remoteTitle = matched.Title
 			if matched.Features != nil {
 				remoteFeatures = &sreportalv1alpha1.PortalFeaturesStatus{
-					DNS:           matched.Features.Dns,
-					Releases:      matched.Features.Releases,
-					NetworkPolicy: matched.Features.NetworkPolicy,
-					Alerts:        matched.Features.Alerts,
-					StatusPage:    matched.Features.StatusPage,
+					DNS:            matched.Features.Dns,
+					Releases:       matched.Features.Releases,
+					NetworkPolicy:  matched.Features.NetworkPolicy,
+					Alerts:         matched.Features.Alerts,
+					StatusPage:     matched.Features.StatusPage,
+					ImageInventory: matched.Features.ImageInventory,
 				}
 			}
 		}
