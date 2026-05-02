@@ -59,6 +59,12 @@ spec:
                   interval controls how often this inventory is refreshed.
                   Empty means default 5m.
                 type: string
+              isRemote:
+                description: |-
+                  isRemote marks this inventory as a shadow projection of a remote portal.
+                  When true, the controller fetches images from the remote portal via the
+                  ImageService Connect API instead of scanning the local cluster.
+                type: boolean
               labelSelector:
                 description: |-
                   labelSelector is a Kubernetes label selector string used to filter workloads.
@@ -72,6 +78,13 @@ spec:
               portalRef:
                 description: portalRef is the Portal name this inventory belongs to.
                 minLength: 1
+                type: string
+              remoteURL:
+                description: |-
+                  remoteURL is the base URL of the remote SRE Portal to fetch images from.
+                  Only meaningful when isRemote is true. Populated by the Portal controller
+                  from spec.remote.url on the Portal CR.
+                pattern: ^https?://.*
                 type: string
               watchedKinds:
                 description: |-
