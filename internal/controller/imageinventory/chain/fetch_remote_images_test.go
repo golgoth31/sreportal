@@ -112,7 +112,6 @@ func TestFetchRemoteImagesHandlerPopulatesFromRemote(t *testing.T) {
 		Spec: sreportalv1alpha1.ImageInventorySpec{
 			PortalRef: "remote-portal",
 			IsRemote:  true,
-			RemoteURL: server.URL,
 		},
 	}
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageInventory, ChainData]{Resource: inv}
@@ -141,7 +140,6 @@ func TestFetchRemoteImagesHandlerErrorWhenPortalMissing(t *testing.T) {
 		Spec: sreportalv1alpha1.ImageInventorySpec{
 			PortalRef: "missing-portal",
 			IsRemote:  true,
-			RemoteURL: "http://wherever.example/",
 		},
 	}
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageInventory, ChainData]{Resource: inv}
@@ -163,7 +161,6 @@ func TestFetchRemoteImagesHandlerErrorWhenPortalNotRemote(t *testing.T) {
 		Spec: sreportalv1alpha1.ImageInventorySpec{
 			PortalRef: "main-portal",
 			IsRemote:  true,
-			RemoteURL: "http://wherever.example/",
 		},
 	}
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageInventory, ChainData]{Resource: inv}
@@ -218,7 +215,6 @@ func TestFetchRemoteImagesHandlerBucketsWorkloadsCorrectly(t *testing.T) {
 		Spec: sreportalv1alpha1.ImageInventorySpec{
 			PortalRef: "remote-portal",
 			IsRemote:  true,
-			RemoteURL: server.URL,
 		},
 	}
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageInventory, ChainData]{Resource: inv}

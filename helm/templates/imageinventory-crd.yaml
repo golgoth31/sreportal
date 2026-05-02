@@ -79,13 +79,6 @@ spec:
                 description: portalRef is the Portal name this inventory belongs to.
                 minLength: 1
                 type: string
-              remoteURL:
-                description: |-
-                  remoteURL is the base URL of the remote SRE Portal to fetch images from.
-                  Only meaningful when isRemote is true. Populated by the Portal controller
-                  from spec.remote.url on the Portal CR.
-                pattern: ^https?://.*
-                type: string
               watchedKinds:
                 description: |-
                   watchedKinds declares which workload kinds are scanned for images.

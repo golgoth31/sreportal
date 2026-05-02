@@ -80,7 +80,6 @@ func TestSyncRemoteImageInventoryCreatesShadowCRForRemotePortal(t *testing.T) {
 
 	require.True(t, got.Spec.IsRemote)
 	require.Equal(t, portal.Name, got.Spec.PortalRef)
-	require.Equal(t, portal.Spec.Remote.URL, got.Spec.RemoteURL)
 	require.NotEmpty(t, got.OwnerReferences)
 	require.Equal(t, portal.UID, got.OwnerReferences[0].UID)
 }
@@ -102,7 +101,6 @@ func TestSyncRemoteImageInventoryUpdatesExistingShadowCR(t *testing.T) {
 		Spec: sreportalv1alpha1.ImageInventorySpec{
 			PortalRef: "wrong-portal",
 			IsRemote:  false,
-			RemoteURL: "http://stale.example/",
 		},
 	}
 	cli := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal, stale).Build()
@@ -118,7 +116,6 @@ func TestSyncRemoteImageInventoryUpdatesExistingShadowCR(t *testing.T) {
 	}, got))
 	require.True(t, got.Spec.IsRemote)
 	require.Equal(t, portal.Name, got.Spec.PortalRef)
-	require.Equal(t, "http://old.example/", got.Spec.RemoteURL)
 }
 
 func TestSyncRemoteImageInventoryNoOpWhenFeatureDisabled(t *testing.T) {
@@ -162,7 +159,7 @@ func TestCleanupDisabledFeaturesHandlerDeletesRemoteImageInventoryWhenFeatureDis
 				{APIVersion: "sreportal.io/v1alpha1", Kind: "Portal", Name: portal.Name, UID: portal.UID},
 			},
 		},
-		Spec: sreportalv1alpha1.ImageInventorySpec{PortalRef: portal.Name, IsRemote: true, RemoteURL: portal.Spec.Remote.URL},
+		Spec: sreportalv1alpha1.ImageInventorySpec{PortalRef: portal.Name, IsRemote: true},
 	}
 	cli := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal, shadow).Build()
 	h := chain.NewCleanupDisabledFeaturesHandler(cli)
@@ -198,7 +195,7 @@ func TestCleanupDisabledFeaturesHandlerSkipsRemoteImageInventoryNotOwned(t *test
 				{APIVersion: "sreportal.io/v1alpha1", Kind: "Portal", Name: "other-portal", UID: "uid-other"},
 			},
 		},
-		Spec: sreportalv1alpha1.ImageInventorySpec{PortalRef: "other-portal", IsRemote: true, RemoteURL: "http://other.example/"},
+		Spec: sreportalv1alpha1.ImageInventorySpec{PortalRef: "other-portal", IsRemote: true},
 	}
 	cli := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal, shadow).Build()
 	h := chain.NewCleanupDisabledFeaturesHandler(cli)

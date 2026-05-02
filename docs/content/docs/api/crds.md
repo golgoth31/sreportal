@@ -650,14 +650,12 @@ _Appears in:_
 | `labelSelector` _string_ | labelSelector is a Kubernetes label selector string used to filter workloads. Empty means no label filtering. |   |   |
 | `interval` _[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#duration-v1-meta)_ | interval controls how often this inventory is refreshed. Empty means default 5m. |   |   |
 | `isRemote` _boolean_ | isRemote marks this inventory as a shadow projection of a remote portal. When true, the controller fetches images from the remote portal via the ImageService Connect API instead of scanning the local cluster. |   |   |
-| `remoteURL` _string_ | remoteURL is the base URL of the remote SRE Portal to fetch images from. Only meaningful when isRemote is true. Populated by the Portal controller from spec.remote.url on the Portal CR. |   | Pattern: `^https?://.*` |
 
 
 
 #### sreportal.io/v1alpha1.ImageInventoryStatus
 
 ImageInventoryStatus defines the observed state of ImageInventory.
-remoteURL is the base URL of the remote SRE Portal to fetch images from. Only meaningful when isRemote is true. Populated by the Portal controller from spec.remote.url on the Portal CR.
 
 _Appears in:_
 - [sreportal.io/v1alpha1.ImageInventory](#sreportaliov1alpha1imageinventory)
@@ -767,7 +765,6 @@ _Appears in:_
 | `portalRef` _string_ | portalRef is the name of the Portal this resource is linked to |   |   |
 | `namespaces` _string array_ | namespaces is an optional list of namespaces to scan. When empty, all namespaces are scanned. |   |   |
 | `isRemote` _boolean_ | isRemote indicates that the corresponding portal is remote and the operator should fetch network flows from the remote portal Connect API instead of scanning local Kubernetes NetworkPolicies. |   |   |
-| `remoteURL` _string_ | remoteURL is the base URL of the remote SRE Portal to fetch network flows from. Only used when isRemote is true. |   |   |
 
 
 

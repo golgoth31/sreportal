@@ -38,7 +38,6 @@ var _ = Describe("FetchRemoteGraphHandler", func() {
 				Spec: sreportalv1alpha1.NetworkFlowDiscoverySpec{
 					PortalRef: "test-portal",
 					IsRemote:  isRemote,
-					RemoteURL: "http://remote:8090",
 				},
 			},
 		}

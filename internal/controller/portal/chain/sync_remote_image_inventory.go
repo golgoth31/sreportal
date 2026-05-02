@@ -105,7 +105,6 @@ func (h *SyncRemoteImageInventoryHandler) reconcileRemoteImageInventory(ctx cont
 			Spec: sreportalv1alpha1.ImageInventorySpec{
 				PortalRef: portal.Name,
 				IsRemote:  true,
-				RemoteURL: portal.Spec.Remote.URL,
 			},
 		}
 	}
@@ -122,7 +121,6 @@ func (h *SyncRemoteImageInventoryHandler) reconcileRemoteImageInventory(ctx cont
 	} else {
 		inv.Spec.PortalRef = portal.Name
 		inv.Spec.IsRemote = true
-		inv.Spec.RemoteURL = portal.Spec.Remote.URL
 
 		if err := h.client.Update(ctx, inv); err != nil {
 			return fmt.Errorf("update ImageInventory: %w", err)

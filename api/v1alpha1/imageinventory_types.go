@@ -79,13 +79,6 @@ type ImageInventorySpec struct {
 	// ImageService Connect API instead of scanning the local cluster.
 	// +optional
 	IsRemote bool `json:"isRemote,omitempty"`
-
-	// remoteURL is the base URL of the remote SRE Portal to fetch images from.
-	// Only meaningful when isRemote is true. Populated by the Portal controller
-	// from spec.remote.url on the Portal CR.
-	// +kubebuilder:validation:Pattern=`^https?://.*`
-	// +optional
-	RemoteURL string `json:"remoteURL,omitempty"`
 }
 
 // ImageInventoryStatus defines the observed state of ImageInventory.
