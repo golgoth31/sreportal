@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.32.1](https://github.com/golgoth31/sreportal/compare/v1.32.0...v1.32.1) (2026-05-02)
+
+
+### Bug Fixes
+
+* **remoteclient:** propagate ImageInventory feature flag from remote portal ([0d4e57d](https://github.com/golgoth31/sreportal/commit/0d4e57db930063e96690e9f31bbfd3f5d9548293))
+
 ## [1.32.0](https://github.com/golgoth31/sreportal/compare/v1.31.0...v1.32.0) (2026-05-02)
 
 
