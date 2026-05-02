@@ -143,13 +143,13 @@ var (
 		[]string{"portal", "tag_type"},
 	)
 
-	// ImageInventoryScanTotal counts full scan attempts per ImageInventory resource and result.
-	ImageInventoryScanTotal = prometheus.NewCounterVec(
+	// ImageInventorySyncTotal counts ImageInventory sync attempts per resource and result.
+	ImageInventorySyncTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: "image",
-			Name:      "inventory_scan_total",
-			Help:      "Total number of full scan attempts per ImageInventory resource and result (success, error).",
+			Name:      "inventory_sync_total",
+			Help:      "Total ImageInventory sync attempts by inventory and status (success|error). Counts both local cluster scans and remote-portal fetches.",
 		},
 		[]string{"inventory", "result"},
 	)
@@ -377,7 +377,7 @@ func init() {
 		AlertsFetchErrorsTotal,
 		// Image
 		ImageImagesTotal,
-		ImageInventoryScanTotal,
+		ImageInventorySyncTotal,
 		// Portal
 		PortalsTotal,
 		PortalRemoteSyncErrorsTotal,

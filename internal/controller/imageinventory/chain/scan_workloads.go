@@ -37,59 +37,38 @@ import (
 )
 
 // ScanWorkloadsHandler performs a full scan of the cluster (filtered by the
-// ImageInventory spec) and atomically replaces the portal's projection in the
-// store. It runs on every chain pass — the `interval` on spec bounds how often
-// that happens via RequeueAfter set by UpdateStatusHandler.
+// ImageInventory spec) and populates ChainData.ByWorkload. The actual store
+// projection happens in ProjectImagesHandler so the local and remote paths
+// share a single write path.
 type ScanWorkloadsHandler struct {
 	client client.Client
-	store  domainimage.ImageWriter
 }
 
 // NewScanWorkloadsHandler constructs a ScanWorkloadsHandler.
-func NewScanWorkloadsHandler(c client.Client, store domainimage.ImageWriter) *ScanWorkloadsHandler {
-	return &ScanWorkloadsHandler{client: c, store: store}
+func NewScanWorkloadsHandler(c client.Client) *ScanWorkloadsHandler {
+	return &ScanWorkloadsHandler{client: c}
 }
 
 // Handle implements reconciler.Handler.
+// Scans the cluster for the inventory's watched workload kinds and stores the
+// projection in ChainData. No-op for remote inventories — those are populated
+// by FetchRemoteImagesHandler.
 func (h *ScanWorkloadsHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.ImageInventory, ChainData]) error {
 	inv := rc.Resource
+	if inv.Spec.IsRemote {
+		return nil
+	}
+
 	byWorkload, err := h.scanAll(ctx, inv)
 	if err != nil {
-		metrics.ImageInventoryScanTotal.WithLabelValues(inv.Name, "error").Inc()
+		metrics.ImageInventorySyncTotal.WithLabelValues(inv.Name, "error").Inc()
 		wrapped := fmt.Errorf("full scan: %w", err)
 		_ = statusutil.SetConditionAndPatch(ctx, h.client, inv, ReadyConditionType, metav1.ConditionFalse, ReasonScanFailed, wrapped.Error())
 		return wrapped
 	}
-	if err := h.store.ReplaceAll(ctx, inv.Spec.PortalRef, byWorkload); err != nil {
-		metrics.ImageInventoryScanTotal.WithLabelValues(inv.Name, "error").Inc()
-		wrapped := fmt.Errorf("replace store projection: %w", err)
-		_ = statusutil.SetConditionAndPatch(ctx, h.client, inv, ReadyConditionType, metav1.ConditionFalse, ReasonScanFailed, wrapped.Error())
-		return wrapped
-	}
 
-	metrics.ImageInventoryScanTotal.WithLabelValues(inv.Name, "success").Inc()
-	emitImageTotals(inv.Spec.PortalRef, byWorkload)
+	rc.Data.ByWorkload = byWorkload
 	return nil
-}
-
-// emitImageTotals updates the ImageImagesTotal gauge for the given portal.
-// It resets all known tag-type counters first so stale values don't linger.
-func emitImageTotals(portalRef string, byWorkload map[domainimage.WorkloadKey][]domainimage.ImageView) {
-	tagCounts := map[domainimage.TagType]float64{}
-	for _, views := range byWorkload {
-		for _, v := range views {
-			tagCounts[v.TagType]++
-		}
-	}
-	for _, tt := range []domainimage.TagType{
-		domainimage.TagTypeSemver,
-		domainimage.TagTypeCommit,
-		domainimage.TagTypeDigest,
-		domainimage.TagTypeLatest,
-		domainimage.TagTypeOther,
-	} {
-		metrics.ImageImagesTotal.WithLabelValues(portalRef, string(tt)).Set(tagCounts[tt])
-	}
 }
 
 func (h *ScanWorkloadsHandler) scanAll(ctx context.Context, inv *sreportalv1alpha1.ImageInventory) (map[domainimage.WorkloadKey][]domainimage.ImageView, error) {

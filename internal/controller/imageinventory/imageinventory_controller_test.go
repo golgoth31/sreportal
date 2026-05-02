@@ -33,6 +33,7 @@ import (
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	domainimage "github.com/golgoth31/sreportal/internal/domain/image"
 	"github.com/golgoth31/sreportal/internal/metrics"
+	"github.com/golgoth31/sreportal/internal/remoteclient"
 )
 
 type trackingImageWriter struct {
@@ -82,7 +83,7 @@ func TestReconcileAddsFinalizerOnFirstPass(t *testing.T) {
 		Build()
 	writer := &trackingImageWriter{}
 
-	r := NewImageInventoryReconciler(c, writer)
+	r := NewImageInventoryReconciler(c, writer, remoteclient.NewCache())
 	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "sre", Name: "inv"}})
 	if err != nil {
 		t.Fatalf("Reconcile: %v", err)
@@ -117,7 +118,7 @@ func TestReconcileDeletesPortalProjectionOnDeletion(t *testing.T) {
 		Build()
 	writer := &trackingImageWriter{}
 
-	r := NewImageInventoryReconciler(c, writer)
+	r := NewImageInventoryReconciler(c, writer, remoteclient.NewCache())
 	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "sre", Name: "inv"}})
 	if err != nil {
 		t.Fatalf("Reconcile: %v", err)
@@ -140,14 +141,14 @@ func TestReconcileDeletesMetricsOnDeletion(t *testing.T) {
 	// Pre-seed the metrics so we can later assert they were cleaned up.
 	metrics.ImageImagesTotal.WithLabelValues(portalRef, "semver").Set(7)
 	metrics.ImageImagesTotal.WithLabelValues(portalRef, "digest").Set(3)
-	metrics.ImageInventoryScanTotal.WithLabelValues(inventoryName, "success").Inc()
+	metrics.ImageInventorySyncTotal.WithLabelValues(inventoryName, "success").Inc()
 
 	// Sanity check: the gauges/counters are populated before reconciliation.
 	if got := testutil.ToFloat64(metrics.ImageImagesTotal.WithLabelValues(portalRef, "semver")); got != 7 {
 		t.Fatalf("pre-condition: ImageImagesTotal{semver}=%v want 7", got)
 	}
-	if got := testutil.ToFloat64(metrics.ImageInventoryScanTotal.WithLabelValues(inventoryName, "success")); got != 1 {
-		t.Fatalf("pre-condition: ImageInventoryScanTotal{success}=%v want 1", got)
+	if got := testutil.ToFloat64(metrics.ImageInventorySyncTotal.WithLabelValues(inventoryName, "success")); got != 1 {
+		t.Fatalf("pre-condition: ImageInventorySyncTotal{success}=%v want 1", got)
 	}
 
 	sch := newControllerScheme(t)
@@ -167,7 +168,7 @@ func TestReconcileDeletesMetricsOnDeletion(t *testing.T) {
 		Build()
 	writer := &trackingImageWriter{}
 
-	r := NewImageInventoryReconciler(c, writer)
+	r := NewImageInventoryReconciler(c, writer, remoteclient.NewCache())
 	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "sre", Name: inventoryName}})
 	if err != nil {
 		t.Fatalf("Reconcile: %v", err)
@@ -181,7 +182,7 @@ func TestReconcileDeletesMetricsOnDeletion(t *testing.T) {
 	if remaining := metrics.ImageImagesTotal.DeletePartialMatch(map[string]string{"portal": portalRef}); remaining != 0 {
 		t.Fatalf("ImageImagesTotal still had %d children for portal=%q after deletion", remaining, portalRef)
 	}
-	if remaining := metrics.ImageInventoryScanTotal.DeletePartialMatch(map[string]string{"inventory": inventoryName}); remaining != 0 {
-		t.Fatalf("ImageInventoryScanTotal still had %d children for inventory=%q after deletion", remaining, inventoryName)
+	if remaining := metrics.ImageInventorySyncTotal.DeletePartialMatch(map[string]string{"inventory": inventoryName}); remaining != 0 {
+		t.Fatalf("ImageInventorySyncTotal still had %d children for inventory=%q after deletion", remaining, inventoryName)
 	}
 }

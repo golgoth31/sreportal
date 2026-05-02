@@ -73,6 +73,12 @@ type ImageInventorySpec struct {
 	// Empty means default 5m.
 	// +optional
 	Interval metav1.Duration `json:"interval,omitempty"`
+
+	// isRemote marks this inventory as a shadow projection of a remote portal.
+	// When true, the controller fetches images from the remote portal via the
+	// ImageService Connect API instead of scanning the local cluster.
+	// +optional
+	IsRemote bool `json:"isRemote,omitempty"`
 }
 
 // ImageInventoryStatus defines the observed state of ImageInventory.

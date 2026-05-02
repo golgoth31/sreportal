@@ -35,6 +35,7 @@ import (
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/metrics"
 	"github.com/golgoth31/sreportal/internal/reconciler"
+	"github.com/golgoth31/sreportal/internal/remoteclient"
 )
 
 // finalizerName is the finalizer added to ImageInventory CRs so the controller
@@ -50,11 +51,13 @@ type ImageInventoryReconciler struct {
 }
 
 // NewImageInventoryReconciler creates a new ImageInventoryReconciler with the handler chain.
-func NewImageInventoryReconciler(c client.Client, store domainimage.ImageWriter) *ImageInventoryReconciler {
+func NewImageInventoryReconciler(c client.Client, store domainimage.ImageWriter, remoteClientCache *remoteclient.Cache) *ImageInventoryReconciler {
 	chain := reconciler.NewChain(
 		imageinventorychain.NewValidateSpecHandler(c),
 		imageinventorychain.NewValidatePortalRefHandler(c),
-		imageinventorychain.NewScanWorkloadsHandler(c, store),
+		imageinventorychain.NewFetchRemoteImagesHandler(c, remoteClientCache),
+		imageinventorychain.NewScanWorkloadsHandler(c),
+		imageinventorychain.NewProjectImagesHandler(c, store),
 		imageinventorychain.NewUpdateStatusHandler(c),
 	)
 	return &ImageInventoryReconciler{
@@ -93,7 +96,7 @@ func (r *ImageInventoryReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			// reconciliation will repopulate the gauge — this mirrors the
 			// readstore cleanup model above.
 			metrics.ImageImagesTotal.DeletePartialMatch(prometheus.Labels{"portal": inv.Spec.PortalRef})
-			metrics.ImageInventoryScanTotal.DeletePartialMatch(prometheus.Labels{"inventory": inv.Name})
+			metrics.ImageInventorySyncTotal.DeletePartialMatch(prometheus.Labels{"inventory": inv.Name})
 			controllerutil.RemoveFinalizer(&inv, finalizerName)
 			if err := r.Update(ctx, &inv); err != nil {
 				return ctrl.Result{}, fmt.Errorf("remove finalizer: %w", err)

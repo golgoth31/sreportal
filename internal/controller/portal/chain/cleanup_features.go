@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
@@ -60,6 +61,18 @@ func (h *CleanupDisabledFeaturesHandler) Handle(ctx context.Context, rc *reconci
 	if !portal.Spec.Features.IsNetworkPolicyEnabled() {
 		if err := h.cleanupNetworkFlowData(ctx, portal, &rc.Data); err != nil {
 			logger.Error(err, "failed to clean up network flow data for disabled feature")
+		}
+	}
+
+	// Clean up the remote ImageInventory shadow CR when (a) the portal is no
+	// longer remote, or (b) the portal is remote but the imageInventory feature
+	// is disabled. The Get quickly returns NotFound for portals that never had
+	// a shadow CR, so the no-op cost is a single API call per reconcile.
+	shouldCleanupRemoteImageInventory := portal.Spec.Remote == nil ||
+		!portal.Spec.Features.IsImageInventoryEnabled()
+	if shouldCleanupRemoteImageInventory {
+		if err := h.cleanupRemoteImageInventory(ctx, portal); err != nil {
+			logger.Error(err, "failed to clean up remote ImageInventory")
 		}
 	}
 
@@ -145,6 +158,40 @@ func (h *CleanupDisabledFeaturesHandler) cleanupReleaseData(ctx context.Context,
 
 	logger.Info("cleaned up release data for disabled feature",
 		"portal", portal.Name, "releaseCount", len(releaseList.Items))
+	return nil
+}
+
+// cleanupRemoteImageInventory deletes the shadow ImageInventory CR (named
+// "remote-<portal>") when the imageInventory feature is disabled on a remote
+// portal, or when the portal is no longer remote. The ImageInventory finalizer
+// purges the read-store projection on its own as part of CR deletion.
+func (h *CleanupDisabledFeaturesHandler) cleanupRemoteImageInventory(ctx context.Context, portal *sreportalv1alpha1.Portal) error {
+	logger := log.FromContext(ctx)
+
+	invName := RemoteImageInventoryName(portal.Name)
+	inv := &sreportalv1alpha1.ImageInventory{}
+	if err := h.client.Get(ctx, types.NamespacedName{Name: invName, Namespace: portal.Namespace}, inv); err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("get remote ImageInventory: %w", err)
+	}
+
+	owned := false
+	for _, ref := range inv.OwnerReferences {
+		if ref.UID == portal.UID {
+			owned = true
+			break
+		}
+	}
+	if !owned {
+		return nil
+	}
+
+	if err := h.client.Delete(ctx, inv); err != nil && !errors.IsNotFound(err) {
+		return fmt.Errorf("delete remote ImageInventory: %w", err)
+	}
+	logger.Info("deleted remote ImageInventory (feature disabled or portal no longer remote)", "name", invName)
 	return nil
 }
 

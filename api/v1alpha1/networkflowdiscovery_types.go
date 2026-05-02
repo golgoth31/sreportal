@@ -37,11 +37,6 @@ type NetworkFlowDiscoverySpec struct {
 	// scanning local Kubernetes NetworkPolicies.
 	// +optional
 	IsRemote bool `json:"isRemote,omitempty"`
-
-	// remoteURL is the base URL of the remote SRE Portal to fetch network flows from.
-	// Only used when isRemote is true.
-	// +optional
-	RemoteURL string `json:"remoteURL,omitempty"`
 }
 
 // NetworkFlowDiscoveryStatus defines the observed state of NetworkFlowDiscovery.

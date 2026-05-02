@@ -73,11 +73,6 @@ spec:
                   to
                 minLength: 1
                 type: string
-              remoteURL:
-                description: |-
-                  remoteURL is the base URL of the remote SRE Portal to fetch network flows from.
-                  Only used when isRemote is true.
-                type: string
             required:
             - portalRef
             type: object

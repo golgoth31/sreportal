@@ -2,7 +2,6 @@ package chain
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"testing"
 
@@ -59,7 +58,9 @@ func newChainScheme(t *testing.T) *runtime.Scheme {
 	return sch
 }
 
-func TestScanWorkloadsReplacesAll(t *testing.T) {
+// --- ScanWorkloadsHandler tests ---
+
+func TestScanWorkloadsPopulatesByWorkload(t *testing.T) {
 	t.Parallel()
 	sch := newChainScheme(t)
 
@@ -72,8 +73,7 @@ func TestScanWorkloadsReplacesAll(t *testing.T) {
 		},
 	}
 	c := fake.NewClientBuilder().WithScheme(sch).WithObjects(dep).Build()
-	writer := &fakeImageWriter{}
-	h := NewScanWorkloadsHandler(c, writer)
+	h := NewScanWorkloadsHandler(c)
 
 	inv := &sreportalv1alpha1.ImageInventory{
 		ObjectMeta: metav1.ObjectMeta{Name: "inv", Namespace: "sre"},
@@ -87,38 +87,74 @@ func TestScanWorkloadsReplacesAll(t *testing.T) {
 	if err := h.Handle(context.Background(), rc); err != nil {
 		t.Fatalf("Handle: %v", err)
 	}
-	if len(writer.replaceAlls) != 1 {
-		t.Fatalf("want 1 ReplaceAll, got %d", len(writer.replaceAlls))
+	if len(rc.Data.ByWorkload) != 1 {
+		t.Fatalf("ByWorkload entries=%d want 1", len(rc.Data.ByWorkload))
 	}
-	call := writer.replaceAlls[0]
-	if call.portalRef != "portal-a" {
-		t.Fatalf("portalRef=%q want portal-a", call.portalRef)
+	wk := domainimage.WorkloadKey{Kind: "Deployment", Namespace: "default", Name: "api"}
+	views, ok := rc.Data.ByWorkload[wk]
+	if !ok {
+		t.Fatalf("expected workload key %+v in ByWorkload", wk)
 	}
-	if len(call.byWorkload) != 1 {
-		t.Fatalf("byWorkload entries=%d want 1", len(call.byWorkload))
+	if len(views) == 0 {
+		t.Fatalf("expected at least one ImageView for workload %+v", wk)
 	}
 }
 
-func TestScanWorkloadsPropagatesErrorAndPatchesNotReady(t *testing.T) {
+func TestScanWorkloadsIsRemoteNoOp(t *testing.T) {
 	t.Parallel()
 	sch := newChainScheme(t)
 
+	dep := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: "api", Namespace: "default"},
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "web", Image: "ghcr.io/acme/api:v1"}}},
+			},
+		},
+	}
+	c := fake.NewClientBuilder().WithScheme(sch).WithObjects(dep).Build()
+	h := NewScanWorkloadsHandler(c)
+
 	inv := &sreportalv1alpha1.ImageInventory{
 		ObjectMeta: metav1.ObjectMeta{Name: "inv", Namespace: "sre"},
-		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: "portal-a"},
+		Spec: sreportalv1alpha1.ImageInventorySpec{
+			PortalRef:    "portal-a",
+			IsRemote:     true,
+			WatchedKinds: []sreportalv1alpha1.ImageInventoryKind{sreportalv1alpha1.ImageInventoryKindDeployment},
+		},
+	}
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageInventory, ChainData]{Resource: inv}
+
+	if err := h.Handle(context.Background(), rc); err != nil {
+		t.Fatalf("Handle: %v", err)
+	}
+	if rc.Data.ByWorkload != nil {
+		t.Fatalf("expected ByWorkload to be nil for remote inventory, got %v", rc.Data.ByWorkload)
+	}
+}
+
+func TestScanWorkloadsPropagatesScanError(t *testing.T) {
+	t.Parallel()
+	sch := newChainScheme(t)
+
+	// Build a client with an invalid labelSelector so scanAll returns an error.
+	inv := &sreportalv1alpha1.ImageInventory{
+		ObjectMeta: metav1.ObjectMeta{Name: "inv", Namespace: "sre"},
+		Spec: sreportalv1alpha1.ImageInventorySpec{
+			PortalRef:     "portal-a",
+			LabelSelector: "!!!invalid!!!",
+		},
 	}
 	c := fake.NewClientBuilder().WithScheme(sch).
 		WithObjects(inv).
 		WithStatusSubresource(&sreportalv1alpha1.ImageInventory{}).
 		Build()
-	writer := &fakeImageWriter{replaceErr: errors.New("boom")}
-	h := NewScanWorkloadsHandler(c, writer)
-
+	h := NewScanWorkloadsHandler(c)
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageInventory, ChainData]{Resource: inv}
 
 	err := h.Handle(context.Background(), rc)
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatalf("expected error from invalid labelSelector")
 	}
 
 	var got sreportalv1alpha1.ImageInventory

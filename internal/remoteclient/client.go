@@ -460,6 +460,95 @@ func (c *Client) doFetchNetworkPolicies(ctx context.Context, baseURL string) (*N
 	}, nil
 }
 
+// RemoteImage is a domain-friendly view of a single image entry returned by
+// a remote portal's ImageService. It exists so chain handlers don't need to
+// import the proto package directly.
+type RemoteImage struct {
+	Registry   string
+	Repository string
+	Tag        string
+	TagType    string
+	Workloads  []RemoteImageWorkload
+}
+
+// RemoteImageWorkload describes a workload using a remote image.
+type RemoteImageWorkload struct {
+	Kind      string
+	Namespace string
+	Name      string
+	Container string
+	Source    string
+}
+
+// ImagesFetchResult contains the result of fetching images from a remote portal.
+type ImagesFetchResult struct {
+	// Images contains the image entries returned by the remote ImageService.
+	Images []*RemoteImage
+}
+
+// FetchImages fetches the image inventory of a remote portal via the
+// ImageService Connect API. The portalName parameter filters images by portal
+// on the remote side.
+func (c *Client) FetchImages(ctx context.Context, baseURL string, portalName string) (*ImagesFetchResult, error) {
+	var lastErr error
+
+	for attempt := 0; attempt < c.retryAttempts; attempt++ {
+		if attempt > 0 {
+			delay := c.retryDelay * time.Duration(1<<(attempt-1))
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(delay):
+			}
+		}
+
+		result, err := c.doFetchImages(ctx, baseURL, portalName)
+		if err == nil {
+			return result, nil
+		}
+		lastErr = err
+	}
+
+	return nil, fmt.Errorf("fetch images failed after %d attempts: %w", c.retryAttempts, lastErr)
+}
+
+func (c *Client) doFetchImages(ctx context.Context, baseURL string, portalName string) (*ImagesFetchResult, error) {
+	imageClient := sreportalv1connect.NewImageServiceClient(
+		c.httpClient,
+		baseURL,
+	)
+
+	resp, err := imageClient.ListImages(ctx, connect.NewRequest(&sreportalv1.ListImagesRequest{
+		Portal: portalName,
+	}))
+	if err != nil {
+		return nil, fmt.Errorf("fetch images from remote portal: %w", err)
+	}
+
+	images := make([]*RemoteImage, 0, len(resp.Msg.Images))
+	for _, in := range resp.Msg.Images {
+		workloads := make([]RemoteImageWorkload, 0, len(in.Workloads))
+		for _, w := range in.Workloads {
+			workloads = append(workloads, RemoteImageWorkload{
+				Kind:      w.Kind,
+				Namespace: w.Namespace,
+				Name:      w.Name,
+				Container: w.Container,
+				Source:    w.Source,
+			})
+		}
+		images = append(images, &RemoteImage{
+			Registry:   in.Registry,
+			Repository: in.Repository,
+			Tag:        in.Tag,
+			TagType:    in.TagType,
+			Workloads:  workloads,
+		})
+	}
+
+	return &ImagesFetchResult{Images: images}, nil
+}
+
 // HealthCheck performs a health check on a remote portal by attempting to list portals.
 func (c *Client) HealthCheck(ctx context.Context, baseURL string) error {
 	portalClient := sreportalv1connect.NewPortalServiceClient(

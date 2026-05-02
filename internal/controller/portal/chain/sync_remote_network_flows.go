@@ -103,7 +103,6 @@ func (h *SyncRemoteNetworkFlowsHandler) reconcileRemoteNetworkFlows(ctx context.
 			Spec: sreportalv1alpha1.NetworkFlowDiscoverySpec{
 				PortalRef: portal.Name,
 				IsRemote:  true,
-				RemoteURL: portal.Spec.Remote.URL,
 			},
 		}
 	}
@@ -120,7 +119,6 @@ func (h *SyncRemoteNetworkFlowsHandler) reconcileRemoteNetworkFlows(ctx context.
 	} else {
 		nfd.Spec.PortalRef = portal.Name
 		nfd.Spec.IsRemote = true
-		nfd.Spec.RemoteURL = portal.Spec.Remote.URL
 		if err := h.client.Update(ctx, nfd); err != nil {
 			return fmt.Errorf("update NetworkFlowDiscovery: %w", err)
 		}

@@ -70,6 +70,26 @@ func (m *mockPortalServiceHandler) ListPortals(
 	}), nil
 }
 
+// mockImageServiceHandler implements the Image service for testing.
+type mockImageServiceHandler struct {
+	sreportalv1connect.UnimplementedImageServiceHandler
+	images []*sreportalv1.Image
+	err    error
+}
+
+func (m *mockImageServiceHandler) ListImages(
+	_ context.Context,
+	_ *connect.Request[sreportalv1.ListImagesRequest],
+) (*connect.Response[sreportalv1.ListImagesResponse], error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return connect.NewResponse(&sreportalv1.ListImagesResponse{
+		Images:     m.images,
+		TotalCount: int32(len(m.images)),
+	}), nil
+}
+
 func TestNewClient(t *testing.T) {
 	t.Run("default options", func(t *testing.T) {
 		client := NewClient()
@@ -488,5 +508,57 @@ func TestConvertToGroups(t *testing.T) {
 		assert.Len(t, groups[0].FQDNs, 1)
 		// LastSeen should be set to approximately now
 		assert.WithinDuration(t, time.Now(), groups[0].FQDNs[0].LastSeen.Time, 5*time.Second)
+	})
+}
+
+func TestFetchImages(t *testing.T) {
+	t.Run("returns images from remote ImageService", func(t *testing.T) {
+		imageHandler := &mockImageServiceHandler{
+			images: []*sreportalv1.Image{
+				{
+					Registry:   "ghcr.io",
+					Repository: "acme/api",
+					Tag:        "1.2.3",
+					TagType:    "semver",
+					Workloads: []*sreportalv1.WorkloadRef{
+						{Kind: "Deployment", Namespace: "default", Name: "api", Container: "main", Source: "spec"},
+					},
+				},
+			},
+		}
+
+		mux := http.NewServeMux()
+		mux.Handle(sreportalv1connect.NewImageServiceHandler(imageHandler))
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := NewClient(WithRetryAttempts(1))
+		result, err := client.FetchImages(context.Background(), server.URL, "main")
+		require.NoError(t, err)
+		require.Len(t, result.Images, 1)
+		require.Equal(t, "ghcr.io", result.Images[0].Registry)
+		require.Equal(t, "acme/api", result.Images[0].Repository)
+		require.Equal(t, "1.2.3", result.Images[0].Tag)
+		require.Equal(t, "semver", result.Images[0].TagType)
+		require.Len(t, result.Images[0].Workloads, 1)
+		require.Equal(t, "spec", result.Images[0].Workloads[0].Source)
+	})
+
+	t.Run("returns error when remote returns failure", func(t *testing.T) {
+		imageHandler := &mockImageServiceHandler{
+			err: connect.NewError(connect.CodeInternal, assert.AnError),
+		}
+
+		mux := http.NewServeMux()
+		mux.Handle(sreportalv1connect.NewImageServiceHandler(imageHandler))
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := NewClient(WithRetryAttempts(1))
+		_, err := client.FetchImages(context.Background(), server.URL, "main")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "fetch images failed after 1 attempts")
 	})
 }

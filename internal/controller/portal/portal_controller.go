@@ -78,6 +78,7 @@ func NewPortalReconciler(c client.Client, scheme *runtime.Scheme, cache *remotec
 		portalchain.NewSyncRemoteDNSHandler(c, scheme),
 		portalchain.NewSyncRemoteAlertmanagerHandler(c, scheme),
 		portalchain.NewSyncRemoteNetworkFlowsHandler(c, scheme),
+		portalchain.NewSyncRemoteImageInventoryHandler(c, scheme),
 		portalchain.NewUpdateStatusHandler(c),
 	}
 
@@ -88,6 +89,7 @@ func NewPortalReconciler(c client.Client, scheme *runtime.Scheme, cache *remotec
 	}
 }
 
+// +kubebuilder:rbac:groups=sreportal.io,resources=imageinventories,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=sreportal.io,resources=releases,verbs=list
 // +kubebuilder:rbac:groups=sreportal.io,resources=portals,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=sreportal.io,resources=portals/status,verbs=get;update;patch
