@@ -59,8 +59,7 @@ var ErrPortalNotFound = errors.New("portal not found")
 type ChainData struct {
 	// ByWorkload is the per-workload image projection for the inventory's
 	// portal, populated either by ScanWorkloadsHandler (local) or by
-	// FetchRemoteImagesHandler (remote, future task), and consumed by
-	// ProjectImagesHandler.
+	// FetchRemoteImagesHandler (remote), and consumed by ProjectImagesHandler.
 	ByWorkload map[domainimage.WorkloadKey][]domainimage.ImageView
 }
 
