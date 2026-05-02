@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.32.0](https://github.com/golgoth31/sreportal/compare/v1.31.0...v1.32.0) (2026-05-02)
+
+
+### Features
+
+* **image:** add remote-portal support to image inventory ([#223](https://github.com/golgoth31/sreportal/issues/223)) ([e80c7fb](https://github.com/golgoth31/sreportal/commit/e80c7fb94c8ecc0ecc304d855cfd33101ac9eeb3))
+
 ## [1.31.0](https://github.com/golgoth31/sreportal/compare/v1.30.0...v1.31.0) (2026-05-01)
 
 
