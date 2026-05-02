@@ -119,17 +119,17 @@ func (h *SyncRemoteImageInventoryHandler) reconcileRemoteImageInventory(ctx cont
 			return fmt.Errorf("create ImageInventory: %w", err)
 		}
 		logger.Info("created ImageInventory CR for remote portal", "imageInventory", invName)
-		return nil
+	} else {
+		inv.Spec.PortalRef = portal.Name
+		inv.Spec.IsRemote = true
+		inv.Spec.RemoteURL = portal.Spec.Remote.URL
+
+		if err := h.client.Update(ctx, inv); err != nil {
+			return fmt.Errorf("update ImageInventory: %w", err)
+		}
+		logger.V(1).Info("updated ImageInventory CR for remote portal", "imageInventory", invName)
 	}
 
-	inv.Spec.PortalRef = portal.Name
-	inv.Spec.IsRemote = true
-	inv.Spec.RemoteURL = portal.Spec.Remote.URL
-
-	if err := h.client.Update(ctx, inv); err != nil {
-		return fmt.Errorf("update ImageInventory: %w", err)
-	}
-	logger.V(1).Info("updated ImageInventory CR for remote portal", "imageInventory", invName)
 	return nil
 }
 

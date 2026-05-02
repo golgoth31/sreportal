@@ -84,6 +84,42 @@ func TestSyncRemoteImageInventoryCreatesShadowCRForRemotePortal(t *testing.T) {
 	require.Equal(t, portal.UID, got.OwnerReferences[0].UID)
 }
 
+func TestSyncRemoteImageInventoryUpdatesExistingShadowCR(t *testing.T) {
+	scheme := newSchemeForSyncRemoteImageInventoryTest(t)
+	portal := &sreportalv1alpha1.Portal{
+		ObjectMeta: metav1.ObjectMeta{Name: "remote-update", Namespace: "default", UID: "uid-update"},
+		Spec: sreportalv1alpha1.PortalSpec{
+			Title:  "Remote Update",
+			Remote: &sreportalv1alpha1.RemotePortalSpec{URL: "http://old.example/", Portal: "main"},
+		},
+	}
+	stale := &sreportalv1alpha1.ImageInventory{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      chain.RemoteImageInventoryName(portal.Name),
+			Namespace: portal.Namespace,
+		},
+		Spec: sreportalv1alpha1.ImageInventorySpec{
+			PortalRef: "wrong-portal",
+			IsRemote:  false,
+			RemoteURL: "http://stale.example/",
+		},
+	}
+	cli := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal, stale).Build()
+	h := chain.NewSyncRemoteImageInventoryHandler(cli, scheme)
+
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.Portal, chain.ChainData]{Resource: portal}
+	require.NoError(t, h.Handle(context.Background(), rc))
+
+	got := &sreportalv1alpha1.ImageInventory{}
+	require.NoError(t, cli.Get(context.Background(), types.NamespacedName{
+		Name:      chain.RemoteImageInventoryName(portal.Name),
+		Namespace: portal.Namespace,
+	}, got))
+	require.True(t, got.Spec.IsRemote)
+	require.Equal(t, portal.Name, got.Spec.PortalRef)
+	require.Equal(t, "http://old.example/", got.Spec.RemoteURL)
+}
+
 func TestSyncRemoteImageInventoryNoOpWhenFeatureDisabled(t *testing.T) {
 	scheme := newSchemeForSyncRemoteImageInventoryTest(t)
 	disabled := false
