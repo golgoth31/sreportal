@@ -37,16 +37,16 @@ func TestProjectImagesHandlerWritesToStore(t *testing.T) {
 	sch := newChainScheme(t)
 
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "inv", Namespace: "sre"},
-		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: "portal-a"},
+		ObjectMeta: metav1.ObjectMeta{Name: tNameInv, Namespace: tNsSre},
+		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: tPortalA},
 	}
 	c := fake.NewClientBuilder().WithScheme(sch).WithObjects(inv).Build()
 	writer := &fakeImageWriter{}
 	h := NewProjectImagesHandler(c, writer)
 
 	byWorkload := map[domainimage.WorkloadKey][]domainimage.ImageView{
-		{Kind: "Deployment", Namespace: "default", Name: "api"}: {
-			{Registry: "ghcr.io", Repository: "acme/api", Tag: "v1.2.3", TagType: domainimage.TagTypeSemver},
+		{Kind: tKindDeploy, Namespace: tNsDefault, Name: tNameAPI}: {
+			{Registry: "ghcr.io", Repository: tRepoAcmeAPI, Tag: "v1.2.3", TagType: domainimage.TagTypeSemver},
 		},
 	}
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageInventory, ChainData]{
@@ -61,7 +61,7 @@ func TestProjectImagesHandlerWritesToStore(t *testing.T) {
 		t.Fatalf("want 1 ReplaceAll, got %d", len(writer.replaceAlls))
 	}
 	call := writer.replaceAlls[0]
-	if call.portalRef != "portal-a" {
+	if call.portalRef != tPortalA {
 		t.Fatalf("portalRef=%q want portal-a", call.portalRef)
 	}
 	if len(call.byWorkload) != 1 {
@@ -74,8 +74,8 @@ func TestProjectImagesHandlerNilByWorkloadWritesEmpty(t *testing.T) {
 	sch := newChainScheme(t)
 
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "inv", Namespace: "sre"},
-		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: "portal-a"},
+		ObjectMeta: metav1.ObjectMeta{Name: tNameInv, Namespace: tNsSre},
+		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: tPortalA},
 	}
 	c := fake.NewClientBuilder().WithScheme(sch).WithObjects(inv).Build()
 	writer := &fakeImageWriter{}
@@ -100,8 +100,8 @@ func TestProjectImagesHandlerStoreErrorPatchesNotReady(t *testing.T) {
 	sch := newChainScheme(t)
 
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "inv", Namespace: "sre"},
-		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: "portal-a"},
+		ObjectMeta: metav1.ObjectMeta{Name: tNameInv, Namespace: tNsSre},
+		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: tPortalA},
 	}
 	c := fake.NewClientBuilder().WithScheme(sch).
 		WithObjects(inv).
@@ -118,7 +118,7 @@ func TestProjectImagesHandlerStoreErrorPatchesNotReady(t *testing.T) {
 	}
 
 	var got sreportalv1alpha1.ImageInventory
-	if err := c.Get(context.Background(), types.NamespacedName{Namespace: "sre", Name: "inv"}, &got); err != nil {
+	if err := c.Get(context.Background(), types.NamespacedName{Namespace: tNsSre, Name: tNameInv}, &got); err != nil {
 		t.Fatalf("Get: %v", err)
 	}
 	cond := findCondition(got.Status.Conditions, ReadyConditionType)
@@ -141,10 +141,10 @@ func TestScanThenProjectEndToEnd(t *testing.T) {
 	sch := newChainScheme(t)
 
 	dep := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{Name: "api", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: tNameAPI, Namespace: tNsDefault},
 		Spec: appsv1.DeploymentSpec{
 			Template: corev1.PodTemplateSpec{
-				Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "web", Image: "ghcr.io/acme/api:v1.0.0"}}},
+				Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: tNameWeb, Image: "ghcr.io/acme/api:v1.0.0"}}},
 			},
 		},
 	}
@@ -152,9 +152,9 @@ func TestScanThenProjectEndToEnd(t *testing.T) {
 	writer := &fakeImageWriter{}
 
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "inv", Namespace: "sre"},
+		ObjectMeta: metav1.ObjectMeta{Name: tNameInv, Namespace: tNsSre},
 		Spec: sreportalv1alpha1.ImageInventorySpec{
-			PortalRef:    "portal-a",
+			PortalRef:    tPortalA,
 			WatchedKinds: []sreportalv1alpha1.ImageInventoryKind{sreportalv1alpha1.ImageInventoryKindDeployment},
 		},
 	}
@@ -174,7 +174,7 @@ func TestScanThenProjectEndToEnd(t *testing.T) {
 		t.Fatalf("want 1 ReplaceAll, got %d", len(writer.replaceAlls))
 	}
 	call := writer.replaceAlls[0]
-	if call.portalRef != "portal-a" {
+	if call.portalRef != tPortalA {
 		t.Fatalf("portalRef=%q want portal-a", call.portalRef)
 	}
 	if len(call.byWorkload) != 1 {

@@ -52,8 +52,8 @@ var _ = Describe("UpdateStatusHandler", func() {
 	newComponent := func() *sreportalv1alpha1.Component {
 		return &sreportalv1alpha1.Component{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-component",
-				Namespace: "default",
+				Name:      tNameTestComp,
+				Namespace: tNsDefault,
 			},
 			Spec: sreportalv1alpha1.ComponentSpec{
 				PortalRef: "my-portal",
@@ -100,7 +100,7 @@ var _ = Describe("UpdateStatusHandler", func() {
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
 			var updated sreportalv1alpha1.Component
-			Expect(c.Get(context.Background(), types.NamespacedName{Name: "test-component", Namespace: "default"}, &updated)).To(Succeed())
+			Expect(c.Get(context.Background(), types.NamespacedName{Name: tNameTestComp, Namespace: tNsDefault}, &updated)).To(Succeed())
 			Expect(updated.Status.ComputedStatus).To(Equal(sreportalv1alpha1.ComputedStatusDegraded))
 			Expect(updated.Status.LastStatusChange).NotTo(BeNil())
 		})
@@ -123,7 +123,7 @@ var _ = Describe("UpdateStatusHandler", func() {
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
 			var updated sreportalv1alpha1.Component
-			Expect(c.Get(context.Background(), types.NamespacedName{Name: "test-component", Namespace: "default"}, &updated)).To(Succeed())
+			Expect(c.Get(context.Background(), types.NamespacedName{Name: tNameTestComp, Namespace: tNsDefault}, &updated)).To(Succeed())
 			Expect(updated.Labels).To(HaveKeyWithValue("sreportal.io/portal", "my-portal"))
 		})
 	})

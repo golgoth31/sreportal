@@ -46,11 +46,18 @@ type IncidentView struct {
 	DurationMinutes int
 }
 
+// Component status values implied by incident severities.
+const (
+	statusMajorOutage = "major_outage"
+	statusPartialOut  = "partial_outage"
+	statusDegraded    = "degraded"
+)
+
 // severityToStatus maps incident severity to the component status it implies.
 var severityToStatus = map[IncidentSeverity]string{
-	SeverityCritical: "major_outage",
-	SeverityMajor:    "partial_outage",
-	SeverityMinor:    "degraded",
+	SeverityCritical: statusMajorOutage,
+	SeverityMajor:    statusPartialOut,
+	SeverityMinor:    statusDegraded,
 }
 
 // SeverityToComponentStatus returns the component status implied by the given severity.
@@ -59,7 +66,7 @@ func SeverityToComponentStatus(severity IncidentSeverity) string {
 	if s, ok := severityToStatus[severity]; ok {
 		return s
 	}
-	return "degraded"
+	return statusDegraded
 }
 
 // AffectsComponent returns true if the incident is active (non-resolved) and

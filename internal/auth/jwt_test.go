@@ -89,17 +89,17 @@ func TestJWT_ValidToken(t *testing.T) {
 	key := mustGenerateKey(t)
 	cfg := config.JWTAuthConfig{
 		Issuers: []config.JWTIssuerConfig{{
-			Name:      "test",
-			IssuerURL: "https://issuer.example.com/",
-			Audience:  "sreportal",
+			Name:      tValTest,
+			IssuerURL: tIssuerURL,
+			Audience:  tNameSreportal,
 		}},
 	}
 	a := newTestJWTAuth(t, key, cfg)
 
 	token := signToken(t, key, jwt.MapClaims{
-		"iss": "https://issuer.example.com/",
-		"aud": "sreportal",
-		"exp": time.Now().Add(time.Hour).Unix(),
+		tClaimIss: tIssuerURL,
+		"aud":     tNameSreportal,
+		tClaimExp: time.Now().Add(time.Hour).Unix(),
 	})
 
 	err := a.Authenticate(context.Background(), bearerHeader(token))
@@ -110,15 +110,15 @@ func TestJWT_ExpiredToken(t *testing.T) {
 	key := mustGenerateKey(t)
 	cfg := config.JWTAuthConfig{
 		Issuers: []config.JWTIssuerConfig{{
-			Name:      "test",
-			IssuerURL: "https://issuer.example.com/",
+			Name:      tValTest,
+			IssuerURL: tIssuerURL,
 		}},
 	}
 	a := newTestJWTAuth(t, key, cfg)
 
 	token := signToken(t, key, jwt.MapClaims{
-		"iss": "https://issuer.example.com/",
-		"exp": time.Now().Add(-time.Hour).Unix(),
+		tClaimIss: tIssuerURL,
+		tClaimExp: time.Now().Add(-time.Hour).Unix(),
 	})
 
 	err := a.Authenticate(context.Background(), bearerHeader(token))
@@ -130,15 +130,15 @@ func TestJWT_WrongIssuer(t *testing.T) {
 	key := mustGenerateKey(t)
 	cfg := config.JWTAuthConfig{
 		Issuers: []config.JWTIssuerConfig{{
-			Name:      "test",
-			IssuerURL: "https://issuer.example.com/",
+			Name:      tValTest,
+			IssuerURL: tIssuerURL,
 		}},
 	}
 	a := newTestJWTAuth(t, key, cfg)
 
 	token := signToken(t, key, jwt.MapClaims{
-		"iss": "https://wrong-issuer.example.com/",
-		"exp": time.Now().Add(time.Hour).Unix(),
+		tClaimIss: "https://wrong-issuer.example.com/",
+		tClaimExp: time.Now().Add(time.Hour).Unix(),
 	})
 
 	err := a.Authenticate(context.Background(), bearerHeader(token))
@@ -150,17 +150,17 @@ func TestJWT_WrongAudience(t *testing.T) {
 	key := mustGenerateKey(t)
 	cfg := config.JWTAuthConfig{
 		Issuers: []config.JWTIssuerConfig{{
-			Name:      "test",
-			IssuerURL: "https://issuer.example.com/",
-			Audience:  "sreportal",
+			Name:      tValTest,
+			IssuerURL: tIssuerURL,
+			Audience:  tNameSreportal,
 		}},
 	}
 	a := newTestJWTAuth(t, key, cfg)
 
 	token := signToken(t, key, jwt.MapClaims{
-		"iss": "https://issuer.example.com/",
-		"aud": "other-api",
-		"exp": time.Now().Add(time.Hour).Unix(),
+		tClaimIss: tIssuerURL,
+		"aud":     "other-api",
+		tClaimExp: time.Now().Add(time.Hour).Unix(),
 	})
 
 	err := a.Authenticate(context.Background(), bearerHeader(token))
@@ -172,16 +172,16 @@ func TestJWT_MissingRequiredClaim(t *testing.T) {
 	key := mustGenerateKey(t)
 	cfg := config.JWTAuthConfig{
 		Issuers: []config.JWTIssuerConfig{{
-			Name:           "test",
-			IssuerURL:      "https://issuer.example.com/",
-			RequiredClaims: map[string]string{"scope": "release:write"},
+			Name:           tValTest,
+			IssuerURL:      tIssuerURL,
+			RequiredClaims: map[string]string{tKeyScope: tScopeRelease},
 		}},
 	}
 	a := newTestJWTAuth(t, key, cfg)
 
 	token := signToken(t, key, jwt.MapClaims{
-		"iss": "https://issuer.example.com/",
-		"exp": time.Now().Add(time.Hour).Unix(),
+		tClaimIss: tIssuerURL,
+		tClaimExp: time.Now().Add(time.Hour).Unix(),
 	})
 
 	err := a.Authenticate(context.Background(), bearerHeader(token))
@@ -193,17 +193,17 @@ func TestJWT_RequiredClaimPresent(t *testing.T) {
 	key := mustGenerateKey(t)
 	cfg := config.JWTAuthConfig{
 		Issuers: []config.JWTIssuerConfig{{
-			Name:           "test",
-			IssuerURL:      "https://issuer.example.com/",
-			RequiredClaims: map[string]string{"scope": "release:write"},
+			Name:           tValTest,
+			IssuerURL:      tIssuerURL,
+			RequiredClaims: map[string]string{tKeyScope: tScopeRelease},
 		}},
 	}
 	a := newTestJWTAuth(t, key, cfg)
 
 	token := signToken(t, key, jwt.MapClaims{
-		"iss":   "https://issuer.example.com/",
-		"exp":   time.Now().Add(time.Hour).Unix(),
-		"scope": "read release:write admin",
+		tClaimIss: tIssuerURL,
+		tClaimExp: time.Now().Add(time.Hour).Unix(),
+		tKeyScope: "read release:write admin",
 	})
 
 	err := a.Authenticate(context.Background(), bearerHeader(token))
@@ -214,17 +214,17 @@ func TestJWT_RequiredClaimWrongValue(t *testing.T) {
 	key := mustGenerateKey(t)
 	cfg := config.JWTAuthConfig{
 		Issuers: []config.JWTIssuerConfig{{
-			Name:           "test",
-			IssuerURL:      "https://issuer.example.com/",
-			RequiredClaims: map[string]string{"scope": "release:write"},
+			Name:           tValTest,
+			IssuerURL:      tIssuerURL,
+			RequiredClaims: map[string]string{tKeyScope: tScopeRelease},
 		}},
 	}
 	a := newTestJWTAuth(t, key, cfg)
 
 	token := signToken(t, key, jwt.MapClaims{
-		"iss":   "https://issuer.example.com/",
-		"exp":   time.Now().Add(time.Hour).Unix(),
-		"scope": "read admin",
+		tClaimIss: tIssuerURL,
+		tClaimExp: time.Now().Add(time.Hour).Unix(),
+		tKeyScope: "read admin",
 	})
 
 	err := a.Authenticate(context.Background(), bearerHeader(token))
@@ -237,16 +237,16 @@ func TestJWT_InvalidSignature(t *testing.T) {
 	otherKey := mustGenerateKey(t)
 	cfg := config.JWTAuthConfig{
 		Issuers: []config.JWTIssuerConfig{{
-			Name:      "test",
-			IssuerURL: "https://issuer.example.com/",
+			Name:      tValTest,
+			IssuerURL: tIssuerURL,
 		}},
 	}
 	a := newTestJWTAuth(t, key, cfg) // keyfunc has key's public key
 
 	// Sign with a different private key
 	token := signToken(t, otherKey, jwt.MapClaims{
-		"iss": "https://issuer.example.com/",
-		"exp": time.Now().Add(time.Hour).Unix(),
+		tClaimIss: tIssuerURL,
+		tClaimExp: time.Now().Add(time.Hour).Unix(),
 	})
 
 	err := a.Authenticate(context.Background(), bearerHeader(token))
@@ -258,8 +258,8 @@ func TestJWT_MissingHeader(t *testing.T) {
 	key := mustGenerateKey(t)
 	cfg := config.JWTAuthConfig{
 		Issuers: []config.JWTIssuerConfig{{
-			Name:      "test",
-			IssuerURL: "https://issuer.example.com/",
+			Name:      tValTest,
+			IssuerURL: tIssuerURL,
 		}},
 	}
 	a := newTestJWTAuth(t, key, cfg)
@@ -273,8 +273,8 @@ func TestJWT_NotBearerScheme(t *testing.T) {
 	key := mustGenerateKey(t)
 	cfg := config.JWTAuthConfig{
 		Issuers: []config.JWTIssuerConfig{{
-			Name:      "test",
-			IssuerURL: "https://issuer.example.com/",
+			Name:      tValTest,
+			IssuerURL: tIssuerURL,
 		}},
 	}
 	a := newTestJWTAuth(t, key, cfg)

@@ -65,11 +65,11 @@ func setupStore(t *testing.T, nodes []domainnetpol.FlowNode, edges []domainnetpo
 func TestListNetworkPolicies_ReturnsAllNodesAndEdges_WhenNoFilter(t *testing.T) {
 	store := setupStore(t,
 		[]domainnetpol.FlowNode{
-			{ID: "svc:core:api", Label: "api", Namespace: "core", NodeType: "service", Group: "Core"},
-			{ID: "svc:core:web", Label: "web", Namespace: "core", NodeType: "service", Group: "Core"},
+			{ID: tNodeSvcCoreAPI, Label: tNameAPI, Namespace: tNsCore, NodeType: tNodeTypeService, Group: tGroupCore},
+			{ID: tNodeSvcWeb, Label: tNsWeb, Namespace: tNsCore, NodeType: tNodeTypeService, Group: tGroupCore},
 		},
 		[]domainnetpol.FlowEdge{
-			{From: "svc:core:web", To: "svc:core:api", EdgeType: "internal"},
+			{From: tNodeSvcWeb, To: tNodeSvcCoreAPI, EdgeType: tEdgeInternal},
 		},
 	)
 
@@ -83,8 +83,8 @@ func TestListNetworkPolicies_ReturnsAllNodesAndEdges_WhenNoFilter(t *testing.T) 
 	require.NoError(t, err)
 	assert.Len(t, resp.Msg.Nodes, 2)
 	assert.Len(t, resp.Msg.Edges, 1)
-	assert.Contains(t, nodeIDs(resp.Msg.Nodes), "svc:core:api")
-	assert.Contains(t, nodeIDs(resp.Msg.Nodes), "svc:core:web")
+	assert.Contains(t, nodeIDs(resp.Msg.Nodes), tNodeSvcCoreAPI)
+	assert.Contains(t, nodeIDs(resp.Msg.Nodes), tNodeSvcWeb)
 	assert.Contains(t, edgePairs(resp.Msg.Edges), "svc:core:web->svc:core:api")
 }
 
@@ -92,9 +92,9 @@ func TestListNetworkPolicies_DeduplicatesNodesAndEdges_AcrossMultipleSets(t *tes
 	store := netpolreadstore.NewFlowGraphStore()
 	ctx := context.Background()
 
-	sharedNode := domainnetpol.FlowNode{ID: "svc:core:api", Label: "api", Namespace: "core", NodeType: "service", Group: "Core"}
-	webNode := domainnetpol.FlowNode{ID: "svc:core:web", Label: "web", Namespace: "core", NodeType: "service", Group: "Core"}
-	sharedEdge := domainnetpol.FlowEdge{From: "svc:core:web", To: "svc:core:api", EdgeType: "internal"}
+	sharedNode := domainnetpol.FlowNode{ID: tNodeSvcCoreAPI, Label: tNameAPI, Namespace: tNsCore, NodeType: tNodeTypeService, Group: tGroupCore}
+	webNode := domainnetpol.FlowNode{ID: tNodeSvcWeb, Label: tNsWeb, Namespace: tNsCore, NodeType: tNodeTypeService, Group: tGroupCore}
+	sharedEdge := domainnetpol.FlowEdge{From: tNodeSvcWeb, To: tNodeSvcCoreAPI, EdgeType: tEdgeInternal}
 
 	require.NoError(t, store.ReplaceNodes(ctx, "nfd-a", "", []domainnetpol.FlowNode{sharedNode}))
 	require.NoError(t, store.ReplaceNodes(ctx, "nfd-b", "", []domainnetpol.FlowNode{sharedNode, webNode}))
@@ -117,35 +117,35 @@ func TestListNetworkPolicies_FiltersByPortal(t *testing.T) {
 	store := netpolreadstore.NewFlowGraphStore()
 	ctx := context.Background()
 
-	require.NoError(t, store.ReplaceNodes(ctx, "nfd-main", "main", []domainnetpol.FlowNode{
-		{ID: "svc:core:api", Label: "api", Namespace: "core", NodeType: "service", Group: "Core"},
+	require.NoError(t, store.ReplaceNodes(ctx, "nfd-main", tPortalMain, []domainnetpol.FlowNode{
+		{ID: tNodeSvcCoreAPI, Label: tNameAPI, Namespace: tNsCore, NodeType: tNodeTypeService, Group: tGroupCore},
 	}))
 	require.NoError(t, store.ReplaceNodes(ctx, "nfd-other", "other", []domainnetpol.FlowNode{
-		{ID: "svc:pay:stripe", Label: "stripe", Namespace: "pay", NodeType: "external", Group: "Pay"},
+		{ID: tNodeSvcPayStripe, Label: tNameStripe, Namespace: tNsPay, NodeType: tEdgeExternal, Group: tGroupPay},
 	}))
-	require.NoError(t, store.ReplaceEdges(ctx, "nfd-main", "main", nil))
+	require.NoError(t, store.ReplaceEdges(ctx, "nfd-main", tPortalMain, nil))
 	require.NoError(t, store.ReplaceEdges(ctx, "nfd-other", "other", nil))
 
 	svc := svcgrpc.NewNetworkPolicyService(store, nil)
 
 	resp, err := svc.ListNetworkPolicies(
 		context.Background(),
-		connect.NewRequest(&netpolv1.ListNetworkPoliciesRequest{Portal: "main"}),
+		connect.NewRequest(&netpolv1.ListNetworkPoliciesRequest{Portal: tPortalMain}),
 	)
 
 	require.NoError(t, err)
 	assert.Len(t, resp.Msg.Nodes, 1)
-	assert.Equal(t, "svc:core:api", resp.Msg.Nodes[0].Id)
+	assert.Equal(t, tNodeSvcCoreAPI, resp.Msg.Nodes[0].Id)
 }
 
 func TestListNetworkPolicies_FiltersByNamespace(t *testing.T) {
 	store := setupStore(t,
 		[]domainnetpol.FlowNode{
-			{ID: "svc:core:api", Label: "api", Namespace: "core", NodeType: "service", Group: "Core"},
-			{ID: "svc:pay:stripe", Label: "stripe", Namespace: "pay", NodeType: "external", Group: "Pay"},
+			{ID: tNodeSvcCoreAPI, Label: tNameAPI, Namespace: tNsCore, NodeType: tNodeTypeService, Group: tGroupCore},
+			{ID: tNodeSvcPayStripe, Label: tNameStripe, Namespace: tNsPay, NodeType: tEdgeExternal, Group: tGroupPay},
 		},
 		[]domainnetpol.FlowEdge{
-			{From: "svc:core:api", To: "svc:pay:stripe", EdgeType: "cross-pl"},
+			{From: tNodeSvcCoreAPI, To: tNodeSvcPayStripe, EdgeType: "cross-pl"},
 		},
 	)
 
@@ -153,21 +153,21 @@ func TestListNetworkPolicies_FiltersByNamespace(t *testing.T) {
 
 	resp, err := svc.ListNetworkPolicies(
 		context.Background(),
-		connect.NewRequest(&netpolv1.ListNetworkPoliciesRequest{Namespace: "core"}),
+		connect.NewRequest(&netpolv1.ListNetworkPoliciesRequest{Namespace: tNsCore}),
 	)
 
 	require.NoError(t, err)
 	assert.Len(t, resp.Msg.Nodes, 1)
-	assert.Equal(t, "svc:core:api", resp.Msg.Nodes[0].Id)
+	assert.Equal(t, tNodeSvcCoreAPI, resp.Msg.Nodes[0].Id)
 	assert.Empty(t, resp.Msg.Edges, "cross-namespace edge should be pruned")
 }
 
 func TestListNetworkPolicies_SearchMatchesLabelGroupAndNamespace(t *testing.T) {
 	store := setupStore(t,
 		[]domainnetpol.FlowNode{
-			{ID: "svc:core:api", Label: "api", Namespace: "core", NodeType: "service", Group: "Core"},
-			{ID: "svc:pay:stripe", Label: "stripe", Namespace: "pay", NodeType: "external", Group: "Pay"},
-			{ID: "svc:core:web", Label: "web", Namespace: "core", NodeType: "service", Group: "Core"},
+			{ID: tNodeSvcCoreAPI, Label: tNameAPI, Namespace: tNsCore, NodeType: tNodeTypeService, Group: tGroupCore},
+			{ID: tNodeSvcPayStripe, Label: tNameStripe, Namespace: tNsPay, NodeType: tEdgeExternal, Group: tGroupPay},
+			{ID: tNodeSvcWeb, Label: tNsWeb, Namespace: tNsCore, NodeType: tNodeTypeService, Group: tGroupCore},
 		},
 		nil,
 	)
@@ -181,23 +181,23 @@ func TestListNetworkPolicies_SearchMatchesLabelGroupAndNamespace(t *testing.T) {
 	}{
 		{
 			name:    "match by label",
-			search:  "stripe",
-			wantIDs: []string{"svc:pay:stripe"},
+			search:  tNameStripe,
+			wantIDs: []string{tNodeSvcPayStripe},
 		},
 		{
 			name:    "match by group",
-			search:  "Pay",
-			wantIDs: []string{"svc:pay:stripe"},
+			search:  tGroupPay,
+			wantIDs: []string{tNodeSvcPayStripe},
 		},
 		{
 			name:    "match by namespace",
-			search:  "core",
-			wantIDs: []string{"svc:core:api", "svc:core:web"},
+			search:  tNsCore,
+			wantIDs: []string{tNodeSvcCoreAPI, tNodeSvcWeb},
 		},
 		{
 			name:    "case insensitive",
 			search:  "STRIPE",
-			wantIDs: []string{"svc:pay:stripe"},
+			wantIDs: []string{tNodeSvcPayStripe},
 		},
 	}
 
@@ -216,13 +216,13 @@ func TestListNetworkPolicies_SearchMatchesLabelGroupAndNamespace(t *testing.T) {
 func TestListNetworkPolicies_SearchExpandsToDirectNeighbors(t *testing.T) {
 	store := setupStore(t,
 		[]domainnetpol.FlowNode{
-			{ID: "a", Label: "api", Namespace: "core", NodeType: "service", Group: "Core"},
-			{ID: "b", Label: "backend", Namespace: "core", NodeType: "service", Group: "Core"},
-			{ID: "c", Label: "cache", Namespace: "core", NodeType: "database", Group: "Core"},
+			{ID: "a", Label: tNameAPI, Namespace: tNsCore, NodeType: tNodeTypeService, Group: tGroupCore},
+			{ID: "b", Label: "backend", Namespace: tNsCore, NodeType: tNodeTypeService, Group: tGroupCore},
+			{ID: "c", Label: "cache", Namespace: tNsCore, NodeType: "database", Group: tGroupCore},
 		},
 		[]domainnetpol.FlowEdge{
-			{From: "a", To: "b", EdgeType: "internal"},
-			{From: "b", To: "c", EdgeType: "internal"},
+			{From: "a", To: "b", EdgeType: tEdgeInternal},
+			{From: "b", To: "c", EdgeType: tEdgeInternal},
 		},
 	)
 
@@ -230,7 +230,7 @@ func TestListNetworkPolicies_SearchExpandsToDirectNeighbors(t *testing.T) {
 
 	resp, err := svc.ListNetworkPolicies(
 		context.Background(),
-		connect.NewRequest(&netpolv1.ListNetworkPoliciesRequest{Search: "api"}),
+		connect.NewRequest(&netpolv1.ListNetworkPoliciesRequest{Search: tNameAPI}),
 	)
 
 	require.NoError(t, err)
@@ -261,13 +261,13 @@ func TestListNetworkPolicies_EmptyState_ReturnsEmptyGraph(t *testing.T) {
 func TestListNetworkPolicies_SortOrder_IsDeterministic(t *testing.T) {
 	store := setupStore(t,
 		[]domainnetpol.FlowNode{
-			{ID: "svc:pay:z", Label: "z-svc", Namespace: "pay", NodeType: "service", Group: "Pay"},
-			{ID: "svc:core:a", Label: "a-svc", Namespace: "core", NodeType: "service", Group: "Core"},
-			{ID: "svc:core:b", Label: "b-svc", Namespace: "core", NodeType: "service", Group: "Core"},
+			{ID: "svc:pay:z", Label: "z-svc", Namespace: tNsPay, NodeType: tNodeTypeService, Group: tGroupPay},
+			{ID: tNodeSvcA, Label: "a-svc", Namespace: tNsCore, NodeType: tNodeTypeService, Group: tGroupCore},
+			{ID: "svc:core:b", Label: "b-svc", Namespace: tNsCore, NodeType: tNodeTypeService, Group: tGroupCore},
 		},
 		[]domainnetpol.FlowEdge{
-			{From: "svc:pay:z", To: "svc:core:a", EdgeType: "cross-pl"},
-			{From: "svc:core:a", To: "svc:core:b", EdgeType: "internal"},
+			{From: "svc:pay:z", To: tNodeSvcA, EdgeType: "cross-pl"},
+			{From: tNodeSvcA, To: "svc:core:b", EdgeType: tEdgeInternal},
 		},
 	)
 
@@ -282,14 +282,14 @@ func TestListNetworkPolicies_SortOrder_IsDeterministic(t *testing.T) {
 
 	// Nodes sorted by group, then label: Core/a-svc, Core/b-svc, Pay/z-svc
 	require.Len(t, resp.Msg.Nodes, 3)
-	assert.Equal(t, "svc:core:a", resp.Msg.Nodes[0].Id)
+	assert.Equal(t, tNodeSvcA, resp.Msg.Nodes[0].Id)
 	assert.Equal(t, "svc:core:b", resp.Msg.Nodes[1].Id)
 	assert.Equal(t, "svc:pay:z", resp.Msg.Nodes[2].Id)
 
 	// Edges sorted by from, then to: core:a->core:b, pay:z->core:a
 	require.Len(t, resp.Msg.Edges, 2)
-	assert.Equal(t, "svc:core:a", resp.Msg.Edges[0].From)
+	assert.Equal(t, tNodeSvcA, resp.Msg.Edges[0].From)
 	assert.Equal(t, "svc:core:b", resp.Msg.Edges[0].To)
 	assert.Equal(t, "svc:pay:z", resp.Msg.Edges[1].From)
-	assert.Equal(t, "svc:core:a", resp.Msg.Edges[1].To)
+	assert.Equal(t, tNodeSvcA, resp.Msg.Edges[1].To)
 }

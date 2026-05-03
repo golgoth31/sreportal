@@ -33,13 +33,13 @@ import (
 
 func TestReconcileComponentsHandler_CreatesComponent(t *testing.T) {
 	scheme := newScheme(t)
-	portal := newPortal("main", true, nil, nil)
+	portal := newPortal(tPortalMain, true, nil, nil)
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
 
 	handler := NewReconcileComponentsHandler(c)
 	idx := &PortalIndex{
 		Main:   portal,
-		ByName: map[string]*sreportalv1alpha1.Portal{"main": portal},
+		ByName: map[string]*sreportalv1alpha1.Portal{tPortalMain: portal},
 		Local:  []*sreportalv1alpha1.Portal{portal},
 	}
 
@@ -48,12 +48,12 @@ func TestReconcileComponentsHandler_CreatesComponent(t *testing.T) {
 			Index: idx,
 			ComponentRequests: []ComponentRequest{
 				{
-					PortalName:  "main",
-					DisplayName: "API Gateway",
-					Group:       "Infrastructure",
+					PortalName:  tPortalMain,
+					DisplayName: tCompAPIGW,
+					Group:       tCompInfra,
 					Description: "Main API ingress",
 					Link:        "https://grafana.internal/api",
-					Status:      "operational",
+					Status:      tStatusOp,
 				},
 			},
 		},
@@ -64,29 +64,29 @@ func TestReconcileComponentsHandler_CreatesComponent(t *testing.T) {
 
 	// Verify component was created
 	var comp sreportalv1alpha1.Component
-	key := types.NamespacedName{Namespace: "default", Name: componentCRName("main", "API Gateway")}
+	key := types.NamespacedName{Namespace: tNsDefault, Name: componentCRName(tPortalMain, tCompAPIGW)}
 	err = c.Get(context.Background(), key, &comp)
 	require.NoError(t, err)
 
-	assert.Equal(t, "API Gateway", comp.Spec.DisplayName)
-	assert.Equal(t, "Infrastructure", comp.Spec.Group)
+	assert.Equal(t, tCompAPIGW, comp.Spec.DisplayName)
+	assert.Equal(t, tCompInfra, comp.Spec.Group)
 	assert.Equal(t, "Main API ingress", comp.Spec.Description)
 	assert.Equal(t, "https://grafana.internal/api", comp.Spec.Link)
-	assert.Equal(t, "main", comp.Spec.PortalRef)
+	assert.Equal(t, tPortalMain, comp.Spec.PortalRef)
 	assert.Equal(t, sreportalv1alpha1.ComponentStatusOperational, comp.Spec.Status)
 	assert.Equal(t, adapter.ManagedBySourceController, comp.Labels[adapter.ManagedByLabelKey])
-	assert.Equal(t, "main", comp.Labels[adapter.PortalAnnotationKey])
+	assert.Equal(t, tPortalMain, comp.Labels[adapter.PortalAnnotationKey])
 }
 
 func TestReconcileComponentsHandler_DefaultsStatusToOperational(t *testing.T) {
 	scheme := newScheme(t)
-	portal := newPortal("main", true, nil, nil)
+	portal := newPortal(tPortalMain, true, nil, nil)
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
 
 	handler := NewReconcileComponentsHandler(c)
 	idx := &PortalIndex{
 		Main:   portal,
-		ByName: map[string]*sreportalv1alpha1.Portal{"main": portal},
+		ByName: map[string]*sreportalv1alpha1.Portal{tPortalMain: portal},
 		Local:  []*sreportalv1alpha1.Portal{portal},
 	}
 
@@ -94,7 +94,7 @@ func TestReconcileComponentsHandler_DefaultsStatusToOperational(t *testing.T) {
 		Data: ChainData{
 			Index: idx,
 			ComponentRequests: []ComponentRequest{
-				{PortalName: "main", DisplayName: "DB", Group: "Core", Status: ""},
+				{PortalName: tPortalMain, DisplayName: "DB", Group: "Core", Status: ""},
 			},
 		},
 	}
@@ -103,7 +103,7 @@ func TestReconcileComponentsHandler_DefaultsStatusToOperational(t *testing.T) {
 	require.NoError(t, err)
 
 	var comp sreportalv1alpha1.Component
-	key := types.NamespacedName{Namespace: "default", Name: componentCRName("main", "DB")}
+	key := types.NamespacedName{Namespace: tNsDefault, Name: componentCRName(tPortalMain, "DB")}
 	err = c.Get(context.Background(), key, &comp)
 	require.NoError(t, err)
 	assert.Equal(t, sreportalv1alpha1.ComponentStatusOperational, comp.Spec.Status)
@@ -111,24 +111,24 @@ func TestReconcileComponentsHandler_DefaultsStatusToOperational(t *testing.T) {
 
 func TestReconcileComponentsHandler_UpdatesMetadataButNotStatus(t *testing.T) {
 	scheme := newScheme(t)
-	portal := newPortal("main", true, nil, nil)
+	portal := newPortal(tPortalMain, true, nil, nil)
 
-	name := componentCRName("main", "API Gateway")
+	name := componentCRName(tPortalMain, tCompAPIGW)
 	existing := &sreportalv1alpha1.Component{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
-			Namespace: "default",
+			Namespace: tNsDefault,
 			Labels: map[string]string{
 				adapter.ManagedByLabelKey:   adapter.ManagedBySourceController,
-				adapter.PortalAnnotationKey: "main",
+				adapter.PortalAnnotationKey: tPortalMain,
 			},
 		},
 		Spec: sreportalv1alpha1.ComponentSpec{
-			DisplayName: "API Gateway",
+			DisplayName: tCompAPIGW,
 			Group:       "Old Group",
 			Description: "Old desc",
 			Link:        "https://old.link",
-			PortalRef:   "main",
+			PortalRef:   tPortalMain,
 			Status:      sreportalv1alpha1.ComponentStatusDegraded, // user changed this manually
 		},
 	}
@@ -137,7 +137,7 @@ func TestReconcileComponentsHandler_UpdatesMetadataButNotStatus(t *testing.T) {
 	handler := NewReconcileComponentsHandler(c)
 	idx := &PortalIndex{
 		Main:   portal,
-		ByName: map[string]*sreportalv1alpha1.Portal{"main": portal},
+		ByName: map[string]*sreportalv1alpha1.Portal{tPortalMain: portal},
 		Local:  []*sreportalv1alpha1.Portal{portal},
 	}
 
@@ -146,12 +146,12 @@ func TestReconcileComponentsHandler_UpdatesMetadataButNotStatus(t *testing.T) {
 			Index: idx,
 			ComponentRequests: []ComponentRequest{
 				{
-					PortalName:  "main",
-					DisplayName: "API Gateway",
+					PortalName:  tPortalMain,
+					DisplayName: tCompAPIGW,
 					Group:       "New Group",
 					Description: "New desc",
 					Link:        "https://new.link",
-					Status:      "operational",
+					Status:      tStatusOp,
 				},
 			},
 		},
@@ -161,7 +161,7 @@ func TestReconcileComponentsHandler_UpdatesMetadataButNotStatus(t *testing.T) {
 	require.NoError(t, err)
 
 	var comp sreportalv1alpha1.Component
-	key := types.NamespacedName{Namespace: "default", Name: name}
+	key := types.NamespacedName{Namespace: tNsDefault, Name: name}
 	err = c.Get(context.Background(), key, &comp)
 	require.NoError(t, err)
 
@@ -175,22 +175,22 @@ func TestReconcileComponentsHandler_UpdatesMetadataButNotStatus(t *testing.T) {
 
 func TestReconcileComponentsHandler_DeletesOrphanedAutoManaged(t *testing.T) {
 	scheme := newScheme(t)
-	portal := newPortal("main", true, nil, nil)
+	portal := newPortal(tPortalMain, true, nil, nil)
 
-	orphanName := componentCRName("main", "Removed Service")
+	orphanName := componentCRName(tPortalMain, "Removed Service")
 	orphan := &sreportalv1alpha1.Component{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      orphanName,
-			Namespace: "default",
+			Namespace: tNsDefault,
 			Labels: map[string]string{
 				adapter.ManagedByLabelKey:   adapter.ManagedBySourceController,
-				adapter.PortalAnnotationKey: "main",
+				adapter.PortalAnnotationKey: tPortalMain,
 			},
 		},
 		Spec: sreportalv1alpha1.ComponentSpec{
 			DisplayName: "Removed Service",
-			Group:       "Infrastructure",
-			PortalRef:   "main",
+			Group:       tCompInfra,
+			PortalRef:   tPortalMain,
 			Status:      sreportalv1alpha1.ComponentStatusOperational,
 		},
 	}
@@ -199,7 +199,7 @@ func TestReconcileComponentsHandler_DeletesOrphanedAutoManaged(t *testing.T) {
 	handler := NewReconcileComponentsHandler(c)
 	idx := &PortalIndex{
 		Main:   portal,
-		ByName: map[string]*sreportalv1alpha1.Portal{"main": portal},
+		ByName: map[string]*sreportalv1alpha1.Portal{tPortalMain: portal},
 		Local:  []*sreportalv1alpha1.Portal{portal},
 	}
 
@@ -214,29 +214,29 @@ func TestReconcileComponentsHandler_DeletesOrphanedAutoManaged(t *testing.T) {
 	require.NoError(t, err)
 
 	var comp sreportalv1alpha1.Component
-	key := types.NamespacedName{Namespace: "default", Name: orphanName}
+	key := types.NamespacedName{Namespace: tNsDefault, Name: orphanName}
 	err = c.Get(context.Background(), key, &comp)
 	assert.Error(t, err, "orphaned auto-managed component should be deleted")
 }
 
 func TestReconcileComponentsHandler_DoesNotDeleteManuallyCreatedComponents(t *testing.T) {
 	scheme := newScheme(t)
-	portal := newPortal("main", true, nil, nil)
+	portal := newPortal(tPortalMain, true, nil, nil)
 
-	manualName := componentCRName("main", "Manual Component")
+	manualName := componentCRName(tPortalMain, "Manual Component")
 	manual := &sreportalv1alpha1.Component{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      manualName,
-			Namespace: "default",
+			Namespace: tNsDefault,
 			Labels: map[string]string{
-				adapter.PortalAnnotationKey: "main",
+				adapter.PortalAnnotationKey: tPortalMain,
 				// No managed-by label — manually created
 			},
 		},
 		Spec: sreportalv1alpha1.ComponentSpec{
 			DisplayName: "Manual Component",
 			Group:       "Apps",
-			PortalRef:   "main",
+			PortalRef:   tPortalMain,
 			Status:      sreportalv1alpha1.ComponentStatusOperational,
 		},
 	}
@@ -245,7 +245,7 @@ func TestReconcileComponentsHandler_DoesNotDeleteManuallyCreatedComponents(t *te
 	handler := NewReconcileComponentsHandler(c)
 	idx := &PortalIndex{
 		Main:   portal,
-		ByName: map[string]*sreportalv1alpha1.Portal{"main": portal},
+		ByName: map[string]*sreportalv1alpha1.Portal{tPortalMain: portal},
 		Local:  []*sreportalv1alpha1.Portal{portal},
 	}
 
@@ -260,7 +260,7 @@ func TestReconcileComponentsHandler_DoesNotDeleteManuallyCreatedComponents(t *te
 	require.NoError(t, err)
 
 	var comp sreportalv1alpha1.Component
-	key := types.NamespacedName{Namespace: "default", Name: manualName}
+	key := types.NamespacedName{Namespace: tNsDefault, Name: manualName}
 	err = c.Get(context.Background(), key, &comp)
 	assert.NoError(t, err, "manually created component must NOT be deleted")
 }
@@ -268,13 +268,13 @@ func TestReconcileComponentsHandler_DoesNotDeleteManuallyCreatedComponents(t *te
 func TestReconcileComponentsHandler_SkipsWhenStatusPageDisabled(t *testing.T) {
 	scheme := newScheme(t)
 	disabled := false
-	portal := newPortal("main", true, nil, &sreportalv1alpha1.PortalFeatures{StatusPage: &disabled})
+	portal := newPortal(tPortalMain, true, nil, &sreportalv1alpha1.PortalFeatures{StatusPage: &disabled})
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
 
 	handler := NewReconcileComponentsHandler(c)
 	idx := &PortalIndex{
 		Main:   portal,
-		ByName: map[string]*sreportalv1alpha1.Portal{"main": portal},
+		ByName: map[string]*sreportalv1alpha1.Portal{tPortalMain: portal},
 		Local:  []*sreportalv1alpha1.Portal{portal},
 	}
 
@@ -282,7 +282,7 @@ func TestReconcileComponentsHandler_SkipsWhenStatusPageDisabled(t *testing.T) {
 		Data: ChainData{
 			Index: idx,
 			ComponentRequests: []ComponentRequest{
-				{PortalName: "main", DisplayName: "API", Group: "Infra"},
+				{PortalName: tPortalMain, DisplayName: "API", Group: "Infra"},
 			},
 		},
 	}
@@ -299,7 +299,7 @@ func TestReconcileComponentsHandler_SkipsWhenStatusPageDisabled(t *testing.T) {
 
 func TestReconcileComponentsHandler_EmptyRequests(t *testing.T) {
 	scheme := newScheme(t)
-	portal := newPortal("main", true, nil, nil)
+	portal := newPortal(tPortalMain, true, nil, nil)
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
 
 	handler := NewReconcileComponentsHandler(c)
@@ -308,7 +308,7 @@ func TestReconcileComponentsHandler_EmptyRequests(t *testing.T) {
 		Data: ChainData{
 			Index: &PortalIndex{
 				Main:   portal,
-				ByName: map[string]*sreportalv1alpha1.Portal{"main": portal},
+				ByName: map[string]*sreportalv1alpha1.Portal{tPortalMain: portal},
 				Local:  []*sreportalv1alpha1.Portal{portal},
 			},
 			ComponentRequests: nil,

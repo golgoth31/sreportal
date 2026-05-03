@@ -76,6 +76,14 @@ const (
 	// ManagedByDNSController is the managed-by value for components
 	// created by the DNS reconciliation chain.
 	ManagedByDNSController = "dns-controller"
+
+	// annotationValueTrue is the canonical boolean-true value for
+	// sreportal annotations (e.g. sreportal.io/ignore: "true").
+	annotationValueTrue = "true"
+
+	// defaultGroupServices is the fallback group name applied when no
+	// GroupMappingConfig is provided.
+	defaultGroupServices = "Services"
 )
 
 // SreportalAnnotations lists the annotation keys that should be propagated
@@ -170,7 +178,7 @@ func IsIgnored(ep *endpoint.Endpoint) bool {
 	if ep == nil {
 		return false
 	}
-	return ep.Labels[IgnoreAnnotationKey] == "true"
+	return ep.Labels[IgnoreAnnotationKey] == annotationValueTrue
 }
 
 // IsEndpointStatusIgnored returns true when the EndpointStatus has the sreportal.io/ignore label set to "true".
@@ -178,14 +186,14 @@ func IsEndpointStatusIgnored(ep *sreportalv1alpha1.EndpointStatus) bool {
 	if ep == nil {
 		return false
 	}
-	return ep.Labels[IgnoreAnnotationKey] == "true"
+	return ep.Labels[IgnoreAnnotationKey] == annotationValueTrue
 }
 
 // strategyFromConfig builds a GroupMappingStrategy from the provided config.
 // A nil mapping yields a strategy with the "Services" default group.
 func strategyFromConfig(mapping *config.GroupMappingConfig) domaindns.GroupMappingStrategy {
 	if mapping == nil {
-		return domaindns.GroupMappingStrategy{DefaultGroup: "Services"}
+		return domaindns.GroupMappingStrategy{DefaultGroup: defaultGroupServices}
 	}
 	return domaindns.GroupMappingStrategy{
 		DefaultGroup: mapping.DefaultGroup,

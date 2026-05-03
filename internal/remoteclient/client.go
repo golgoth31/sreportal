@@ -42,6 +42,9 @@ const DefaultRetryAttempts = 3
 // DefaultRetryDelay is the initial delay between retries.
 const DefaultRetryDelay = 500 * time.Millisecond
 
+// defaultGroupName is the fallback group name applied to FQDNs without an explicit group.
+const defaultGroupName = "default"
+
 // Client provides methods to communicate with remote SRE Portal instances.
 type Client struct {
 	httpClient    *http.Client
@@ -573,7 +576,7 @@ func convertToGroups(fqdns []*sreportalv1.FQDN) []sreportalv1alpha1.FQDNGroupSta
 	for _, fqdn := range fqdns {
 		groupNames := fqdn.Groups
 		if len(groupNames) == 0 {
-			groupNames = []string{"default"}
+			groupNames = []string{defaultGroupName}
 		}
 
 		var lastSeen time.Time

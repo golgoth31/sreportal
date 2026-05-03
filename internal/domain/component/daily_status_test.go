@@ -8,20 +8,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	tDate20260401 = "2026-04-01"
+	tDate20260331 = "2026-03-31"
+)
+
 func TestMergeDailyWorst_EmptyHistory_CreatesEntry(t *testing.T) {
-	got := MergeDailyWorst(nil, "2026-04-01", StatusOperational, 30)
+	got := MergeDailyWorst(nil, tDate20260401, StatusOperational, 30)
 
 	require.Len(t, got, 1)
-	assert.Equal(t, "2026-04-01", got[0].Date)
+	assert.Equal(t, tDate20260401, got[0].Date)
 	assert.Equal(t, StatusOperational, got[0].WorstStatus)
 }
 
 func TestMergeDailyWorst_SameDay_KeepsWorst(t *testing.T) {
 	history := []DailyStatus{
-		{Date: "2026-04-01", WorstStatus: StatusDegraded},
+		{Date: tDate20260401, WorstStatus: StatusDegraded},
 	}
 
-	got := MergeDailyWorst(history, "2026-04-01", StatusMajorOutage, 30)
+	got := MergeDailyWorst(history, tDate20260401, StatusMajorOutage, 30)
 
 	require.Len(t, got, 1)
 	assert.Equal(t, StatusMajorOutage, got[0].WorstStatus)
@@ -29,10 +34,10 @@ func TestMergeDailyWorst_SameDay_KeepsWorst(t *testing.T) {
 
 func TestMergeDailyWorst_SameDay_DoesNotDowngrade(t *testing.T) {
 	history := []DailyStatus{
-		{Date: "2026-04-01", WorstStatus: StatusMajorOutage},
+		{Date: tDate20260401, WorstStatus: StatusMajorOutage},
 	}
 
-	got := MergeDailyWorst(history, "2026-04-01", StatusOperational, 30)
+	got := MergeDailyWorst(history, tDate20260401, StatusOperational, 30)
 
 	require.Len(t, got, 1)
 	assert.Equal(t, StatusMajorOutage, got[0].WorstStatus)
@@ -40,14 +45,14 @@ func TestMergeDailyWorst_SameDay_DoesNotDowngrade(t *testing.T) {
 
 func TestMergeDailyWorst_NewDay_AppendsEntry(t *testing.T) {
 	history := []DailyStatus{
-		{Date: "2026-03-31", WorstStatus: StatusOperational},
+		{Date: tDate20260331, WorstStatus: StatusOperational},
 	}
 
-	got := MergeDailyWorst(history, "2026-04-01", StatusDegraded, 30)
+	got := MergeDailyWorst(history, tDate20260401, StatusDegraded, 30)
 
 	require.Len(t, got, 2)
-	assert.Equal(t, "2026-03-31", got[0].Date)
-	assert.Equal(t, "2026-04-01", got[1].Date)
+	assert.Equal(t, tDate20260331, got[0].Date)
+	assert.Equal(t, tDate20260401, got[1].Date)
 	assert.Equal(t, StatusDegraded, got[1].WorstStatus)
 }
 
@@ -61,13 +66,13 @@ func TestMergeDailyWorst_PrunesOldEntries(t *testing.T) {
 			WorstStatus: StatusOperational,
 		}
 	}
-	// history[0] = "2026-03-02", history[29] = "2026-03-31"
+	// history[0] = "2026-03-02", history[29] = tDate20260331
 
-	got := MergeDailyWorst(history, "2026-04-01", StatusOperational, 30)
+	got := MergeDailyWorst(history, tDate20260401, StatusOperational, 30)
 
 	require.Len(t, got, 30)
 	assert.Equal(t, "2026-03-03", got[0].Date, "oldest entry should be pruned")
-	assert.Equal(t, "2026-04-01", got[29].Date)
+	assert.Equal(t, tDate20260401, got[29].Date)
 }
 
 func TestMergeDailyWorst_MaintainsAscendingOrder(t *testing.T) {
@@ -76,7 +81,7 @@ func TestMergeDailyWorst_MaintainsAscendingOrder(t *testing.T) {
 		{Date: "2026-03-30", WorstStatus: StatusDegraded},
 	}
 
-	got := MergeDailyWorst(history, "2026-03-31", StatusOperational, 30)
+	got := MergeDailyWorst(history, tDate20260331, StatusOperational, 30)
 
 	require.Len(t, got, 3)
 	for i := 1; i < len(got); i++ {
@@ -86,10 +91,10 @@ func TestMergeDailyWorst_MaintainsAscendingOrder(t *testing.T) {
 
 func TestMergeDailyWorst_UnknownStatus_TreatedAsRankZero(t *testing.T) {
 	history := []DailyStatus{
-		{Date: "2026-04-01", WorstStatus: StatusOperational},
+		{Date: tDate20260401, WorstStatus: StatusOperational},
 	}
 
-	got := MergeDailyWorst(history, "2026-04-01", ComponentStatus("bogus"), 30)
+	got := MergeDailyWorst(history, tDate20260401, ComponentStatus("bogus"), 30)
 
 	require.Len(t, got, 1)
 	// Operational (rank 1) > bogus (rank 0), so operational is kept
@@ -97,11 +102,11 @@ func TestMergeDailyWorst_UnknownStatus_TreatedAsRankZero(t *testing.T) {
 }
 
 func TestBackfillMissingDays_EmptyHistory_Creates30Days(t *testing.T) {
-	got := BackfillMissingDays(nil, "2026-04-01", 30)
+	got := BackfillMissingDays(nil, tDate20260401, 30)
 
 	require.Len(t, got, 30)
 	assert.Equal(t, "2026-03-03", got[0].Date)
-	assert.Equal(t, "2026-04-01", got[29].Date)
+	assert.Equal(t, tDate20260401, got[29].Date)
 	for _, entry := range got {
 		assert.Equal(t, StatusOperational, entry.WorstStatus)
 	}
@@ -117,7 +122,7 @@ func TestBackfillMissingDays_AllPresent_NoChange(t *testing.T) {
 		}
 	}
 
-	got := BackfillMissingDays(history, "2026-04-01", 30)
+	got := BackfillMissingDays(history, tDate20260401, 30)
 
 	require.Len(t, got, 30)
 	for i, entry := range got {
@@ -129,10 +134,10 @@ func TestBackfillMissingDays_AllPresent_NoChange(t *testing.T) {
 func TestBackfillMissingDays_GapInMiddle_FillsGap(t *testing.T) {
 	history := []DailyStatus{
 		{Date: "2026-03-28", WorstStatus: StatusDegraded},
-		{Date: "2026-03-31", WorstStatus: StatusMajorOutage},
+		{Date: tDate20260331, WorstStatus: StatusMajorOutage},
 	}
 
-	got := BackfillMissingDays(history, "2026-03-31", 30)
+	got := BackfillMissingDays(history, tDate20260331, 30)
 
 	require.Len(t, got, 30)
 	// Existing entries preserved
@@ -141,7 +146,7 @@ func TestBackfillMissingDays_GapInMiddle_FillsGap(t *testing.T) {
 		dateStatus[entry.Date] = entry.WorstStatus
 	}
 	assert.Equal(t, StatusDegraded, dateStatus["2026-03-28"])
-	assert.Equal(t, StatusMajorOutage, dateStatus["2026-03-31"])
+	assert.Equal(t, StatusMajorOutage, dateStatus[tDate20260331])
 	// Gap days filled with operational
 	assert.Equal(t, StatusOperational, dateStatus["2026-03-29"])
 	assert.Equal(t, StatusOperational, dateStatus["2026-03-30"])
@@ -150,10 +155,10 @@ func TestBackfillMissingDays_GapInMiddle_FillsGap(t *testing.T) {
 func TestBackfillMissingDays_OldEntriesPruned(t *testing.T) {
 	history := []DailyStatus{
 		{Date: "2025-01-01", WorstStatus: StatusMajorOutage},
-		{Date: "2026-03-31", WorstStatus: StatusDegraded},
+		{Date: tDate20260331, WorstStatus: StatusDegraded},
 	}
 
-	got := BackfillMissingDays(history, "2026-03-31", 30)
+	got := BackfillMissingDays(history, tDate20260331, 30)
 
 	require.Len(t, got, 30)
 	for _, entry := range got {
@@ -163,17 +168,17 @@ func TestBackfillMissingDays_OldEntriesPruned(t *testing.T) {
 
 func TestBackfillMissingDays_ExistingStatusPreserved(t *testing.T) {
 	history := []DailyStatus{
-		{Date: "2026-04-01", WorstStatus: StatusMajorOutage},
+		{Date: tDate20260401, WorstStatus: StatusMajorOutage},
 	}
 
-	got := BackfillMissingDays(history, "2026-04-01", 30)
+	got := BackfillMissingDays(history, tDate20260401, 30)
 
 	require.Len(t, got, 30)
 	dateStatus := make(map[string]ComponentStatus, len(got))
 	for _, entry := range got {
 		dateStatus[entry.Date] = entry.WorstStatus
 	}
-	assert.Equal(t, StatusMajorOutage, dateStatus["2026-04-01"], "must not overwrite existing status")
+	assert.Equal(t, StatusMajorOutage, dateStatus[tDate20260401], "must not overwrite existing status")
 }
 
 func TestBackfillMissingDays_Idempotent(t *testing.T) {
@@ -181,8 +186,8 @@ func TestBackfillMissingDays_Idempotent(t *testing.T) {
 		{Date: "2026-03-30", WorstStatus: StatusDegraded},
 	}
 
-	first := BackfillMissingDays(history, "2026-04-01", 30)
-	second := BackfillMissingDays(first, "2026-04-01", 30)
+	first := BackfillMissingDays(history, tDate20260401, 30)
+	second := BackfillMissingDays(first, tDate20260401, 30)
 
 	require.Equal(t, first, second)
 }

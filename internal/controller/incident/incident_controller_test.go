@@ -40,7 +40,7 @@ var _ = Describe("Incident Controller", func() {
 
 		typeNamespacedName := types.NamespacedName{
 			Name:      resourceName,
-			Namespace: "default",
+			Namespace: tNsDefault,
 		}
 
 		BeforeEach(func() {
@@ -49,7 +49,7 @@ var _ = Describe("Incident Controller", func() {
 			err := k8sClient.Get(ctx, typeNamespacedName, inc)
 			if err != nil && errors.IsNotFound(err) {
 				resource := &sreportalv1alpha1.Incident{
-					ObjectMeta: metav1.ObjectMeta{Name: resourceName, Namespace: "default"},
+					ObjectMeta: metav1.ObjectMeta{Name: resourceName, Namespace: tNsDefault},
 					Spec: sreportalv1alpha1.IncidentSpec{
 						Title:     "Test Incident",
 						PortalRef: "main",
@@ -104,7 +104,7 @@ var _ = Describe("Incident Controller", func() {
 			controllerReconciler := NewIncidentReconciler(k8sClient, store)
 
 			emptyInc := &sreportalv1alpha1.Incident{
-				ObjectMeta: metav1.ObjectMeta{Name: "inc-no-updates", Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: "inc-no-updates", Namespace: tNsDefault},
 				Spec: sreportalv1alpha1.IncidentSpec{
 					Title:     "No Updates Incident",
 					PortalRef: "main",
@@ -118,7 +118,7 @@ var _ = Describe("Incident Controller", func() {
 
 			// Chain returns error (ErrNoUpdates), reconciler swallows it
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: types.NamespacedName{Name: "inc-no-updates", Namespace: "default"},
+				NamespacedName: types.NamespacedName{Name: "inc-no-updates", Namespace: tNsDefault},
 			})
 			Expect(err).NotTo(HaveOccurred())
 		})

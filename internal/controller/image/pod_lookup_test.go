@@ -28,18 +28,18 @@ func TestFindRunningPodForWorkloadReturnsNewestRunning(t *testing.T) {
 	sch := newTestScheme(t)
 
 	now := time.Now()
-	older := newPod("old", "default", map[string]string{"app": "api"}, corev1.PodRunning, now.Add(-2*time.Hour))
-	newer := newPod("new", "default", map[string]string{"app": "api"}, corev1.PodRunning, now.Add(-1*time.Hour))
-	pending := newPod("pending", "default", map[string]string{"app": "api"}, corev1.PodPending, now)
-	otherNs := newPod("other-ns", "kube-system", map[string]string{"app": "api"}, corev1.PodRunning, now)
-	otherLabel := newPod("other-label", "default", map[string]string{"app": "other"}, corev1.PodRunning, now)
+	older := newPod("old", tNsDefault, map[string]string{tNameApp: tNameAPI}, corev1.PodRunning, now.Add(-2*time.Hour))
+	newer := newPod("new", tNsDefault, map[string]string{tNameApp: tNameAPI}, corev1.PodRunning, now.Add(-1*time.Hour))
+	pending := newPod("pending", tNsDefault, map[string]string{tNameApp: tNameAPI}, corev1.PodPending, now)
+	otherNs := newPod("other-ns", "kube-system", map[string]string{tNameApp: tNameAPI}, corev1.PodRunning, now)
+	otherLabel := newPod("other-label", tNsDefault, map[string]string{tNameApp: tOther}, corev1.PodRunning, now)
 
 	c := fake.NewClientBuilder().WithScheme(sch).
 		WithObjects(older, newer, pending, otherNs, otherLabel).
 		Build()
 
-	sel := labels.SelectorFromSet(labels.Set{"app": "api"})
-	pod, err := findRunningPodForWorkload(context.Background(), c, "default", sel)
+	sel := labels.SelectorFromSet(labels.Set{tNameApp: tNameAPI})
+	pod, err := findRunningPodForWorkload(context.Background(), c, tNsDefault, sel)
 	if err != nil {
 		t.Fatalf("findRunningPodForWorkload: %v", err)
 	}
@@ -56,8 +56,8 @@ func TestFindRunningPodForWorkloadNoMatch(t *testing.T) {
 	sch := newTestScheme(t)
 	c := fake.NewClientBuilder().WithScheme(sch).Build()
 
-	sel := labels.SelectorFromSet(labels.Set{"app": "api"})
-	pod, err := findRunningPodForWorkload(context.Background(), c, "default", sel)
+	sel := labels.SelectorFromSet(labels.Set{tNameApp: tNameAPI})
+	pod, err := findRunningPodForWorkload(context.Background(), c, tNsDefault, sel)
 	if err != nil {
 		t.Fatalf("findRunningPodForWorkload: %v", err)
 	}
@@ -71,7 +71,7 @@ func TestFindRunningPodForWorkloadNilSelector(t *testing.T) {
 	sch := newTestScheme(t)
 	c := fake.NewClientBuilder().WithScheme(sch).Build()
 
-	pod, err := findRunningPodForWorkload(context.Background(), c, "default", nil)
+	pod, err := findRunningPodForWorkload(context.Background(), c, tNsDefault, nil)
 	if err != nil {
 		t.Fatalf("findRunningPodForWorkload: %v", err)
 	}
@@ -84,11 +84,11 @@ func TestFindRunningPodForWorkloadOnlyNonRunning(t *testing.T) {
 	t.Parallel()
 	sch := newTestScheme(t)
 	now := time.Now()
-	pod := newPod("p", "default", map[string]string{"app": "api"}, corev1.PodPending, now)
+	pod := newPod("p", tNsDefault, map[string]string{tNameApp: tNameAPI}, corev1.PodPending, now)
 	c := fake.NewClientBuilder().WithScheme(sch).WithObjects(pod).Build()
 
-	sel := labels.SelectorFromSet(labels.Set{"app": "api"})
-	got, err := findRunningPodForWorkload(context.Background(), c, "default", sel)
+	sel := labels.SelectorFromSet(labels.Set{tNameApp: tNameAPI})
+	got, err := findRunningPodForWorkload(context.Background(), c, tNsDefault, sel)
 	if err != nil {
 		t.Fatalf("findRunningPodForWorkload: %v", err)
 	}

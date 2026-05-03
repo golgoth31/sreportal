@@ -129,11 +129,11 @@ func TestFetchFQDNs(t *testing.T) {
 		dnsHandler := &mockDNSServiceHandler{
 			fqdns: []*sreportalv1.FQDN{
 				{
-					Name:        "app.example.com",
+					Name:        tFQDNApp,
 					Description: "Application endpoint",
 					RecordType:  "A",
-					Targets:     []string{"192.168.1.1"},
-					Groups:      []string{"production"},
+					Targets:     []string{tIP19216811},
+					Groups:      []string{tEnvProd},
 					LastSeen:    timestamppb.New(now),
 				},
 				{
@@ -141,15 +141,15 @@ func TestFetchFQDNs(t *testing.T) {
 					Description: "API endpoint",
 					RecordType:  "CNAME",
 					Targets:     []string{"lb.example.com"},
-					Groups:      []string{"production"},
+					Groups:      []string{tEnvProd},
 					LastSeen:    timestamppb.New(now),
 				},
 				{
 					Name:        "dev.example.com",
 					Description: "Dev endpoint",
 					RecordType:  "A",
-					Targets:     []string{"10.0.0.1"},
-					Groups:      []string{"development"},
+					Targets:     []string{tIP10001},
+					Groups:      []string{tEnvDev},
 					LastSeen:    timestamppb.New(now),
 				},
 			},
@@ -158,8 +158,8 @@ func TestFetchFQDNs(t *testing.T) {
 		portalHandler := &mockPortalServiceHandler{
 			portals: []*sreportalv1.Portal{
 				{
-					Name:  "main",
-					Title: "Main Portal",
+					Name:  tPortalMain,
+					Title: tTitleMain,
 					Main:  true,
 				},
 			},
@@ -178,7 +178,7 @@ func TestFetchFQDNs(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.Equal(t, 3, result.FQDNCount)
-		assert.Equal(t, "Main Portal", result.RemoteTitle)
+		assert.Equal(t, tTitleMain, result.RemoteTitle)
 		assert.Len(t, result.Groups, 2) // production and development groups
 	})
 
@@ -211,10 +211,10 @@ func TestFetchFQDNs(t *testing.T) {
 		dnsHandler := &mockDNSServiceHandler{
 			fqdns: []*sreportalv1.FQDN{
 				{
-					Name:       "app.example.com",
+					Name:       tFQDNApp,
 					RecordType: "A",
-					Targets:    []string{"192.168.1.1"},
-					Groups:     []string{"default"},
+					Targets:    []string{tIP19216811},
+					Groups:     []string{tNsDefault},
 				},
 			},
 		}
@@ -222,8 +222,8 @@ func TestFetchFQDNs(t *testing.T) {
 		portalHandler := &mockPortalServiceHandler{
 			portals: []*sreportalv1.Portal{
 				{
-					Name:  "main",
-					Title: "Main Portal",
+					Name:  tPortalMain,
+					Title: tTitleMain,
 					Main:  true,
 				},
 				{
@@ -314,8 +314,8 @@ func TestHealthCheck(t *testing.T) {
 		portalHandler := &mockPortalServiceHandler{
 			portals: []*sreportalv1.Portal{
 				{
-					Name:  "main",
-					Title: "Main Portal",
+					Name:  tPortalMain,
+					Title: tTitleMain,
 					Main:  true,
 				},
 			},
@@ -368,8 +368,8 @@ func TestConvertToGroups(t *testing.T) {
 				Name:        "app1.example.com",
 				Description: "App 1",
 				RecordType:  "A",
-				Targets:     []string{"192.168.1.1"},
-				Groups:      []string{"production"},
+				Targets:     []string{tIP19216811},
+				Groups:      []string{tEnvProd},
 				LastSeen:    timestamppb.New(now),
 			},
 			{
@@ -377,15 +377,15 @@ func TestConvertToGroups(t *testing.T) {
 				Description: "App 2",
 				RecordType:  "A",
 				Targets:     []string{"192.168.1.2"},
-				Groups:      []string{"production"},
+				Groups:      []string{tEnvProd},
 				LastSeen:    timestamppb.New(now),
 			},
 			{
 				Name:        "dev.example.com",
 				Description: "Dev",
 				RecordType:  "A",
-				Targets:     []string{"10.0.0.1"},
-				Groups:      []string{"development"},
+				Targets:     []string{tIP10001},
+				Groups:      []string{tEnvDev},
 				LastSeen:    timestamppb.New(now),
 			},
 		}
@@ -401,14 +401,14 @@ func TestConvertToGroups(t *testing.T) {
 			source string
 		}
 		for _, g := range groups {
-			if g.Name == "production" {
+			if g.Name == tEnvProd {
 				prodGroup = &struct {
 					name   string
 					fqdns  int
 					source string
 				}{g.Name, len(g.FQDNs), g.Source}
 			}
-			if g.Name == "development" {
+			if g.Name == tEnvDev {
 				devGroup = &struct {
 					name   string
 					fqdns  int
@@ -429,9 +429,9 @@ func TestConvertToGroups(t *testing.T) {
 	t.Run("uses default group for empty group name", func(t *testing.T) {
 		fqdns := []*sreportalv1.FQDN{
 			{
-				Name:       "app.example.com",
+				Name:       tFQDNApp,
 				RecordType: "A",
-				Targets:    []string{"192.168.1.1"},
+				Targets:    []string{tIP19216811},
 				Groups:     []string{}, // Empty groups
 			},
 		}
@@ -439,7 +439,7 @@ func TestConvertToGroups(t *testing.T) {
 		groups := convertToGroups(fqdns)
 
 		assert.Len(t, groups, 1)
-		assert.Equal(t, "default", groups[0].Name)
+		assert.Equal(t, tNsDefault, groups[0].Name)
 	})
 
 	t.Run("handles empty input", func(t *testing.T) {
@@ -453,8 +453,8 @@ func TestConvertToGroups(t *testing.T) {
 			{
 				Name:       "sync.example.com",
 				RecordType: "A",
-				Targets:    []string{"10.0.0.1"},
-				Groups:     []string{"production"},
+				Targets:    []string{tIP10001},
+				Groups:     []string{tEnvProd},
 				LastSeen:   timestamppb.New(now),
 				SyncStatus: "sync",
 			},
@@ -462,7 +462,7 @@ func TestConvertToGroups(t *testing.T) {
 				Name:       "gone.example.com",
 				RecordType: "A",
 				Targets:    []string{"10.0.0.2"},
-				Groups:     []string{"production"},
+				Groups:     []string{tEnvProd},
 				LastSeen:   timestamppb.New(now),
 				SyncStatus: "notavailable",
 			},
@@ -470,7 +470,7 @@ func TestConvertToGroups(t *testing.T) {
 				Name:       "drift.example.com",
 				RecordType: "A",
 				Targets:    []string{"10.0.0.3"},
-				Groups:     []string{"production"},
+				Groups:     []string{tEnvProd},
 				LastSeen:   timestamppb.New(now),
 				SyncStatus: "notsync",
 			},
@@ -494,10 +494,10 @@ func TestConvertToGroups(t *testing.T) {
 	t.Run("handles nil LastSeen", func(t *testing.T) {
 		fqdns := []*sreportalv1.FQDN{
 			{
-				Name:       "app.example.com",
+				Name:       tFQDNApp,
 				RecordType: "A",
-				Targets:    []string{"192.168.1.1"},
-				Groups:     []string{"default"},
+				Targets:    []string{tIP19216811},
+				Groups:     []string{tNsDefault},
 				LastSeen:   nil,
 			},
 		}
@@ -521,7 +521,7 @@ func TestFetchImages(t *testing.T) {
 					Tag:        "1.2.3",
 					TagType:    "semver",
 					Workloads: []*sreportalv1.WorkloadRef{
-						{Kind: "Deployment", Namespace: "default", Name: "api", Container: "main", Source: "spec"},
+						{Kind: "Deployment", Namespace: tNsDefault, Name: "api", Container: tPortalMain, Source: "spec"},
 					},
 				},
 			},
@@ -534,7 +534,7 @@ func TestFetchImages(t *testing.T) {
 		defer server.Close()
 
 		client := NewClient(WithRetryAttempts(1))
-		result, err := client.FetchImages(context.Background(), server.URL, "main")
+		result, err := client.FetchImages(context.Background(), server.URL, tPortalMain)
 		require.NoError(t, err)
 		require.Len(t, result.Images, 1)
 		require.Equal(t, "ghcr.io", result.Images[0].Registry)
@@ -557,7 +557,7 @@ func TestFetchImages(t *testing.T) {
 		defer server.Close()
 
 		client := NewClient(WithRetryAttempts(1))
-		_, err := client.FetchImages(context.Background(), server.URL, "main")
+		_, err := client.FetchImages(context.Background(), server.URL, tPortalMain)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "fetch images failed after 1 attempts")
 	})

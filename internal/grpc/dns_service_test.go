@@ -41,23 +41,23 @@ func seedFQDNStore(t *testing.T) *dnsstore.FQDNStore {
 
 	err := store.Replace(ctx, "default/test-dns", []domaindns.FQDNView{
 		{
-			Name: "api.example.com", Source: domaindns.SourceExternalDNS,
+			Name: tFQDNAPI, Source: domaindns.SourceExternalDNS,
 			Groups: []string{"Services"}, RecordType: "A",
 			Targets: []string{"10.0.0.1"}, LastSeen: now,
-			PortalName: "main", Namespace: "default", SyncStatus: "synced",
+			PortalName: tPortalMain, Namespace: tNsDefault, SyncStatus: "synced",
 			OriginRef: &ref,
 		},
 		{
 			Name: "web.example.com", Source: domaindns.SourceExternalDNS,
 			Groups: []string{"Services"}, RecordType: "A",
 			Targets: []string{"10.0.0.2"}, LastSeen: now,
-			PortalName: "main", Namespace: "default",
+			PortalName: tPortalMain, Namespace: tNsDefault,
 		},
 		{
-			Name: "internal.example.com", Source: domaindns.SourceManual,
+			Name: tFQDNInternal, Source: domaindns.SourceManual,
 			Groups: []string{"Internal"}, RecordType: "A",
 			Targets: []string{"10.0.0.3"}, LastSeen: now,
-			PortalName: "main", Namespace: "default",
+			PortalName: tPortalMain, Namespace: tNsDefault,
 		},
 	})
 	require.NoError(t, err)
@@ -82,10 +82,10 @@ func TestListFQDNs_ReturnsAllFQDNs(t *testing.T) {
 		fqdnsByName[f.Name] = f
 	}
 
-	assert.Contains(t, fqdnsByName, "api.example.com")
-	assert.Equal(t, "external-dns", fqdnsByName["api.example.com"].Source)
-	assert.Contains(t, fqdnsByName, "internal.example.com")
-	assert.Equal(t, "manual", fqdnsByName["internal.example.com"].Source)
+	assert.Contains(t, fqdnsByName, tFQDNAPI)
+	assert.Equal(t, "external-dns", fqdnsByName[tFQDNAPI].Source)
+	assert.Contains(t, fqdnsByName, tFQDNInternal)
+	assert.Equal(t, "manual", fqdnsByName[tFQDNInternal].Source)
 }
 
 func TestListFQDNs_NoDuplicateGroups(t *testing.T) {
@@ -99,7 +99,7 @@ func TestListFQDNs_NoDuplicateGroups(t *testing.T) {
 
 	require.NoError(t, err)
 	for _, fqdn := range resp.Msg.Fqdns {
-		if fqdn.Name == "api.example.com" {
+		if fqdn.Name == tFQDNAPI {
 			assert.Len(t, fqdn.Groups, 1,
 				"api.example.com should have exactly 1 group, got %v", fqdn.Groups)
 			assert.Equal(t, "Services", fqdn.Groups[0])
@@ -120,7 +120,7 @@ func TestListFQDNs_OriginRef_IsPopulated(t *testing.T) {
 
 	var apiFQDN *dnsv1.FQDN
 	for _, f := range resp.Msg.Fqdns {
-		if f.Name == "api.example.com" {
+		if f.Name == tFQDNAPI {
 			apiFQDN = f
 			break
 		}
@@ -145,7 +145,7 @@ func TestListFQDNs_OriginRef_IsNil_ForManualEntries(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, f := range resp.Msg.Fqdns {
-		if f.Name == "internal.example.com" {
+		if f.Name == tFQDNInternal {
 			assert.Nil(t, f.OriginRef, "manual entries must not have OriginRef")
 		}
 	}
@@ -155,8 +155,8 @@ func TestListFQDNs_ReturnsBothRecordTypes(t *testing.T) {
 	store := dnsstore.NewFQDNStore(nil)
 	now := time.Now()
 	_ = store.Replace(context.Background(), "default/test-dns", []domaindns.FQDNView{
-		{Name: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}, LastSeen: now, PortalName: "main"},
-		{Name: "api.example.com", RecordType: "CNAME", Targets: []string{"lb.example.com"}, LastSeen: now, PortalName: "main"},
+		{Name: tFQDNAPI, RecordType: "A", Targets: []string{"10.0.0.1"}, LastSeen: now, PortalName: tPortalMain},
+		{Name: tFQDNAPI, RecordType: "CNAME", Targets: []string{"lb.example.com"}, LastSeen: now, PortalName: tPortalMain},
 	})
 
 	svc := svcgrpc.NewDNSService(store, nil)
@@ -171,7 +171,7 @@ func TestListFQDNs_ReturnsBothRecordTypes(t *testing.T) {
 
 	recordTypes := make(map[string]string)
 	for _, f := range resp.Msg.Fqdns {
-		assert.Equal(t, "api.example.com", f.Name)
+		assert.Equal(t, tFQDNAPI, f.Name)
 		recordTypes[f.RecordType] = f.Targets[0]
 	}
 	assert.Equal(t, "10.0.0.1", recordTypes["A"])
@@ -190,21 +190,21 @@ func TestListFQDNs_FiltersWork(t *testing.T) {
 	}{
 		{
 			name:     "search filter",
-			request:  &dnsv1.ListFQDNsRequest{Search: "api"},
+			request:  &dnsv1.ListFQDNsRequest{Search: tNameAPI},
 			wantLen:  1,
-			wantFQDN: "api.example.com",
+			wantFQDN: tFQDNAPI,
 		},
 		{
 			name:     "source filter external-dns",
 			request:  &dnsv1.ListFQDNsRequest{Source: "external-dns"},
 			wantLen:  2,
-			wantFQDN: "api.example.com",
+			wantFQDN: tFQDNAPI,
 		},
 		{
 			name:     "source filter manual",
 			request:  &dnsv1.ListFQDNsRequest{Source: "manual"},
 			wantLen:  1,
-			wantFQDN: "internal.example.com",
+			wantFQDN: tFQDNInternal,
 		},
 	}
 

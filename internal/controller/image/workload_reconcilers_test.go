@@ -21,14 +21,14 @@ func TestDeploymentReconcilerUpsertsOnPresent(t *testing.T) {
 	sch := newTestScheme(t)
 
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "inv", Namespace: "sre"},
-		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: "portal-a"},
+		ObjectMeta: metav1.ObjectMeta{Name: tInvName, Namespace: tNsSRE},
+		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: tPortalA},
 	}
 	dep := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{Name: "api", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: tNameAPI, Namespace: tNsDefault},
 		Spec: appsv1.DeploymentSpec{
 			Template: corev1.PodTemplateSpec{
-				Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "web", Image: "ghcr.io/acme/api:v1"}}},
+				Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: tNameWeb, Image: "ghcr.io/acme/api:v1"}}},
 			},
 		},
 	}
@@ -36,7 +36,7 @@ func TestDeploymentReconcilerUpsertsOnPresent(t *testing.T) {
 	writer := &fakeImageWriter{}
 	r := &DeploymentImageReconciler{handler: NewWorkloadHandler(c, writer)}
 
-	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "default", Name: "api"}})
+	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Namespace: tNsDefault, Name: tNameAPI}})
 	if err != nil {
 		t.Fatalf("Reconcile: %v", err)
 	}
@@ -53,14 +53,14 @@ func TestDeploymentReconcilerDeletesOnNotFound(t *testing.T) {
 	writer := &fakeImageWriter{}
 	r := &DeploymentImageReconciler{handler: NewWorkloadHandler(c, writer)}
 
-	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "default", Name: "gone"}})
+	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Namespace: tNsDefault, Name: "gone"}})
 	if err != nil {
 		t.Fatalf("Reconcile: %v", err)
 	}
 	if len(writer.deletes) != 1 {
 		t.Fatalf("want 1 delete, got %d", len(writer.deletes))
 	}
-	want := domainimage.WorkloadKey{Kind: "Deployment", Namespace: "default", Name: "gone"}
+	want := domainimage.WorkloadKey{Kind: kindDeployment, Namespace: tNsDefault, Name: "gone"}
 	if writer.deletes[0] != want {
 		t.Fatalf("delete=%+v want %+v", writer.deletes[0], want)
 	}
@@ -71,11 +71,11 @@ func TestCronJobReconcilerExtractsJobTemplatePodSpec(t *testing.T) {
 	sch := newTestScheme(t)
 
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "inv", Namespace: "sre"},
-		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: "portal-a"},
+		ObjectMeta: metav1.ObjectMeta{Name: tInvName, Namespace: tNsSRE},
+		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: tPortalA},
 	}
 	cj := &batchv1.CronJob{
-		ObjectMeta: metav1.ObjectMeta{Name: "nightly", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: "nightly", Namespace: tNsDefault},
 		Spec: batchv1.CronJobSpec{
 			JobTemplate: batchv1.JobTemplateSpec{
 				Spec: batchv1.JobSpec{
@@ -90,14 +90,14 @@ func TestCronJobReconcilerExtractsJobTemplatePodSpec(t *testing.T) {
 	writer := &fakeImageWriter{}
 	r := &CronJobImageReconciler{handler: NewWorkloadHandler(c, writer)}
 
-	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "default", Name: "nightly"}})
+	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Namespace: tNsDefault, Name: "nightly"}})
 	if err != nil {
 		t.Fatalf("Reconcile: %v", err)
 	}
 	if len(writer.replaces) != 1 {
 		t.Fatalf("want 1 replace, got %d", len(writer.replaces))
 	}
-	if writer.replaces[0].wk.Kind != "CronJob" {
-		t.Fatalf("kind=%q want CronJob", writer.replaces[0].wk.Kind)
+	if writer.replaces[0].wk.Kind != kindCronJob {
+		t.Fatalf("kind=%q want %s", writer.replaces[0].wk.Kind, kindCronJob)
 	}
 }

@@ -47,7 +47,7 @@ func newReleaseScheme() *runtime.Scheme {
 
 func testPortalCR() *sreportalv1alpha1.Portal {
 	return &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: testPortal, Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: testPortal, Namespace: tNsDefault},
 		Spec:       sreportalv1alpha1.PortalSpec{Title: "Main"},
 	}
 }
@@ -57,12 +57,12 @@ func TestReleaseReconciler_Reconcile_PushesEntriesToStore(t *testing.T) {
 	day := time.Now().UTC().Add(-24 * time.Hour).Format("2006-01-02")
 	crName := "release-" + day
 	existing := &sreportalv1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Name: crName, Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: crName, Namespace: tNsDefault},
 		Spec: sreportalv1alpha1.ReleaseSpec{
 			PortalRef: testPortal,
 			Entries: []sreportalv1alpha1.ReleaseEntry{
 				{
-					Type:    "deployment",
+					Type:    tKindDeployment,
 					Version: "v1.0.0",
 					Origin:  "ci/cd",
 					Date:    metav1.NewTime(time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC)),
@@ -83,7 +83,7 @@ func TestReleaseReconciler_Reconcile_PushesEntriesToStore(t *testing.T) {
 	r.SetReleaseWriter(store)
 
 	result, err := r.Reconcile(ctx, ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: crName, Namespace: "default"},
+		NamespacedName: types.NamespacedName{Name: crName, Namespace: tNsDefault},
 	})
 
 	require.NoError(t, err)
@@ -92,7 +92,7 @@ func TestReleaseReconciler_Reconcile_PushesEntriesToStore(t *testing.T) {
 	entries, err := store.ListEntries(ctx, day, testPortal)
 	require.NoError(t, err)
 	require.Len(t, entries, 2)
-	assert.Equal(t, "deployment", entries[0].Type)
+	assert.Equal(t, tKindDeployment, entries[0].Type)
 	assert.Equal(t, "v1.0.0", entries[0].Version)
 	assert.Equal(t, "alice", entries[0].Author)
 	assert.Equal(t, "rollback", entries[1].Type)
@@ -106,11 +106,11 @@ func TestReleaseReconciler_Reconcile_ReleasesDisabled_SkipsProjection(t *testing
 	portal := testPortalCR()
 	portal.Spec.Features = &sreportalv1alpha1.PortalFeatures{Releases: &releasesFalse}
 	rel := &sreportalv1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Name: crName, Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: crName, Namespace: tNsDefault},
 		Spec: sreportalv1alpha1.ReleaseSpec{
 			PortalRef: testPortal,
 			Entries: []sreportalv1alpha1.ReleaseEntry{
-				{Type: "deployment", Origin: "ci", Date: metav1.NewTime(time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC))},
+				{Type: tKindDeployment, Origin: "ci", Date: metav1.NewTime(time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC))},
 			},
 		},
 	}
@@ -121,7 +121,7 @@ func TestReleaseReconciler_Reconcile_ReleasesDisabled_SkipsProjection(t *testing
 	r.SetReleaseWriter(store)
 
 	result, err := r.Reconcile(ctx, ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: crName, Namespace: "default"},
+		NamespacedName: types.NamespacedName{Name: crName, Namespace: tNsDefault},
 	})
 	require.NoError(t, err)
 	assert.Equal(t, 12*time.Hour, result.RequeueAfter)
@@ -142,7 +142,7 @@ func TestReleaseReconciler_Reconcile_DeletedCR_RemovesFromStore(t *testing.T) {
 	day := time.Now().UTC().Add(-24 * time.Hour).Format("2006-01-02")
 
 	result, err := r.Reconcile(ctx, ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: "release-" + day, Namespace: "default"},
+		NamespacedName: types.NamespacedName{Name: "release-" + day, Namespace: tNsDefault},
 	})
 
 	require.NoError(t, err)
@@ -160,7 +160,7 @@ func TestReleaseReconciler_Reconcile_SkipsUnparseableName(t *testing.T) {
 	r.SetReleaseWriter(store)
 
 	result, err := r.Reconcile(context.Background(), ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: "not-a-release", Namespace: "default"},
+		NamespacedName: types.NamespacedName{Name: "not-a-release", Namespace: tNsDefault},
 	})
 
 	require.NoError(t, err)
@@ -173,7 +173,7 @@ func TestReleaseReconciler_Reconcile_SkipsUnparseableName(t *testing.T) {
 
 func TestReleaseReconciler_Reconcile_DeletesExpiredCR(t *testing.T) {
 	existing := &sreportalv1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Name: "release-2025-01-01", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: tNameRelease, Namespace: tNsDefault},
 		Spec:       sreportalv1alpha1.ReleaseSpec{PortalRef: testPortal},
 	}
 	c := fake.NewClientBuilder().WithScheme(newReleaseScheme()).WithObjects(testPortalCR(), existing).Build()
@@ -182,14 +182,14 @@ func TestReleaseReconciler_Reconcile_DeletesExpiredCR(t *testing.T) {
 	r.SetReleaseWriter(store)
 
 	result, err := r.Reconcile(context.Background(), ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: "release-2025-01-01", Namespace: "default"},
+		NamespacedName: types.NamespacedName{Name: tNameRelease, Namespace: tNsDefault},
 	})
 
 	require.NoError(t, err)
 	assert.Equal(t, ctrl.Result{}, result)
 
 	var rel sreportalv1alpha1.Release
-	err = c.Get(context.Background(), types.NamespacedName{Name: "release-2025-01-01", Namespace: "default"}, &rel)
+	err = c.Get(context.Background(), types.NamespacedName{Name: tNameRelease, Namespace: tNsDefault}, &rel)
 	assert.True(t, err != nil, "expected CR to be deleted")
 }
 
@@ -198,7 +198,7 @@ func TestReleaseReconciler_Reconcile_PreservesNonExpiredCR(t *testing.T) {
 	today := time.Now().UTC().Format("2006-01-02")
 	crName := "release-" + today
 	existing := &sreportalv1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Name: crName, Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: crName, Namespace: tNsDefault},
 		Spec:       sreportalv1alpha1.ReleaseSpec{PortalRef: testPortal},
 	}
 	c := fake.NewClientBuilder().WithScheme(newReleaseScheme()).WithObjects(testPortalCR(), existing).Build()
@@ -207,14 +207,14 @@ func TestReleaseReconciler_Reconcile_PreservesNonExpiredCR(t *testing.T) {
 	r.SetReleaseWriter(store)
 
 	result, err := r.Reconcile(ctx, ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: crName, Namespace: "default"},
+		NamespacedName: types.NamespacedName{Name: crName, Namespace: tNsDefault},
 	})
 
 	require.NoError(t, err)
 	assert.Equal(t, 12*time.Hour, result.RequeueAfter)
 
 	var rel sreportalv1alpha1.Release
-	err = c.Get(ctx, types.NamespacedName{Name: crName, Namespace: "default"}, &rel)
+	err = c.Get(ctx, types.NamespacedName{Name: crName, Namespace: tNsDefault}, &rel)
 	require.NoError(t, err)
 }
 
@@ -223,11 +223,11 @@ func TestReleaseReconciler_Reconcile_PortalNotFound_ReturnsError(t *testing.T) {
 	day := time.Now().UTC().Add(-24 * time.Hour).Format("2006-01-02")
 	crName := "release-" + day
 	rel := &sreportalv1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Name: crName, Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: crName, Namespace: tNsDefault},
 		Spec: sreportalv1alpha1.ReleaseSpec{
 			PortalRef: "missing",
 			Entries: []sreportalv1alpha1.ReleaseEntry{
-				{Type: "deployment", Origin: "ci", Date: metav1.NewTime(time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC))},
+				{Type: tKindDeployment, Origin: "ci", Date: metav1.NewTime(time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC))},
 			},
 		},
 	}
@@ -236,7 +236,7 @@ func TestReleaseReconciler_Reconcile_PortalNotFound_ReturnsError(t *testing.T) {
 	r.SetReleaseWriter(releasereadstore.NewReleaseStore())
 
 	_, err := r.Reconcile(ctx, ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: crName, Namespace: "default"},
+		NamespacedName: types.NamespacedName{Name: crName, Namespace: tNsDefault},
 	})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "get portal")

@@ -53,9 +53,9 @@ var _ = Describe("FetchAlertsHandler", func() {
 	newRC := func(isRemote bool) *reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager, alertmanagerctrl.ChainData] {
 		return &reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager, alertmanagerctrl.ChainData]{
 			Resource: &sreportalv1alpha1.Alertmanager{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-am", Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: tNameTestAM, Namespace: tNsDefault},
 				Spec: sreportalv1alpha1.AlertmanagerSpec{
-					PortalRef: "main",
+					PortalRef: tPortalMain,
 					URL: sreportalv1alpha1.AlertmanagerURL{
 						Local: "http://alertmanager:9093",
 					},
@@ -68,8 +68,8 @@ var _ = Describe("FetchAlertsHandler", func() {
 	Context("when fetcher returns alerts (local)", func() {
 		It("should store alerts in context data", func() {
 			alerts := []domainalertmanager.Alert{
-				{Fingerprint: "aaa", Labels: map[string]string{"alertname": "HighCPU"}, State: domainalertmanager.StateActive},
-				{Fingerprint: "bbb", Labels: map[string]string{"alertname": "DiskFull"}, State: domainalertmanager.StateActive},
+				{Fingerprint: "aaa", Labels: map[string]string{tLabelName: "HighCPU"}, State: domainalertmanager.StateActive},
+				{Fingerprint: "bbb", Labels: map[string]string{tLabelName: "DiskFull"}, State: domainalertmanager.StateActive},
 			}
 			localFetcher := &fakeFetcher{alerts: alerts}
 			k8sClient := fake.NewClientBuilder().WithScheme(newScheme()).Build()
@@ -124,7 +124,7 @@ var _ = Describe("FetchAlertsHandler", func() {
 
 		It("should fail when portal has no remote configuration", func() {
 			portal := &sreportalv1alpha1.Portal{
-				ObjectMeta: metav1.ObjectMeta{Name: "main", Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: tPortalMain, Namespace: tNsDefault},
 				Spec:       sreportalv1alpha1.PortalSpec{Title: "Main"},
 			}
 			localFetcher := &fakeFetcher{}

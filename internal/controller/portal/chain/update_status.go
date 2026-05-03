@@ -61,7 +61,7 @@ func (h *UpdateStatusHandler) handleLocal(ctx context.Context, portal *sreportal
 	portal.Status.RemoteSync = nil
 
 	meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
-		Type:               "Ready",
+		Type:               conditionTypeReady,
 		Status:             metav1.ConditionTrue,
 		Reason:             "PortalConfigured",
 		Message:            "Portal is fully configured",
@@ -95,7 +95,7 @@ func (h *UpdateStatusHandler) handleRemote(ctx context.Context, rc *reconciler.R
 	portal.Status.RemoteSync.Features = result.RemoteFeatures
 
 	meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
-		Type:               "Ready",
+		Type:               conditionTypeReady,
 		Status:             metav1.ConditionTrue,
 		Reason:             "RemoteSyncSuccess",
 		Message:            "Successfully synced with remote portal",

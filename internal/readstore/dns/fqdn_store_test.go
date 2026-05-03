@@ -21,14 +21,14 @@ func seedStore(t *testing.T) *dnsstore.FQDNStore {
 		{
 			Name: "api.example.com", Source: domaindns.SourceExternalDNS,
 			Groups: []string{"Services"}, RecordType: "A",
-			Targets: []string{"10.0.0.1"}, LastSeen: time.Now(),
-			PortalName: "main", Namespace: "default", SyncStatus: "synced",
+			Targets: []string{tIP10001}, LastSeen: time.Now(),
+			PortalName: tPortalMain, Namespace: "default", SyncStatus: "synced",
 		},
 		{
 			Name: "web.example.com", Source: domaindns.SourceExternalDNS,
 			Groups: []string{"Services"}, RecordType: "A",
-			Targets: []string{"10.0.0.2"}, LastSeen: time.Now(),
-			PortalName: "main", Namespace: "default",
+			Targets: []string{tIP10002}, LastSeen: time.Now(),
+			PortalName: tPortalMain, Namespace: "default",
 		},
 	})
 	require.NoError(t, err)
@@ -38,7 +38,7 @@ func seedStore(t *testing.T) *dnsstore.FQDNStore {
 			Name: "api.staging.com", Source: domaindns.SourceManual,
 			Groups: []string{"Internal"}, RecordType: "CNAME",
 			Targets: []string{"lb.staging.com"}, LastSeen: time.Now(),
-			PortalName: "staging", Namespace: "staging",
+			PortalName: tEnvStaging, Namespace: tEnvStaging,
 		},
 	})
 	require.NoError(t, err)
@@ -62,19 +62,19 @@ func TestFQDNStore_List_ReturnsAllSorted(t *testing.T) {
 func TestFQDNStore_List_FiltersByPortal(t *testing.T) {
 	s := seedStore(t)
 
-	fqdns, err := s.List(context.Background(), domaindns.FQDNFilters{Portal: "main"})
+	fqdns, err := s.List(context.Background(), domaindns.FQDNFilters{Portal: tPortalMain})
 	require.NoError(t, err)
 	require.Len(t, fqdns, 2)
 
 	for _, f := range fqdns {
-		assert.Equal(t, "main", f.PortalName)
+		assert.Equal(t, tPortalMain, f.PortalName)
 	}
 }
 
 func TestFQDNStore_List_FiltersByNamespace(t *testing.T) {
 	s := seedStore(t)
 
-	fqdns, err := s.List(context.Background(), domaindns.FQDNFilters{Namespace: "staging"})
+	fqdns, err := s.List(context.Background(), domaindns.FQDNFilters{Namespace: tEnvStaging})
 	require.NoError(t, err)
 	require.Len(t, fqdns, 1)
 	assert.Equal(t, "api.staging.com", fqdns[0].Name)
@@ -103,7 +103,7 @@ func TestFQDNStore_List_CombinesFilters(t *testing.T) {
 	s := seedStore(t)
 
 	fqdns, err := s.List(context.Background(), domaindns.FQDNFilters{
-		Portal: "main",
+		Portal: tPortalMain,
 		Search: "api",
 	})
 	require.NoError(t, err)
@@ -138,7 +138,7 @@ func TestFQDNStore_Get_MatchesCaseInsensitive(t *testing.T) {
 func TestFQDNStore_Count_WithFilters(t *testing.T) {
 	s := seedStore(t)
 
-	count, err := s.Count(context.Background(), domaindns.FQDNFilters{Portal: "main"})
+	count, err := s.Count(context.Background(), domaindns.FQDNFilters{Portal: tPortalMain})
 	require.NoError(t, err)
 	assert.Equal(t, 2, count)
 
@@ -189,24 +189,24 @@ func TestFQDNStore_Subscribe_NotifiesOnChange(t *testing.T) {
 
 func TestFQDNStore_List_DeduplicatesBySourcePriority(t *testing.T) {
 	// Priority: dnsendpoint > ingress > service
-	s := dnsstore.NewFQDNStore([]string{"dnsendpoint", "ingress", "service"})
+	s := dnsstore.NewFQDNStore([]string{"dnsendpoint", tSrcIngress, tSrcService})
 	ctx := context.Background()
 
 	// Same FQDN from two different source types (service and ingress)
 	_ = s.Replace(ctx, "ns/record-svc", []domaindns.FQDNView{
 		{
-			Name: "app.example.com", Source: domaindns.SourceExternalDNS,
-			SourceType: "service", RecordType: "A",
-			Targets: []string{"10.0.0.1"}, Groups: []string{"svc-group"},
-			PortalName: "main", Namespace: "ns",
+			Name: tFQDNApp, Source: domaindns.SourceExternalDNS,
+			SourceType: tSrcService, RecordType: "A",
+			Targets: []string{tIP10001}, Groups: []string{"svc-group"},
+			PortalName: tPortalMain, Namespace: "ns",
 		},
 	})
 	_ = s.Replace(ctx, "ns/record-ing", []domaindns.FQDNView{
 		{
-			Name: "app.example.com", Source: domaindns.SourceExternalDNS,
-			SourceType: "ingress", RecordType: "A",
-			Targets: []string{"10.0.0.2"}, Groups: []string{"ing-group"},
-			PortalName: "main", Namespace: "ns",
+			Name: tFQDNApp, Source: domaindns.SourceExternalDNS,
+			SourceType: tSrcIngress, RecordType: "A",
+			Targets: []string{tIP10002}, Groups: []string{"ing-group"},
+			PortalName: tPortalMain, Namespace: "ns",
 		},
 	})
 
@@ -215,29 +215,29 @@ func TestFQDNStore_List_DeduplicatesBySourcePriority(t *testing.T) {
 	require.Len(t, fqdns, 1, "duplicate FQDN should be deduplicated")
 
 	// ingress has higher priority than service → ingress targets win
-	assert.Equal(t, []string{"10.0.0.2"}, fqdns[0].Targets)
-	assert.Equal(t, "ingress", fqdns[0].SourceType)
+	assert.Equal(t, []string{tIP10002}, fqdns[0].Targets)
+	assert.Equal(t, tSrcIngress, fqdns[0].SourceType)
 	// Groups should be merged from both sources
 	assert.ElementsMatch(t, []string{"ing-group", "svc-group"}, fqdns[0].Groups)
 }
 
 func TestFQDNStore_List_DeduplicatesBySourcePriority_ManualNeverDeduplicated(t *testing.T) {
-	s := dnsstore.NewFQDNStore([]string{"dnsendpoint", "service"})
+	s := dnsstore.NewFQDNStore([]string{"dnsendpoint", tSrcService})
 	ctx := context.Background()
 
 	// Same FQDN from manual and external-dns
 	_ = s.Replace(ctx, "ns/record-svc", []domaindns.FQDNView{
 		{
-			Name: "app.example.com", Source: domaindns.SourceExternalDNS,
-			SourceType: "service", RecordType: "A",
-			Targets: []string{"10.0.0.1"}, PortalName: "main", Namespace: "ns",
+			Name: tFQDNApp, Source: domaindns.SourceExternalDNS,
+			SourceType: tSrcService, RecordType: "A",
+			Targets: []string{tIP10001}, PortalName: tPortalMain, Namespace: "ns",
 		},
 	})
 	_ = s.Replace(ctx, "ns/manual", []domaindns.FQDNView{
 		{
-			Name: "app.example.com", Source: domaindns.SourceManual,
+			Name: tFQDNApp, Source: domaindns.SourceManual,
 			RecordType: "A",
-			Targets:    []string{"10.0.0.99"}, PortalName: "main", Namespace: "ns",
+			Targets:    []string{"10.0.0.99"}, PortalName: tPortalMain, Namespace: "ns",
 		},
 	})
 
@@ -248,22 +248,22 @@ func TestFQDNStore_List_DeduplicatesBySourcePriority_ManualNeverDeduplicated(t *
 }
 
 func TestFQDNStore_List_DeduplicatesBySourcePriority_UnlistedSourceLowestPriority(t *testing.T) {
-	// Only "ingress" is in priority list; "service" is not listed
-	s := dnsstore.NewFQDNStore([]string{"ingress"})
+	// Only tSrcIngress is in priority list; tSrcService is not listed
+	s := dnsstore.NewFQDNStore([]string{tSrcIngress})
 	ctx := context.Background()
 
 	_ = s.Replace(ctx, "ns/record-svc", []domaindns.FQDNView{
 		{
-			Name: "app.example.com", Source: domaindns.SourceExternalDNS,
-			SourceType: "service", RecordType: "A",
-			Targets: []string{"10.0.0.1"}, PortalName: "main", Namespace: "ns",
+			Name: tFQDNApp, Source: domaindns.SourceExternalDNS,
+			SourceType: tSrcService, RecordType: "A",
+			Targets: []string{tIP10001}, PortalName: tPortalMain, Namespace: "ns",
 		},
 	})
 	_ = s.Replace(ctx, "ns/record-ing", []domaindns.FQDNView{
 		{
-			Name: "app.example.com", Source: domaindns.SourceExternalDNS,
-			SourceType: "ingress", RecordType: "A",
-			Targets: []string{"10.0.0.2"}, PortalName: "main", Namespace: "ns",
+			Name: tFQDNApp, Source: domaindns.SourceExternalDNS,
+			SourceType: tSrcIngress, RecordType: "A",
+			Targets: []string{tIP10002}, PortalName: tPortalMain, Namespace: "ns",
 		},
 	})
 
@@ -271,26 +271,26 @@ func TestFQDNStore_List_DeduplicatesBySourcePriority_UnlistedSourceLowestPriorit
 	require.NoError(t, err)
 	require.Len(t, fqdns, 1)
 	// ingress is listed, service is not → ingress wins
-	assert.Equal(t, []string{"10.0.0.2"}, fqdns[0].Targets)
-	assert.Equal(t, "ingress", fqdns[0].SourceType)
+	assert.Equal(t, []string{tIP10002}, fqdns[0].Targets)
+	assert.Equal(t, tSrcIngress, fqdns[0].SourceType)
 }
 
 func TestFQDNStore_Count_DeduplicatesBySourcePriority(t *testing.T) {
-	s := dnsstore.NewFQDNStore([]string{"ingress", "service"})
+	s := dnsstore.NewFQDNStore([]string{tSrcIngress, tSrcService})
 	ctx := context.Background()
 
 	_ = s.Replace(ctx, "ns/record-svc", []domaindns.FQDNView{
 		{
-			Name: "app.example.com", Source: domaindns.SourceExternalDNS,
-			SourceType: "service", RecordType: "A",
-			PortalName: "main", Namespace: "ns",
+			Name: tFQDNApp, Source: domaindns.SourceExternalDNS,
+			SourceType: tSrcService, RecordType: "A",
+			PortalName: tPortalMain, Namespace: "ns",
 		},
 	})
 	_ = s.Replace(ctx, "ns/record-ing", []domaindns.FQDNView{
 		{
-			Name: "app.example.com", Source: domaindns.SourceExternalDNS,
-			SourceType: "ingress", RecordType: "A",
-			PortalName: "main", Namespace: "ns",
+			Name: tFQDNApp, Source: domaindns.SourceExternalDNS,
+			SourceType: tSrcIngress, RecordType: "A",
+			PortalName: tPortalMain, Namespace: "ns",
 		},
 	})
 

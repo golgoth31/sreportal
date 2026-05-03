@@ -65,10 +65,10 @@ func TestScanWorkloadsPopulatesByWorkload(t *testing.T) {
 	sch := newChainScheme(t)
 
 	dep := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{Name: "api", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: tNameAPI, Namespace: tNsDefault},
 		Spec: appsv1.DeploymentSpec{
 			Template: corev1.PodTemplateSpec{
-				Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "web", Image: "ghcr.io/acme/api:v1"}}},
+				Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: tNameWeb, Image: "ghcr.io/acme/api:v1"}}},
 			},
 		},
 	}
@@ -76,9 +76,9 @@ func TestScanWorkloadsPopulatesByWorkload(t *testing.T) {
 	h := NewScanWorkloadsHandler(c)
 
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "inv", Namespace: "sre"},
+		ObjectMeta: metav1.ObjectMeta{Name: tNameInv, Namespace: tNsSre},
 		Spec: sreportalv1alpha1.ImageInventorySpec{
-			PortalRef:    "portal-a",
+			PortalRef:    tPortalA,
 			WatchedKinds: []sreportalv1alpha1.ImageInventoryKind{sreportalv1alpha1.ImageInventoryKindDeployment},
 		},
 	}
@@ -90,7 +90,7 @@ func TestScanWorkloadsPopulatesByWorkload(t *testing.T) {
 	if len(rc.Data.ByWorkload) != 1 {
 		t.Fatalf("ByWorkload entries=%d want 1", len(rc.Data.ByWorkload))
 	}
-	wk := domainimage.WorkloadKey{Kind: "Deployment", Namespace: "default", Name: "api"}
+	wk := domainimage.WorkloadKey{Kind: tKindDeploy, Namespace: tNsDefault, Name: tNameAPI}
 	views, ok := rc.Data.ByWorkload[wk]
 	if !ok {
 		t.Fatalf("expected workload key %+v in ByWorkload", wk)
@@ -105,10 +105,10 @@ func TestScanWorkloadsIsRemoteNoOp(t *testing.T) {
 	sch := newChainScheme(t)
 
 	dep := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{Name: "api", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: tNameAPI, Namespace: tNsDefault},
 		Spec: appsv1.DeploymentSpec{
 			Template: corev1.PodTemplateSpec{
-				Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "web", Image: "ghcr.io/acme/api:v1"}}},
+				Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: tNameWeb, Image: "ghcr.io/acme/api:v1"}}},
 			},
 		},
 	}
@@ -116,9 +116,9 @@ func TestScanWorkloadsIsRemoteNoOp(t *testing.T) {
 	h := NewScanWorkloadsHandler(c)
 
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "inv", Namespace: "sre"},
+		ObjectMeta: metav1.ObjectMeta{Name: tNameInv, Namespace: tNsSre},
 		Spec: sreportalv1alpha1.ImageInventorySpec{
-			PortalRef:    "portal-a",
+			PortalRef:    tPortalA,
 			IsRemote:     true,
 			WatchedKinds: []sreportalv1alpha1.ImageInventoryKind{sreportalv1alpha1.ImageInventoryKindDeployment},
 		},
@@ -139,9 +139,9 @@ func TestScanWorkloadsPropagatesScanError(t *testing.T) {
 
 	// Build a client with an invalid labelSelector so scanAll returns an error.
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "inv", Namespace: "sre"},
+		ObjectMeta: metav1.ObjectMeta{Name: tNameInv, Namespace: tNsSre},
 		Spec: sreportalv1alpha1.ImageInventorySpec{
-			PortalRef:     "portal-a",
+			PortalRef:     tPortalA,
 			LabelSelector: "!!!invalid!!!",
 		},
 	}
@@ -158,7 +158,7 @@ func TestScanWorkloadsPropagatesScanError(t *testing.T) {
 	}
 
 	var got sreportalv1alpha1.ImageInventory
-	if err := c.Get(context.Background(), types.NamespacedName{Namespace: "sre", Name: "inv"}, &got); err != nil {
+	if err := c.Get(context.Background(), types.NamespacedName{Namespace: tNsSre, Name: tNameInv}, &got); err != nil {
 		t.Fatalf("Get: %v", err)
 	}
 	cond := findCondition(got.Status.Conditions, ReadyConditionType)

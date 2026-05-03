@@ -30,7 +30,7 @@ import (
 
 func TestEndpointsHash_Deterministic(t *testing.T) {
 	eps := []*endpoint.Endpoint{
-		{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}, Labels: map[string]string{"k": "v"}},
+		{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10001}, Labels: map[string]string{"k": "v"}},
 		{DNSName: "web.example.com", RecordType: "CNAME", Targets: []string{"lb.example.com"}},
 	}
 
@@ -42,8 +42,8 @@ func TestEndpointsHash_Deterministic(t *testing.T) {
 }
 
 func TestEndpointsHash_DifferentOrder_SameHash(t *testing.T) {
-	ep1 := &endpoint.Endpoint{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}}
-	ep2 := &endpoint.Endpoint{DNSName: "web.example.com", RecordType: "A", Targets: []string{"10.0.0.2"}}
+	ep1 := &endpoint.Endpoint{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10001}}
+	ep2 := &endpoint.Endpoint{DNSName: "web.example.com", RecordType: "A", Targets: []string{tIP10002}}
 
 	h1 := adapter.EndpointsHash([]*endpoint.Endpoint{ep1, ep2})
 	h2 := adapter.EndpointsHash([]*endpoint.Endpoint{ep2, ep1})
@@ -53,10 +53,10 @@ func TestEndpointsHash_DifferentOrder_SameHash(t *testing.T) {
 
 func TestEndpointsHash_DifferentTargetOrder_SameHash(t *testing.T) {
 	eps1 := []*endpoint.Endpoint{
-		{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1", "10.0.0.2"}},
+		{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10001, tIP10002}},
 	}
 	eps2 := []*endpoint.Endpoint{
-		{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.2", "10.0.0.1"}},
+		{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10002, tIP10001}},
 	}
 
 	assert.Equal(t, adapter.EndpointsHash(eps1), adapter.EndpointsHash(eps2),
@@ -65,10 +65,10 @@ func TestEndpointsHash_DifferentTargetOrder_SameHash(t *testing.T) {
 
 func TestEndpointsHash_DifferentTargets_DifferentHash(t *testing.T) {
 	eps1 := []*endpoint.Endpoint{
-		{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+		{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10001}},
 	}
 	eps2 := []*endpoint.Endpoint{
-		{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.2"}},
+		{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10002}},
 	}
 
 	assert.NotEqual(t, adapter.EndpointsHash(eps1), adapter.EndpointsHash(eps2),
@@ -77,10 +77,10 @@ func TestEndpointsHash_DifferentTargets_DifferentHash(t *testing.T) {
 
 func TestEndpointsHash_IgnoresLastSeenAndTTL(t *testing.T) {
 	eps1 := []*endpoint.Endpoint{
-		{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}, RecordTTL: 300},
+		{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10001}, RecordTTL: 300},
 	}
 	eps2 := []*endpoint.Endpoint{
-		{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}, RecordTTL: 600},
+		{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10001}, RecordTTL: 600},
 	}
 
 	assert.Equal(t, adapter.EndpointsHash(eps1), adapter.EndpointsHash(eps2),
@@ -89,12 +89,12 @@ func TestEndpointsHash_IgnoresLastSeenAndTTL(t *testing.T) {
 
 func TestEndpointsHash_LabelsAffectHash(t *testing.T) {
 	eps1 := []*endpoint.Endpoint{
-		{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"},
-			Labels: map[string]string{"sreportal.io/portal": "main"}},
+		{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10001},
+			Labels: map[string]string{tLabelPortal: tValMain}},
 	}
 	eps2 := []*endpoint.Endpoint{
-		{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"},
-			Labels: map[string]string{"sreportal.io/portal": "other"}},
+		{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10001},
+			Labels: map[string]string{tLabelPortal: "other"}},
 	}
 
 	assert.NotEqual(t, adapter.EndpointsHash(eps1), adapter.EndpointsHash(eps2),
@@ -114,13 +114,13 @@ func TestEndpointsHash_IgnoresResourceLabel(t *testing.T) {
 	// may re-discover with different resource refs). We must exclude it so
 	// that the hash remains stable.
 	eps1 := []*endpoint.Endpoint{
-		{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"},
-			Labels: map[string]string{"sreportal.io/portal": "main"}},
+		{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10001},
+			Labels: map[string]string{tLabelPortal: tValMain}},
 	}
 	eps2 := []*endpoint.Endpoint{
-		{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"},
+		{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10001},
 			Labels: map[string]string{
-				"sreportal.io/portal":           "main",
+				tLabelPortal:                    tValMain,
 				endpoint.ResourceLabelKey:       "Service/default/api-svc",
 				"sreportal.io/origin-kind":      "Service",
 				"sreportal.io/origin-namespace": "default",
@@ -136,8 +136,8 @@ func TestEndpointStatusHash_MatchesEndpointsHash(t *testing.T) {
 	// The hash from ToEndpointStatus output should match the hash from
 	// the original endpoints (for the fields that matter).
 	eps := []*endpoint.Endpoint{
-		{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"},
-			Labels: map[string]string{"sreportal.io/portal": "main"}},
+		{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10001},
+			Labels: map[string]string{tLabelPortal: tValMain}},
 	}
 
 	fromEndpoints := adapter.EndpointsHash(eps)
@@ -151,11 +151,11 @@ func TestEndpointStatusHash_MatchesEndpointsHash(t *testing.T) {
 
 func TestEndpointStatusHash_IgnoresSyncStatusAndLastSeen(t *testing.T) {
 	s1 := []sreportalv1alpha1.EndpointStatus{
-		{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"},
+		{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10001},
 			SyncStatus: "sync", LastSeen: metav1.Now()},
 	}
 	s2 := []sreportalv1alpha1.EndpointStatus{
-		{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"},
+		{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10001},
 			SyncStatus: "notsync", LastSeen: metav1.Now()},
 	}
 

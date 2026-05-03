@@ -15,21 +15,21 @@ import (
 
 func TestListImages(t *testing.T) {
 	store := imagestore.NewStore()
-	wk := domainimage.WorkloadKey{Kind: "Deployment", Namespace: "default", Name: "api"}
-	require.NoError(t, store.ReplaceWorkload(context.Background(), "main", wk, []domainimage.ImageView{
+	wk := domainimage.WorkloadKey{Kind: "Deployment", Namespace: "default", Name: tNameAPI}
+	require.NoError(t, store.ReplaceWorkload(context.Background(), tPortalMain, wk, []domainimage.ImageView{
 		{
-			PortalRef:  "main",
+			PortalRef:  tPortalMain,
 			Registry:   "ghcr.io",
 			Repository: "acme/api",
 			Tag:        "1.0.0",
 			TagType:    domainimage.TagTypeSemver,
-			Workloads:  []domainimage.WorkloadRef{{Kind: "Deployment", Namespace: "default", Name: "api", Container: "main"}},
+			Workloads:  []domainimage.WorkloadRef{{Kind: "Deployment", Namespace: "default", Name: tNameAPI, Container: tPortalMain}},
 		},
 	}))
 
 	svc := svcgrpc.NewImageService(store, nil)
 	resp, err := svc.ListImages(context.Background(), connect.NewRequest(&imagev1.ListImagesRequest{
-		Portal:         "main",
+		Portal:         tPortalMain,
 		Search:         "acme/",
 		RegistryFilter: "ghcr.io",
 		TagTypeFilter:  "semver",

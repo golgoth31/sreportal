@@ -24,84 +24,84 @@ func TestGetCustomEmojis(t *testing.T) {
 			name: "happy path with direct URLs",
 			handler: jsonHandler(map[string]any{
 				"ok": true,
-				"emoji": map[string]string{
-					"rabbitmq": "https://emoji.slack.com/rabbitmq.png",
-					"golang":   "https://emoji.slack.com/golang.png",
+				tNameEmoji: map[string]string{
+					tEmojiNameRabbitMQ: tURLEmojiRabbitMQ,
+					"golang":           "https://emoji.slack.com/golang.png",
 				},
 			}),
 			wantEmojis: map[string]string{
-				"rabbitmq": "https://emoji.slack.com/rabbitmq.png",
-				"golang":   "https://emoji.slack.com/golang.png",
+				tEmojiNameRabbitMQ: tURLEmojiRabbitMQ,
+				"golang":           "https://emoji.slack.com/golang.png",
 			},
 		},
 		{
 			name: "resolves simple alias",
 			handler: jsonHandler(map[string]any{
 				"ok": true,
-				"emoji": map[string]string{
-					"rabbitmq":  "https://emoji.slack.com/rabbitmq.png",
-					"rabbit_mq": "alias:rabbitmq",
+				tNameEmoji: map[string]string{
+					tEmojiNameRabbitMQ: tURLEmojiRabbitMQ,
+					"rabbit_mq":        "alias:rabbitmq",
 				},
 			}),
 			wantEmojis: map[string]string{
-				"rabbitmq":  "https://emoji.slack.com/rabbitmq.png",
-				"rabbit_mq": "https://emoji.slack.com/rabbitmq.png",
+				tEmojiNameRabbitMQ: tURLEmojiRabbitMQ,
+				"rabbit_mq":        tURLEmojiRabbitMQ,
 			},
 		},
 		{
 			name: "resolves chained aliases",
 			handler: jsonHandler(map[string]any{
 				"ok": true,
-				"emoji": map[string]string{
-					"original": "https://emoji.slack.com/original.png",
+				tNameEmoji: map[string]string{
+					"original": tURLEmojiOriginal,
 					"alias1":   "alias:original",
 					"alias2":   "alias:alias1",
 				},
 			}),
 			wantEmojis: map[string]string{
-				"original": "https://emoji.slack.com/original.png",
-				"alias1":   "https://emoji.slack.com/original.png",
-				"alias2":   "https://emoji.slack.com/original.png",
+				"original": tURLEmojiOriginal,
+				"alias1":   tURLEmojiOriginal,
+				"alias2":   tURLEmojiOriginal,
 			},
 		},
 		{
 			name: "drops circular aliases",
 			handler: jsonHandler(map[string]any{
 				"ok": true,
-				"emoji": map[string]string{
-					"a":    "alias:b",
-					"b":    "alias:a",
-					"real": "https://emoji.slack.com/real.png",
+				tNameEmoji: map[string]string{
+					"a":            "alias:b",
+					"b":            "alias:a",
+					tEmojiNameReal: tURLEmojiReal,
 				},
 			}),
 			wantEmojis: map[string]string{
-				"real": "https://emoji.slack.com/real.png",
+				tEmojiNameReal: tURLEmojiReal,
 			},
 		},
 		{
 			name: "drops self-referencing alias",
 			handler: jsonHandler(map[string]any{
 				"ok": true,
-				"emoji": map[string]string{
-					"loop": "alias:loop",
-					"real": "https://emoji.slack.com/real.png",
+				tNameEmoji: map[string]string{
+					"loop":         "alias:loop",
+					tEmojiNameReal: tURLEmojiReal,
 				},
 			}),
 			wantEmojis: map[string]string{
-				"real": "https://emoji.slack.com/real.png",
+				tEmojiNameReal: tURLEmojiReal,
 			},
 		},
 		{
 			name: "drops alias to nonexistent target",
 			handler: jsonHandler(map[string]any{
 				"ok": true,
-				"emoji": map[string]string{
-					"orphan": "alias:does_not_exist",
-					"real":   "https://emoji.slack.com/real.png",
+				tNameEmoji: map[string]string{
+					"orphan":       "alias:does_not_exist",
+					tEmojiNameReal: tURLEmojiReal,
 				},
 			}),
 			wantEmojis: map[string]string{
-				"real": "https://emoji.slack.com/real.png",
+				tEmojiNameReal: tURLEmojiReal,
 			},
 		},
 		{
@@ -115,8 +115,8 @@ func TestGetCustomEmojis(t *testing.T) {
 		{
 			name: "empty emoji list",
 			handler: jsonHandler(map[string]any{
-				"ok":    true,
-				"emoji": map[string]string{},
+				"ok":       true,
+				tNameEmoji: map[string]string{},
 			}),
 			wantEmojis: map[string]string{},
 		},
@@ -157,7 +157,7 @@ func TestGetCustomEmojis_SetsAuthHeader(t *testing.T) {
 	var gotAuth string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotAuth = r.Header.Get("Authorization")
-		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "emoji": map[string]string{}})
+		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, tNameEmoji: map[string]string{}})
 	}))
 	defer srv.Close()
 

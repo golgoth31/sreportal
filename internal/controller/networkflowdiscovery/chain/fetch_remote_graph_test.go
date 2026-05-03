@@ -34,7 +34,7 @@ var _ = Describe("FetchRemoteGraphHandler", func() {
 	newRC := func(isRemote bool) *reconciler.ReconcileContext[*sreportalv1alpha1.NetworkFlowDiscovery, nfdchain.ChainData] {
 		return &reconciler.ReconcileContext[*sreportalv1alpha1.NetworkFlowDiscovery, nfdchain.ChainData]{
 			Resource: &sreportalv1alpha1.NetworkFlowDiscovery{
-				ObjectMeta: metav1.ObjectMeta{Name: "remote-test", Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: "remote-test", Namespace: tNsDefault},
 				Spec: sreportalv1alpha1.NetworkFlowDiscoverySpec{
 					PortalRef: "test-portal",
 					IsRemote:  isRemote,
@@ -69,7 +69,7 @@ var _ = Describe("FetchRemoteGraphHandler", func() {
 
 		It("should fail when portal has no remote configuration", func() {
 			portal := &sreportalv1alpha1.Portal{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-portal", Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: "test-portal", Namespace: tNsDefault},
 				Spec:       sreportalv1alpha1.PortalSpec{Title: "Test"},
 			}
 			k8sClient := fake.NewClientBuilder().

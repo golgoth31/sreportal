@@ -69,7 +69,7 @@ func createTestPortal(name string) *sreportalv1alpha1.Portal {
 	portal := &sreportalv1alpha1.Portal{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
-			Namespace: "default",
+			Namespace: tNsDefault,
 		},
 		Spec: sreportalv1alpha1.PortalSpec{
 			Title: name,
@@ -168,14 +168,14 @@ var _ = Describe("SourceReconciler", func() {
 			portal := createTestPortal(portalName)
 
 			// Wait for creation
-			portalKey := types.NamespacedName{Name: portalName, Namespace: "default"}
+			portalKey := types.NamespacedName{Name: portalName, Namespace: tNsDefault}
 			Eventually(func() error {
 				return k8sClient.Get(ctx, portalKey, &sreportalv1alpha1.Portal{})
 			}, timeout, interval).Should(Succeed())
 
 			// Set up mock endpoints
 			endpoints := []*endpoint.Endpoint{
-				{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+				{DNSName: tFqdnAPIExample, RecordType: "A", Targets: []string{tIP10001}},
 			}
 
 			// Reconcile DNSRecord via handler
@@ -193,7 +193,7 @@ var _ = Describe("SourceReconciler", func() {
 			// Verify DNSRecord created
 			dnsRecordKey := types.NamespacedName{
 				Name:      fmt.Sprintf("%s-service", portalName),
-				Namespace: "default",
+				Namespace: tNsDefault,
 			}
 			Eventually(func(g Gomega) {
 				var dnsRecord sreportalv1alpha1.DNSRecord
@@ -201,7 +201,7 @@ var _ = Describe("SourceReconciler", func() {
 				g.Expect(dnsRecord.Spec.SourceType).To(Equal("service"))
 				g.Expect(dnsRecord.Spec.PortalRef).To(Equal(portalName))
 				g.Expect(dnsRecord.Status.Endpoints).To(HaveLen(1))
-				g.Expect(dnsRecord.Status.Endpoints[0].DNSName).To(Equal("api.example.com"))
+				g.Expect(dnsRecord.Status.Endpoints[0].DNSName).To(Equal(tFqdnAPIExample))
 			}, timeout, interval).Should(Succeed())
 		})
 
@@ -210,7 +210,7 @@ var _ = Describe("SourceReconciler", func() {
 			portalName := fmt.Sprintf("update-portal-%s", rand.String(5))
 			portal := createTestPortal(portalName)
 
-			portalKey := types.NamespacedName{Name: portalName, Namespace: "default"}
+			portalKey := types.NamespacedName{Name: portalName, Namespace: tNsDefault}
 			Eventually(func() error {
 				return k8sClient.Get(ctx, portalKey, &sreportalv1alpha1.Portal{})
 			}, timeout, interval).Should(Succeed())
@@ -220,7 +220,7 @@ var _ = Describe("SourceReconciler", func() {
 
 			// First reconciliation with one endpoint
 			endpoints := []*endpoint.Endpoint{
-				{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+				{DNSName: tFqdnAPIExample, RecordType: "A", Targets: []string{tIP10001}},
 			}
 			rc := &reconciler.ReconcileContext[struct{}, sourcechain.ChainData]{
 				Data: sourcechain.ChainData{
@@ -234,7 +234,7 @@ var _ = Describe("SourceReconciler", func() {
 
 			// Second reconciliation with new endpoint
 			endpoints = []*endpoint.Endpoint{
-				{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+				{DNSName: tFqdnAPIExample, RecordType: "A", Targets: []string{tIP10001}},
 				{DNSName: "web.example.com", RecordType: "A", Targets: []string{"10.0.0.2"}},
 			}
 			rc2 := &reconciler.ReconcileContext[struct{}, sourcechain.ChainData]{
@@ -250,7 +250,7 @@ var _ = Describe("SourceReconciler", func() {
 			// Verify DNSRecord updated
 			dnsRecordKey := types.NamespacedName{
 				Name:      fmt.Sprintf("%s-service", portalName),
-				Namespace: "default",
+				Namespace: tNsDefault,
 			}
 			Eventually(func(g Gomega) {
 				var dnsRecord sreportalv1alpha1.DNSRecord
@@ -266,14 +266,14 @@ var _ = Describe("SourceReconciler", func() {
 			portalName := fmt.Sprintf("orphan-portal-%s", rand.String(5))
 			portal := createTestPortal(portalName)
 
-			portalKey := types.NamespacedName{Name: portalName, Namespace: "default"}
+			portalKey := types.NamespacedName{Name: portalName, Namespace: tNsDefault}
 			Eventually(func() error {
 				return k8sClient.Get(ctx, portalKey, &sreportalv1alpha1.Portal{})
 			}, timeout, interval).Should(Succeed())
 
 			// Create a DNSRecord via the reconcile handler
 			endpoints := []*endpoint.Endpoint{
-				{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+				{DNSName: tFqdnAPIExample, RecordType: "A", Targets: []string{tIP10001}},
 			}
 			reconcileHandler := sourcechain.NewReconcileDNSRecordsHandler(k8sClient)
 			rc := &reconciler.ReconcileContext[struct{}, sourcechain.ChainData]{
@@ -289,7 +289,7 @@ var _ = Describe("SourceReconciler", func() {
 			// Verify DNSRecord exists
 			dnsRecordKey := types.NamespacedName{
 				Name:      fmt.Sprintf("%s-service", portalName),
-				Namespace: "default",
+				Namespace: tNsDefault,
 			}
 			Eventually(func() error {
 				return k8sClient.Get(ctx, dnsRecordKey, &sreportalv1alpha1.DNSRecord{})
@@ -386,14 +386,14 @@ var _ = Describe("SourceReconciler LoadBalancer Integration", func() {
 			portalName := fmt.Sprintf("lb-portal-%s", rand.String(5))
 			portal := createTestPortal(portalName)
 
-			portalKey := types.NamespacedName{Name: portalName, Namespace: "default"}
+			portalKey := types.NamespacedName{Name: portalName, Namespace: tNsDefault}
 			Eventually(func() error {
 				return k8sClient.Get(ctx, portalKey, &sreportalv1alpha1.Portal{})
 			}, timeout, interval).Should(Succeed())
 
 			// Create mock LoadBalancer endpoint
 			endpoints := []*endpoint.Endpoint{
-				newLoadBalancerEndpoint("api.example.com", "203.0.113.10", "production", "my-loadbalancer"),
+				newLoadBalancerEndpoint(tFqdnAPIExample, "203.0.113.10", "production", "my-loadbalancer"),
 			}
 
 			// Reconcile via handler
@@ -411,13 +411,13 @@ var _ = Describe("SourceReconciler LoadBalancer Integration", func() {
 			// Verify DNSRecord
 			dnsRecordKey := types.NamespacedName{
 				Name:      fmt.Sprintf("%s-service", portalName),
-				Namespace: "default",
+				Namespace: tNsDefault,
 			}
 			Eventually(func(g Gomega) {
 				var dnsRecord sreportalv1alpha1.DNSRecord
 				g.Expect(k8sClient.Get(ctx, dnsRecordKey, &dnsRecord)).To(Succeed())
 				g.Expect(dnsRecord.Status.Endpoints).To(HaveLen(1))
-				g.Expect(dnsRecord.Status.Endpoints[0].DNSName).To(Equal("api.example.com"))
+				g.Expect(dnsRecord.Status.Endpoints[0].DNSName).To(Equal(tFqdnAPIExample))
 				g.Expect(dnsRecord.Status.Endpoints[0].Targets).To(ContainElement("203.0.113.10"))
 				g.Expect(dnsRecord.Status.Endpoints[0].RecordType).To(Equal("A"))
 			}, timeout, interval).Should(Succeed())
@@ -427,7 +427,7 @@ var _ = Describe("SourceReconciler LoadBalancer Integration", func() {
 			portalName := fmt.Sprintf("aws-lb-portal-%s", rand.String(5))
 			portal := createTestPortal(portalName)
 
-			portalKey := types.NamespacedName{Name: portalName, Namespace: "default"}
+			portalKey := types.NamespacedName{Name: portalName, Namespace: tNsDefault}
 			Eventually(func() error {
 				return k8sClient.Get(ctx, portalKey, &sreportalv1alpha1.Portal{})
 			}, timeout, interval).Should(Succeed())
@@ -455,7 +455,7 @@ var _ = Describe("SourceReconciler LoadBalancer Integration", func() {
 
 			dnsRecordKey := types.NamespacedName{
 				Name:      fmt.Sprintf("%s-service", portalName),
-				Namespace: "default",
+				Namespace: tNsDefault,
 			}
 			Eventually(func(g Gomega) {
 				var dnsRecord sreportalv1alpha1.DNSRecord
@@ -471,7 +471,7 @@ var _ = Describe("SourceReconciler LoadBalancer Integration", func() {
 	Context("endpoint grouping", func() {
 		It("should correctly convert endpoints to groups using adapter", func() {
 			endpoints := []*endpoint.Endpoint{
-				newLoadBalancerEndpoint("api.example.com", "203.0.113.1", "production", "api-lb"),
+				newLoadBalancerEndpoint(tFqdnAPIExample, "203.0.113.1", "production", "api-lb"),
 				newLoadBalancerEndpoint("admin.example.com", "203.0.113.2", "production", "admin-lb"),
 				newLoadBalancerEndpoint("staging-api.example.com", "203.0.113.3", "staging", "api-lb"),
 			}
@@ -489,7 +489,7 @@ var _ = Describe("SourceReconciler LoadBalancer Integration", func() {
 			}
 
 			endpoints := []*endpoint.Endpoint{
-				newLoadBalancerEndpoint("api.example.com", "203.0.113.1", "production", "api-lb"),
+				newLoadBalancerEndpoint(tFqdnAPIExample, "203.0.113.1", "production", "api-lb"),
 				newLoadBalancerEndpoint("staging-api.example.com", "203.0.113.2", "staging", "api-lb"),
 			}
 
@@ -498,7 +498,7 @@ var _ = Describe("SourceReconciler LoadBalancer Integration", func() {
 			Expect(groups).To(HaveLen(2))
 			Expect(groups[0].Name).To(Equal("Production Services"))
 			Expect(groups[0].FQDNs).To(HaveLen(1))
-			Expect(groups[0].FQDNs[0].FQDN).To(Equal("api.example.com"))
+			Expect(groups[0].FQDNs[0].FQDN).To(Equal(tFqdnAPIExample))
 
 			Expect(groups[1].Name).To(Equal("Staging Services"))
 			Expect(groups[1].FQDNs).To(HaveLen(1))

@@ -61,16 +61,16 @@ var _ = Describe("DNSRecord Controller", func() {
 		const recordName = "test-dnsrecord-projection"
 		ctx := context.Background()
 
-		recordNN := types.NamespacedName{Name: recordName, Namespace: "default"}
+		recordNN := types.NamespacedName{Name: recordName, Namespace: tNsDefault}
 
 		BeforeEach(func() {
 			rec := &sreportalv1alpha1.DNSRecord{}
 			if err := k8sClient.Get(ctx, recordNN, rec); errors.IsNotFound(err) {
 				Expect(k8sClient.Create(ctx, &sreportalv1alpha1.DNSRecord{
-					ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: "default"},
+					ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: tNsDefault},
 					Spec: sreportalv1alpha1.DNSRecordSpec{
-						SourceType: "service",
-						PortalRef:  "my-portal",
+						SourceType: tSrcService,
+						PortalRef:  tPortalMy,
 					},
 				})).To(Succeed())
 			}
@@ -79,7 +79,7 @@ var _ = Describe("DNSRecord Controller", func() {
 				var r sreportalv1alpha1.DNSRecord
 				g.Expect(k8sClient.Get(ctx, recordNN, &r)).To(Succeed())
 				r.Status.Endpoints = []sreportalv1alpha1.EndpointStatus{
-					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"1.2.3.4"}, LastSeen: metav1.Now()},
+					{DNSName: "api.example.com", RecordType: "A", Targets: []string{tIP1234}, LastSeen: metav1.Now()},
 					{DNSName: "web.example.com", RecordType: "CNAME", Targets: []string{"lb.example.com"}, LastSeen: metav1.Now()},
 				}
 				g.Expect(k8sClient.Status().Update(ctx, &r)).To(Succeed())
@@ -102,13 +102,13 @@ var _ = Describe("DNSRecord Controller", func() {
 				_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: recordNN})
 				g.Expect(err).NotTo(HaveOccurred())
 
-				views, err := store.List(ctx, domaindns.FQDNFilters{Portal: "my-portal"})
+				views, err := store.List(ctx, domaindns.FQDNFilters{Portal: tPortalMy})
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(views).To(HaveLen(2))
 
 				for _, v := range views {
-					g.Expect(v.PortalName).To(Equal("my-portal"))
-					g.Expect(v.Namespace).To(Equal("default"))
+					g.Expect(v.PortalName).To(Equal(tPortalMy))
+					g.Expect(v.Namespace).To(Equal(tNsDefault))
 					g.Expect(v.Source).To(Equal(domaindns.SourceExternalDNS))
 				}
 			}, timeout, interval).Should(Succeed())
@@ -119,7 +119,7 @@ var _ = Describe("DNSRecord Controller", func() {
 		const recordName = "test-dnsrecord-delete"
 		ctx := context.Background()
 
-		recordNN := types.NamespacedName{Name: recordName, Namespace: "default"}
+		recordNN := types.NamespacedName{Name: recordName, Namespace: tNsDefault}
 
 		It("should remove entries from the read store", func() {
 			store := dnsreadstore.NewFQDNStore(nil)
@@ -128,10 +128,10 @@ var _ = Describe("DNSRecord Controller", func() {
 
 			By("creating and populating the DNSRecord")
 			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.DNSRecord{
-				ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: tNsDefault},
 				Spec: sreportalv1alpha1.DNSRecordSpec{
-					SourceType: "service",
-					PortalRef:  "main",
+					SourceType: tSrcService,
+					PortalRef:  tPortalMain,
 				},
 			})).To(Succeed())
 
@@ -139,7 +139,7 @@ var _ = Describe("DNSRecord Controller", func() {
 				var r sreportalv1alpha1.DNSRecord
 				g.Expect(k8sClient.Get(ctx, recordNN, &r)).To(Succeed())
 				r.Status.Endpoints = []sreportalv1alpha1.EndpointStatus{
-					{DNSName: "delete-me.example.com", RecordType: "A", Targets: []string{"1.2.3.4"}, LastSeen: metav1.Now()},
+					{DNSName: "delete-me.example.com", RecordType: "A", Targets: []string{tIP1234}, LastSeen: metav1.Now()},
 				}
 				g.Expect(k8sClient.Status().Update(ctx, &r)).To(Succeed())
 			}, timeout, interval).Should(Succeed())
@@ -149,7 +149,7 @@ var _ = Describe("DNSRecord Controller", func() {
 				_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: recordNN})
 				g.Expect(err).NotTo(HaveOccurred())
 
-				views, err := store.List(ctx, domaindns.FQDNFilters{Portal: "main"})
+				views, err := store.List(ctx, domaindns.FQDNFilters{Portal: tPortalMain})
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(views).To(HaveLen(1))
 			}, timeout, interval).Should(Succeed())
@@ -164,7 +164,7 @@ var _ = Describe("DNSRecord Controller", func() {
 				_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: recordNN})
 				g.Expect(err).NotTo(HaveOccurred())
 
-				views, err := store.List(ctx, domaindns.FQDNFilters{Portal: "main"})
+				views, err := store.List(ctx, domaindns.FQDNFilters{Portal: tPortalMain})
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(views).To(BeEmpty())
 			}, timeout, interval).Should(Succeed())
@@ -175,16 +175,16 @@ var _ = Describe("DNSRecord Controller", func() {
 		const recordName = "test-dnsrecord-resolve"
 		ctx := context.Background()
 
-		recordNN := types.NamespacedName{Name: recordName, Namespace: "default"}
+		recordNN := types.NamespacedName{Name: recordName, Namespace: tNsDefault}
 
 		BeforeEach(func() {
 			rec := &sreportalv1alpha1.DNSRecord{}
 			if err := k8sClient.Get(ctx, recordNN, rec); errors.IsNotFound(err) {
 				Expect(k8sClient.Create(ctx, &sreportalv1alpha1.DNSRecord{
-					ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: "default"},
+					ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: tNsDefault},
 					Spec: sreportalv1alpha1.DNSRecordSpec{
-						SourceType: "service",
-						PortalRef:  "my-portal",
+						SourceType: tSrcService,
+						PortalRef:  tPortalMy,
 					},
 				})).To(Succeed())
 			}
@@ -193,7 +193,7 @@ var _ = Describe("DNSRecord Controller", func() {
 				var r sreportalv1alpha1.DNSRecord
 				g.Expect(k8sClient.Get(ctx, recordNN, &r)).To(Succeed())
 				r.Status.Endpoints = []sreportalv1alpha1.EndpointStatus{
-					{DNSName: "resolved.example.com", RecordType: "A", Targets: []string{"1.2.3.4"}, LastSeen: metav1.Now()},
+					{DNSName: "resolved.example.com", RecordType: "A", Targets: []string{tIP1234}, LastSeen: metav1.Now()},
 					{DNSName: "missing.example.com", RecordType: "A", Targets: []string{"5.6.7.8"}, LastSeen: metav1.Now()},
 				}
 				g.Expect(k8sClient.Status().Update(ctx, &r)).To(Succeed())
@@ -211,7 +211,7 @@ var _ = Describe("DNSRecord Controller", func() {
 			store := dnsreadstore.NewFQDNStore(nil)
 			resolver := &stubResolver{
 				hosts: map[string][]string{
-					"resolved.example.com": {"1.2.3.4"},
+					"resolved.example.com": {tIP1234},
 					// missing.example.com has no entry → notavailable
 				},
 			}
@@ -233,7 +233,7 @@ var _ = Describe("DNSRecord Controller", func() {
 				g.Expect(epStatusByName["missing.example.com"]).To(Equal("notavailable"))
 
 				// Verify SyncStatus propagated to read store
-				views, err := store.List(ctx, domaindns.FQDNFilters{Portal: "my-portal"})
+				views, err := store.List(ctx, domaindns.FQDNFilters{Portal: tPortalMy})
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(views).To(HaveLen(2))
 
@@ -251,7 +251,7 @@ var _ = Describe("DNSRecord Controller", func() {
 		const recordName = "test-dnsrecord-hash-resync"
 		ctx := context.Background()
 
-		recordNN := types.NamespacedName{Name: recordName, Namespace: "default"}
+		recordNN := types.NamespacedName{Name: recordName, Namespace: tNsDefault}
 
 		AfterEach(func() {
 			rec := &sreportalv1alpha1.DNSRecord{}
@@ -267,15 +267,15 @@ var _ = Describe("DNSRecord Controller", func() {
 
 			By("creating a DNSRecord with endpoints but no hash")
 			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.DNSRecord{
-				ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: tNsDefault},
 				Spec: sreportalv1alpha1.DNSRecordSpec{
-					SourceType: "service",
-					PortalRef:  "main",
+					SourceType: tSrcService,
+					PortalRef:  tPortalMain,
 				},
 			})).To(Succeed())
 
 			endpoints := []sreportalv1alpha1.EndpointStatus{
-				{DNSName: "hash.example.com", RecordType: "A", Targets: []string{"1.2.3.4"}, LastSeen: metav1.Now()},
+				{DNSName: "hash.example.com", RecordType: "A", Targets: []string{tIP1234}, LastSeen: metav1.Now()},
 			}
 			expectedHash := adapter.EndpointStatusHash(endpoints)
 
@@ -305,10 +305,10 @@ var _ = Describe("DNSRecord Controller", func() {
 
 			By("creating a DNSRecord with a stale hash")
 			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.DNSRecord{
-				ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: tNsDefault},
 				Spec: sreportalv1alpha1.DNSRecordSpec{
-					SourceType: "service",
-					PortalRef:  "main",
+					SourceType: tSrcService,
+					PortalRef:  tPortalMain,
 				},
 			})).To(Succeed())
 
@@ -342,7 +342,7 @@ var _ = Describe("DNSRecord Controller", func() {
 		const recordName = "test-dnsrecord-empty"
 		ctx := context.Background()
 
-		recordNN := types.NamespacedName{Name: recordName, Namespace: "default"}
+		recordNN := types.NamespacedName{Name: recordName, Namespace: tNsDefault}
 
 		AfterEach(func() {
 			rec := &sreportalv1alpha1.DNSRecord{}
@@ -357,10 +357,10 @@ var _ = Describe("DNSRecord Controller", func() {
 			reconciler.SetFQDNWriter(store)
 
 			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.DNSRecord{
-				ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: tNsDefault},
 				Spec: sreportalv1alpha1.DNSRecordSpec{
-					SourceType: "service",
-					PortalRef:  "main",
+					SourceType: tSrcService,
+					PortalRef:  tPortalMain,
 				},
 			})).To(Succeed())
 
@@ -368,7 +368,7 @@ var _ = Describe("DNSRecord Controller", func() {
 				_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: recordNN})
 				g.Expect(err).NotTo(HaveOccurred())
 
-				views, err := store.List(ctx, domaindns.FQDNFilters{Portal: "main"})
+				views, err := store.List(ctx, domaindns.FQDNFilters{Portal: tPortalMain})
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(views).To(BeEmpty())
 			}, timeout, interval).Should(Succeed())

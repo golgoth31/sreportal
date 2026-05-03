@@ -26,15 +26,23 @@ import (
 	domainmetrics "github.com/golgoth31/sreportal/internal/domain/metrics"
 )
 
+const (
+	nsSreportal      = "sreportal"
+	subsystemDNS     = "dns"
+	subsystemControl = "controller"
+	metricFqdnsTotal = "fqdns_total"
+	helpFqdnsTotal   = "Total FQDNs"
+)
+
 func TestGather_ReturnsOnlySreportalMetrics(t *testing.T) {
 	reg := prometheus.NewRegistry()
 
 	// sreportal metric — should be returned
 	sreportalGauge := prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "sreportal",
-		Subsystem: "dns",
-		Name:      "fqdns_total",
-		Help:      "Total FQDNs",
+		Namespace: nsSreportal,
+		Subsystem: subsystemDNS,
+		Name:      metricFqdnsTotal,
+		Help:      helpFqdnsTotal,
 	})
 	reg.MustRegister(sreportalGauge)
 	sreportalGauge.Set(42)
@@ -60,14 +68,14 @@ func TestGather_SubsystemFilter(t *testing.T) {
 	reg := prometheus.NewRegistry()
 
 	dnsGauge := prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "sreportal",
-		Subsystem: "dns",
-		Name:      "fqdns_total",
-		Help:      "Total FQDNs",
+		Namespace: nsSreportal,
+		Subsystem: subsystemDNS,
+		Name:      metricFqdnsTotal,
+		Help:      helpFqdnsTotal,
 	})
 	controllerCounter := prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace: "sreportal",
-		Subsystem: "controller",
+		Namespace: nsSreportal,
+		Subsystem: subsystemControl,
 		Name:      "reconcile_total",
 		Help:      "Total reconciliations",
 	})
@@ -85,14 +93,14 @@ func TestGather_SearchFilter(t *testing.T) {
 	reg := prometheus.NewRegistry()
 
 	fqdnGauge := prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "sreportal",
-		Subsystem: "dns",
-		Name:      "fqdns_total",
-		Help:      "Total FQDNs",
+		Namespace: nsSreportal,
+		Subsystem: subsystemDNS,
+		Name:      metricFqdnsTotal,
+		Help:      helpFqdnsTotal,
 	})
 	groupGauge := prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "sreportal",
-		Subsystem: "dns",
+		Namespace: nsSreportal,
+		Subsystem: subsystemDNS,
 		Name:      "groups_total",
 		Help:      "Total groups",
 	})
@@ -108,8 +116,8 @@ func TestGather_CounterValue(t *testing.T) {
 	reg := prometheus.NewRegistry()
 
 	counter := prometheus.NewCounterVec(prometheus.CounterOpts{
-		Namespace: "sreportal",
-		Subsystem: "controller",
+		Namespace: nsSreportal,
+		Subsystem: subsystemControl,
 		Name:      "reconcile_total",
 		Help:      "Total reconciliations",
 	}, []string{"controller", "result"})
@@ -139,7 +147,7 @@ func TestGather_HistogramValues(t *testing.T) {
 	reg := prometheus.NewRegistry()
 
 	hist := prometheus.NewHistogram(prometheus.HistogramOpts{
-		Namespace: "sreportal",
+		Namespace: nsSreportal,
 		Subsystem: "http",
 		Name:      "request_duration_seconds",
 		Help:      "HTTP request latency",
@@ -170,9 +178,9 @@ func TestGather_GaugeVecWithLabels(t *testing.T) {
 	reg := prometheus.NewRegistry()
 
 	gaugeVec := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Namespace: "sreportal",
-		Subsystem: "dns",
-		Name:      "fqdns_total",
+		Namespace: nsSreportal,
+		Subsystem: subsystemDNS,
+		Name:      metricFqdnsTotal,
 		Help:      "Total FQDNs per portal",
 	}, []string{"portal", "source"})
 	reg.MustRegister(gaugeVec)
@@ -202,19 +210,19 @@ func TestGather_CombinedFilters(t *testing.T) {
 	reg := prometheus.NewRegistry()
 
 	dnsGauge := prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "sreportal",
-		Subsystem: "dns",
-		Name:      "fqdns_total",
-		Help:      "Total FQDNs",
+		Namespace: nsSreportal,
+		Subsystem: subsystemDNS,
+		Name:      metricFqdnsTotal,
+		Help:      helpFqdnsTotal,
 	})
 	dnsGroups := prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "sreportal",
-		Subsystem: "dns",
+		Namespace: nsSreportal,
+		Subsystem: subsystemDNS,
 		Name:      "groups_total",
 		Help:      "Total groups",
 	})
 	httpCounter := prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace: "sreportal",
+		Namespace: nsSreportal,
 		Subsystem: "http",
 		Name:      "requests_total",
 		Help:      "Total HTTP requests",

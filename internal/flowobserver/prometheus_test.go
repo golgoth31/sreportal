@@ -150,8 +150,8 @@ func TestPrometheusObserver_Observed_MatchesEdges(t *testing.T) {
 		return vectorWith(
 			promSample{
 				Metric: map[string]string{
-					"source_workload":                "api-server",
-					"source_workload_namespace":      "core",
+					"source_workload":                tNameAPIServer,
+					"source_workload_namespace":      tGroupCore,
 					"destination_workload":           "postgres",
 					"destination_workload_namespace": "data",
 				},
@@ -161,8 +161,8 @@ func TestPrometheusObserver_Observed_MatchesEdges(t *testing.T) {
 				Metric: map[string]string{
 					"source_workload":                "frontend",
 					"source_workload_namespace":      "web",
-					"destination_workload":           "api-server",
-					"destination_workload_namespace": "core",
+					"destination_workload":           tNameAPIServer,
+					"destination_workload_namespace": tGroupCore,
 				},
 				Value: [2]any{float64(now.Unix()), fmt.Sprintf("%d", now.Add(-5*time.Minute).Unix())},
 			},
@@ -180,9 +180,9 @@ func TestPrometheusObserver_Observed_MatchesEdges(t *testing.T) {
 	}
 
 	edges := []domainnetpol.FlowEdge{
-		{From: "service:core:api-server", To: "database:data:postgres", EdgeType: "database"},
-		{From: "service:web:frontend", To: "service:core:api-server", EdgeType: "cross-ns"},
-		{From: "service:core:api-server", To: "service:core:unknown", EdgeType: "internal"},
+		{From: tNodeAPIServer, To: "database:data:postgres", EdgeType: "database"},
+		{From: "service:web:frontend", To: tNodeAPIServer, EdgeType: "cross-ns"},
+		{From: tNodeAPIServer, To: "service:core:unknown", EdgeType: "internal"},
 	}
 
 	result, err := obs.Observed(context.Background(), edges)

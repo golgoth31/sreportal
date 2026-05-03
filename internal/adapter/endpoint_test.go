@@ -35,13 +35,13 @@ func TestAdapter(t *testing.T) {
 var _ = Describe("EndpointsToGroups", func() {
 	Context("with empty endpoints", func() {
 		It("should return empty groups", func() {
-			mapping := &config.GroupMappingConfig{DefaultGroup: "Default"}
+			mapping := &config.GroupMappingConfig{DefaultGroup: tValDefault}
 			result := EndpointsToGroups(nil, mapping)
 			Expect(result).To(BeEmpty())
 		})
 
 		It("should return empty groups for empty slice", func() {
-			mapping := &config.GroupMappingConfig{DefaultGroup: "Default"}
+			mapping := &config.GroupMappingConfig{DefaultGroup: tValDefault}
 			result := EndpointsToGroups([]*endpoint.Endpoint{}, mapping)
 			Expect(result).To(BeEmpty())
 		})
@@ -54,7 +54,7 @@ var _ = Describe("EndpointsToGroups", func() {
 			}
 			result := EndpointsToGroups(eps, nil)
 			Expect(result).To(HaveLen(1))
-			Expect(result[0].Name).To(Equal("Services"))
+			Expect(result[0].Name).To(Equal(defaultGroupServices))
 			Expect(result[0].Source).To(Equal(SourceExternalDNS))
 		})
 	})
@@ -62,7 +62,7 @@ var _ = Describe("EndpointsToGroups", func() {
 	Context("with single endpoint", func() {
 		It("should create group with default name", func() {
 			eps := []*endpoint.Endpoint{
-				newTestEndpoint("api.example.com"),
+				newTestEndpoint(tFQDNAPI),
 			}
 			mapping := &config.GroupMappingConfig{DefaultGroup: "My Services"}
 
@@ -72,29 +72,29 @@ var _ = Describe("EndpointsToGroups", func() {
 			Expect(result[0].Name).To(Equal("My Services"))
 			Expect(result[0].Source).To(Equal(SourceExternalDNS))
 			Expect(result[0].FQDNs).To(HaveLen(1))
-			Expect(result[0].FQDNs[0].FQDN).To(Equal("api.example.com"))
+			Expect(result[0].FQDNs[0].FQDN).To(Equal(tFQDNAPI))
 			Expect(result[0].FQDNs[0].RecordType).To(Equal("A"))
-			Expect(result[0].FQDNs[0].Targets).To(Equal([]string{"10.0.0.1"}))
+			Expect(result[0].FQDNs[0].Targets).To(Equal([]string{tIP10001}))
 		})
 	})
 
 	Context("with multiple endpoints same group", func() {
 		It("should group endpoints together", func() {
 			eps := []*endpoint.Endpoint{
-				newTestEndpoint("api.example.com"),
+				newTestEndpoint(tFQDNAPI),
 				newTestEndpoint("web.example.com"),
 				newTestEndpoint("admin.example.com"),
 			}
-			mapping := &config.GroupMappingConfig{DefaultGroup: "Services"}
+			mapping := &config.GroupMappingConfig{DefaultGroup: defaultGroupServices}
 
 			result := EndpointsToGroups(eps, mapping)
 
 			Expect(result).To(HaveLen(1))
-			Expect(result[0].Name).To(Equal("Services"))
+			Expect(result[0].Name).To(Equal(defaultGroupServices))
 			Expect(result[0].FQDNs).To(HaveLen(3))
 			// Should be sorted alphabetically
 			Expect(result[0].FQDNs[0].FQDN).To(Equal("admin.example.com"))
-			Expect(result[0].FQDNs[1].FQDN).To(Equal("api.example.com"))
+			Expect(result[0].FQDNs[1].FQDN).To(Equal(tFQDNAPI))
 			Expect(result[0].FQDNs[2].FQDN).To(Equal("web.example.com"))
 		})
 	})
@@ -113,8 +113,8 @@ var _ = Describe("EndpointsToGroups", func() {
 			mapping := &config.GroupMappingConfig{
 				DefaultGroup: "Other",
 				ByNamespace: map[string]string{
-					"production": "Production Services",
-					"staging":    "Staging Services",
+					tEnvProd:    "Production Services",
+					tEnvStaging: "Staging Services",
 				},
 			}
 
@@ -139,17 +139,17 @@ var _ = Describe("EndpointsToGroups", func() {
 	Context("with label key mapping", func() {
 		It("should use label value as group name", func() {
 			eps := []*endpoint.Endpoint{
-				newTestEndpointWithLabels("api.example.com", map[string]string{
-					"sreportal.io/group": "API Services",
+				newTestEndpointWithLabels(tFQDNAPI, map[string]string{
+					tLabelGroup: "API Services",
 				}),
 				newTestEndpointWithLabels("web.example.com", map[string]string{
-					"sreportal.io/group": "Web Services",
+					tLabelGroup: "Web Services",
 				}),
 				newTestEndpoint("other.example.com"), // No group label
 			}
 			mapping := &config.GroupMappingConfig{
-				DefaultGroup: "Default",
-				LabelKey:     "sreportal.io/group",
+				DefaultGroup: tValDefault,
+				LabelKey:     tLabelGroup,
 			}
 
 			result := EndpointsToGroups(eps, mapping)
@@ -157,9 +157,9 @@ var _ = Describe("EndpointsToGroups", func() {
 			Expect(result).To(HaveLen(3))
 			// Sorted alphabetically by group name
 			Expect(result[0].Name).To(Equal("API Services"))
-			Expect(result[0].FQDNs[0].FQDN).To(Equal("api.example.com"))
+			Expect(result[0].FQDNs[0].FQDN).To(Equal(tFQDNAPI))
 
-			Expect(result[1].Name).To(Equal("Default"))
+			Expect(result[1].Name).To(Equal(tValDefault))
 			Expect(result[1].FQDNs[0].FQDN).To(Equal("other.example.com"))
 
 			Expect(result[2].Name).To(Equal("Web Services"))
@@ -168,16 +168,16 @@ var _ = Describe("EndpointsToGroups", func() {
 
 		It("should prioritize label key over namespace mapping", func() {
 			eps := []*endpoint.Endpoint{
-				newTestEndpointWithLabels("api.example.com", map[string]string{
-					"sreportal.io/group":      "Custom Group",
+				newTestEndpointWithLabels(tFQDNAPI, map[string]string{
+					tLabelGroup:               "Custom Group",
 					endpoint.ResourceLabelKey: "service/production/api",
 				}),
 			}
 			mapping := &config.GroupMappingConfig{
-				DefaultGroup: "Default",
-				LabelKey:     "sreportal.io/group",
+				DefaultGroup: tValDefault,
+				LabelKey:     tLabelGroup,
 				ByNamespace: map[string]string{
-					"production": "Production Services",
+					tEnvProd: "Production Services",
 				},
 			}
 
@@ -192,19 +192,19 @@ var _ = Describe("EndpointsToGroups", func() {
 		It("should preserve record type information", func() {
 			eps := []*endpoint.Endpoint{
 				{
-					DNSName:    "api.example.com",
-					RecordType: "CNAME",
-					Targets:    []string{"lb.example.com"},
+					DNSName:    tFQDNAPI,
+					RecordType: tRecordCNAME,
+					Targets:    []string{tFQDNLB},
 					Labels:     map[string]string{},
 				},
 			}
-			mapping := &config.GroupMappingConfig{DefaultGroup: "Services"}
+			mapping := &config.GroupMappingConfig{DefaultGroup: defaultGroupServices}
 
 			result := EndpointsToGroups(eps, mapping)
 
 			Expect(result).To(HaveLen(1))
-			Expect(result[0].FQDNs[0].RecordType).To(Equal("CNAME"))
-			Expect(result[0].FQDNs[0].Targets).To(Equal([]string{"lb.example.com"}))
+			Expect(result[0].FQDNs[0].RecordType).To(Equal(tRecordCNAME))
+			Expect(result[0].FQDNs[0].Targets).To(Equal([]string{tFQDNLB}))
 		})
 	})
 
@@ -216,7 +216,7 @@ var _ = Describe("EndpointsToGroups", func() {
 				}),
 				newTestEndpoint("single.example.com"),
 			}
-			mapping := &config.GroupMappingConfig{DefaultGroup: "Default"}
+			mapping := &config.GroupMappingConfig{DefaultGroup: tValDefault}
 
 			result := EndpointsToGroups(eps, mapping)
 
@@ -230,7 +230,7 @@ var _ = Describe("EndpointsToGroups", func() {
 			Expect(result[1].FQDNs).To(HaveLen(1))
 			Expect(result[1].FQDNs[0].FQDN).To(Equal("shared.example.com"))
 
-			Expect(result[2].Name).To(Equal("Default"))
+			Expect(result[2].Name).To(Equal(tValDefault))
 			Expect(result[2].FQDNs).To(HaveLen(1))
 			Expect(result[2].FQDNs[0].FQDN).To(Equal("single.example.com"))
 		})
@@ -241,7 +241,7 @@ var _ = Describe("EndpointsToGroups", func() {
 					GroupsAnnotationKey: " Group A , Group B , Group C ",
 				}),
 			}
-			mapping := &config.GroupMappingConfig{DefaultGroup: "Default"}
+			mapping := &config.GroupMappingConfig{DefaultGroup: tValDefault}
 
 			result := EndpointsToGroups(eps, mapping)
 
@@ -257,7 +257,7 @@ var _ = Describe("EndpointsToGroups", func() {
 					GroupsAnnotationKey: "SingleGroup",
 				}),
 			}
-			mapping := &config.GroupMappingConfig{DefaultGroup: "Default"}
+			mapping := &config.GroupMappingConfig{DefaultGroup: tValDefault}
 
 			result := EndpointsToGroups(eps, mapping)
 
@@ -270,7 +270,7 @@ var _ = Describe("EndpointsToGroups", func() {
 var _ = Describe("IsIgnored", func() {
 	It("should return true when ignore label is 'true'", func() {
 		ep := newTestEndpointWithLabels("test.example.com", map[string]string{
-			IgnoreAnnotationKey: "true",
+			IgnoreAnnotationKey: annotationValueTrue,
 		})
 		Expect(IsIgnored(ep)).To(BeTrue())
 	})
@@ -296,7 +296,7 @@ var _ = Describe("IsEndpointStatusIgnored", func() {
 	It("should return true when ignore label is 'true'", func() {
 		ep := &sreportalv1alpha1.EndpointStatus{
 			DNSName: "test.example.com",
-			Labels:  map[string]string{IgnoreAnnotationKey: "true"},
+			Labels:  map[string]string{IgnoreAnnotationKey: annotationValueTrue},
 		}
 		Expect(IsEndpointStatusIgnored(ep)).To(BeTrue())
 	})
@@ -318,10 +318,10 @@ var _ = Describe("EndpointsToGroups with ignored endpoints", func() {
 	It("should skip ignored endpoints", func() {
 		eps := []*endpoint.Endpoint{
 			newTestEndpointWithLabels("ignored.example.com", map[string]string{
-				IgnoreAnnotationKey: "true",
+				IgnoreAnnotationKey: annotationValueTrue,
 			}),
 		}
-		mapping := &config.GroupMappingConfig{DefaultGroup: "Default"}
+		mapping := &config.GroupMappingConfig{DefaultGroup: tValDefault}
 
 		result := EndpointsToGroups(eps, mapping)
 
@@ -332,11 +332,11 @@ var _ = Describe("EndpointsToGroups with ignored endpoints", func() {
 		eps := []*endpoint.Endpoint{
 			newTestEndpoint("visible.example.com"),
 			newTestEndpointWithLabels("ignored.example.com", map[string]string{
-				IgnoreAnnotationKey: "true",
+				IgnoreAnnotationKey: annotationValueTrue,
 			}),
 			newTestEndpoint("also-visible.example.com"),
 		}
-		mapping := &config.GroupMappingConfig{DefaultGroup: "Default"}
+		mapping := &config.GroupMappingConfig{DefaultGroup: tValDefault}
 
 		result := EndpointsToGroups(eps, mapping)
 
@@ -351,46 +351,46 @@ var _ = Describe("EndpointStatusToGroups", func() {
 	Context("with duplicate FQDNs from multiple DNSRecords", func() {
 		It("should deduplicate FQDNs within the same group", func() {
 			endpoints := []sreportalv1alpha1.EndpointStatus{
-				{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
-				{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.2"}},
-				{DNSName: "web.example.com", RecordType: "A", Targets: []string{"10.0.0.3"}},
+				{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10001}},
+				{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10002}},
+				{DNSName: "web.example.com", RecordType: "A", Targets: []string{tIP10003}},
 			}
-			mapping := &config.GroupMappingConfig{DefaultGroup: "Services"}
+			mapping := &config.GroupMappingConfig{DefaultGroup: defaultGroupServices}
 
 			result := EndpointStatusToGroups(endpoints, mapping)
 
 			Expect(result).To(HaveLen(1))
-			Expect(result[0].Name).To(Equal("Services"))
+			Expect(result[0].Name).To(Equal(defaultGroupServices))
 			// api.example.com should appear only once, with merged targets
 			Expect(result[0].FQDNs).To(HaveLen(2))
 			for _, fqdn := range result[0].FQDNs {
-				if fqdn.FQDN == "api.example.com" {
-					Expect(fqdn.Targets).To(ConsistOf("10.0.0.1", "10.0.0.2"))
+				if fqdn.FQDN == tFQDNAPI {
+					Expect(fqdn.Targets).To(ConsistOf(tIP10001, tIP10002))
 				}
 			}
 		})
 
 		It("should deduplicate FQDNs with same targets", func() {
 			endpoints := []sreportalv1alpha1.EndpointStatus{
-				{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
-				{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+				{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10001}},
+				{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10001}},
 			}
-			mapping := &config.GroupMappingConfig{DefaultGroup: "Services"}
+			mapping := &config.GroupMappingConfig{DefaultGroup: defaultGroupServices}
 
 			result := EndpointStatusToGroups(endpoints, mapping)
 
 			Expect(result).To(HaveLen(1))
 			Expect(result[0].FQDNs).To(HaveLen(1))
-			Expect(result[0].FQDNs[0].FQDN).To(Equal("api.example.com"))
-			Expect(result[0].FQDNs[0].Targets).To(Equal([]string{"10.0.0.1"}))
+			Expect(result[0].FQDNs[0].FQDN).To(Equal(tFQDNAPI))
+			Expect(result[0].FQDNs[0].Targets).To(Equal([]string{tIP10001}))
 		})
 
 		It("should keep different record types as separate entries", func() {
 			endpoints := []sreportalv1alpha1.EndpointStatus{
-				{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
-				{DNSName: "api.example.com", RecordType: "CNAME", Targets: []string{"lb.example.com"}},
+				{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10001}},
+				{DNSName: tFQDNAPI, RecordType: tRecordCNAME, Targets: []string{tFQDNLB}},
 			}
-			mapping := &config.GroupMappingConfig{DefaultGroup: "Services"}
+			mapping := &config.GroupMappingConfig{DefaultGroup: defaultGroupServices}
 
 			result := EndpointStatusToGroups(endpoints, mapping)
 
@@ -406,7 +406,7 @@ var _ = Describe("MergeGroups", func() {
 			existing := []sreportalv1alpha1.FQDNGroupStatus{
 				{
 					Name:   "Manual Group",
-					Source: "manual",
+					Source: tValManual,
 					FQDNs: []sreportalv1alpha1.FQDNStatus{
 						{FQDN: "manual.example.com"},
 					},
@@ -418,7 +418,7 @@ var _ = Describe("MergeGroups", func() {
 
 			Expect(result).To(HaveLen(1))
 			Expect(result[0].Name).To(Equal("Manual Group"))
-			Expect(result[0].Source).To(Equal("manual"))
+			Expect(result[0].Source).To(Equal(tValManual))
 		})
 	})
 
@@ -448,7 +448,7 @@ var _ = Describe("MergeGroups", func() {
 			existing := []sreportalv1alpha1.FQDNGroupStatus{
 				{
 					Name:   "Manual Group",
-					Source: "manual",
+					Source: tValManual,
 					FQDNs: []sreportalv1alpha1.FQDNStatus{
 						{FQDN: "manual.example.com"},
 					},
@@ -476,15 +476,15 @@ var _ = Describe("MergeGroups", func() {
 			Expect(result).To(HaveLen(2))
 			// Should be sorted alphabetically
 			Expect(result[0].Name).To(Equal("Manual Group"))
-			Expect(result[0].Source).To(Equal("manual"))
+			Expect(result[0].Source).To(Equal(tValManual))
 			Expect(result[1].Name).To(Equal("New External"))
 			Expect(result[1].Source).To(Equal(SourceExternalDNS))
 		})
 
 		It("should preserve multiple manual groups", func() {
 			existing := []sreportalv1alpha1.FQDNGroupStatus{
-				{Name: "Manual A", Source: "manual"},
-				{Name: "Manual B", Source: "manual"},
+				{Name: "Manual A", Source: tValManual},
+				{Name: "Manual B", Source: tValManual},
 				{Name: "Old External", Source: SourceExternalDNS},
 			}
 			external := []sreportalv1alpha1.FQDNGroupStatus{
@@ -522,7 +522,7 @@ var _ = Describe("MergeGroups", func() {
 
 var _ = Describe("extractNamespace", func() {
 	It("should extract namespace from resource label (kind/namespace/name)", func() {
-		Expect(extractNamespace("service/production/api")).To(Equal("production"))
+		Expect(extractNamespace("service/production/api")).To(Equal(tEnvProd))
 		Expect(extractNamespace("ingress/default/web")).To(Equal("default"))
 		Expect(extractNamespace("gateway/kube-system/coredns")).To(Equal("kube-system"))
 	})
@@ -541,11 +541,11 @@ var _ = Describe("EndpointsToGroups OriginRef", func() {
 	Context("when endpoint has a valid resource label", func() {
 		It("should populate OriginRef with kind, namespace and name", func() {
 			eps := []*endpoint.Endpoint{
-				newTestEndpointWithLabels("api.example.com", map[string]string{
-					endpoint.ResourceLabelKey: "service/production/api-svc",
+				newTestEndpointWithLabels(tFQDNAPI, map[string]string{
+					endpoint.ResourceLabelKey: tEndpointSvcProdAPI,
 				}),
 			}
-			mapping := &config.GroupMappingConfig{DefaultGroup: "Services"}
+			mapping := &config.GroupMappingConfig{DefaultGroup: defaultGroupServices}
 
 			result := EndpointsToGroups(eps, mapping)
 
@@ -553,8 +553,8 @@ var _ = Describe("EndpointsToGroups OriginRef", func() {
 			Expect(result[0].FQDNs).To(HaveLen(1))
 			fqdn := result[0].FQDNs[0]
 			Expect(fqdn.OriginRef).NotTo(BeNil())
-			Expect(fqdn.OriginRef.Kind).To(Equal("service"))
-			Expect(fqdn.OriginRef.Namespace).To(Equal("production"))
+			Expect(fqdn.OriginRef.Kind).To(Equal(tSrcService))
+			Expect(fqdn.OriginRef.Namespace).To(Equal(tEnvProd))
 			Expect(fqdn.OriginRef.Name).To(Equal("api-svc"))
 		})
 
@@ -564,13 +564,13 @@ var _ = Describe("EndpointsToGroups OriginRef", func() {
 					endpoint.ResourceLabelKey: "ingress/default/web-ingress",
 				}),
 			}
-			mapping := &config.GroupMappingConfig{DefaultGroup: "Services"}
+			mapping := &config.GroupMappingConfig{DefaultGroup: defaultGroupServices}
 
 			result := EndpointsToGroups(eps, mapping)
 
 			fqdn := result[0].FQDNs[0]
 			Expect(fqdn.OriginRef).NotTo(BeNil())
-			Expect(fqdn.OriginRef.Kind).To(Equal("ingress"))
+			Expect(fqdn.OriginRef.Kind).To(Equal(tSrcIngress))
 			Expect(fqdn.OriginRef.Namespace).To(Equal("default"))
 			Expect(fqdn.OriginRef.Name).To(Equal("web-ingress"))
 		})
@@ -579,9 +579,9 @@ var _ = Describe("EndpointsToGroups OriginRef", func() {
 	Context("when endpoint has no resource label", func() {
 		It("should leave OriginRef nil", func() {
 			eps := []*endpoint.Endpoint{
-				newTestEndpoint("api.example.com"),
+				newTestEndpoint(tFQDNAPI),
 			}
-			mapping := &config.GroupMappingConfig{DefaultGroup: "Services"}
+			mapping := &config.GroupMappingConfig{DefaultGroup: defaultGroupServices}
 
 			result := EndpointsToGroups(eps, mapping)
 
@@ -592,11 +592,11 @@ var _ = Describe("EndpointsToGroups OriginRef", func() {
 	Context("when endpoint has a malformed resource label", func() {
 		It("should leave OriginRef nil", func() {
 			eps := []*endpoint.Endpoint{
-				newTestEndpointWithLabels("api.example.com", map[string]string{
+				newTestEndpointWithLabels(tFQDNAPI, map[string]string{
 					endpoint.ResourceLabelKey: "not-a-valid-label",
 				}),
 			}
-			mapping := &config.GroupMappingConfig{DefaultGroup: "Services"}
+			mapping := &config.GroupMappingConfig{DefaultGroup: defaultGroupServices}
 
 			result := EndpointsToGroups(eps, mapping)
 
@@ -610,23 +610,23 @@ var _ = Describe("EndpointStatusToGroups OriginRef", func() {
 		It("should propagate OriginRef to the resulting FQDNStatus", func() {
 			endpoints := []sreportalv1alpha1.EndpointStatus{
 				{
-					DNSName:    "api.example.com",
+					DNSName:    tFQDNAPI,
 					RecordType: "A",
-					Targets:    []string{"10.0.0.1"},
+					Targets:    []string{tIP10001},
 					Labels: map[string]string{
-						endpoint.ResourceLabelKey: "service/production/api-svc",
+						endpoint.ResourceLabelKey: tEndpointSvcProdAPI,
 					},
 				},
 			}
-			mapping := &config.GroupMappingConfig{DefaultGroup: "Services"}
+			mapping := &config.GroupMappingConfig{DefaultGroup: defaultGroupServices}
 
 			result := EndpointStatusToGroups(endpoints, mapping)
 
 			Expect(result).To(HaveLen(1))
 			fqdn := result[0].FQDNs[0]
 			Expect(fqdn.OriginRef).NotTo(BeNil())
-			Expect(fqdn.OriginRef.Kind).To(Equal("service"))
-			Expect(fqdn.OriginRef.Namespace).To(Equal("production"))
+			Expect(fqdn.OriginRef.Kind).To(Equal(tSrcService))
+			Expect(fqdn.OriginRef.Namespace).To(Equal(tEnvProd))
 			Expect(fqdn.OriginRef.Name).To(Equal("api-svc"))
 		})
 	})
@@ -635,23 +635,23 @@ var _ = Describe("EndpointStatusToGroups OriginRef", func() {
 		It("should keep OriginRef from the first occurrence", func() {
 			endpoints := []sreportalv1alpha1.EndpointStatus{
 				{
-					DNSName:    "api.example.com",
+					DNSName:    tFQDNAPI,
 					RecordType: "A",
-					Targets:    []string{"10.0.0.1"},
+					Targets:    []string{tIP10001},
 					Labels: map[string]string{
-						endpoint.ResourceLabelKey: "service/production/api-svc",
+						endpoint.ResourceLabelKey: tEndpointSvcProdAPI,
 					},
 				},
 				{
-					DNSName:    "api.example.com",
+					DNSName:    tFQDNAPI,
 					RecordType: "A",
-					Targets:    []string{"10.0.0.2"},
+					Targets:    []string{tIP10002},
 					Labels: map[string]string{
-						endpoint.ResourceLabelKey: "service/production/api-svc",
+						endpoint.ResourceLabelKey: tEndpointSvcProdAPI,
 					},
 				},
 			}
-			mapping := &config.GroupMappingConfig{DefaultGroup: "Services"}
+			mapping := &config.GroupMappingConfig{DefaultGroup: defaultGroupServices}
 
 			result := EndpointStatusToGroups(endpoints, mapping)
 
@@ -661,7 +661,7 @@ var _ = Describe("EndpointStatusToGroups OriginRef", func() {
 			Expect(fqdn.OriginRef).NotTo(BeNil())
 			Expect(fqdn.OriginRef.Name).To(Equal("api-svc"))
 			// Both targets must be merged
-			Expect(fqdn.Targets).To(ConsistOf("10.0.0.1", "10.0.0.2"))
+			Expect(fqdn.Targets).To(ConsistOf(tIP10001, tIP10002))
 		})
 	})
 
@@ -669,13 +669,13 @@ var _ = Describe("EndpointStatusToGroups OriginRef", func() {
 		It("should leave OriginRef nil", func() {
 			endpoints := []sreportalv1alpha1.EndpointStatus{
 				{
-					DNSName:    "api.example.com",
+					DNSName:    tFQDNAPI,
 					RecordType: "A",
-					Targets:    []string{"10.0.0.1"},
+					Targets:    []string{tIP10001},
 					Labels:     map[string]string{},
 				},
 			}
-			mapping := &config.GroupMappingConfig{DefaultGroup: "Services"}
+			mapping := &config.GroupMappingConfig{DefaultGroup: defaultGroupServices}
 
 			result := EndpointStatusToGroups(endpoints, mapping)
 
@@ -688,11 +688,11 @@ var _ = Describe("ApplySourcePriority", func() {
 	Context("with empty priority", func() {
 		It("should return all endpoints flattened from all sources", func() {
 			endpointsBySource := map[string][]sreportalv1alpha1.EndpointStatus{
-				"service": {
-					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+				tSrcService: {
+					{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10001}},
 				},
-				"ingress": {
-					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.2"}},
+				tSrcIngress: {
+					{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10002}},
 				},
 			}
 
@@ -705,116 +705,116 @@ var _ = Describe("ApplySourcePriority", func() {
 	Context("when same FQDN+RecordType appears in two sources", func() {
 		It("should keep the endpoint from the highest-priority source", func() {
 			endpointsBySource := map[string][]sreportalv1alpha1.EndpointStatus{
-				"service": {
-					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+				tSrcService: {
+					{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10001}},
 				},
-				"ingress": {
-					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.2"}},
+				tSrcIngress: {
+					{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10002}},
 				},
 			}
 
-			result := ApplySourcePriority(endpointsBySource, []string{"service", "ingress"})
+			result := ApplySourcePriority(endpointsBySource, []string{tSrcService, tSrcIngress})
 
 			Expect(result).To(HaveLen(1))
-			Expect(result[0].DNSName).To(Equal("api.example.com"))
-			Expect(result[0].Targets).To(Equal([]string{"10.0.0.1"})) // service wins
+			Expect(result[0].DNSName).To(Equal(tFQDNAPI))
+			Expect(result[0].Targets).To(Equal([]string{tIP10001})) // service wins
 		})
 
 		It("should use ingress target when ingress has higher priority", func() {
 			endpointsBySource := map[string][]sreportalv1alpha1.EndpointStatus{
-				"service": {
-					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+				tSrcService: {
+					{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10001}},
 				},
-				"ingress": {
-					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.2"}},
+				tSrcIngress: {
+					{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10002}},
 				},
 			}
 
-			result := ApplySourcePriority(endpointsBySource, []string{"ingress", "service"})
+			result := ApplySourcePriority(endpointsBySource, []string{tSrcIngress, tSrcService})
 
 			Expect(result).To(HaveLen(1))
-			Expect(result[0].DNSName).To(Equal("api.example.com"))
-			Expect(result[0].Targets).To(Equal([]string{"10.0.0.2"})) // ingress wins
+			Expect(result[0].DNSName).To(Equal(tFQDNAPI))
+			Expect(result[0].Targets).To(Equal([]string{tIP10002})) // ingress wins
 		})
 	})
 
 	Context("when FQDN only exists in one source", func() {
 		It("should always be included regardless of priority", func() {
 			endpointsBySource := map[string][]sreportalv1alpha1.EndpointStatus{
-				"service": {
-					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+				tSrcService: {
+					{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10001}},
 				},
 			}
 
-			result := ApplySourcePriority(endpointsBySource, []string{"ingress", "service"})
+			result := ApplySourcePriority(endpointsBySource, []string{tSrcIngress, tSrcService})
 
 			Expect(result).To(HaveLen(1))
-			Expect(result[0].DNSName).To(Equal("api.example.com"))
+			Expect(result[0].DNSName).To(Equal(tFQDNAPI))
 		})
 	})
 
 	Context("when source is not in the priority list", func() {
 		It("should lose to any listed source on conflict", func() {
 			endpointsBySource := map[string][]sreportalv1alpha1.EndpointStatus{
-				"dnsendpoint": { // not in priority list
-					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.3"}},
+				tSrcDNSEndpoint: { // not in priority list
+					{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10003}},
 				},
-				"service": { // in priority list
-					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+				tSrcService: { // in priority list
+					{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10001}},
 				},
 			}
 
-			result := ApplySourcePriority(endpointsBySource, []string{"service", "ingress"})
+			result := ApplySourcePriority(endpointsBySource, []string{tSrcService, tSrcIngress})
 
 			Expect(result).To(HaveLen(1))
-			Expect(result[0].Targets).To(Equal([]string{"10.0.0.1"})) // service wins over unlisted dnsendpoint
+			Expect(result[0].Targets).To(Equal([]string{tIP10001})) // service wins over unlisted dnsendpoint
 		})
 
 		It("should still contribute FQDNs it uniquely owns", func() {
 			endpointsBySource := map[string][]sreportalv1alpha1.EndpointStatus{
-				"dnsendpoint": {
-					{DNSName: "dns.example.com", RecordType: "A", Targets: []string{"10.0.0.3"}},
+				tSrcDNSEndpoint: {
+					{DNSName: tFQDNDNS, RecordType: "A", Targets: []string{tIP10003}},
 				},
-				"service": {
-					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+				tSrcService: {
+					{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10001}},
 				},
 			}
 
-			result := ApplySourcePriority(endpointsBySource, []string{"service", "ingress"})
+			result := ApplySourcePriority(endpointsBySource, []string{tSrcService, tSrcIngress})
 
 			Expect(result).To(HaveLen(2)) // both included, no conflict
 			names := make([]string, len(result))
 			for i, ep := range result {
 				names[i] = ep.DNSName
 			}
-			Expect(names).To(ConsistOf("api.example.com", "dns.example.com"))
+			Expect(names).To(ConsistOf(tFQDNAPI, tFQDNDNS))
 		})
 	})
 
 	Context("with multiple FQDNs in different sources", func() {
 		It("should resolve each FQDN independently", func() {
 			endpointsBySource := map[string][]sreportalv1alpha1.EndpointStatus{
-				"service": {
-					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
-					{DNSName: "web.example.com", RecordType: "A", Targets: []string{"10.0.0.2"}},
+				tSrcService: {
+					{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10001}},
+					{DNSName: "web.example.com", RecordType: "A", Targets: []string{tIP10002}},
 				},
-				"ingress": {
-					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.99"}}, // conflicts
-					{DNSName: "app.example.com", RecordType: "A", Targets: []string{"10.0.0.3"}},  // unique
+				tSrcIngress: {
+					{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{"10.0.0.99"}},       // conflicts
+					{DNSName: "app.example.com", RecordType: "A", Targets: []string{tIP10003}}, // unique
 				},
 			}
 
-			result := ApplySourcePriority(endpointsBySource, []string{"service", "ingress"})
+			result := ApplySourcePriority(endpointsBySource, []string{tSrcService, tSrcIngress})
 
 			Expect(result).To(HaveLen(3)) // api (service wins), web (service only), app (ingress only)
 			names := make([]string, len(result))
 			for i, ep := range result {
 				names[i] = ep.DNSName
 			}
-			Expect(names).To(ConsistOf("api.example.com", "web.example.com", "app.example.com"))
+			Expect(names).To(ConsistOf(tFQDNAPI, "web.example.com", "app.example.com"))
 			for _, ep := range result {
-				if ep.DNSName == "api.example.com" {
-					Expect(ep.Targets).To(Equal([]string{"10.0.0.1"})) // service target wins
+				if ep.DNSName == tFQDNAPI {
+					Expect(ep.Targets).To(Equal([]string{tIP10001})) // service target wins
 				}
 			}
 		})
@@ -822,12 +822,12 @@ var _ = Describe("ApplySourcePriority", func() {
 
 	Context("with empty input", func() {
 		It("should return nil for nil input", func() {
-			result := ApplySourcePriority(nil, []string{"service"})
+			result := ApplySourcePriority(nil, []string{tSrcService})
 			Expect(result).To(BeNil())
 		})
 
 		It("should return nil for empty map", func() {
-			result := ApplySourcePriority(map[string][]sreportalv1alpha1.EndpointStatus{}, []string{"service"})
+			result := ApplySourcePriority(map[string][]sreportalv1alpha1.EndpointStatus{}, []string{tSrcService})
 			Expect(result).To(BeNil())
 		})
 	})
@@ -838,36 +838,36 @@ var _ = Describe("ApplySourcePriority", func() {
 			// while Istio Gateway publishes a CNAME (cloud LB hostname). With service having
 			// higher priority, the CNAME from istio-gateway must be dropped entirely.
 			endpointsBySource := map[string][]sreportalv1alpha1.EndpointStatus{
-				"service": {
-					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+				tSrcService: {
+					{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10001}},
 				},
-				"istio-gateway": {
-					{DNSName: "api.example.com", RecordType: "CNAME", Targets: []string{"lb.example.com"}},
+				tSrcIstioGateway: {
+					{DNSName: tFQDNAPI, RecordType: tRecordCNAME, Targets: []string{tFQDNLB}},
 				},
 			}
 
-			result := ApplySourcePriority(endpointsBySource, []string{"service", "istio-gateway"})
+			result := ApplySourcePriority(endpointsBySource, []string{tSrcService, tSrcIstioGateway})
 
 			Expect(result).To(HaveLen(1))
-			Expect(result[0].DNSName).To(Equal("api.example.com"))
+			Expect(result[0].DNSName).To(Equal(tFQDNAPI))
 			Expect(result[0].RecordType).To(Equal("A"))
-			Expect(result[0].Targets).To(Equal([]string{"10.0.0.1"}))
+			Expect(result[0].Targets).To(Equal([]string{tIP10001}))
 		})
 
 		It("should keep all record types from the winning source", func() {
 			// Service publishes both A and AAAA for the same hostname; istio-gateway
 			// publishes only a CNAME. Service wins → both A and AAAA are kept.
 			endpointsBySource := map[string][]sreportalv1alpha1.EndpointStatus{
-				"service": {
-					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
-					{DNSName: "api.example.com", RecordType: "AAAA", Targets: []string{"::1"}},
+				tSrcService: {
+					{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10001}},
+					{DNSName: tFQDNAPI, RecordType: "AAAA", Targets: []string{"::1"}},
 				},
-				"istio-gateway": {
-					{DNSName: "api.example.com", RecordType: "CNAME", Targets: []string{"lb.example.com"}},
+				tSrcIstioGateway: {
+					{DNSName: tFQDNAPI, RecordType: tRecordCNAME, Targets: []string{tFQDNLB}},
 				},
 			}
 
-			result := ApplySourcePriority(endpointsBySource, []string{"service", "istio-gateway"})
+			result := ApplySourcePriority(endpointsBySource, []string{tSrcService, tSrcIstioGateway})
 
 			Expect(result).To(HaveLen(2))
 			recordTypes := make([]string, len(result))
@@ -881,31 +881,31 @@ var _ = Describe("ApplySourcePriority", func() {
 	Context("when the same source has intra-source duplicate keys", func() {
 		It("should merge targets from intra-source duplicates when priority is configured", func() {
 			endpointsBySource := map[string][]sreportalv1alpha1.EndpointStatus{
-				"service": {
-					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
-					{DNSName: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.2"}},
+				tSrcService: {
+					{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10001}},
+					{DNSName: tFQDNAPI, RecordType: "A", Targets: []string{tIP10002}},
 				},
 			}
 
-			result := ApplySourcePriority(endpointsBySource, []string{"service", "ingress"})
+			result := ApplySourcePriority(endpointsBySource, []string{tSrcService, tSrcIngress})
 
 			Expect(result).To(HaveLen(1))
-			Expect(result[0].DNSName).To(Equal("api.example.com"))
-			Expect(result[0].Targets).To(ConsistOf("10.0.0.1", "10.0.0.2"))
+			Expect(result[0].DNSName).To(Equal(tFQDNAPI))
+			Expect(result[0].Targets).To(ConsistOf(tIP10001, tIP10002))
 		})
 
 		It("should merge targets from intra-source duplicates even when the source is not in the priority list", func() {
 			endpointsBySource := map[string][]sreportalv1alpha1.EndpointStatus{
-				"dnsendpoint": { // unlisted
-					{DNSName: "dns.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
-					{DNSName: "dns.example.com", RecordType: "A", Targets: []string{"10.0.0.2"}},
+				tSrcDNSEndpoint: { // unlisted
+					{DNSName: tFQDNDNS, RecordType: "A", Targets: []string{tIP10001}},
+					{DNSName: tFQDNDNS, RecordType: "A", Targets: []string{tIP10002}},
 				},
 			}
 
-			result := ApplySourcePriority(endpointsBySource, []string{"service", "ingress"})
+			result := ApplySourcePriority(endpointsBySource, []string{tSrcService, tSrcIngress})
 
 			Expect(result).To(HaveLen(1))
-			Expect(result[0].Targets).To(ConsistOf("10.0.0.1", "10.0.0.2"))
+			Expect(result[0].Targets).To(ConsistOf(tIP10001, tIP10002))
 		})
 	})
 })
@@ -913,14 +913,14 @@ var _ = Describe("ApplySourcePriority", func() {
 var _ = Describe("ResolveComponentSpec", func() {
 	Context("when endpoint has no component annotation", func() {
 		It("should return nil", func() {
-			ep := newTestEndpoint("api.example.com")
+			ep := newTestEndpoint(tFQDNAPI)
 			Expect(ResolveComponentSpec(ep)).To(BeNil())
 		})
 	})
 
 	Context("when endpoint has empty component annotation", func() {
 		It("should return nil", func() {
-			ep := newTestEndpointWithLabels("api.example.com", map[string]string{
+			ep := newTestEndpointWithLabels(tFQDNAPI, map[string]string{
 				ComponentAnnotationKey: "",
 			})
 			Expect(ResolveComponentSpec(ep)).To(BeNil())
@@ -935,12 +935,12 @@ var _ = Describe("ResolveComponentSpec", func() {
 
 	Context("when endpoint has component annotation only", func() {
 		It("should return spec with display name and empty optional fields", func() {
-			ep := newTestEndpointWithLabels("api.example.com", map[string]string{
-				ComponentAnnotationKey: "API Gateway",
+			ep := newTestEndpointWithLabels(tFQDNAPI, map[string]string{
+				ComponentAnnotationKey: tCompAPIGateway,
 			})
 			spec := ResolveComponentSpec(ep)
 			Expect(spec).NotTo(BeNil())
-			Expect(spec.DisplayName).To(Equal("API Gateway"))
+			Expect(spec.DisplayName).To(Equal(tCompAPIGateway))
 			Expect(spec.Group).To(BeEmpty())
 			Expect(spec.Description).To(BeEmpty())
 			Expect(spec.Link).To(BeEmpty())
@@ -950,8 +950,8 @@ var _ = Describe("ResolveComponentSpec", func() {
 
 	Context("when endpoint has all component annotations", func() {
 		It("should extract all fields", func() {
-			ep := newTestEndpointWithLabels("api.example.com", map[string]string{
-				ComponentAnnotationKey:            "API Gateway",
+			ep := newTestEndpointWithLabels(tFQDNAPI, map[string]string{
+				ComponentAnnotationKey:            tCompAPIGateway,
 				ComponentGroupAnnotationKey:       "Infrastructure",
 				ComponentDescriptionAnnotationKey: "Main API ingress",
 				ComponentLinkAnnotationKey:        "https://grafana.internal/d/api",
@@ -959,7 +959,7 @@ var _ = Describe("ResolveComponentSpec", func() {
 			})
 			spec := ResolveComponentSpec(ep)
 			Expect(spec).NotTo(BeNil())
-			Expect(spec.DisplayName).To(Equal("API Gateway"))
+			Expect(spec.DisplayName).To(Equal(tCompAPIGateway))
 			Expect(spec.Group).To(Equal("Infrastructure"))
 			Expect(spec.Description).To(Equal("Main API ingress"))
 			Expect(spec.Link).To(Equal("https://grafana.internal/d/api"))
@@ -1005,15 +1005,15 @@ var _ = Describe("ComponentAnnotationsFromMap", func() {
 
 var _ = Describe("EnrichEndpointLabels with component annotations", func() {
 	It("should propagate component annotations from K8s resource to endpoint", func() {
-		ep := newTestEndpoint("api.example.com")
+		ep := newTestEndpoint(tFQDNAPI)
 		annotations := map[string]string{
-			ComponentAnnotationKey:       "API Gateway",
+			ComponentAnnotationKey:       tCompAPIGateway,
 			ComponentGroupAnnotationKey:  "Infrastructure",
 			ComponentStatusAnnotationKey: "operational",
 		}
 		EnrichEndpointLabels(ep, annotations)
 
-		Expect(ep.Labels[ComponentAnnotationKey]).To(Equal("API Gateway"))
+		Expect(ep.Labels[ComponentAnnotationKey]).To(Equal(tCompAPIGateway))
 		Expect(ep.Labels[ComponentGroupAnnotationKey]).To(Equal("Infrastructure"))
 		Expect(ep.Labels[ComponentStatusAnnotationKey]).To(Equal("operational"))
 	})
@@ -1023,9 +1023,9 @@ var _ = Describe("EnrichEndpointLabels with component annotations", func() {
 // same package test file so they can reuse the helper constructors below.
 
 func BenchmarkEndpointsToGroups_SmallFlat(b *testing.B) {
-	mapping := &config.GroupMappingConfig{DefaultGroup: "Services"}
+	mapping := &config.GroupMappingConfig{DefaultGroup: defaultGroupServices}
 	eps := []*endpoint.Endpoint{
-		newTestEndpoint("api.example.com"),
+		newTestEndpoint(tFQDNAPI),
 		newTestEndpoint("web.example.com"),
 		newTestEndpoint("admin.example.com"),
 		newTestEndpoint("db.example.com"),
@@ -1038,7 +1038,7 @@ func BenchmarkEndpointsToGroups_SmallFlat(b *testing.B) {
 }
 
 func BenchmarkEndpointsToGroups_MultiGroup(b *testing.B) {
-	mapping := &config.GroupMappingConfig{DefaultGroup: "Default"}
+	mapping := &config.GroupMappingConfig{DefaultGroup: tValDefault}
 	groups := []string{"Alpha", "Beta", "Gamma", "Delta", "Epsilon"}
 	eps := make([]*endpoint.Endpoint, 50)
 	for i := range eps {
@@ -1055,10 +1055,10 @@ func BenchmarkEndpointsToGroups_MultiGroup(b *testing.B) {
 
 func BenchmarkEndpointsToGroups_NamespaceMapping(b *testing.B) {
 	mapping := &config.GroupMappingConfig{
-		DefaultGroup: "Default",
-		ByNamespace:  map[string]string{"production": "Prod", "staging": "Stage", "dev": "Dev"},
+		DefaultGroup: tValDefault,
+		ByNamespace:  map[string]string{tEnvProd: "Prod", tEnvStaging: "Stage", "dev": "Dev"},
 	}
-	namespaces := []string{"production", "staging", "dev", "other"}
+	namespaces := []string{tEnvProd, tEnvStaging, "dev", "other"}
 	eps := make([]*endpoint.Endpoint, 50)
 	for i := range eps {
 		eps[i] = newTestEndpointWithLabels("svc.example.com", map[string]string{
@@ -1077,7 +1077,7 @@ func newTestEndpoint(dnsName string) *endpoint.Endpoint {
 	return &endpoint.Endpoint{
 		DNSName:    dnsName,
 		RecordType: "A",
-		Targets:    []string{"10.0.0.1"},
+		Targets:    []string{tIP10001},
 		Labels:     map[string]string{},
 	}
 }
@@ -1086,7 +1086,7 @@ func newTestEndpointWithLabels(dnsName string, labels map[string]string) *endpoi
 	return &endpoint.Endpoint{
 		DNSName:    dnsName,
 		RecordType: "A",
-		Targets:    []string{"10.0.0.1"},
+		Targets:    []string{tIP10001},
 		Labels:     labels,
 	}
 }

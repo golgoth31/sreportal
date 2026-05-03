@@ -34,7 +34,7 @@ var _ = Describe("BuildGraphHandler", func() {
 	newRC := func(isRemote bool, namespaces ...string) *reconciler.ReconcileContext[*sreportalv1alpha1.NetworkFlowDiscovery, nfdchain.ChainData] {
 		return &reconciler.ReconcileContext[*sreportalv1alpha1.NetworkFlowDiscovery, nfdchain.ChainData]{
 			Resource: &sreportalv1alpha1.NetworkFlowDiscovery{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-nfd", Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: "test-nfd", Namespace: tNsDefault},
 				Spec: sreportalv1alpha1.NetworkFlowDiscoverySpec{
 					PortalRef:  "main",
 					IsRemote:   isRemote,
@@ -74,13 +74,13 @@ var _ = Describe("BuildGraphHandler", func() {
 		It("should build nodes and edges from ingress rules", func() {
 			// Create two apps: api and web. web-ingress-policy allows ingress from api.
 			apiEgressPolicy := &networkingv1.NetworkPolicy{
-				ObjectMeta: metav1.ObjectMeta{Name: "api-egress-policy", Namespace: "core"},
+				ObjectMeta: metav1.ObjectMeta{Name: "api-egress-policy", Namespace: tCore},
 				Spec: networkingv1.NetworkPolicySpec{
 					PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeEgress},
 				},
 			}
 			webIngressPolicy := &networkingv1.NetworkPolicy{
-				ObjectMeta: metav1.ObjectMeta{Name: "web-ingress-policy", Namespace: "core"},
+				ObjectMeta: metav1.ObjectMeta{Name: "web-ingress-policy", Namespace: tCore},
 				Spec: networkingv1.NetworkPolicySpec{
 					PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
 					Ingress: []networkingv1.NetworkPolicyIngressRule{
@@ -92,7 +92,7 @@ var _ = Describe("BuildGraphHandler", func() {
 											{
 												Key:      "app.kubernetes.io/name",
 												Operator: metav1.LabelSelectorOpIn,
-												Values:   []string{"api"},
+												Values:   []string{tNameAPI},
 											},
 										},
 									},
@@ -116,7 +116,7 @@ var _ = Describe("BuildGraphHandler", func() {
 			Expect(rc.Data.Edges).To(HaveLen(1))
 
 			// Edge: api -> web (internal, same namespace)
-			Expect(rc.Data.Edges[0].From).To(ContainSubstring("api"))
+			Expect(rc.Data.Edges[0].From).To(ContainSubstring(tNameAPI))
 			Expect(rc.Data.Edges[0].To).To(ContainSubstring("web"))
 			Expect(rc.Data.Edges[0].EdgeType).To(Equal("internal"))
 		})
@@ -142,7 +142,7 @@ var _ = Describe("BuildGraphHandler", func() {
 											{
 												Key:      "app.kubernetes.io/name",
 												Operator: metav1.LabelSelectorOpIn,
-												Values:   []string{"api"},
+												Values:   []string{tNameAPI},
 											},
 										},
 									},
@@ -168,7 +168,7 @@ var _ = Describe("BuildGraphHandler", func() {
 
 		It("should detect cron edges from basename selector", func() {
 			cronIngressPolicy := &networkingv1.NetworkPolicy{
-				ObjectMeta: metav1.ObjectMeta{Name: "api-ingress-policy", Namespace: "core"},
+				ObjectMeta: metav1.ObjectMeta{Name: "api-ingress-policy", Namespace: tCore},
 				Spec: networkingv1.NetworkPolicySpec{
 					PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
 					Ingress: []networkingv1.NetworkPolicyIngressRule{

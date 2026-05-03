@@ -15,7 +15,7 @@ func TestNewSilence_WhenIDEmpty_ReturnsErrInvalidSilence(t *testing.T) {
 	endsAt := startsAt.Add(time.Hour)
 	s, err := alertmanager.NewSilence(
 		"",
-		[]alertmanager.Matcher{{Name: "alertname", Value: "Test"}},
+		[]alertmanager.Matcher{{Name: labelAlertname, Value: alertNameTest}},
 		startsAt, endsAt,
 		alertmanager.SilenceStatusActive,
 		"ops@example.com", "maintenance",
@@ -45,7 +45,7 @@ func TestNewSilence_WhenEndsAtBeforeStartsAt_ReturnsErrInvalidSilence(t *testing
 	endsAt := startsAt.Add(-time.Hour)
 	s, err := alertmanager.NewSilence(
 		"abc-123",
-		[]alertmanager.Matcher{{Name: "alertname", Value: "Test"}},
+		[]alertmanager.Matcher{{Name: labelAlertname, Value: alertNameTest}},
 		startsAt, endsAt,
 		alertmanager.SilenceStatusActive,
 		"ops", "comment",

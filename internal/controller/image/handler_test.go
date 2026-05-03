@@ -66,17 +66,17 @@ func TestHandleUpsertMatchesNamespaceFilter(t *testing.T) {
 	sch := newTestScheme(t)
 
 	invMatch := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "inv-a", Namespace: "sre"},
+		ObjectMeta: metav1.ObjectMeta{Name: "inv-a", Namespace: tNsSRE},
 		Spec: sreportalv1alpha1.ImageInventorySpec{
-			PortalRef:       "portal-a",
-			NamespaceFilter: "default",
+			PortalRef:       tPortalA,
+			NamespaceFilter: tNsDefault,
 		},
 	}
 	invMiss := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "inv-b", Namespace: "sre"},
+		ObjectMeta: metav1.ObjectMeta{Name: "inv-b", Namespace: tNsSRE},
 		Spec: sreportalv1alpha1.ImageInventorySpec{
 			PortalRef:       "portal-b",
-			NamespaceFilter: "other",
+			NamespaceFilter: tOther,
 		},
 	}
 
@@ -84,8 +84,8 @@ func TestHandleUpsertMatchesNamespaceFilter(t *testing.T) {
 	writer := &fakeImageWriter{}
 	h := NewWorkloadHandler(c, writer)
 
-	spec := corev1.PodSpec{Containers: []corev1.Container{{Name: "web", Image: "ghcr.io/acme/api:v1.2.3"}}}
-	wk := domainimage.WorkloadKey{Kind: "Deployment", Namespace: "default", Name: "api"}
+	spec := corev1.PodSpec{Containers: []corev1.Container{{Name: tNameWeb, Image: tImgGhcr}}}
+	wk := domainimage.WorkloadKey{Kind: kindDeployment, Namespace: tNsDefault, Name: tNameAPI}
 
 	if err := h.HandleUpsert(context.Background(), wk, spec, labels.Set(nil), nil); err != nil {
 		t.Fatalf("HandleUpsert: %v", err)
@@ -94,7 +94,7 @@ func TestHandleUpsertMatchesNamespaceFilter(t *testing.T) {
 	if len(writer.replaces) != 1 {
 		t.Fatalf("got %d replaces, want 1", len(writer.replaces))
 	}
-	if writer.replaces[0].portalRef != "portal-a" {
+	if writer.replaces[0].portalRef != tPortalA {
 		t.Fatalf("portalRef=%q want portal-a", writer.replaces[0].portalRef)
 	}
 }
@@ -104,9 +104,9 @@ func TestHandleUpsertRespectsLabelSelector(t *testing.T) {
 	sch := newTestScheme(t)
 
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "inv", Namespace: "sre"},
+		ObjectMeta: metav1.ObjectMeta{Name: tInvName, Namespace: tNsSRE},
 		Spec: sreportalv1alpha1.ImageInventorySpec{
-			PortalRef:     "portal-a",
+			PortalRef:     tPortalA,
 			LabelSelector: "team=platform",
 		},
 	}
@@ -114,11 +114,11 @@ func TestHandleUpsertRespectsLabelSelector(t *testing.T) {
 	writer := &fakeImageWriter{}
 	h := NewWorkloadHandler(c, writer)
 
-	spec := corev1.PodSpec{Containers: []corev1.Container{{Name: "web", Image: "ghcr.io/acme/api:v1.2.3"}}}
-	wk := domainimage.WorkloadKey{Kind: "Deployment", Namespace: "default", Name: "api"}
+	spec := corev1.PodSpec{Containers: []corev1.Container{{Name: tNameWeb, Image: tImgGhcr}}}
+	wk := domainimage.WorkloadKey{Kind: kindDeployment, Namespace: tNsDefault, Name: tNameAPI}
 
 	// Labels do not match the selector.
-	if err := h.HandleUpsert(context.Background(), wk, spec, labels.Set{"team": "other"}, nil); err != nil {
+	if err := h.HandleUpsert(context.Background(), wk, spec, labels.Set{"team": tOther}, nil); err != nil {
 		t.Fatalf("HandleUpsert: %v", err)
 	}
 	if len(writer.replaces) != 0 {
@@ -139,9 +139,9 @@ func TestHandleUpsertRespectsWatchedKinds(t *testing.T) {
 	sch := newTestScheme(t)
 
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "inv", Namespace: "sre"},
+		ObjectMeta: metav1.ObjectMeta{Name: tInvName, Namespace: tNsSRE},
 		Spec: sreportalv1alpha1.ImageInventorySpec{
-			PortalRef:    "portal-a",
+			PortalRef:    tPortalA,
 			WatchedKinds: []sreportalv1alpha1.ImageInventoryKind{sreportalv1alpha1.ImageInventoryKindStatefulSet},
 		},
 	}
@@ -149,9 +149,9 @@ func TestHandleUpsertRespectsWatchedKinds(t *testing.T) {
 	writer := &fakeImageWriter{}
 	h := NewWorkloadHandler(c, writer)
 
-	spec := corev1.PodSpec{Containers: []corev1.Container{{Name: "web", Image: "ghcr.io/acme/api:v1.2.3"}}}
+	spec := corev1.PodSpec{Containers: []corev1.Container{{Name: tNameWeb, Image: tImgGhcr}}}
 	// Deployment is not in WatchedKinds -> no replace.
-	wk := domainimage.WorkloadKey{Kind: "Deployment", Namespace: "default", Name: "api"}
+	wk := domainimage.WorkloadKey{Kind: kindDeployment, Namespace: tNsDefault, Name: tNameAPI}
 	if err := h.HandleUpsert(context.Background(), wk, spec, labels.Set(nil), nil); err != nil {
 		t.Fatalf("HandleUpsert: %v", err)
 	}
@@ -167,7 +167,7 @@ func TestHandleDeleteCallsStore(t *testing.T) {
 	writer := &fakeImageWriter{}
 	h := NewWorkloadHandler(c, writer)
 
-	wk := domainimage.WorkloadKey{Kind: "Deployment", Namespace: "default", Name: "api"}
+	wk := domainimage.WorkloadKey{Kind: kindDeployment, Namespace: tNsDefault, Name: tNameAPI}
 	if err := h.HandleDelete(context.Background(), wk); err != nil {
 		t.Fatalf("HandleDelete: %v", err)
 	}
@@ -181,15 +181,15 @@ func TestHandleUpsertAddsPodInjectedContainers(t *testing.T) {
 	sch := newTestScheme(t)
 
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "inv", Namespace: "sre"},
-		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: "portal-a"},
+		ObjectMeta: metav1.ObjectMeta{Name: tInvName, Namespace: tNsSRE},
+		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: tPortalA},
 	}
-	wkLabels := map[string]string{"app": "api"}
+	wkLabels := map[string]string{tNameApp: tNameAPI}
 	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "api-1", Namespace: "default", Labels: wkLabels},
+		ObjectMeta: metav1.ObjectMeta{Name: tNameAPI1, Namespace: tNsDefault, Labels: wkLabels},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
-				{Name: "web", Image: "ghcr.io/acme/api:v1.2.3"},
+				{Name: tNameWeb, Image: tImgGhcr},
 				{Name: "istio-proxy", Image: "docker.io/istio/proxyv2:1.20.0"},
 			},
 			InitContainers: []corev1.Container{
@@ -202,8 +202,8 @@ func TestHandleUpsertAddsPodInjectedContainers(t *testing.T) {
 	writer := &fakeImageWriter{}
 	h := NewWorkloadHandler(c, writer)
 
-	spec := corev1.PodSpec{Containers: []corev1.Container{{Name: "web", Image: "ghcr.io/acme/api:v1.2.3"}}}
-	wk := domainimage.WorkloadKey{Kind: "Deployment", Namespace: "default", Name: "api"}
+	spec := corev1.PodSpec{Containers: []corev1.Container{{Name: tNameWeb, Image: tImgGhcr}}}
+	wk := domainimage.WorkloadKey{Kind: kindDeployment, Namespace: tNsDefault, Name: tNameAPI}
 	sel := labels.SelectorFromSet(labels.Set(wkLabels))
 
 	if err := h.HandleUpsert(context.Background(), wk, spec, labels.Set(nil), sel); err != nil {
@@ -243,15 +243,15 @@ func TestHandleUpsertDoesNotDuplicateUnchangedContainer(t *testing.T) {
 	sch := newTestScheme(t)
 
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "inv", Namespace: "sre"},
-		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: "portal-a"},
+		ObjectMeta: metav1.ObjectMeta{Name: tInvName, Namespace: tNsSRE},
+		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: tPortalA},
 	}
-	wkLabels := map[string]string{"app": "api"}
+	wkLabels := map[string]string{tNameApp: tNameAPI}
 	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "api-1", Namespace: "default", Labels: wkLabels},
+		ObjectMeta: metav1.ObjectMeta{Name: tNameAPI1, Namespace: tNsDefault, Labels: wkLabels},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
-				{Name: "web", Image: "ghcr.io/acme/api:v1.2.3"},
+				{Name: tNameWeb, Image: tImgGhcr},
 			},
 		},
 		Status: corev1.PodStatus{Phase: corev1.PodRunning},
@@ -260,8 +260,8 @@ func TestHandleUpsertDoesNotDuplicateUnchangedContainer(t *testing.T) {
 	writer := &fakeImageWriter{}
 	h := NewWorkloadHandler(c, writer)
 
-	spec := corev1.PodSpec{Containers: []corev1.Container{{Name: "web", Image: "ghcr.io/acme/api:v1.2.3"}}}
-	wk := domainimage.WorkloadKey{Kind: "Deployment", Namespace: "default", Name: "api"}
+	spec := corev1.PodSpec{Containers: []corev1.Container{{Name: tNameWeb, Image: tImgGhcr}}}
+	wk := domainimage.WorkloadKey{Kind: kindDeployment, Namespace: tNsDefault, Name: tNameAPI}
 	sel := labels.SelectorFromSet(labels.Set(wkLabels))
 
 	if err := h.HandleUpsert(context.Background(), wk, spec, labels.Set(nil), sel); err != nil {
@@ -282,16 +282,16 @@ func TestHandleUpsertDetectsImageMutation(t *testing.T) {
 	sch := newTestScheme(t)
 
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "inv", Namespace: "sre"},
-		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: "portal-a"},
+		ObjectMeta: metav1.ObjectMeta{Name: tInvName, Namespace: tNsSRE},
+		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: tPortalA},
 	}
-	wkLabels := map[string]string{"app": "api"}
+	wkLabels := map[string]string{tNameApp: tNameAPI}
 	// Pod has same container name but a different (mutated) image.
 	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "api-1", Namespace: "default", Labels: wkLabels},
+		ObjectMeta: metav1.ObjectMeta{Name: tNameAPI1, Namespace: tNsDefault, Labels: wkLabels},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
-				{Name: "web", Image: "ghcr.io/acme/api:v1.2.4-pinned"},
+				{Name: tNameWeb, Image: "ghcr.io/acme/api:v1.2.4-pinned"},
 			},
 		},
 		Status: corev1.PodStatus{Phase: corev1.PodRunning},
@@ -300,8 +300,8 @@ func TestHandleUpsertDetectsImageMutation(t *testing.T) {
 	writer := &fakeImageWriter{}
 	h := NewWorkloadHandler(c, writer)
 
-	spec := corev1.PodSpec{Containers: []corev1.Container{{Name: "web", Image: "ghcr.io/acme/api:v1.2.3"}}}
-	wk := domainimage.WorkloadKey{Kind: "Deployment", Namespace: "default", Name: "api"}
+	spec := corev1.PodSpec{Containers: []corev1.Container{{Name: tNameWeb, Image: tImgGhcr}}}
+	wk := domainimage.WorkloadKey{Kind: kindDeployment, Namespace: tNsDefault, Name: tNameAPI}
 	sel := labels.SelectorFromSet(labels.Set(wkLabels))
 
 	if err := h.HandleUpsert(context.Background(), wk, spec, labels.Set(nil), sel); err != nil {
@@ -330,16 +330,16 @@ func TestHandleUpsertNoRunningPodFallsBackToSpec(t *testing.T) {
 	sch := newTestScheme(t)
 
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "inv", Namespace: "sre"},
-		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: "portal-a"},
+		ObjectMeta: metav1.ObjectMeta{Name: tInvName, Namespace: tNsSRE},
+		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: tPortalA},
 	}
 	c := fake.NewClientBuilder().WithScheme(sch).WithObjects(inv).Build()
 	writer := &fakeImageWriter{}
 	h := NewWorkloadHandler(c, writer)
 
-	spec := corev1.PodSpec{Containers: []corev1.Container{{Name: "web", Image: "ghcr.io/acme/api:v1.2.3"}}}
-	wk := domainimage.WorkloadKey{Kind: "Deployment", Namespace: "default", Name: "api"}
-	sel := labels.SelectorFromSet(labels.Set{"app": "api"})
+	spec := corev1.PodSpec{Containers: []corev1.Container{{Name: tNameWeb, Image: tImgGhcr}}}
+	wk := domainimage.WorkloadKey{Kind: kindDeployment, Namespace: tNsDefault, Name: tNameAPI}
+	sel := labels.SelectorFromSet(labels.Set{tNameApp: tNameAPI})
 
 	if err := h.HandleUpsert(context.Background(), wk, spec, labels.Set(nil), sel); err != nil {
 		t.Fatalf("HandleUpsert: %v", err)

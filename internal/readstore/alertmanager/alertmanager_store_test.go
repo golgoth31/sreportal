@@ -12,6 +12,8 @@ import (
 	amstore "github.com/golgoth31/sreportal/internal/readstore/alertmanager"
 )
 
+const portalMain = "main"
+
 func seedStore(t *testing.T) *amstore.AlertmanagerStore {
 	t.Helper()
 	store := amstore.NewAlertmanagerStore()
@@ -19,7 +21,7 @@ func seedStore(t *testing.T) *amstore.AlertmanagerStore {
 	now := time.Now()
 
 	_ = store.Replace(ctx, "monitoring/am-prod", domainam.AlertmanagerView{
-		Name: "am-prod", Namespace: "monitoring", PortalRef: "main",
+		Name: "am-prod", Namespace: "monitoring", PortalRef: portalMain,
 		LocalURL: "http://am:9093", RemoteURL: "https://am.example.com",
 		Ready: true, LastReconcileTime: &now,
 		Alerts: []domainam.AlertView{
@@ -50,7 +52,7 @@ func TestAlertmanagerStore_List_ReturnsAllSorted(t *testing.T) {
 
 func TestAlertmanagerStore_List_FiltersByPortal(t *testing.T) {
 	store := seedStore(t)
-	views, err := store.List(context.Background(), domainam.AlertmanagerFilters{Portal: "main"})
+	views, err := store.List(context.Background(), domainam.AlertmanagerFilters{Portal: portalMain})
 
 	require.NoError(t, err)
 	require.Len(t, views, 1)
@@ -69,7 +71,7 @@ func TestAlertmanagerStore_List_FiltersByNamespace(t *testing.T) {
 func TestAlertmanagerStore_List_CombinesFilters(t *testing.T) {
 	store := seedStore(t)
 	views, err := store.List(context.Background(), domainam.AlertmanagerFilters{
-		Portal: "main", Namespace: "default",
+		Portal: portalMain, Namespace: "default",
 	})
 
 	require.NoError(t, err)
@@ -88,7 +90,7 @@ func TestAlertmanagerStore_Delete_RemovesEntry(t *testing.T) {
 
 func TestAlertmanagerStore_AlertsPreserved(t *testing.T) {
 	store := seedStore(t)
-	views, err := store.List(context.Background(), domainam.AlertmanagerFilters{Portal: "main"})
+	views, err := store.List(context.Background(), domainam.AlertmanagerFilters{Portal: portalMain})
 
 	require.NoError(t, err)
 	require.Len(t, views, 1)

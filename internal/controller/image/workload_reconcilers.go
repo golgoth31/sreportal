@@ -32,6 +32,11 @@ import (
 	domainimage "github.com/golgoth31/sreportal/internal/domain/image"
 )
 
+const (
+	kindCronJob    = "CronJob"
+	kindDeployment = "Deployment"
+)
+
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch
 // +kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=get;list;watch
@@ -85,12 +90,12 @@ func (r *DeploymentImageReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	var obj appsv1.Deployment
 	if err := r.handler.client.Get(ctx, req.NamespacedName, &obj); err != nil {
 		if apierrors.IsNotFound(err) {
-			wk := domainimage.WorkloadKey{Kind: "Deployment", Namespace: req.Namespace, Name: req.Name}
+			wk := domainimage.WorkloadKey{Kind: kindDeployment, Namespace: req.Namespace, Name: req.Name}
 			return ctrl.Result{}, r.handler.HandleDelete(ctx, wk)
 		}
 		return ctrl.Result{}, fmt.Errorf("get Deployment: %w", err)
 	}
-	wk := domainimage.WorkloadKey{Kind: "Deployment", Namespace: obj.Namespace, Name: obj.Name}
+	wk := domainimage.WorkloadKey{Kind: kindDeployment, Namespace: obj.Namespace, Name: obj.Name}
 	return ctrl.Result{}, r.handler.HandleUpsert(ctx, wk, obj.Spec.Template.Spec, labels.Set(obj.Labels), selectorOrNil(obj.Spec.Selector))
 }
 
@@ -131,12 +136,12 @@ func (r *CronJobImageReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	var obj batchv1.CronJob
 	if err := r.handler.client.Get(ctx, req.NamespacedName, &obj); err != nil {
 		if apierrors.IsNotFound(err) {
-			wk := domainimage.WorkloadKey{Kind: "CronJob", Namespace: req.Namespace, Name: req.Name}
+			wk := domainimage.WorkloadKey{Kind: kindCronJob, Namespace: req.Namespace, Name: req.Name}
 			return ctrl.Result{}, r.handler.HandleDelete(ctx, wk)
 		}
 		return ctrl.Result{}, fmt.Errorf("get CronJob: %w", err)
 	}
-	wk := domainimage.WorkloadKey{Kind: "CronJob", Namespace: obj.Namespace, Name: obj.Name}
+	wk := domainimage.WorkloadKey{Kind: kindCronJob, Namespace: obj.Namespace, Name: obj.Name}
 	return ctrl.Result{}, r.handler.HandleUpsert(ctx, wk, obj.Spec.JobTemplate.Spec.Template.Spec, labels.Set(obj.Labels), nil)
 }
 

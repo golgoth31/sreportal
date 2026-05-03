@@ -32,6 +32,11 @@ import (
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
+const (
+	nodeTypeService = "service"
+	nodeTypeCron    = "cron"
+)
+
 var policySuffixes = []string{
 	"-ingress-policy", "-egress-policy", "-fqdn-network-policy",
 	"-cron-egress-policy", "-cron-fqdn-network-policy",
@@ -141,8 +146,8 @@ func (g *graphBuilder) parseIngressPolicies(items []networkingv1.NetworkPolicy) 
 			continue
 		}
 
-		tgtID := g.nodeID(targetApp, np.Namespace, "service")
-		g.ensureNode(tgtID, targetApp, np.Namespace, "service")
+		tgtID := g.nodeID(targetApp, np.Namespace, nodeTypeService)
+		g.ensureNode(tgtID, targetApp, np.Namespace, nodeTypeService)
 
 		for _, rule := range np.Spec.Ingress {
 			g.parseIngressRule(rule, np.Namespace, tgtID)
@@ -163,8 +168,8 @@ func (g *graphBuilder) parseIngressRule(rule networkingv1.NetworkPolicyIngressRu
 					if srcNs == "" {
 						srcNs = "unknown"
 					}
-					srcID := g.nodeID(src, srcNs, "service")
-					g.ensureNode(srcID, src, srcNs, "service")
+					srcID := g.nodeID(src, srcNs, nodeTypeService)
+					g.ensureNode(srcID, src, srcNs, nodeTypeService)
 					edgeType := "internal"
 					if srcNs != targetNs {
 						edgeType = "cross-ns"
@@ -173,9 +178,9 @@ func (g *graphBuilder) parseIngressRule(rule networkingv1.NetworkPolicyIngressRu
 				}
 			case expr.Key == "basename" && expr.Operator == "In":
 				for _, src := range expr.Values {
-					srcID := g.nodeID(src, targetNs, "cron")
-					g.ensureNode(srcID, src, targetNs, "cron")
-					g.addEdge(srcID, tgtID, "cron")
+					srcID := g.nodeID(src, targetNs, nodeTypeCron)
+					g.ensureNode(srcID, src, targetNs, nodeTypeCron)
+					g.addEdge(srcID, tgtID, nodeTypeCron)
 				}
 			}
 		}
@@ -189,9 +194,9 @@ func (g *graphBuilder) parseFQDNPolicies(items []unstructured.Unstructured) {
 		isCron := strings.Contains(name, "-cron-fqdn-")
 		appName := strings.TrimSuffix(strings.TrimSuffix(name, "-cron-fqdn-network-policy"), "-fqdn-network-policy")
 
-		srcType := "service"
+		srcType := nodeTypeService
 		if isCron {
-			srcType = "cron"
+			srcType = nodeTypeCron
 		}
 		srcID := g.nodeID(appName, ns, srcType)
 		g.ensureNode(srcID, appName, ns, srcType)

@@ -34,7 +34,7 @@ import (
 
 func newPortal(name string, main bool, remote *sreportalv1alpha1.RemotePortalSpec, features *sreportalv1alpha1.PortalFeatures) *sreportalv1alpha1.Portal {
 	return &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: tNsDefault},
 		Spec: sreportalv1alpha1.PortalSpec{
 			Title:    name,
 			Main:     main,
@@ -49,29 +49,29 @@ func ctxWithLogger() context.Context {
 }
 
 func TestResolveEndpointPortal_NoAnnotation_MainAvailable(t *testing.T) {
-	mainPortal := newPortal("main", true, nil, nil)
+	mainPortal := newPortal(tPortalMain, true, nil, nil)
 	idx := &PortalIndex{
 		Main:   mainPortal,
-		ByName: map[string]*sreportalv1alpha1.Portal{"main": mainPortal},
+		ByName: map[string]*sreportalv1alpha1.Portal{tPortalMain: mainPortal},
 		Local:  []*sreportalv1alpha1.Portal{mainPortal},
 	}
-	ep := &endpoint.Endpoint{DNSName: "api.example.com"}
+	ep := &endpoint.Endpoint{DNSName: tFQDNAPI}
 
 	name, target := resolveEndpointPortal(ctxWithLogger(), ep, idx)
 
-	assert.Equal(t, "main", name)
+	assert.Equal(t, tPortalMain, name)
 	require.NotNil(t, target)
-	assert.Equal(t, "main", target.Name)
+	assert.Equal(t, tPortalMain, target.Name)
 }
 
 func TestResolveEndpointPortal_NoAnnotation_NoMain(t *testing.T) {
-	otherPortal := newPortal("team-a", false, nil, nil)
+	otherPortal := newPortal(tTeamA, false, nil, nil)
 	idx := &PortalIndex{
 		Main:   nil,
-		ByName: map[string]*sreportalv1alpha1.Portal{"team-a": otherPortal},
+		ByName: map[string]*sreportalv1alpha1.Portal{tTeamA: otherPortal},
 		Local:  []*sreportalv1alpha1.Portal{otherPortal},
 	}
-	ep := &endpoint.Endpoint{DNSName: "api.example.com"}
+	ep := &endpoint.Endpoint{DNSName: tFQDNAPI}
 
 	name, target := resolveEndpointPortal(ctxWithLogger(), ep, idx)
 
@@ -80,14 +80,14 @@ func TestResolveEndpointPortal_NoAnnotation_NoMain(t *testing.T) {
 }
 
 func TestResolveEndpointPortal_AnnotatedPortalNotFound(t *testing.T) {
-	mainPortal := newPortal("main", true, nil, nil)
+	mainPortal := newPortal(tPortalMain, true, nil, nil)
 	idx := &PortalIndex{
 		Main:   mainPortal,
-		ByName: map[string]*sreportalv1alpha1.Portal{"main": mainPortal},
+		ByName: map[string]*sreportalv1alpha1.Portal{tPortalMain: mainPortal},
 		Local:  []*sreportalv1alpha1.Portal{mainPortal},
 	}
 	ep := &endpoint.Endpoint{
-		DNSName: "api.example.com",
+		DNSName: tFQDNAPI,
 		Labels:  map[string]string{adapter.PortalAnnotationKey: "nonexistent"},
 	}
 
@@ -98,15 +98,15 @@ func TestResolveEndpointPortal_AnnotatedPortalNotFound(t *testing.T) {
 }
 
 func TestResolveEndpointPortal_AnnotatedPortalRemote(t *testing.T) {
-	mainPortal := newPortal("main", true, nil, nil)
+	mainPortal := newPortal(tPortalMain, true, nil, nil)
 	remotePortal := newPortal("remote-portal", false, &sreportalv1alpha1.RemotePortalSpec{URL: "https://remote.example.com"}, nil)
 	idx := &PortalIndex{
 		Main:   mainPortal,
-		ByName: map[string]*sreportalv1alpha1.Portal{"main": mainPortal, "remote-portal": remotePortal},
+		ByName: map[string]*sreportalv1alpha1.Portal{tPortalMain: mainPortal, "remote-portal": remotePortal},
 		Local:  []*sreportalv1alpha1.Portal{mainPortal},
 	}
 	ep := &endpoint.Endpoint{
-		DNSName: "api.example.com",
+		DNSName: tFQDNAPI,
 		Labels:  map[string]string{adapter.PortalAnnotationKey: "remote-portal"},
 	}
 
@@ -117,15 +117,15 @@ func TestResolveEndpointPortal_AnnotatedPortalRemote(t *testing.T) {
 }
 
 func TestResolveEndpointPortal_AnnotatedPortalDNSDisabled(t *testing.T) {
-	mainPortal := newPortal("main", true, nil, nil)
+	mainPortal := newPortal(tPortalMain, true, nil, nil)
 	noDNSPortal := newPortal("no-dns", false, nil, &sreportalv1alpha1.PortalFeatures{DNS: new(bool)})
 	idx := &PortalIndex{
 		Main:   mainPortal,
-		ByName: map[string]*sreportalv1alpha1.Portal{"main": mainPortal, "no-dns": noDNSPortal},
+		ByName: map[string]*sreportalv1alpha1.Portal{tPortalMain: mainPortal, "no-dns": noDNSPortal},
 		Local:  []*sreportalv1alpha1.Portal{mainPortal, noDNSPortal},
 	}
 	ep := &endpoint.Endpoint{
-		DNSName: "api.example.com",
+		DNSName: tFQDNAPI,
 		Labels:  map[string]string{adapter.PortalAnnotationKey: "no-dns"},
 	}
 
@@ -136,23 +136,23 @@ func TestResolveEndpointPortal_AnnotatedPortalDNSDisabled(t *testing.T) {
 }
 
 func TestResolveEndpointPortal_AnnotatedPortalValid(t *testing.T) {
-	mainPortal := newPortal("main", true, nil, nil)
-	teamPortal := newPortal("team-a", false, nil, nil)
+	mainPortal := newPortal(tPortalMain, true, nil, nil)
+	teamPortal := newPortal(tTeamA, false, nil, nil)
 	idx := &PortalIndex{
 		Main:   mainPortal,
-		ByName: map[string]*sreportalv1alpha1.Portal{"main": mainPortal, "team-a": teamPortal},
+		ByName: map[string]*sreportalv1alpha1.Portal{tPortalMain: mainPortal, tTeamA: teamPortal},
 		Local:  []*sreportalv1alpha1.Portal{mainPortal, teamPortal},
 	}
 	ep := &endpoint.Endpoint{
-		DNSName: "api.example.com",
-		Labels:  map[string]string{adapter.PortalAnnotationKey: "team-a"},
+		DNSName: tFQDNAPI,
+		Labels:  map[string]string{adapter.PortalAnnotationKey: tTeamA},
 	}
 
 	name, target := resolveEndpointPortal(ctxWithLogger(), ep, idx)
 
-	assert.Equal(t, "team-a", name)
+	assert.Equal(t, tTeamA, name)
 	require.NotNil(t, target)
-	assert.Equal(t, "team-a", target.Name)
+	assert.Equal(t, tTeamA, target.Name)
 }
 
 // --- Component request collection tests ---
@@ -183,10 +183,10 @@ func (f *fakeSource) Endpoints(_ context.Context) ([]*endpoint.Endpoint, error) 
 func (f *fakeSource) AddEventHandler(_ context.Context, _ func()) {}
 
 func TestCollectEndpointsHandler_ComponentRequests_Populated(t *testing.T) {
-	mainPortal := newPortal("main", true, nil, nil)
+	mainPortal := newPortal(tPortalMain, true, nil, nil)
 	idx := &PortalIndex{
 		Main:   mainPortal,
-		ByName: map[string]*sreportalv1alpha1.Portal{"main": mainPortal},
+		ByName: map[string]*sreportalv1alpha1.Portal{tPortalMain: mainPortal},
 		Local:  []*sreportalv1alpha1.Portal{mainPortal},
 	}
 	handler := NewCollectEndpointsHandler(fakeEnricher{}, fakeFailureTracker{})
@@ -196,16 +196,16 @@ func TestCollectEndpointsHandler_ComponentRequests_Populated(t *testing.T) {
 			Index: idx,
 			TypedSources: []registry.TypedSource{
 				{
-					Type: "service",
+					Type: tSrcService,
 					Source: &fakeSource{endpoints: []*endpoint.Endpoint{
 						{
-							DNSName: "api.example.com",
+							DNSName: tFQDNAPI,
 							Labels: map[string]string{
-								adapter.ComponentAnnotationKey:            "API Gateway",
-								adapter.ComponentGroupAnnotationKey:       "Infrastructure",
+								adapter.ComponentAnnotationKey:            tCompAPIGW,
+								adapter.ComponentGroupAnnotationKey:       tCompInfra,
 								adapter.ComponentDescriptionAnnotationKey: "Main API",
 								adapter.ComponentLinkAnnotationKey:        "https://grafana.internal/api",
-								adapter.ComponentStatusAnnotationKey:      "operational",
+								adapter.ComponentStatusAnnotationKey:      tStatusOp,
 							},
 						},
 					}},
@@ -219,19 +219,19 @@ func TestCollectEndpointsHandler_ComponentRequests_Populated(t *testing.T) {
 
 	require.Len(t, rc.Data.ComponentRequests, 1)
 	cr := rc.Data.ComponentRequests[0]
-	assert.Equal(t, "main", cr.PortalName)
-	assert.Equal(t, "API Gateway", cr.DisplayName)
-	assert.Equal(t, "Infrastructure", cr.Group)
+	assert.Equal(t, tPortalMain, cr.PortalName)
+	assert.Equal(t, tCompAPIGW, cr.DisplayName)
+	assert.Equal(t, tCompInfra, cr.Group)
 	assert.Equal(t, "Main API", cr.Description)
 	assert.Equal(t, "https://grafana.internal/api", cr.Link)
-	assert.Equal(t, "operational", cr.Status)
+	assert.Equal(t, tStatusOp, cr.Status)
 }
 
 func TestCollectEndpointsHandler_ComponentRequests_DeduplicateByPortalAndName(t *testing.T) {
-	mainPortal := newPortal("main", true, nil, nil)
+	mainPortal := newPortal(tPortalMain, true, nil, nil)
 	idx := &PortalIndex{
 		Main:   mainPortal,
-		ByName: map[string]*sreportalv1alpha1.Portal{"main": mainPortal},
+		ByName: map[string]*sreportalv1alpha1.Portal{tPortalMain: mainPortal},
 		Local:  []*sreportalv1alpha1.Portal{mainPortal},
 	}
 	handler := NewCollectEndpointsHandler(fakeEnricher{}, fakeFailureTracker{})
@@ -241,20 +241,20 @@ func TestCollectEndpointsHandler_ComponentRequests_DeduplicateByPortalAndName(t 
 			Index: idx,
 			TypedSources: []registry.TypedSource{
 				{
-					Type: "service",
+					Type: tSrcService,
 					Source: &fakeSource{endpoints: []*endpoint.Endpoint{
 						{
-							DNSName: "api.example.com",
+							DNSName: tFQDNAPI,
 							Labels: map[string]string{
-								adapter.ComponentAnnotationKey:      "API Gateway",
+								adapter.ComponentAnnotationKey:      tCompAPIGW,
 								adapter.ComponentGroupAnnotationKey: "Infra",
 							},
 						},
 						{
 							DNSName: "api-v2.example.com",
 							Labels: map[string]string{
-								adapter.ComponentAnnotationKey:      "API Gateway", // same name
-								adapter.ComponentGroupAnnotationKey: "Apps",        // different group — first wins
+								adapter.ComponentAnnotationKey:      tCompAPIGW, // same name
+								adapter.ComponentGroupAnnotationKey: "Apps",     // different group — first wins
 							},
 						},
 					}},
@@ -271,10 +271,10 @@ func TestCollectEndpointsHandler_ComponentRequests_DeduplicateByPortalAndName(t 
 }
 
 func TestCollectEndpointsHandler_ComponentRequests_NotPopulatedWithoutAnnotation(t *testing.T) {
-	mainPortal := newPortal("main", true, nil, nil)
+	mainPortal := newPortal(tPortalMain, true, nil, nil)
 	idx := &PortalIndex{
 		Main:   mainPortal,
-		ByName: map[string]*sreportalv1alpha1.Portal{"main": mainPortal},
+		ByName: map[string]*sreportalv1alpha1.Portal{tPortalMain: mainPortal},
 		Local:  []*sreportalv1alpha1.Portal{mainPortal},
 	}
 	handler := NewCollectEndpointsHandler(fakeEnricher{}, fakeFailureTracker{})
@@ -284,9 +284,9 @@ func TestCollectEndpointsHandler_ComponentRequests_NotPopulatedWithoutAnnotation
 			Index: idx,
 			TypedSources: []registry.TypedSource{
 				{
-					Type: "service",
+					Type: tSrcService,
 					Source: &fakeSource{endpoints: []*endpoint.Endpoint{
-						{DNSName: "api.example.com", Labels: map[string]string{}},
+						{DNSName: tFQDNAPI, Labels: map[string]string{}},
 					}},
 				},
 			},

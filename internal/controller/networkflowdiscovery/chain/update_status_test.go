@@ -47,8 +47,8 @@ var _ = Describe("UpdateStatusHandler", func() {
 	newNFD := func() *sreportalv1alpha1.NetworkFlowDiscovery {
 		return &sreportalv1alpha1.NetworkFlowDiscovery{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-nfd",
-				Namespace: "default",
+				Name:      tNameTestNFD,
+				Namespace: tNsDefault,
 				UID:       "test-uid",
 			},
 			Spec: sreportalv1alpha1.NetworkFlowDiscoverySpec{
@@ -64,8 +64,8 @@ var _ = Describe("UpdateStatusHandler", func() {
 			handler := nfdchain.NewUpdateStatusHandler(c)
 
 			nodes := []sreportalv1alpha1.FlowNode{
-				{ID: "service:core:api", Label: "api", Namespace: "core", NodeType: "service", Group: "core"},
-				{ID: "service:core:web", Label: "web", Namespace: "core", NodeType: "service", Group: "core"},
+				{ID: "service:core:api", Label: tNameAPI, Namespace: tCore, NodeType: tNodeTypeService, Group: tCore},
+				{ID: "service:core:web", Label: "web", Namespace: tCore, NodeType: tNodeTypeService, Group: tCore},
 			}
 			edges := []sreportalv1alpha1.FlowEdge{
 				{From: "service:core:api", To: "service:core:web", EdgeType: "internal"},
@@ -83,21 +83,21 @@ var _ = Describe("UpdateStatusHandler", func() {
 
 			// Verify FlowNodeSet was created with correct status
 			var nodeSet sreportalv1alpha1.FlowNodeSet
-			Expect(c.Get(context.Background(), types.NamespacedName{Name: "test-nfd-nodes", Namespace: "default"}, &nodeSet)).To(Succeed())
-			Expect(nodeSet.Spec.DiscoveryRef).To(Equal("test-nfd"))
+			Expect(c.Get(context.Background(), types.NamespacedName{Name: tNameNFDNodes, Namespace: tNsDefault}, &nodeSet)).To(Succeed())
+			Expect(nodeSet.Spec.DiscoveryRef).To(Equal(tNameTestNFD))
 			Expect(nodeSet.Status.Nodes).To(HaveLen(2))
 			Expect(nodeSet.Status.Nodes[0].ID).To(Equal("service:core:api"))
 
 			// Verify FlowEdgeSet was created with correct status
 			var edgeSet sreportalv1alpha1.FlowEdgeSet
-			Expect(c.Get(context.Background(), types.NamespacedName{Name: "test-nfd-edges", Namespace: "default"}, &edgeSet)).To(Succeed())
-			Expect(edgeSet.Spec.DiscoveryRef).To(Equal("test-nfd"))
+			Expect(c.Get(context.Background(), types.NamespacedName{Name: tNameNFDEdges, Namespace: tNsDefault}, &edgeSet)).To(Succeed())
+			Expect(edgeSet.Spec.DiscoveryRef).To(Equal(tNameTestNFD))
 			Expect(edgeSet.Status.Edges).To(HaveLen(1))
 			Expect(edgeSet.Status.Edges[0].From).To(Equal("service:core:api"))
 
 			// Verify NFD status was updated
 			var updated sreportalv1alpha1.NetworkFlowDiscovery
-			Expect(c.Get(context.Background(), types.NamespacedName{Name: "test-nfd", Namespace: "default"}, &updated)).To(Succeed())
+			Expect(c.Get(context.Background(), types.NamespacedName{Name: tNameTestNFD, Namespace: tNsDefault}, &updated)).To(Succeed())
 			Expect(updated.Status.NodeCount).To(Equal(2))
 			Expect(updated.Status.EdgeCount).To(Equal(1))
 			Expect(updated.Status.LastReconcileTime).NotTo(BeNil())
@@ -124,15 +124,15 @@ var _ = Describe("UpdateStatusHandler", func() {
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
 			var nodeSet sreportalv1alpha1.FlowNodeSet
-			Expect(c.Get(context.Background(), types.NamespacedName{Name: "test-nfd-nodes", Namespace: "default"}, &nodeSet)).To(Succeed())
+			Expect(c.Get(context.Background(), types.NamespacedName{Name: tNameNFDNodes, Namespace: tNsDefault}, &nodeSet)).To(Succeed())
 			Expect(nodeSet.Status.Nodes).To(BeEmpty())
 
 			var edgeSet sreportalv1alpha1.FlowEdgeSet
-			Expect(c.Get(context.Background(), types.NamespacedName{Name: "test-nfd-edges", Namespace: "default"}, &edgeSet)).To(Succeed())
+			Expect(c.Get(context.Background(), types.NamespacedName{Name: tNameNFDEdges, Namespace: tNsDefault}, &edgeSet)).To(Succeed())
 			Expect(edgeSet.Status.Edges).To(BeEmpty())
 
 			var updated sreportalv1alpha1.NetworkFlowDiscovery
-			Expect(c.Get(context.Background(), types.NamespacedName{Name: "test-nfd", Namespace: "default"}, &updated)).To(Succeed())
+			Expect(c.Get(context.Background(), types.NamespacedName{Name: tNameTestNFD, Namespace: tNsDefault}, &updated)).To(Succeed())
 			Expect(updated.Status.NodeCount).To(Equal(0))
 			Expect(updated.Status.EdgeCount).To(Equal(0))
 		})
@@ -143,22 +143,22 @@ var _ = Describe("UpdateStatusHandler", func() {
 			nfd := newNFD()
 			existingNodeSet := &sreportalv1alpha1.FlowNodeSet{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-nfd-nodes",
-					Namespace: "default",
+					Name:      tNameNFDNodes,
+					Namespace: tNsDefault,
 				},
-				Spec: sreportalv1alpha1.FlowNodeSetSpec{DiscoveryRef: "test-nfd"},
+				Spec: sreportalv1alpha1.FlowNodeSetSpec{DiscoveryRef: tNameTestNFD},
 				Status: sreportalv1alpha1.FlowNodeSetStatus{
 					Nodes: []sreportalv1alpha1.FlowNode{
-						{ID: "old-node", Label: "old", Namespace: "old", NodeType: "service", Group: "old"},
+						{ID: "old-node", Label: tOldVal, Namespace: tOldVal, NodeType: tNodeTypeService, Group: tOldVal},
 					},
 				},
 			}
 			existingEdgeSet := &sreportalv1alpha1.FlowEdgeSet{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-nfd-edges",
-					Namespace: "default",
+					Name:      tNameNFDEdges,
+					Namespace: tNsDefault,
 				},
-				Spec: sreportalv1alpha1.FlowEdgeSetSpec{DiscoveryRef: "test-nfd"},
+				Spec: sreportalv1alpha1.FlowEdgeSetSpec{DiscoveryRef: tNameTestNFD},
 				Status: sreportalv1alpha1.FlowEdgeSetStatus{
 					Edges: []sreportalv1alpha1.FlowEdge{
 						{From: "old-a", To: "old-b", EdgeType: "internal"},
@@ -174,7 +174,7 @@ var _ = Describe("UpdateStatusHandler", func() {
 			handler := nfdchain.NewUpdateStatusHandler(c)
 
 			newNodes := []sreportalv1alpha1.FlowNode{
-				{ID: "service:core:new-api", Label: "new-api", Namespace: "core", NodeType: "service", Group: "core"},
+				{ID: "service:core:new-api", Label: "new-api", Namespace: tCore, NodeType: tNodeTypeService, Group: tCore},
 			}
 			newEdges := []sreportalv1alpha1.FlowEdge{
 				{From: "service:core:new-api", To: "external:core:db.example.com", EdgeType: "database"},
@@ -191,12 +191,12 @@ var _ = Describe("UpdateStatusHandler", func() {
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
 			var nodeSet sreportalv1alpha1.FlowNodeSet
-			Expect(c.Get(context.Background(), types.NamespacedName{Name: "test-nfd-nodes", Namespace: "default"}, &nodeSet)).To(Succeed())
+			Expect(c.Get(context.Background(), types.NamespacedName{Name: tNameNFDNodes, Namespace: tNsDefault}, &nodeSet)).To(Succeed())
 			Expect(nodeSet.Status.Nodes).To(HaveLen(1))
 			Expect(nodeSet.Status.Nodes[0].ID).To(Equal("service:core:new-api"))
 
 			var edgeSet sreportalv1alpha1.FlowEdgeSet
-			Expect(c.Get(context.Background(), types.NamespacedName{Name: "test-nfd-edges", Namespace: "default"}, &edgeSet)).To(Succeed())
+			Expect(c.Get(context.Background(), types.NamespacedName{Name: tNameNFDEdges, Namespace: tNsDefault}, &edgeSet)).To(Succeed())
 			Expect(edgeSet.Status.Edges).To(HaveLen(1))
 			Expect(edgeSet.Status.Edges[0].EdgeType).To(Equal("database"))
 		})

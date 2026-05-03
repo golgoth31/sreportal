@@ -35,15 +35,15 @@ var _ = Describe("dnsRecordToFQDNViews", func() {
 					Namespace: "test-ns",
 				},
 				Spec: sreportalv1alpha1.DNSRecordSpec{
-					SourceType: "service",
-					PortalRef:  "my-portal",
+					SourceType: tSrcService,
+					PortalRef:  tPortalMy,
 				},
 				Status: sreportalv1alpha1.DNSRecordStatus{
 					Endpoints: []sreportalv1alpha1.EndpointStatus{
 						{
 							DNSName:    "api.example.com",
 							RecordType: "A",
-							Targets:    []string{"1.2.3.4"},
+							Targets:    []string{tIP1234},
 							LastSeen:   metav1.Now(),
 						},
 						{
@@ -60,10 +60,10 @@ var _ = Describe("dnsRecordToFQDNViews", func() {
 
 			Expect(views).To(HaveLen(2))
 			for _, v := range views {
-				Expect(v.PortalName).To(Equal("my-portal"))
+				Expect(v.PortalName).To(Equal(tPortalMy))
 				Expect(v.Namespace).To(Equal("test-ns"))
 				Expect(v.Source).To(Equal(domaindns.SourceExternalDNS))
-				Expect(v.SourceType).To(Equal("service"))
+				Expect(v.SourceType).To(Equal(tSrcService))
 			}
 		})
 	})
@@ -73,11 +73,11 @@ var _ = Describe("dnsRecordToFQDNViews", func() {
 			record := &sreportalv1alpha1.DNSRecord{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "empty-record",
-					Namespace: "default",
+					Namespace: tNsDefault,
 				},
 				Spec: sreportalv1alpha1.DNSRecordSpec{
-					SourceType: "service",
-					PortalRef:  "main",
+					SourceType: tSrcService,
+					PortalRef:  tPortalMain,
 				},
 			}
 
@@ -91,11 +91,11 @@ var _ = Describe("dnsRecordToFQDNViews", func() {
 			record := &sreportalv1alpha1.DNSRecord{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "origin-record",
-					Namespace: "default",
+					Namespace: tNsDefault,
 				},
 				Spec: sreportalv1alpha1.DNSRecordSpec{
-					SourceType: "service",
-					PortalRef:  "main",
+					SourceType: tSrcService,
+					PortalRef:  tPortalMain,
 				},
 				Status: sreportalv1alpha1.DNSRecordStatus{
 					Endpoints: []sreportalv1alpha1.EndpointStatus{
@@ -127,18 +127,18 @@ var _ = Describe("dnsRecordToFQDNViews", func() {
 			record := &sreportalv1alpha1.DNSRecord{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "mapped-record",
-					Namespace: "default",
+					Namespace: tNsDefault,
 				},
 				Spec: sreportalv1alpha1.DNSRecordSpec{
-					SourceType: "service",
-					PortalRef:  "main",
+					SourceType: tSrcService,
+					PortalRef:  tPortalMain,
 				},
 				Status: sreportalv1alpha1.DNSRecordStatus{
 					Endpoints: []sreportalv1alpha1.EndpointStatus{
 						{
 							DNSName:    "app.example.com",
 							RecordType: "A",
-							Targets:    []string{"1.2.3.4"},
+							Targets:    []string{tIP1234},
 							LastSeen:   metav1.Now(),
 						},
 					},
@@ -161,18 +161,18 @@ var _ = Describe("dnsRecordToFQDNViews", func() {
 			record := &sreportalv1alpha1.DNSRecord{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "dedup-record",
-					Namespace: "default",
+					Namespace: tNsDefault,
 				},
 				Spec: sreportalv1alpha1.DNSRecordSpec{
-					SourceType: "service",
-					PortalRef:  "main",
+					SourceType: tSrcService,
+					PortalRef:  tPortalMain,
 				},
 				Status: sreportalv1alpha1.DNSRecordStatus{
 					Endpoints: []sreportalv1alpha1.EndpointStatus{
 						{
 							DNSName:    "shared.example.com",
 							RecordType: "A",
-							Targets:    []string{"1.2.3.4"},
+							Targets:    []string{tIP1234},
 							LastSeen:   metav1.Now(),
 							Labels: map[string]string{
 								"sreportal.io/groups": "group-a,group-b",

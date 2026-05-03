@@ -33,6 +33,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	nsDefault = "default"
+	remoteURL = "http://remote.example/"
+)
+
 func newSchemeForSyncRemoteImageInventoryTest(t *testing.T) *runtime.Scheme {
 	t.Helper()
 	scheme := runtime.NewScheme()
@@ -46,7 +51,7 @@ func TestSyncRemoteImageInventoryNoOpForLocalPortal(t *testing.T) {
 	h := chain.NewSyncRemoteImageInventoryHandler(cli, scheme)
 
 	portal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: "main", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: tPortalMain, Namespace: nsDefault},
 		Spec:       sreportalv1alpha1.PortalSpec{Title: "Main", Main: true},
 	}
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.Portal, chain.ChainData]{Resource: portal}
@@ -60,10 +65,10 @@ func TestSyncRemoteImageInventoryNoOpForLocalPortal(t *testing.T) {
 func TestSyncRemoteImageInventoryCreatesShadowCRForRemotePortal(t *testing.T) {
 	scheme := newSchemeForSyncRemoteImageInventoryTest(t)
 	portal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: "remote-a", Namespace: "default", UID: "uid-a"},
+		ObjectMeta: metav1.ObjectMeta{Name: "remote-a", Namespace: nsDefault, UID: "uid-a"},
 		Spec: sreportalv1alpha1.PortalSpec{
 			Title:  "Remote A",
-			Remote: &sreportalv1alpha1.RemotePortalSpec{URL: "http://remote.example/", Portal: "main"},
+			Remote: &sreportalv1alpha1.RemotePortalSpec{URL: remoteURL, Portal: tPortalMain},
 		},
 	}
 	cli := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
@@ -87,10 +92,10 @@ func TestSyncRemoteImageInventoryCreatesShadowCRForRemotePortal(t *testing.T) {
 func TestSyncRemoteImageInventoryUpdatesExistingShadowCR(t *testing.T) {
 	scheme := newSchemeForSyncRemoteImageInventoryTest(t)
 	portal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: "remote-update", Namespace: "default", UID: "uid-update"},
+		ObjectMeta: metav1.ObjectMeta{Name: "remote-update", Namespace: nsDefault, UID: "uid-update"},
 		Spec: sreportalv1alpha1.PortalSpec{
 			Title:  "Remote Update",
-			Remote: &sreportalv1alpha1.RemotePortalSpec{URL: "http://old.example/", Portal: "main"},
+			Remote: &sreportalv1alpha1.RemotePortalSpec{URL: "http://old.example/", Portal: tPortalMain},
 		},
 	}
 	stale := &sreportalv1alpha1.ImageInventory{
@@ -122,10 +127,10 @@ func TestSyncRemoteImageInventoryNoOpWhenFeatureDisabled(t *testing.T) {
 	scheme := newSchemeForSyncRemoteImageInventoryTest(t)
 	disabled := false
 	portal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: "remote-disabled", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: "remote-disabled", Namespace: nsDefault},
 		Spec: sreportalv1alpha1.PortalSpec{
 			Title:    "Remote Disabled",
-			Remote:   &sreportalv1alpha1.RemotePortalSpec{URL: "http://remote.example/", Portal: "main"},
+			Remote:   &sreportalv1alpha1.RemotePortalSpec{URL: remoteURL, Portal: tPortalMain},
 			Features: &sreportalv1alpha1.PortalFeatures{ImageInventory: &disabled},
 		},
 	}
@@ -144,10 +149,10 @@ func TestCleanupDisabledFeaturesHandlerDeletesRemoteImageInventoryWhenFeatureDis
 	scheme := newSchemeForSyncRemoteImageInventoryTest(t)
 	disabled := false
 	portal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: "remote-cleanup", Namespace: "default", UID: "uid-clean"},
+		ObjectMeta: metav1.ObjectMeta{Name: "remote-cleanup", Namespace: nsDefault, UID: "uid-clean"},
 		Spec: sreportalv1alpha1.PortalSpec{
 			Title:    "Cleanup",
-			Remote:   &sreportalv1alpha1.RemotePortalSpec{URL: "http://remote.example/", Portal: "main"},
+			Remote:   &sreportalv1alpha1.RemotePortalSpec{URL: remoteURL, Portal: tPortalMain},
 			Features: &sreportalv1alpha1.PortalFeatures{ImageInventory: &disabled},
 		},
 	}
@@ -179,10 +184,10 @@ func TestCleanupDisabledFeaturesHandlerSkipsRemoteImageInventoryNotOwned(t *test
 	scheme := newSchemeForSyncRemoteImageInventoryTest(t)
 	disabled := false
 	portal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: "remote-cleanup", Namespace: "default", UID: "uid-clean"},
+		ObjectMeta: metav1.ObjectMeta{Name: "remote-cleanup", Namespace: nsDefault, UID: "uid-clean"},
 		Spec: sreportalv1alpha1.PortalSpec{
 			Title:    "Cleanup",
-			Remote:   &sreportalv1alpha1.RemotePortalSpec{URL: "http://remote.example/", Portal: "main"},
+			Remote:   &sreportalv1alpha1.RemotePortalSpec{URL: remoteURL, Portal: tPortalMain},
 			Features: &sreportalv1alpha1.PortalFeatures{ImageInventory: &disabled},
 		},
 	}
@@ -213,7 +218,7 @@ func TestCleanupDisabledFeaturesHandlerSkipsRemoteImageInventoryNotOwned(t *test
 func TestCleanupDisabledFeaturesHandlerNoOpWhenRemoteImageInventoryAbsent(t *testing.T) {
 	scheme := newSchemeForSyncRemoteImageInventoryTest(t)
 	portal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: "local-portal", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: "local-portal", Namespace: nsDefault},
 		Spec:       sreportalv1alpha1.PortalSpec{Title: "Local", Main: true},
 	}
 	cli := fake.NewClientBuilder().WithScheme(scheme).Build()

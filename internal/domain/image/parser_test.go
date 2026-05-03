@@ -11,7 +11,7 @@ func TestClassifyTag(t *testing.T) {
 		want TagType
 	}{
 		{name: "digest", tag: "sha256:012345", want: TagTypeDigest},
-		{name: "latest", tag: "latest", want: TagTypeLatest},
+		{name: string(TagTypeLatest), tag: string(TagTypeLatest), want: TagTypeLatest},
 		{name: "semver plain", tag: "1.2.3", want: TagTypeSemver},
 		{name: "semver with v", tag: "v1.2.3", want: TagTypeSemver},
 		{name: "commit short", tag: "abcdef1", want: TagTypeCommit},

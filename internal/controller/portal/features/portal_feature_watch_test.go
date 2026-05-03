@@ -157,12 +157,12 @@ func TestReleaseReconcileRequestsForPortal(t *testing.T) {
 	require.NoError(t, sreportalv1alpha1.AddToScheme(s))
 
 	portal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: "main", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: tPortalMain, Namespace: tNsDefault},
 		Spec:       sreportalv1alpha1.PortalSpec{Title: "Main"},
 	}
 	rel := &sreportalv1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Name: "release-2026-03-21", Namespace: "default"},
-		Spec:       sreportalv1alpha1.ReleaseSpec{PortalRef: "main"},
+		ObjectMeta: metav1.ObjectMeta{Name: "release-2026-03-21", Namespace: tNsDefault},
+		Spec:       sreportalv1alpha1.ReleaseSpec{PortalRef: tPortalMain},
 	}
 
 	c := fake.NewClientBuilder().
@@ -176,7 +176,7 @@ func TestReleaseReconcileRequestsForPortal(t *testing.T) {
 
 	reqs := ReleaseReconcileRequestsForPortal(ctx, c, portal)
 	require.Len(t, reqs, 1)
-	assert.Equal(t, types.NamespacedName{Namespace: "default", Name: "release-2026-03-21"}, reqs[0].NamespacedName)
+	assert.Equal(t, types.NamespacedName{Namespace: tNsDefault, Name: "release-2026-03-21"}, reqs[0].NamespacedName)
 }
 
 func TestReleaseReconcileRequestsForPortal_ReleasesDisabled_ReturnsNil(t *testing.T) {
@@ -184,7 +184,7 @@ func TestReleaseReconcileRequestsForPortal_ReleasesDisabled_ReturnsNil(t *testin
 	s := runtime.NewScheme()
 	require.NoError(t, sreportalv1alpha1.AddToScheme(s))
 	portal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: "main", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: tPortalMain, Namespace: tNsDefault},
 		Spec: sreportalv1alpha1.PortalSpec{
 			Title:    "Main",
 			Features: &sreportalv1alpha1.PortalFeatures{Releases: new(false)},

@@ -41,7 +41,7 @@ var _ = Describe("NetworkFlowDiscovery Controller", func() {
 
 		typeNamespacedName := types.NamespacedName{
 			Name:      resourceName,
-			Namespace: "default",
+			Namespace: tNsDefault,
 		}
 
 		BeforeEach(func() {
@@ -52,7 +52,7 @@ var _ = Describe("NetworkFlowDiscovery Controller", func() {
 				resource := &sreportalv1alpha1.NetworkFlowDiscovery{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
-						Namespace: "default",
+						Namespace: tNsDefault,
 					},
 					Spec: sreportalv1alpha1.NetworkFlowDiscoverySpec{
 						PortalRef: "main",
@@ -104,8 +104,8 @@ var _ = Describe("NetworkFlowDiscovery Controller", func() {
 			portalName = "portal-netpol-toggle"
 		)
 		ctx := context.Background()
-		nfdNN := types.NamespacedName{Name: nfdName, Namespace: "default"}
-		portalNN := types.NamespacedName{Name: portalName, Namespace: "default"}
+		nfdNN := types.NamespacedName{Name: nfdName, Namespace: tNsDefault}
+		portalNN := types.NamespacedName{Name: portalName, Namespace: tNsDefault}
 
 		AfterEach(func() {
 			nfd := &sreportalv1alpha1.NetworkFlowDiscovery{}
@@ -132,7 +132,7 @@ var _ = Describe("NetworkFlowDiscovery Controller", func() {
 			By("creating a portal with networkPolicy disabled")
 			netpolOff := false
 			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.Portal{
-				ObjectMeta: metav1.ObjectMeta{Name: portalName, Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: portalName, Namespace: tNsDefault},
 				Spec: sreportalv1alpha1.PortalSpec{
 					Title:    "Netpol Toggle Portal",
 					Features: &sreportalv1alpha1.PortalFeatures{NetworkPolicy: &netpolOff},
@@ -141,7 +141,7 @@ var _ = Describe("NetworkFlowDiscovery Controller", func() {
 
 			By("creating an NFD referencing the portal")
 			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.NetworkFlowDiscovery{
-				ObjectMeta: metav1.ObjectMeta{Name: nfdName, Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: nfdName, Namespace: tNsDefault},
 				Spec: sreportalv1alpha1.NetworkFlowDiscoverySpec{
 					PortalRef: portalName,
 				},
@@ -149,7 +149,7 @@ var _ = Describe("NetworkFlowDiscovery Controller", func() {
 
 			By("pre-populating the flow graph store")
 			Expect(store.ReplaceNodes(ctx, nfdName, portalName, []domainnetpol.FlowNode{
-				{ID: "service:default:app1", Label: "app1", Namespace: "default", NodeType: "service", Group: "default"},
+				{ID: "service:default:app1", Label: "app1", Namespace: tNsDefault, NodeType: "service", Group: tNsDefault},
 			})).To(Succeed())
 			Expect(store.ReplaceEdges(ctx, nfdName, portalName, []domainnetpol.FlowEdge{
 				{From: "service:default:app1", To: "service:default:app2", EdgeType: "internal"},

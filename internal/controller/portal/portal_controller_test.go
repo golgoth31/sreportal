@@ -47,7 +47,7 @@ var _ = Describe("Portal Controller", func() {
 
 		typeNamespacedName := types.NamespacedName{
 			Name:      resourceName,
-			Namespace: "default", // TODO(user):Modify as needed
+			Namespace: tNsDefault, // TODO(user):Modify as needed
 		}
 		portal := &sreportalv1alpha1.Portal{}
 
@@ -58,7 +58,7 @@ var _ = Describe("Portal Controller", func() {
 				resource := &sreportalv1alpha1.Portal{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
-						Namespace: "default",
+						Namespace: tNsDefault,
 					},
 					Spec: sreportalv1alpha1.PortalSpec{
 						Title: "Test Portal",
@@ -98,9 +98,9 @@ var _ = Describe("Portal Controller", func() {
 		)
 		ctx := context.Background()
 
-		portalNN := types.NamespacedName{Name: portalName, Namespace: "default"}
-		dnsNN := types.NamespacedName{Name: dnsName, Namespace: "default"}
-		recordNN := types.NamespacedName{Name: recordName, Namespace: "default"}
+		portalNN := types.NamespacedName{Name: portalName, Namespace: tNsDefault}
+		dnsNN := types.NamespacedName{Name: dnsName, Namespace: tNsDefault}
+		recordNN := types.NamespacedName{Name: recordName, Namespace: tNsDefault}
 
 		AfterEach(func() {
 			rec := &sreportalv1alpha1.DNSRecord{}
@@ -124,7 +124,7 @@ var _ = Describe("Portal Controller", func() {
 
 			By("creating a portal with DNS enabled")
 			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.Portal{
-				ObjectMeta: metav1.ObjectMeta{Name: portalName, Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: portalName, Namespace: tNsDefault},
 				Spec: sreportalv1alpha1.PortalSpec{
 					Title: "Toggle Portal",
 				},
@@ -132,7 +132,7 @@ var _ = Describe("Portal Controller", func() {
 
 			By("creating a DNS CR for this portal")
 			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.DNS{
-				ObjectMeta: metav1.ObjectMeta{Name: dnsName, Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: dnsName, Namespace: tNsDefault},
 				Spec: sreportalv1alpha1.DNSSpec{
 					PortalRef: portalName,
 					Groups: []sreportalv1alpha1.DNSGroup{
@@ -143,7 +143,7 @@ var _ = Describe("Portal Controller", func() {
 
 			By("creating a DNSRecord CR for this portal")
 			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.DNSRecord{
-				ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: tNsDefault},
 				Spec: sreportalv1alpha1.DNSRecordSpec{
 					SourceType: "service",
 					PortalRef:  portalName,
@@ -203,7 +203,7 @@ var _ = Describe("Portal Controller", func() {
 			By("creating a portal with DNS disabled")
 			dnsDisabled := false
 			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.Portal{
-				ObjectMeta: metav1.ObjectMeta{Name: portalName, Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: portalName, Namespace: tNsDefault},
 				Spec: sreportalv1alpha1.PortalSpec{
 					Title:    "Toggle Portal",
 					Features: &sreportalv1alpha1.PortalFeatures{DNS: &dnsDisabled},
@@ -212,7 +212,7 @@ var _ = Describe("Portal Controller", func() {
 
 			By("creating a DNS CR")
 			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.DNS{
-				ObjectMeta: metav1.ObjectMeta{Name: dnsName, Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: dnsName, Namespace: tNsDefault},
 				Spec: sreportalv1alpha1.DNSSpec{
 					PortalRef: portalName,
 					Groups: []sreportalv1alpha1.DNSGroup{
@@ -259,8 +259,8 @@ var _ = Describe("Portal Controller", func() {
 			releaseCRName = "release-2026-03-21"
 		)
 		ctx := context.Background()
-		portalRelNN := types.NamespacedName{Name: portalRelName, Namespace: "default"}
-		releaseNN := types.NamespacedName{Name: releaseCRName, Namespace: "default"}
+		portalRelNN := types.NamespacedName{Name: portalRelName, Namespace: tNsDefault}
+		releaseNN := types.NamespacedName{Name: releaseCRName, Namespace: tNsDefault}
 
 		AfterEach(func() {
 			rel := &sreportalv1alpha1.Release{}
@@ -279,12 +279,12 @@ var _ = Describe("Portal Controller", func() {
 			portalReconciler.SetReleaseWriter(store)
 
 			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.Portal{
-				ObjectMeta: metav1.ObjectMeta{Name: portalRelName, Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: portalRelName, Namespace: tNsDefault},
 				Spec:       sreportalv1alpha1.PortalSpec{Title: "Release Toggle Portal"},
 			})).To(Succeed())
 
 			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.Release{
-				ObjectMeta: metav1.ObjectMeta{Name: releaseCRName, Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: releaseCRName, Namespace: tNsDefault},
 				Spec: sreportalv1alpha1.ReleaseSpec{
 					PortalRef: portalRelName,
 					Entries: []sreportalv1alpha1.ReleaseEntry{
@@ -329,8 +329,8 @@ var _ = Describe("Portal Controller", func() {
 			nfdCRName    = "netflow-portal-netpol-toggle"
 		)
 		ctx := context.Background()
-		portalNPNN := types.NamespacedName{Name: portalNPName, Namespace: "default"}
-		nfdNN := types.NamespacedName{Name: nfdCRName, Namespace: "default"}
+		portalNPNN := types.NamespacedName{Name: portalNPName, Namespace: tNsDefault}
+		nfdNN := types.NamespacedName{Name: nfdCRName, Namespace: tNsDefault}
 
 		AfterEach(func() {
 			nfd := &sreportalv1alpha1.NetworkFlowDiscovery{}
@@ -350,13 +350,13 @@ var _ = Describe("Portal Controller", func() {
 
 			By("creating a portal with networkPolicy enabled (default)")
 			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.Portal{
-				ObjectMeta: metav1.ObjectMeta{Name: portalNPName, Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: portalNPName, Namespace: tNsDefault},
 				Spec:       sreportalv1alpha1.PortalSpec{Title: "Netpol Toggle Portal"},
 			})).To(Succeed())
 
 			By("creating an NFD CR for this portal")
 			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.NetworkFlowDiscovery{
-				ObjectMeta: metav1.ObjectMeta{Name: nfdCRName, Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: nfdCRName, Namespace: tNsDefault},
 				Spec: sreportalv1alpha1.NetworkFlowDiscoverySpec{
 					PortalRef: portalNPName,
 				},
@@ -364,7 +364,7 @@ var _ = Describe("Portal Controller", func() {
 
 			By("pre-populating the flow graph store")
 			Expect(store.ReplaceNodes(ctx, nfdCRName, portalNPName, []domainnetpol.FlowNode{
-				{ID: "service:default:app1", Label: "app1", Namespace: "default", NodeType: "service", Group: "default"},
+				{ID: "service:default:app1", Label: "app1", Namespace: tNsDefault, NodeType: "service", Group: tNsDefault},
 			})).To(Succeed())
 
 			nodes, _ := store.ListNodes(ctx, domainnetpol.FlowGraphFilters{Portal: portalNPName})
@@ -402,7 +402,7 @@ var _ = Describe("Portal Controller", func() {
 			By("creating a portal with networkPolicy disabled")
 			netpolOff := false
 			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.Portal{
-				ObjectMeta: metav1.ObjectMeta{Name: portalNPName, Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: portalNPName, Namespace: tNsDefault},
 				Spec: sreportalv1alpha1.PortalSpec{
 					Title:    "Netpol Toggle Portal",
 					Features: &sreportalv1alpha1.PortalFeatures{NetworkPolicy: &netpolOff},

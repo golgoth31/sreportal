@@ -68,8 +68,8 @@ func TestFetchRemoteImagesHandlerNoOpWhenLocal(t *testing.T) {
 	h := NewFetchRemoteImagesHandler(cli, remoteclient.NewCache())
 
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "local-inv", Namespace: "default"},
-		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: "main", IsRemote: false},
+		ObjectMeta: metav1.ObjectMeta{Name: "local-inv", Namespace: tNsDefault},
+		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: tPortalMain, IsRemote: false},
 	}
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageInventory, ChainData]{Resource: inv}
 	require.NoError(t, h.Handle(context.Background(), rc))
@@ -83,12 +83,12 @@ func TestFetchRemoteImagesHandlerPopulatesFromRemote(t *testing.T) {
 	mockSvc := &fetchRemoteImagesMockService{
 		images: []*sreportalv1.Image{
 			{
-				Registry:   "ghcr.io",
-				Repository: "acme/api",
+				Registry:   tRegistryGhcr,
+				Repository: tRepoAcmeAPI,
 				Tag:        "1.2.3",
-				TagType:    "semver",
+				TagType:    tTagTypeSemver,
 				Workloads: []*sreportalv1.WorkloadRef{
-					{Kind: "Deployment", Namespace: "default", Name: "api", Container: "main", Source: "spec"},
+					{Kind: tKindDeploy, Namespace: tNsDefault, Name: tNameAPI, Container: tPortalMain, Source: tFieldSpec},
 				},
 			},
 		},
@@ -98,19 +98,19 @@ func TestFetchRemoteImagesHandlerPopulatesFromRemote(t *testing.T) {
 	defer server.Close()
 
 	portal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: "remote-portal", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: tPortalRemote, Namespace: tNsDefault},
 		Spec: sreportalv1alpha1.PortalSpec{
 			Title:  "Remote",
-			Remote: &sreportalv1alpha1.RemotePortalSpec{URL: server.URL, Portal: "main"},
+			Remote: &sreportalv1alpha1.RemotePortalSpec{URL: server.URL, Portal: tPortalMain},
 		},
 	}
 	cli := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
 
 	h := NewFetchRemoteImagesHandler(cli, remoteclient.NewCache())
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "remote-remote-portal", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: "remote-remote-portal", Namespace: tNsDefault},
 		Spec: sreportalv1alpha1.ImageInventorySpec{
-			PortalRef: "remote-portal",
+			PortalRef: tPortalRemote,
 			IsRemote:  true,
 		},
 	}
@@ -118,14 +118,14 @@ func TestFetchRemoteImagesHandlerPopulatesFromRemote(t *testing.T) {
 	require.NoError(t, h.Handle(context.Background(), rc))
 	require.NotNil(t, rc.Data.ByWorkload)
 
-	wk := domainimage.WorkloadKey{Kind: "Deployment", Namespace: "default", Name: "api"}
+	wk := domainimage.WorkloadKey{Kind: tKindDeploy, Namespace: tNsDefault, Name: tNameAPI}
 	views, ok := rc.Data.ByWorkload[wk]
 	require.True(t, ok, "expected workload key to be present")
 	require.Len(t, views, 1)
-	require.Equal(t, "ghcr.io", views[0].Registry)
-	require.Equal(t, "acme/api", views[0].Repository)
+	require.Equal(t, tRegistryGhcr, views[0].Registry)
+	require.Equal(t, tRepoAcmeAPI, views[0].Repository)
 	require.Equal(t, domainimage.TagTypeSemver, views[0].TagType)
-	require.Equal(t, "remote-portal", views[0].PortalRef)
+	require.Equal(t, tPortalRemote, views[0].PortalRef)
 	require.Len(t, views[0].Workloads, 1)
 	require.Equal(t, domainimage.ContainerSourceSpec, views[0].Workloads[0].Source)
 }
@@ -136,7 +136,7 @@ func TestFetchRemoteImagesHandlerErrorWhenPortalMissing(t *testing.T) {
 	h := NewFetchRemoteImagesHandler(cli, remoteclient.NewCache())
 
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "remote-inv", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: "remote-inv", Namespace: tNsDefault},
 		Spec: sreportalv1alpha1.ImageInventorySpec{
 			PortalRef: "missing-portal",
 			IsRemote:  true,
@@ -150,14 +150,14 @@ func TestFetchRemoteImagesHandlerErrorWhenPortalMissing(t *testing.T) {
 func TestFetchRemoteImagesHandlerErrorWhenPortalNotRemote(t *testing.T) {
 	scheme := newFetchRemoteImagesScheme(t)
 	portal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: "main-portal", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: "main-portal", Namespace: tNsDefault},
 		Spec:       sreportalv1alpha1.PortalSpec{Title: "Main", Main: true},
 	}
 	cli := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
 	h := NewFetchRemoteImagesHandler(cli, remoteclient.NewCache())
 
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "remote-inv", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: "remote-inv", Namespace: tNsDefault},
 		Spec: sreportalv1alpha1.ImageInventorySpec{
 			PortalRef: "main-portal",
 			IsRemote:  true,
@@ -176,22 +176,22 @@ func TestFetchRemoteImagesHandlerBucketsWorkloadsCorrectly(t *testing.T) {
 	mockSvc := &fetchRemoteImagesMockService{
 		images: []*sreportalv1.Image{
 			{
-				Registry:   "ghcr.io",
-				Repository: "acme/api",
+				Registry:   tRegistryGhcr,
+				Repository: tRepoAcmeAPI,
 				Tag:        "1.2.3",
-				TagType:    "semver",
+				TagType:    tTagTypeSemver,
 				Workloads: []*sreportalv1.WorkloadRef{
-					{Kind: "Deployment", Namespace: "default", Name: "api", Container: "main", Source: "spec"},
-					{Kind: "Deployment", Namespace: "default", Name: "web", Container: "main", Source: "spec"},
+					{Kind: tKindDeploy, Namespace: tNsDefault, Name: tNameAPI, Container: tPortalMain, Source: tFieldSpec},
+					{Kind: tKindDeploy, Namespace: tNsDefault, Name: tNameWeb, Container: tPortalMain, Source: tFieldSpec},
 				},
 			},
 			{
-				Registry:   "ghcr.io",
+				Registry:   tRegistryGhcr,
 				Repository: "acme/web",
 				Tag:        "2.0.0",
-				TagType:    "semver",
+				TagType:    tTagTypeSemver,
 				Workloads: []*sreportalv1.WorkloadRef{
-					{Kind: "Deployment", Namespace: "default", Name: "api", Container: "sidecar", Source: "spec"},
+					{Kind: tKindDeploy, Namespace: tNsDefault, Name: tNameAPI, Container: "sidecar", Source: tFieldSpec},
 				},
 			},
 		},
@@ -201,19 +201,19 @@ func TestFetchRemoteImagesHandlerBucketsWorkloadsCorrectly(t *testing.T) {
 	defer server.Close()
 
 	portal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: "remote-portal", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: tPortalRemote, Namespace: tNsDefault},
 		Spec: sreportalv1alpha1.PortalSpec{
 			Title:  "Remote",
-			Remote: &sreportalv1alpha1.RemotePortalSpec{URL: server.URL, Portal: "main"},
+			Remote: &sreportalv1alpha1.RemotePortalSpec{URL: server.URL, Portal: tPortalMain},
 		},
 	}
 	cli := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
 
 	h := NewFetchRemoteImagesHandler(cli, remoteclient.NewCache())
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "remote-remote-portal", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: "remote-remote-portal", Namespace: tNsDefault},
 		Spec: sreportalv1alpha1.ImageInventorySpec{
-			PortalRef: "remote-portal",
+			PortalRef: tPortalRemote,
 			IsRemote:  true,
 		},
 	}
@@ -221,18 +221,18 @@ func TestFetchRemoteImagesHandlerBucketsWorkloadsCorrectly(t *testing.T) {
 	require.NoError(t, h.Handle(context.Background(), rc))
 	require.NotNil(t, rc.Data.ByWorkload)
 
-	w1 := domainimage.WorkloadKey{Kind: "Deployment", Namespace: "default", Name: "api"}
-	w2 := domainimage.WorkloadKey{Kind: "Deployment", Namespace: "default", Name: "web"}
+	w1 := domainimage.WorkloadKey{Kind: tKindDeploy, Namespace: tNsDefault, Name: tNameAPI}
+	w2 := domainimage.WorkloadKey{Kind: tKindDeploy, Namespace: tNsDefault, Name: tNameWeb}
 
 	require.Len(t, rc.Data.ByWorkload[w1], 2, "expected 2 views in bucket W1 (one per image referencing it)")
 	require.Len(t, rc.Data.ByWorkload[w2], 1, "expected 1 view in bucket W2")
 
 	for _, v := range rc.Data.ByWorkload[w1] {
 		require.Len(t, v.Workloads, 1, "each ImageView must hold exactly one WorkloadRef")
-		require.Equal(t, "api", v.Workloads[0].Name)
+		require.Equal(t, tNameAPI, v.Workloads[0].Name)
 	}
 	for _, v := range rc.Data.ByWorkload[w2] {
 		require.Len(t, v.Workloads, 1, "each ImageView must hold exactly one WorkloadRef")
-		require.Equal(t, "web", v.Workloads[0].Name)
+		require.Equal(t, tNameWeb, v.Workloads[0].Name)
 	}
 }

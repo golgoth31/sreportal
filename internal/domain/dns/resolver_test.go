@@ -88,8 +88,8 @@ func TestResolveFQDNViews_SetsCorrectSyncStatus(t *testing.T) {
 
 	views := []dns.FQDNView{
 		{Name: "api.example.com", RecordType: "A", Targets: []string{"1.2.3.4"}},
-		{Name: "web.example.com", RecordType: "CNAME", Targets: []string{"lb.example.com"}},
-		{Name: "gone.example.com", RecordType: "A", Targets: []string{"5.6.7.8"}},
+		{Name: "web.example.com", RecordType: recordTypeCNAME, Targets: []string{"lb.example.com"}},
+		{Name: fqdnGone, RecordType: "A", Targets: []string{"5.6.7.8"}},
 	}
 
 	resolved := dns.ResolveFQDNViews(ctx, resolver, views)
@@ -139,9 +139,9 @@ func TestCheckFQDN(t *testing.T) {
 			name:       "A record sync — targets match",
 			fqdn:       "app.example.com",
 			recordType: "A",
-			targets:    []string{"10.0.0.1", "10.0.0.2"},
+			targets:    []string{ip1, ip2},
 			setup: func(r *fakeResolver) {
-				r.hosts["app.example.com"] = []string{"10.0.0.2", "10.0.0.1"}
+				r.hosts["app.example.com"] = []string{ip2, ip1}
 			},
 			wantStatus: dns.SyncStatusSync,
 		},
@@ -149,7 +149,7 @@ func TestCheckFQDN(t *testing.T) {
 			name:       "A record notsync — different targets",
 			fqdn:       "app.example.com",
 			recordType: "A",
-			targets:    []string{"10.0.0.1"},
+			targets:    []string{ip1},
 			setup: func(r *fakeResolver) {
 				r.hosts["app.example.com"] = []string{"10.0.0.99"}
 			},
@@ -157,9 +157,9 @@ func TestCheckFQDN(t *testing.T) {
 		},
 		{
 			name:       "A record notavailable — NXDOMAIN",
-			fqdn:       "gone.example.com",
+			fqdn:       fqdnGone,
 			recordType: "A",
-			targets:    []string{"10.0.0.1"},
+			targets:    []string{ip1},
 			setup:      func(r *fakeResolver) {},
 			wantStatus: dns.SyncStatusNotAvailable,
 			wantErr:    true,
@@ -176,11 +176,11 @@ func TestCheckFQDN(t *testing.T) {
 		},
 		{
 			name:       "CNAME record sync — target matches",
-			fqdn:       "alias.example.com",
-			recordType: "CNAME",
-			targets:    []string{"real.example.com."},
+			fqdn:       fqdnAlias,
+			recordType: recordTypeCNAME,
+			targets:    []string{fqdnReal},
 			setup: func(r *fakeResolver) {
-				r.cnames["alias.example.com"] = "real.example.com."
+				r.cnames[fqdnAlias] = fqdnReal
 			},
 			wantStatus: dns.SyncStatusSync,
 		},
@@ -188,29 +188,29 @@ func TestCheckFQDN(t *testing.T) {
 			// net.LookupCNAME always returns a trailing dot; external-dns stores targets without one.
 			// The comparison must normalise both sides before comparing.
 			name:       "CNAME record sync — resolver dot vs external-dns no-dot (trailing dot mismatch)",
-			fqdn:       "alias.example.com",
-			recordType: "CNAME",
+			fqdn:       fqdnAlias,
+			recordType: recordTypeCNAME,
 			targets:    []string{"real.example.com"}, // external-dns format: no trailing dot
 			setup: func(r *fakeResolver) {
-				r.cnames["alias.example.com"] = "real.example.com." // net.LookupCNAME format: trailing dot
+				r.cnames[fqdnAlias] = fqdnReal // net.LookupCNAME format: trailing dot
 			},
 			wantStatus: dns.SyncStatusSync,
 		},
 		{
 			name:       "CNAME record notsync — different target",
-			fqdn:       "alias.example.com",
-			recordType: "CNAME",
-			targets:    []string{"real.example.com."},
+			fqdn:       fqdnAlias,
+			recordType: recordTypeCNAME,
+			targets:    []string{fqdnReal},
 			setup: func(r *fakeResolver) {
-				r.cnames["alias.example.com"] = "other.example.com."
+				r.cnames[fqdnAlias] = "other.example.com."
 			},
 			wantStatus: dns.SyncStatusNotSync,
 		},
 		{
 			name:       "CNAME record notavailable — not found",
-			fqdn:       "alias.example.com",
-			recordType: "CNAME",
-			targets:    []string{"real.example.com."},
+			fqdn:       fqdnAlias,
+			recordType: recordTypeCNAME,
+			targets:    []string{fqdnReal},
 			setup:      func(r *fakeResolver) {},
 			wantStatus: dns.SyncStatusNotAvailable,
 			wantErr:    true,
@@ -221,7 +221,7 @@ func TestCheckFQDN(t *testing.T) {
 			recordType: "",
 			targets:    nil,
 			setup: func(r *fakeResolver) {
-				r.hosts["manual.example.com"] = []string{"10.0.0.1"}
+				r.hosts["manual.example.com"] = []string{ip1}
 			},
 			wantStatus: dns.SyncStatusSync,
 		},
@@ -238,9 +238,9 @@ func TestCheckFQDN(t *testing.T) {
 			name:       "A record sync — single target",
 			fqdn:       "single.example.com",
 			recordType: "A",
-			targets:    []string{"10.0.0.1"},
+			targets:    []string{ip1},
 			setup: func(r *fakeResolver) {
-				r.hosts["single.example.com"] = []string{"10.0.0.1"}
+				r.hosts["single.example.com"] = []string{ip1}
 			},
 			wantStatus: dns.SyncStatusSync,
 		},
@@ -248,9 +248,9 @@ func TestCheckFQDN(t *testing.T) {
 			name:       "A record notsync — extra target in DNS",
 			fqdn:       "extra.example.com",
 			recordType: "A",
-			targets:    []string{"10.0.0.1"},
+			targets:    []string{ip1},
 			setup: func(r *fakeResolver) {
-				r.hosts["extra.example.com"] = []string{"10.0.0.1", "10.0.0.2"}
+				r.hosts["extra.example.com"] = []string{ip1, ip2}
 			},
 			wantStatus: dns.SyncStatusNotSync,
 		},
@@ -258,9 +258,9 @@ func TestCheckFQDN(t *testing.T) {
 			name:       "A record notsync — missing target in DNS",
 			fqdn:       "missing.example.com",
 			recordType: "A",
-			targets:    []string{"10.0.0.1", "10.0.0.2"},
+			targets:    []string{ip1, ip2},
 			setup: func(r *fakeResolver) {
-				r.hosts["missing.example.com"] = []string{"10.0.0.1"}
+				r.hosts["missing.example.com"] = []string{ip1}
 			},
 			wantStatus: dns.SyncStatusNotSync,
 		},
@@ -268,7 +268,7 @@ func TestCheckFQDN(t *testing.T) {
 			name:       "A record notavailable — resolver returns generic error",
 			fqdn:       "err.example.com",
 			recordType: "A",
-			targets:    []string{"10.0.0.1"},
+			targets:    []string{ip1},
 			setup: func(r *fakeResolver) {
 				r.hostErr["err.example.com"] = errors.New("temporary DNS failure")
 			},
@@ -277,20 +277,20 @@ func TestCheckFQDN(t *testing.T) {
 		},
 		{
 			name:       "A record notavailable — NXDOMAIN has no error",
-			fqdn:       "gone.example.com",
+			fqdn:       fqdnGone,
 			recordType: "A",
-			targets:    []string{"10.0.0.1"},
+			targets:    []string{ip1},
 			setup:      func(r *fakeResolver) {},
 			wantStatus: dns.SyncStatusNotAvailable,
 			wantErr:    true,
 		},
 		{
 			name:       "CNAME notavailable — resolver error is preserved",
-			fqdn:       "alias.example.com",
-			recordType: "CNAME",
-			targets:    []string{"real.example.com."},
+			fqdn:       fqdnAlias,
+			recordType: recordTypeCNAME,
+			targets:    []string{fqdnReal},
 			setup: func(r *fakeResolver) {
-				r.cnameErr["alias.example.com"] = errors.New("DNS timeout")
+				r.cnameErr[fqdnAlias] = errors.New("DNS timeout")
 			},
 			wantStatus: dns.SyncStatusNotAvailable,
 			wantErr:    true,

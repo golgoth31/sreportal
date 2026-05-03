@@ -38,7 +38,7 @@ var _ = Describe("ImageInventory Webhook", func() {
 		scheme := runtime.NewScheme()
 		Expect(sreportalv1alpha1.AddToScheme(scheme)).To(Succeed())
 		portal := &sreportalv1alpha1.Portal{
-			ObjectMeta: metav1.ObjectMeta{Name: "main", Namespace: "default"},
+			ObjectMeta: metav1.ObjectMeta{Name: tPortalMain, Namespace: tNsDefault},
 			Spec:       sreportalv1alpha1.PortalSpec{Title: "Main Portal"},
 		}
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
@@ -47,10 +47,10 @@ var _ = Describe("ImageInventory Webhook", func() {
 		obj = &sreportalv1alpha1.ImageInventory{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-inventory",
-				Namespace: "default",
+				Namespace: tNsDefault,
 			},
 			Spec: sreportalv1alpha1.ImageInventorySpec{
-				PortalRef: "main",
+				PortalRef: tPortalMain,
 			},
 		}
 	})

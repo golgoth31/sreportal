@@ -48,7 +48,7 @@ var _ = Describe("ReconcileManualComponentsHandler", func() {
 	BeforeEach(func() {
 		scheme = newTestScheme()
 		portal = &sreportalv1alpha1.Portal{
-			ObjectMeta: metav1.ObjectMeta{Name: "main", Namespace: "default"},
+			ObjectMeta: metav1.ObjectMeta{Name: tPortalMain, Namespace: tNsDefault},
 			Spec:       sreportalv1alpha1.PortalSpec{Title: "Main", Main: true},
 		}
 	})
@@ -56,12 +56,12 @@ var _ = Describe("ReconcileManualComponentsHandler", func() {
 	newDNS := func(annotations map[string]string) *sreportalv1alpha1.DNS {
 		return &sreportalv1alpha1.DNS{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:        "test-dns",
-				Namespace:   "default",
+				Name:        tNameDNS,
+				Namespace:   tNsDefault,
 				Annotations: annotations,
 			},
 			Spec: sreportalv1alpha1.DNSSpec{
-				PortalRef: "main",
+				PortalRef: tPortalMain,
 			},
 		}
 	}
@@ -75,8 +75,8 @@ var _ = Describe("ReconcileManualComponentsHandler", func() {
 	Context("when DNS CR has component annotation", func() {
 		It("should create a Component CR", func() {
 			dns := newDNS(map[string]string{
-				adapter.ComponentAnnotationKey:            "DNS Service",
-				adapter.ComponentGroupAnnotationKey:       "Core",
+				adapter.ComponentAnnotationKey:            tDescDNS,
+				adapter.ComponentGroupAnnotationKey:       tGroupCore,
 				adapter.ComponentDescriptionAnnotationKey: "Internal DNS",
 				adapter.ComponentLinkAnnotationKey:        "https://console.cloud.google.com/dns",
 				adapter.ComponentStatusAnnotationKey:      "operational",
@@ -87,20 +87,20 @@ var _ = Describe("ReconcileManualComponentsHandler", func() {
 			rc := newRC(dns)
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
-			name := statuspage.GenerateCRName("main", "DNS Service")
+			name := statuspage.GenerateCRName(tPortalMain, tDescDNS)
 			var comp sreportalv1alpha1.Component
 			Expect(c.Get(context.Background(), types.NamespacedName{
-				Name: name, Namespace: "default",
+				Name: name, Namespace: tNsDefault,
 			}, &comp)).To(Succeed())
 
-			Expect(comp.Spec.DisplayName).To(Equal("DNS Service"))
-			Expect(comp.Spec.Group).To(Equal("Core"))
+			Expect(comp.Spec.DisplayName).To(Equal(tDescDNS))
+			Expect(comp.Spec.Group).To(Equal(tGroupCore))
 			Expect(comp.Spec.Description).To(Equal("Internal DNS"))
 			Expect(comp.Spec.Link).To(Equal("https://console.cloud.google.com/dns"))
-			Expect(comp.Spec.PortalRef).To(Equal("main"))
+			Expect(comp.Spec.PortalRef).To(Equal(tPortalMain))
 			Expect(comp.Spec.Status).To(Equal(sreportalv1alpha1.ComponentStatusOperational))
 			Expect(comp.Labels[adapter.ManagedByLabelKey]).To(Equal(adapter.ManagedByDNSController))
-			Expect(comp.Labels[adapter.PortalAnnotationKey]).To(Equal("main"))
+			Expect(comp.Labels[adapter.PortalAnnotationKey]).To(Equal(tPortalMain))
 		})
 	})
 
@@ -121,20 +121,20 @@ var _ = Describe("ReconcileManualComponentsHandler", func() {
 
 	Context("when component annotation is removed", func() {
 		It("should delete the previously managed Component", func() {
-			name := statuspage.GenerateCRName("main", "DNS Service")
+			name := statuspage.GenerateCRName(tPortalMain, tDescDNS)
 			existing := &sreportalv1alpha1.Component{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
-					Namespace: "default",
+					Namespace: tNsDefault,
 					Labels: map[string]string{
 						adapter.ManagedByLabelKey:   adapter.ManagedByDNSController,
-						adapter.PortalAnnotationKey: "main",
+						adapter.PortalAnnotationKey: tPortalMain,
 					},
 				},
 				Spec: sreportalv1alpha1.ComponentSpec{
-					DisplayName: "DNS Service",
-					Group:       "Core",
-					PortalRef:   "main",
+					DisplayName: tDescDNS,
+					Group:       tGroupCore,
+					PortalRef:   tPortalMain,
 					Status:      sreportalv1alpha1.ComponentStatusOperational,
 				},
 			}
@@ -147,7 +147,7 @@ var _ = Describe("ReconcileManualComponentsHandler", func() {
 
 			var comp sreportalv1alpha1.Component
 			err := c.Get(context.Background(), types.NamespacedName{
-				Name: name, Namespace: "default",
+				Name: name, Namespace: tNsDefault,
 			}, &comp)
 			Expect(err).To(HaveOccurred(), "managed component should be deleted")
 		})
@@ -155,21 +155,21 @@ var _ = Describe("ReconcileManualComponentsHandler", func() {
 
 	Context("when updating an existing component", func() {
 		It("should sync metadata but not overwrite status", func() {
-			name := statuspage.GenerateCRName("main", "DNS Service")
+			name := statuspage.GenerateCRName(tPortalMain, tDescDNS)
 			existing := &sreportalv1alpha1.Component{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
-					Namespace: "default",
+					Namespace: tNsDefault,
 					Labels: map[string]string{
 						adapter.ManagedByLabelKey:   adapter.ManagedByDNSController,
-						adapter.PortalAnnotationKey: "main",
+						adapter.PortalAnnotationKey: tPortalMain,
 					},
 				},
 				Spec: sreportalv1alpha1.ComponentSpec{
-					DisplayName: "DNS Service",
+					DisplayName: tDescDNS,
 					Group:       "Old Group",
 					Description: "Old desc",
-					PortalRef:   "main",
+					PortalRef:   tPortalMain,
 					Status:      sreportalv1alpha1.ComponentStatusDegraded, // manually changed
 				},
 			}
@@ -177,7 +177,7 @@ var _ = Describe("ReconcileManualComponentsHandler", func() {
 			handler := dnspkg.NewReconcileManualComponentsHandler(c)
 
 			dns := newDNS(map[string]string{
-				adapter.ComponentAnnotationKey:            "DNS Service",
+				adapter.ComponentAnnotationKey:            tDescDNS,
 				adapter.ComponentGroupAnnotationKey:       "New Group",
 				adapter.ComponentDescriptionAnnotationKey: "New desc",
 				adapter.ComponentStatusAnnotationKey:      "operational",
@@ -187,7 +187,7 @@ var _ = Describe("ReconcileManualComponentsHandler", func() {
 
 			var comp sreportalv1alpha1.Component
 			Expect(c.Get(context.Background(), types.NamespacedName{
-				Name: name, Namespace: "default",
+				Name: name, Namespace: tNsDefault,
 			}, &comp)).To(Succeed())
 
 			Expect(comp.Spec.Group).To(Equal("New Group"))
@@ -205,8 +205,8 @@ var _ = Describe("ReconcileManualComponentsHandler", func() {
 			handler := dnspkg.NewReconcileManualComponentsHandler(c)
 
 			dns := newDNS(map[string]string{
-				adapter.ComponentAnnotationKey:      "DNS Service",
-				adapter.ComponentGroupAnnotationKey: "Core",
+				adapter.ComponentAnnotationKey:      tDescDNS,
+				adapter.ComponentGroupAnnotationKey: tGroupCore,
 			})
 			rc := newRC(dns)
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
@@ -220,8 +220,8 @@ var _ = Describe("ReconcileManualComponentsHandler", func() {
 	Context("when status annotation is empty", func() {
 		It("should default to operational", func() {
 			dns := newDNS(map[string]string{
-				adapter.ComponentAnnotationKey:      "DNS Service",
-				adapter.ComponentGroupAnnotationKey: "Core",
+				adapter.ComponentAnnotationKey:      tDescDNS,
+				adapter.ComponentGroupAnnotationKey: tGroupCore,
 			})
 			c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
 			handler := dnspkg.NewReconcileManualComponentsHandler(c)
@@ -229,10 +229,10 @@ var _ = Describe("ReconcileManualComponentsHandler", func() {
 			rc := newRC(dns)
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
-			name := statuspage.GenerateCRName("main", "DNS Service")
+			name := statuspage.GenerateCRName(tPortalMain, tDescDNS)
 			var comp sreportalv1alpha1.Component
 			Expect(c.Get(context.Background(), types.NamespacedName{
-				Name: name, Namespace: "default",
+				Name: name, Namespace: tNsDefault,
 			}, &comp)).To(Succeed())
 			Expect(comp.Spec.Status).To(Equal(sreportalv1alpha1.ComponentStatusOperational))
 		})

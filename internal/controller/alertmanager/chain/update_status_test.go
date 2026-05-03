@@ -53,11 +53,11 @@ var _ = Describe("UpdateStatusHandler", func() {
 	newAM := func() *sreportalv1alpha1.Alertmanager {
 		return &sreportalv1alpha1.Alertmanager{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-am",
-				Namespace: "default",
+				Name:      tNameTestAM,
+				Namespace: tNsDefault,
 			},
 			Spec: sreportalv1alpha1.AlertmanagerSpec{
-				PortalRef: "main",
+				PortalRef: tPortalMain,
 				URL: sreportalv1alpha1.AlertmanagerURL{
 					Local: "http://alertmanager:9093",
 				},
@@ -77,7 +77,7 @@ var _ = Describe("UpdateStatusHandler", func() {
 			alerts := []domainalertmanager.Alert{
 				{
 					Fingerprint: "aaa",
-					Labels:      map[string]string{"alertname": "HighCPU", "severity": "critical"},
+					Labels:      map[string]string{tLabelName: "HighCPU", "severity": "critical"},
 					Annotations: map[string]string{"summary": "CPU is high"},
 					State:       domainalertmanager.StateActive,
 					StartsAt:    startsAt,
@@ -85,7 +85,7 @@ var _ = Describe("UpdateStatusHandler", func() {
 				},
 				{
 					Fingerprint: "bbb",
-					Labels:      map[string]string{"alertname": "DiskFull"},
+					Labels:      map[string]string{tLabelName: "DiskFull"},
 					State:       domainalertmanager.StateActive,
 					StartsAt:    startsAt,
 					EndsAt:      &endsAt,
@@ -103,10 +103,10 @@ var _ = Describe("UpdateStatusHandler", func() {
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
 			var updated sreportalv1alpha1.Alertmanager
-			Expect(c.Get(context.Background(), types.NamespacedName{Name: "test-am", Namespace: "default"}, &updated)).To(Succeed())
+			Expect(c.Get(context.Background(), types.NamespacedName{Name: tNameTestAM, Namespace: tNsDefault}, &updated)).To(Succeed())
 			Expect(updated.Status.ActiveAlerts).To(HaveLen(2))
 			Expect(updated.Status.ActiveAlerts[0].Fingerprint).To(Equal("aaa"))
-			Expect(updated.Status.ActiveAlerts[0].Labels["alertname"]).To(Equal("HighCPU"))
+			Expect(updated.Status.ActiveAlerts[0].Labels[tLabelName]).To(Equal("HighCPU"))
 			Expect(updated.Status.ActiveAlerts[0].Annotations["summary"]).To(Equal("CPU is high"))
 			Expect(updated.Status.ActiveAlerts[1].EndsAt).NotTo(BeNil())
 			Expect(updated.Status.LastReconcileTime).NotTo(BeNil())
@@ -133,7 +133,7 @@ var _ = Describe("UpdateStatusHandler", func() {
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
 			var updated sreportalv1alpha1.Alertmanager
-			Expect(c.Get(context.Background(), types.NamespacedName{Name: "test-am", Namespace: "default"}, &updated)).To(Succeed())
+			Expect(c.Get(context.Background(), types.NamespacedName{Name: tNameTestAM, Namespace: tNsDefault}, &updated)).To(Succeed())
 			Expect(updated.Status.ActiveAlerts).To(BeEmpty())
 			Expect(updated.Status.LastReconcileTime).NotTo(BeNil())
 
@@ -166,7 +166,7 @@ var _ = Describe("UpdateStatusHandler", func() {
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
 			var updated sreportalv1alpha1.Alertmanager
-			Expect(c.Get(context.Background(), types.NamespacedName{Name: "test-am", Namespace: "default"}, &updated)).To(Succeed())
+			Expect(c.Get(context.Background(), types.NamespacedName{Name: tNameTestAM, Namespace: tNsDefault}, &updated)).To(Succeed())
 
 			readyCond := findCondition(updated.Status.Conditions, alertmanagerctrl.ConditionTypeReady)
 			Expect(readyCond).NotTo(BeNil())

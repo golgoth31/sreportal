@@ -22,6 +22,12 @@ import (
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 )
 
+const (
+	flowNodeAPI   = "service:core:api"
+	flowNodeOther = "service:core:other"
+	flowKindSvc   = "service"
+)
+
 func TestIsEvaluable(t *testing.T) {
 	h := &ObserveFlowsHandler{}
 
@@ -33,50 +39,50 @@ func TestIsEvaluable(t *testing.T) {
 	}{
 		{
 			name:      "service-to-service with service in eval types",
-			edge:      &sreportalv1alpha1.FlowEdge{From: "service:core:api", To: "service:core:db-proxy"},
-			evalTypes: map[string]bool{"service": true},
+			edge:      &sreportalv1alpha1.FlowEdge{From: flowNodeAPI, To: "service:core:db-proxy"},
+			evalTypes: map[string]bool{flowKindSvc: true},
 			want:      true,
 		},
 		{
 			name:      "service-to-database with only service in eval types",
-			edge:      &sreportalv1alpha1.FlowEdge{From: "service:core:api", To: "database:core:postgres"},
-			evalTypes: map[string]bool{"service": true},
+			edge:      &sreportalv1alpha1.FlowEdge{From: flowNodeAPI, To: "database:core:postgres"},
+			evalTypes: map[string]bool{flowKindSvc: true},
 			want:      false,
 		},
 		{
 			name:      "cron-to-database with only service in eval types",
 			edge:      &sreportalv1alpha1.FlowEdge{From: "cron:jobs:cleanup", To: "database:data:postgres"},
-			evalTypes: map[string]bool{"service": true},
+			evalTypes: map[string]bool{flowKindSvc: true},
 			want:      false,
 		},
 		{
 			name:      "service-to-external with only service in eval types",
-			edge:      &sreportalv1alpha1.FlowEdge{From: "service:core:api", To: "external:core:vault.example.com"},
-			evalTypes: map[string]bool{"service": true},
+			edge:      &sreportalv1alpha1.FlowEdge{From: flowNodeAPI, To: "external:core:vault.example.com"},
+			evalTypes: map[string]bool{flowKindSvc: true},
 			want:      false,
 		},
 		{
 			name:      "service-to-database with both in eval types",
-			edge:      &sreportalv1alpha1.FlowEdge{From: "service:core:api", To: "database:data:postgres"},
-			evalTypes: map[string]bool{"service": true, "database": true},
+			edge:      &sreportalv1alpha1.FlowEdge{From: flowNodeAPI, To: "database:data:postgres"},
+			evalTypes: map[string]bool{flowKindSvc: true, "database": true},
 			want:      true,
 		},
 		{
 			name:      "empty eval types disables evaluation",
-			edge:      &sreportalv1alpha1.FlowEdge{From: "service:core:api", To: "service:core:other"},
+			edge:      &sreportalv1alpha1.FlowEdge{From: flowNodeAPI, To: flowNodeOther},
 			evalTypes: map[string]bool{},
 			want:      false,
 		},
 		{
 			name:      "nil eval types disables evaluation",
-			edge:      &sreportalv1alpha1.FlowEdge{From: "service:core:api", To: "service:core:other"},
+			edge:      &sreportalv1alpha1.FlowEdge{From: flowNodeAPI, To: flowNodeOther},
 			evalTypes: nil,
 			want:      false,
 		},
 		{
 			name:      "malformed node ID returns false",
-			edge:      &sreportalv1alpha1.FlowEdge{From: "bad-id", To: "service:core:api"},
-			evalTypes: map[string]bool{"service": true},
+			edge:      &sreportalv1alpha1.FlowEdge{From: "bad-id", To: flowNodeAPI},
+			evalTypes: map[string]bool{flowKindSvc: true},
 			want:      false,
 		},
 	}
@@ -96,10 +102,10 @@ func TestEvaluatedDerivedFromSpec(t *testing.T) {
 	// the Evaluated flag is correctly set to false (not carried forward).
 	h := &ObserveFlowsHandler{}
 
-	edge := &sreportalv1alpha1.FlowEdge{From: "service:core:api", To: "service:core:other"}
+	edge := &sreportalv1alpha1.FlowEdge{From: flowNodeAPI, To: flowNodeOther}
 
 	// Initially evaluable.
-	evalWithService := map[string]bool{"service": true}
+	evalWithService := map[string]bool{flowKindSvc: true}
 	if !h.isEvaluable(edge, evalWithService) {
 		t.Fatal("expected evaluable with service in eval types")
 	}

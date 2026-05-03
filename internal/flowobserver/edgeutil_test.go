@@ -23,15 +23,15 @@ func TestParseNodeID(t *testing.T) {
 		id                                string
 		wantType, wantNamespace, wantName string
 	}{
-		{"service:core:api-server", "service", "core", "api-server"},
+		{tNodeAPIServer, tNodeTypeService, tGroupCore, tNameAPIServer},
 		{"database:data:postgres-main", "database", "data", "postgres-main"},
 		{"external:default:api.stripe.com", "external", "default", "api.stripe.com"},
 		{"cron:jobs:cleanup-cron", "cron", "jobs", "cleanup-cron"},
 		// Edge case: name with colons
-		{"service:ns:name:with:colons", "service", "ns", "name:with:colons"},
+		{"service:ns:name:with:colons", tNodeTypeService, "ns", "name:with:colons"},
 		// Invalid formats
 		{"", "", "", ""},
-		{"service", "", "", ""},
+		{tNodeTypeService, "", "", ""},
 		{"service:ns", "", "", ""},
 	}
 

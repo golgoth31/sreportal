@@ -23,6 +23,9 @@ import (
 	"github.com/golgoth31/sreportal/internal/remoteclient"
 )
 
+// conditionTypeReady is the standard condition Type used for Portal status conditions.
+const conditionTypeReady = "Ready"
+
 // ChainData holds typed shared state between Portal reconciliation handlers.
 type ChainData struct {
 	// Writers (optional, populated by Reconcile before chain execution)

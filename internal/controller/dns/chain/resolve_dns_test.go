@@ -82,22 +82,22 @@ var _ = Describe("ResolveDNSHandler", func() {
 		handler = dnspkg.NewResolveDNSHandler(resolver)
 		rc = &reconciler.ReconcileContext[*sreportalv1alpha1.DNS, dnspkg.ChainData]{
 			Resource: &sreportalv1alpha1.DNS{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-dns", Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: tNameDNS, Namespace: tNsDefault},
 			},
 		}
 	})
 
 	Context("when all FQDNs are in sync", func() {
 		BeforeEach(func() {
-			resolver.hosts["app.example.com"] = []string{"10.0.0.1"}
-			resolver.hosts["api.example.com"] = []string{"10.0.0.2"}
+			resolver.hosts["app.example.com"] = []string{tIP10dot0dot1}
+			resolver.hosts[tFqdnAPI] = []string{tIP10dot0dot2}
 			rc.Data.AggregatedGroups = []sreportalv1alpha1.FQDNGroupStatus{
 				{
-					Name:   "Services",
-					Source: "external-dns",
+					Name:   tGroupSvcs,
+					Source: tSrcExtDNS,
 					FQDNs: []sreportalv1alpha1.FQDNStatus{
-						{FQDN: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.2"}},
-						{FQDN: "app.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+						{FQDN: tFqdnAPI, RecordType: "A", Targets: []string{tIP10dot0dot2}},
+						{FQDN: "app.example.com", RecordType: "A", Targets: []string{tIP10dot0dot1}},
 					},
 				},
 			}
@@ -116,14 +116,14 @@ var _ = Describe("ResolveDNSHandler", func() {
 
 	Context("when an FQDN is not available", func() {
 		BeforeEach(func() {
-			resolver.hosts["app.example.com"] = []string{"10.0.0.1"}
+			resolver.hosts["app.example.com"] = []string{tIP10dot0dot1}
 			// gone.example.com is not in resolver — will return error
 			rc.Data.AggregatedGroups = []sreportalv1alpha1.FQDNGroupStatus{
 				{
-					Name:   "Services",
-					Source: "external-dns",
+					Name:   tGroupSvcs,
+					Source: tSrcExtDNS,
 					FQDNs: []sreportalv1alpha1.FQDNStatus{
-						{FQDN: "app.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+						{FQDN: "app.example.com", RecordType: "A", Targets: []string{tIP10dot0dot1}},
 						{FQDN: "gone.example.com", RecordType: "A", Targets: []string{"10.0.0.99"}},
 					},
 				},
@@ -145,10 +145,10 @@ var _ = Describe("ResolveDNSHandler", func() {
 			resolver.hosts["drift.example.com"] = []string{"10.0.0.99"}
 			rc.Data.AggregatedGroups = []sreportalv1alpha1.FQDNGroupStatus{
 				{
-					Name:   "Services",
-					Source: "external-dns",
+					Name:   tGroupSvcs,
+					Source: tSrcExtDNS,
 					FQDNs: []sreportalv1alpha1.FQDNStatus{
-						{FQDN: "drift.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+						{FQDN: "drift.example.com", RecordType: "A", Targets: []string{tIP10dot0dot1}},
 					},
 				},
 			}
@@ -169,7 +169,7 @@ var _ = Describe("ResolveDNSHandler", func() {
 			rc.Data.AggregatedGroups = []sreportalv1alpha1.FQDNGroupStatus{
 				{
 					Name:   "Aliases",
-					Source: "external-dns",
+					Source: tSrcExtDNS,
 					FQDNs: []sreportalv1alpha1.FQDNStatus{
 						{FQDN: "alias.example.com", RecordType: "CNAME", Targets: []string{"real.example.com."}},
 					},
@@ -188,7 +188,7 @@ var _ = Describe("ResolveDNSHandler", func() {
 
 	Context("when manual entries are checked", func() {
 		BeforeEach(func() {
-			resolver.hosts["manual-exists.example.com"] = []string{"10.0.0.1"}
+			resolver.hosts["manual-exists.example.com"] = []string{tIP10dot0dot1}
 			// manual-gone.example.com not in resolver
 			rc.Data.AggregatedGroups = []sreportalv1alpha1.FQDNGroupStatus{
 				{
@@ -220,13 +220,13 @@ var _ = Describe("ResolveDNSHandler", func() {
 					Name:   "RemoteServices",
 					Source: "remote",
 					FQDNs: []sreportalv1alpha1.FQDNStatus{
-						{FQDN: "remote.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}, SyncStatus: "sync"},
-						{FQDN: "remote-gone.example.com", RecordType: "A", Targets: []string{"10.0.0.2"}, SyncStatus: "notavailable"},
+						{FQDN: "remote.example.com", RecordType: "A", Targets: []string{tIP10dot0dot1}, SyncStatus: "sync"},
+						{FQDN: "remote-gone.example.com", RecordType: "A", Targets: []string{tIP10dot0dot2}, SyncStatus: "notavailable"},
 					},
 				},
 				{
 					Name:   "LocalServices",
-					Source: "external-dns",
+					Source: tSrcExtDNS,
 					FQDNs: []sreportalv1alpha1.FQDNStatus{
 						{FQDN: "local.example.com", RecordType: "A", Targets: []string{"10.0.0.3"}},
 					},
@@ -265,13 +265,13 @@ var _ = Describe("ResolveDNSHandler", func() {
 		It("should leave SyncStatus empty on all FQDNs", func() {
 			// Arrange: groups pre-populated as they would be after AggregateFQDNsHandler.
 			// resolver has a matching record — but we intentionally do NOT call handler.Handle.
-			resolver.hosts["api.example.com"] = []string{"10.0.0.1"}
+			resolver.hosts[tFqdnAPI] = []string{tIP10dot0dot1}
 			rc.Data.AggregatedGroups = []sreportalv1alpha1.FQDNGroupStatus{
 				{
-					Name:   "Services",
-					Source: "external-dns",
+					Name:   tGroupSvcs,
+					Source: tSrcExtDNS,
 					FQDNs: []sreportalv1alpha1.FQDNStatus{
-						{FQDN: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+						{FQDN: tFqdnAPI, RecordType: "A", Targets: []string{tIP10dot0dot1}},
 					},
 				},
 			}
@@ -286,15 +286,15 @@ var _ = Describe("ResolveDNSHandler", func() {
 
 	Context("when groups have mixed record types", func() {
 		BeforeEach(func() {
-			resolver.hosts["a.example.com"] = []string{"10.0.0.1"}
+			resolver.hosts["a.example.com"] = []string{tIP10dot0dot1}
 			resolver.cnames["c.example.com"] = "target.example.com."
 			resolver.hosts["manual.example.com"] = []string{"1.2.3.4"}
 			rc.Data.AggregatedGroups = []sreportalv1alpha1.FQDNGroupStatus{
 				{
 					Name:   "Mixed",
-					Source: "external-dns",
+					Source: tSrcExtDNS,
 					FQDNs: []sreportalv1alpha1.FQDNStatus{
-						{FQDN: "a.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+						{FQDN: "a.example.com", RecordType: "A", Targets: []string{tIP10dot0dot1}},
 						{FQDN: "c.example.com", RecordType: "CNAME", Targets: []string{"target.example.com."}},
 					},
 				},

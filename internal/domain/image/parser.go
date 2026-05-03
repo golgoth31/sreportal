@@ -53,7 +53,7 @@ func ClassifyTag(tag string) TagType {
 	switch {
 	case strings.HasPrefix(tag, "sha256:"):
 		return TagTypeDigest
-	case tag == "latest":
+	case tag == string(TagTypeLatest):
 		return TagTypeLatest
 	case semverRE.MatchString(tag):
 		return TagTypeSemver

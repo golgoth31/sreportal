@@ -42,7 +42,7 @@ var _ = Describe("Release Webhook", func() {
 		scheme := runtime.NewScheme()
 		Expect(sreportalv1alpha1.AddToScheme(scheme)).To(Succeed())
 		portal := &sreportalv1alpha1.Portal{
-			ObjectMeta: metav1.ObjectMeta{Name: "main", Namespace: "default"},
+			ObjectMeta: metav1.ObjectMeta{Name: tPortalMain, Namespace: tNsDefault},
 			Spec:       sreportalv1alpha1.PortalSpec{Title: "Main Portal"},
 		}
 		k8sClient = fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
@@ -50,13 +50,13 @@ var _ = Describe("Release Webhook", func() {
 		obj = &sreportalv1alpha1.Release{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "release-2026-03-22",
-				Namespace: "default",
+				Namespace: tNsDefault,
 			},
 			Spec: sreportalv1alpha1.ReleaseSpec{
-				PortalRef: "main",
+				PortalRef: tPortalMain,
 				Entries: []sreportalv1alpha1.ReleaseEntry{
 					{
-						Type:    "deployment",
+						Type:    tKindDeployment,
 						Version: "v1.0.0",
 						Origin:  "ci/cd",
 						Date:    metav1.Now(),
@@ -117,11 +117,11 @@ var _ = Describe("Release Webhook", func() {
 		var validator ReleaseCustomValidator
 
 		BeforeEach(func() {
-			validator = ReleaseCustomValidator{client: k8sClient, allowedTypes: []string{"deployment", "rollback"}}
+			validator = ReleaseCustomValidator{client: k8sClient, allowedTypes: []string{tKindDeployment, "rollback"}}
 		})
 
 		It("Should allow creation with allowed type", func() {
-			obj.Spec.Entries[0].Type = "deployment"
+			obj.Spec.Entries[0].Type = tKindDeployment
 			warnings, err := validator.ValidateCreate(context.Background(), obj)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(warnings).To(BeNil())
@@ -137,7 +137,7 @@ var _ = Describe("Release Webhook", func() {
 
 		It("Should deny when any entry has disallowed type", func() {
 			obj.Spec.Entries = []sreportalv1alpha1.ReleaseEntry{
-				{Type: "deployment", Version: "v1.0.0", Origin: "ci", Date: metav1.Now()},
+				{Type: tKindDeployment, Version: "v1.0.0", Origin: "ci", Date: metav1.Now()},
 				{Type: testDisallowedType, Version: "v1.0.1", Origin: "manual", Date: metav1.Now()},
 			}
 			_, err := validator.ValidateCreate(context.Background(), obj)

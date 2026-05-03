@@ -45,7 +45,7 @@ var _ = Describe("DNS Controller", func() {
 
 		typeNamespacedName := types.NamespacedName{
 			Name:      resourceName,
-			Namespace: "default",
+			Namespace: tNsDefault,
 		}
 
 		BeforeEach(func() {
@@ -56,7 +56,7 @@ var _ = Describe("DNS Controller", func() {
 				resource := &sreportalv1alpha1.DNS{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
-						Namespace: "default",
+						Namespace: tNsDefault,
 					},
 					Spec: sreportalv1alpha1.DNSSpec{
 						PortalRef: "main",
@@ -146,7 +146,7 @@ var _ = Describe("DNS Controller", func() {
 
 		typeNamespacedName := types.NamespacedName{
 			Name:      resourceName,
-			Namespace: "default",
+			Namespace: tNsDefault,
 		}
 
 		BeforeEach(func() {
@@ -157,7 +157,7 @@ var _ = Describe("DNS Controller", func() {
 				resource := &sreportalv1alpha1.DNS{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
-						Namespace: "default",
+						Namespace: tNsDefault,
 					},
 					Spec: sreportalv1alpha1.DNSSpec{
 						PortalRef: "main",
@@ -203,7 +203,7 @@ var _ = Describe("DNS Controller", func() {
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      "non-existent",
-					Namespace: "default",
+					Namespace: tNsDefault,
 				},
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -216,7 +216,7 @@ var _ = Describe("DNS Controller", func() {
 
 		typeNamespacedName := types.NamespacedName{
 			Name:      resourceName,
-			Namespace: "default",
+			Namespace: tNsDefault,
 		}
 
 		BeforeEach(func() {
@@ -227,7 +227,7 @@ var _ = Describe("DNS Controller", func() {
 				resource := &sreportalv1alpha1.DNS{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
-						Namespace: "default",
+						Namespace: tNsDefault,
 					},
 					Spec: sreportalv1alpha1.DNSSpec{
 						PortalRef: "test-portal",
@@ -322,7 +322,7 @@ var _ = Describe("DNS Controller", func() {
 		const dnsName = "test-dns-custom-name"
 		ctx := context.Background()
 
-		dnsNN := types.NamespacedName{Name: dnsName, Namespace: "default"}
+		dnsNN := types.NamespacedName{Name: dnsName, Namespace: tNsDefault}
 
 		AfterEach(func() {
 			dns := &sreportalv1alpha1.DNS{}
@@ -337,7 +337,7 @@ var _ = Describe("DNS Controller", func() {
 			reconciler.SetFQDNWriter(store)
 
 			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.DNS{
-				ObjectMeta: metav1.ObjectMeta{Name: dnsName, Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: dnsName, Namespace: tNsDefault},
 				Spec: sreportalv1alpha1.DNSSpec{
 					PortalRef: "actual-portal",
 					Groups: []sreportalv1alpha1.DNSGroup{

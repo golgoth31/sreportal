@@ -76,8 +76,8 @@ func TestInterceptor_ProtectedEndpoint_NoAuth_Rejected(t *testing.T) {
 	client := setupReleaseServer(t, chain)
 
 	_, err := client.AddRelease(context.Background(), connect.NewRequest(&releasev1.ReleaseEntry{
-		Type:    "deployment",
-		Version: "v1.0.0",
+		Type:    tKindDeployment,
+		Version: tVerV1,
 		Origin:  "ci",
 		Date:    timestamppb.New(time.Now()),
 	}))
@@ -93,8 +93,8 @@ func TestInterceptor_ProtectedEndpoint_ValidAuth_Passes(t *testing.T) {
 	client := setupReleaseServer(t, chain)
 
 	req := connect.NewRequest(&releasev1.ReleaseEntry{
-		Type:    "deployment",
-		Version: "v1.0.0",
+		Type:    tKindDeployment,
+		Version: tVerV1,
 		Origin:  "ci",
 		Date:    timestamppb.New(time.Now()),
 	})
@@ -123,8 +123,8 @@ func TestInterceptor_NoChain_NoProcedureProtection(t *testing.T) {
 	// Without auth interceptor, AddRelease should work without credentials
 	date := time.Date(2026, 3, 25, 10, 0, 0, 0, time.UTC)
 	resp, err := client.AddRelease(context.Background(), connect.NewRequest(&releasev1.ReleaseEntry{
-		Type:    "deployment",
-		Version: "v1.0.0",
+		Type:    tKindDeployment,
+		Version: tVerV1,
 		Origin:  "ci",
 		Date:    timestamppb.New(date),
 	}))
@@ -139,8 +139,8 @@ func TestInterceptor_APIKey_OnProtectedEndpoint(t *testing.T) {
 	client := setupReleaseServer(t, chain)
 
 	req := connect.NewRequest(&releasev1.ReleaseEntry{
-		Type:    "deployment",
-		Version: "v1.0.0",
+		Type:    tKindDeployment,
+		Version: tVerV1,
 		Origin:  "ci",
 		Date:    timestamppb.New(time.Now()),
 	})

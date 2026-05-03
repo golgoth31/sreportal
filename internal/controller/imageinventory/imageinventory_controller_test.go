@@ -74,8 +74,8 @@ func TestReconcileAddsFinalizerOnFirstPass(t *testing.T) {
 	sch := newControllerScheme(t)
 
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "inv", Namespace: "sre"},
-		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: "portal-a"},
+		ObjectMeta: metav1.ObjectMeta{Name: tNameInv, Namespace: tNsSre},
+		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: tPortalA},
 	}
 	c := fake.NewClientBuilder().WithScheme(sch).
 		WithObjects(inv).
@@ -84,13 +84,13 @@ func TestReconcileAddsFinalizerOnFirstPass(t *testing.T) {
 	writer := &trackingImageWriter{}
 
 	r := NewImageInventoryReconciler(c, writer, remoteclient.NewCache())
-	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "sre", Name: "inv"}})
+	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Namespace: tNsSre, Name: tNameInv}})
 	if err != nil {
 		t.Fatalf("Reconcile: %v", err)
 	}
 
 	var got sreportalv1alpha1.ImageInventory
-	if err := c.Get(context.Background(), types.NamespacedName{Namespace: "sre", Name: "inv"}, &got); err != nil {
+	if err := c.Get(context.Background(), types.NamespacedName{Namespace: tNsSre, Name: tNameInv}, &got); err != nil {
 		t.Fatalf("Get: %v", err)
 	}
 	if !slices.Contains(got.Finalizers, finalizerName) {
@@ -105,12 +105,12 @@ func TestReconcileDeletesPortalProjectionOnDeletion(t *testing.T) {
 	now := metav1.Now()
 	inv := &sreportalv1alpha1.ImageInventory{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:              "inv",
-			Namespace:         "sre",
+			Name:              tNameInv,
+			Namespace:         tNsSre,
 			Finalizers:        []string{finalizerName},
 			DeletionTimestamp: &now,
 		},
-		Spec: sreportalv1alpha1.ImageInventorySpec{PortalRef: "portal-a"},
+		Spec: sreportalv1alpha1.ImageInventorySpec{PortalRef: tPortalA},
 	}
 	c := fake.NewClientBuilder().WithScheme(sch).
 		WithObjects(inv).
@@ -119,12 +119,12 @@ func TestReconcileDeletesPortalProjectionOnDeletion(t *testing.T) {
 	writer := &trackingImageWriter{}
 
 	r := NewImageInventoryReconciler(c, writer, remoteclient.NewCache())
-	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "sre", Name: "inv"}})
+	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Namespace: tNsSre, Name: tNameInv}})
 	if err != nil {
 		t.Fatalf("Reconcile: %v", err)
 	}
 
-	if len(writer.deleted) != 1 || writer.deleted[0] != "portal-a" {
+	if len(writer.deleted) != 1 || writer.deleted[0] != tPortalA {
 		t.Fatalf("deleted=%v want [portal-a]", writer.deleted)
 	}
 }
@@ -156,7 +156,7 @@ func TestReconcileDeletesMetricsOnDeletion(t *testing.T) {
 	inv := &sreportalv1alpha1.ImageInventory{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              inventoryName,
-			Namespace:         "sre",
+			Namespace:         tNsSre,
 			Finalizers:        []string{finalizerName},
 			DeletionTimestamp: &now,
 		},
@@ -169,7 +169,7 @@ func TestReconcileDeletesMetricsOnDeletion(t *testing.T) {
 	writer := &trackingImageWriter{}
 
 	r := NewImageInventoryReconciler(c, writer, remoteclient.NewCache())
-	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "sre", Name: inventoryName}})
+	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Namespace: tNsSre, Name: inventoryName}})
 	if err != nil {
 		t.Fatalf("Reconcile: %v", err)
 	}

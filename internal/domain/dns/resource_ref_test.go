@@ -33,7 +33,7 @@ func TestParseResourceRef_ValidInput_ParsesKindNamespaceAndName(t *testing.T) {
 		wantNS   string
 		wantName string
 	}{
-		{"service", "service/default/my-svc", "service", "default", "my-svc"},
+		{resourceService, "service/default/my-svc", resourceService, "default", "my-svc"},
 		{"ingress", "ingress/production/my-ingress", "ingress", "production", "my-ingress"},
 		{"dnsendpoint", "dnsendpoint/kube-system/my-ep", "dnsendpoint", "kube-system", "my-ep"},
 		{"name with hyphens", "service/my-ns/long-svc-name", "service", "my-ns", "long-svc-name"},

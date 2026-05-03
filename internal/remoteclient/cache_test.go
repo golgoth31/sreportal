@@ -23,11 +23,11 @@ import (
 func TestCache_Get_ReturnsCachedClientWhenVersionsMatch(t *testing.T) {
 	cache := NewCache()
 	client := NewClient()
-	versions := map[string]string{"secret-a": "v1"}
+	versions := map[string]string{tSecretA: "v1"}
 
 	cache.Put("ns/portal", versions, client)
 
-	got := cache.Get("ns/portal", map[string]string{"secret-a": "v1"})
+	got := cache.Get("ns/portal", map[string]string{tSecretA: "v1"})
 	if got != client {
 		t.Fatal("expected cached client, got nil")
 	}
@@ -37,9 +37,9 @@ func TestCache_Get_ReturnsNilOnVersionMismatch(t *testing.T) {
 	cache := NewCache()
 	client := NewClient()
 
-	cache.Put("ns/portal", map[string]string{"secret-a": "v1"}, client)
+	cache.Put("ns/portal", map[string]string{tSecretA: "v1"}, client)
 
-	got := cache.Get("ns/portal", map[string]string{"secret-a": "v2"})
+	got := cache.Get("ns/portal", map[string]string{tSecretA: "v2"})
 	if got != nil {
 		t.Fatal("expected nil on version mismatch")
 	}
@@ -82,14 +82,14 @@ func TestCache_Fallback_ReturnsSameInstance(t *testing.T) {
 func TestCache_Put_DoesNotAliasVersionsMap(t *testing.T) {
 	cache := NewCache()
 	client := NewClient()
-	versions := map[string]string{"secret-a": "v1"}
+	versions := map[string]string{tSecretA: "v1"}
 
 	cache.Put("ns/portal", versions, client)
 
 	// Mutate caller's map — should not affect cache
-	versions["secret-a"] = "v2"
+	versions[tSecretA] = "v2"
 
-	got := cache.Get("ns/portal", map[string]string{"secret-a": "v1"})
+	got := cache.Get("ns/portal", map[string]string{tSecretA: "v1"})
 	if got != client {
 		t.Fatal("cache should not be affected by caller mutating the versions map")
 	}

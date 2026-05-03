@@ -26,13 +26,19 @@ import (
 	"github.com/golgoth31/sreportal/internal/domain/release"
 )
 
+const (
+	versionV1      = "v1.0.0"
+	typeDeploy     = "deploy"
+	typeDeployment = "deployment"
+)
+
 func TestNewEntry_Valid(t *testing.T) {
 	date := time.Date(2026, 3, 21, 14, 30, 0, 0, time.UTC)
 
-	entry, err := release.NewEntry("deployment", "v1.2.3", "ci/cd", date)
+	entry, err := release.NewEntry(typeDeployment, "v1.2.3", "ci/cd", date)
 
 	require.NoError(t, err)
-	assert.Equal(t, "deployment", entry.Type)
+	assert.Equal(t, typeDeployment, entry.Type)
 	assert.Equal(t, "v1.2.3", entry.Version)
 	assert.Equal(t, "ci/cd", entry.Origin)
 	assert.Equal(t, date, entry.Date)
@@ -49,9 +55,9 @@ func TestNewEntry_Validation(t *testing.T) {
 		date    time.Time
 		wantErr error
 	}{
-		{"empty type", "", "v1.0.0", "ci", validDate, release.ErrInvalidType},
-		{"empty origin", "deploy", "v1.0.0", "", validDate, release.ErrInvalidOrigin},
-		{"zero date", "deploy", "v1.0.0", "ci", time.Time{}, release.ErrInvalidDate},
+		{"empty type", "", versionV1, "ci", validDate, release.ErrInvalidType},
+		{"empty origin", typeDeploy, versionV1, "", validDate, release.ErrInvalidOrigin},
+		{"zero date", typeDeploy, versionV1, "ci", time.Time{}, release.ErrInvalidDate},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -64,10 +70,10 @@ func TestNewEntry_Validation(t *testing.T) {
 func TestNewEntry_EmptyVersion_IsValid(t *testing.T) {
 	date := time.Date(2026, 3, 21, 14, 30, 0, 0, time.UTC)
 
-	entry, err := release.NewEntry("deployment", "", "ci/cd", date)
+	entry, err := release.NewEntry(typeDeployment, "", "ci/cd", date)
 
 	require.NoError(t, err)
-	assert.Equal(t, "deployment", entry.Type)
+	assert.Equal(t, typeDeployment, entry.Type)
 	assert.Empty(t, entry.Version)
 	assert.Equal(t, "ci/cd", entry.Origin)
 }
@@ -84,7 +90,7 @@ func TestEntry_DateKey(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			entry, err := release.NewEntry("deploy", "v1.0.0", "ci", tc.date)
+			entry, err := release.NewEntry(typeDeploy, versionV1, "ci", tc.date)
 			require.NoError(t, err)
 			assert.Equal(t, tc.want, entry.DateKey())
 		})
@@ -94,7 +100,7 @@ func TestEntry_DateKey(t *testing.T) {
 func TestEntry_CRName(t *testing.T) {
 	date := time.Date(2026, 3, 21, 14, 30, 0, 0, time.UTC)
 
-	entry, err := release.NewEntry("deploy", "v1.0.0", "ci", date)
+	entry, err := release.NewEntry(typeDeploy, versionV1, "ci", date)
 	require.NoError(t, err)
 
 	assert.Equal(t, "release-2026-03-21", entry.CRName())
@@ -107,11 +113,11 @@ func TestValidateType(t *testing.T) {
 		allowedTypes []string
 		wantErr      error
 	}{
-		{"empty allowed list accepts any type", "deployment", nil, nil},
-		{"empty slice accepts any type", "deployment", []string{}, nil},
-		{"type in allowed list", "deployment", []string{"deployment", "rollback"}, nil},
-		{"type not in allowed list", "hotfix", []string{"deployment", "rollback"}, release.ErrTypeNotAllowed},
-		{"exact match required", "deploy", []string{"deployment"}, release.ErrTypeNotAllowed},
+		{"empty allowed list accepts any type", typeDeployment, nil, nil},
+		{"empty slice accepts any type", typeDeployment, []string{}, nil},
+		{"type in allowed list", typeDeployment, []string{typeDeployment, "rollback"}, nil},
+		{"type not in allowed list", "hotfix", []string{typeDeployment, "rollback"}, release.ErrTypeNotAllowed},
+		{"exact match required", typeDeploy, []string{typeDeployment}, release.ErrTypeNotAllowed},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -129,11 +135,11 @@ func TestEntryView_PortalRefAndDay(t *testing.T) {
 	v := release.EntryView{
 		PortalRef: "main",
 		Day:       "2026-03-25",
-		Type:      "deployment",
+		Type:      typeDeployment,
 	}
 	assert.Equal(t, "main", v.PortalRef)
 	assert.Equal(t, "2026-03-25", v.Day)
-	assert.Equal(t, "deployment", v.Type)
+	assert.Equal(t, typeDeployment, v.Type)
 }
 
 func TestParseDateFromCRName(t *testing.T) {

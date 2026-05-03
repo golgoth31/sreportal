@@ -40,7 +40,7 @@ var _ = Describe("Portal Webhook", func() {
 		obj = &sreportalv1alpha1.Portal{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-portal",
-				Namespace: "default",
+				Namespace: tNsDefault,
 			},
 			Spec: sreportalv1alpha1.PortalSpec{
 				Title: "Test Portal",
@@ -49,7 +49,7 @@ var _ = Describe("Portal Webhook", func() {
 		oldObj = &sreportalv1alpha1.Portal{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-portal",
-				Namespace: "default",
+				Namespace: tNsDefault,
 			},
 			Spec: sreportalv1alpha1.PortalSpec{
 				Title: "Test Portal",
@@ -116,7 +116,7 @@ var _ = Describe("Portal Webhook", func() {
 			By("creating a remote portal with remote config")
 			obj.Spec.Remote = &sreportalv1alpha1.RemotePortalSpec{
 				URL:    testRemoteURL,
-				Portal: "main",
+				Portal: tPortalMain,
 			}
 			obj.Spec.Main = false
 

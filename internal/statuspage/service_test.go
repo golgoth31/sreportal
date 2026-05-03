@@ -50,10 +50,10 @@ func newTestService(objects ...runtime.Object) *statuspage.Service {
 
 func makeIncidentCR(updates []sreportalv1alpha1.IncidentUpdate) *sreportalv1alpha1.Incident {
 	return &sreportalv1alpha1.Incident{
-		ObjectMeta: metav1.ObjectMeta{Name: "inc-1", Namespace: testNamespace},
+		ObjectMeta: metav1.ObjectMeta{Name: tIncID, Namespace: testNamespace},
 		Spec: sreportalv1alpha1.IncidentSpec{
-			Title:     "existing incident",
-			PortalRef: "main",
+			Title:     tIncTitle,
+			PortalRef: tPortalMain,
 			Severity:  sreportalv1alpha1.IncidentSeverityCritical,
 			Updates:   updates,
 		},
@@ -64,13 +64,13 @@ func makeIncidentCR(updates []sreportalv1alpha1.IncidentUpdate) *sreportalv1alph
 
 func makeComponentCR() *sreportalv1alpha1.Component {
 	return &sreportalv1alpha1.Component{
-		ObjectMeta: metav1.ObjectMeta{Name: "comp-1", Namespace: testNamespace},
+		ObjectMeta: metav1.ObjectMeta{Name: tCompID, Namespace: testNamespace},
 		Spec: sreportalv1alpha1.ComponentSpec{
-			DisplayName: "API Gateway",
+			DisplayName: tCompAPIGW,
 			Description: "original desc",
-			Group:       "Infrastructure",
+			Group:       tGroupInfra,
 			Link:        "https://example.com",
-			PortalRef:   "main",
+			PortalRef:   tPortalMain,
 			Status:      sreportalv1alpha1.ComponentStatusOperational,
 		},
 	}
@@ -81,11 +81,11 @@ func TestCreateComponent_Success(t *testing.T) {
 	svc := statuspage.NewService(c, testNamespace)
 
 	in := statuspage.CreateComponentInput{
-		DisplayName: "API Gateway",
+		DisplayName: tCompAPIGW,
 		Description: "Main API",
-		Group:       "Infrastructure",
+		Group:       tGroupInfra,
 		Link:        "https://example.com",
-		PortalRef:   "main",
+		PortalRef:   tPortalMain,
 		Status:      sreportalv1alpha1.ComponentStatusOperational,
 	}
 
@@ -96,9 +96,9 @@ func TestCreateComponent_Success(t *testing.T) {
 	var comp sreportalv1alpha1.Component
 	err = c.Get(context.Background(), types.NamespacedName{Name: name, Namespace: testNamespace}, &comp)
 	require.NoError(t, err)
-	assert.Equal(t, "API Gateway", comp.Spec.DisplayName)
-	assert.Equal(t, "Infrastructure", comp.Spec.Group)
-	assert.Equal(t, "main", comp.Spec.PortalRef)
+	assert.Equal(t, tCompAPIGW, comp.Spec.DisplayName)
+	assert.Equal(t, tGroupInfra, comp.Spec.Group)
+	assert.Equal(t, tPortalMain, comp.Spec.PortalRef)
 }
 
 func TestCreateComponent_AutoGeneratesName(t *testing.T) {
@@ -106,9 +106,9 @@ func TestCreateComponent_AutoGeneratesName(t *testing.T) {
 	svc := statuspage.NewService(c, testNamespace)
 
 	in := statuspage.CreateComponentInput{
-		DisplayName: "API Gateway",
-		Group:       "Infrastructure",
-		PortalRef:   "main",
+		DisplayName: tCompAPIGW,
+		Group:       tGroupInfra,
+		PortalRef:   tPortalMain,
 		Status:      sreportalv1alpha1.ComponentStatusOperational,
 	}
 
@@ -121,27 +121,27 @@ func TestCreateComponent_AutoGeneratesName(t *testing.T) {
 	var comp sreportalv1alpha1.Component
 	err = c.Get(context.Background(), types.NamespacedName{Name: name, Namespace: testNamespace}, &comp)
 	require.NoError(t, err)
-	assert.Equal(t, "API Gateway", comp.Spec.DisplayName)
+	assert.Equal(t, tCompAPIGW, comp.Spec.DisplayName)
 }
 
 func TestCreateComponent_AlreadyExists(t *testing.T) {
-	// Pre-create a CR whose name matches GenerateCRName("main", "API Gateway")
-	generatedName := statuspage.GenerateCRName("main", "API Gateway")
+	// Pre-create a CR whose name matches GenerateCRName(tPortalMain, tCompAPIGW)
+	generatedName := statuspage.GenerateCRName(tPortalMain, tCompAPIGW)
 	existing := &sreportalv1alpha1.Component{
 		ObjectMeta: metav1.ObjectMeta{Name: generatedName, Namespace: testNamespace},
 		Spec: sreportalv1alpha1.ComponentSpec{
-			DisplayName: "API Gateway",
-			Group:       "Infrastructure",
-			PortalRef:   "main",
+			DisplayName: tCompAPIGW,
+			Group:       tGroupInfra,
+			PortalRef:   tPortalMain,
 			Status:      sreportalv1alpha1.ComponentStatusOperational,
 		},
 	}
 	svc := newTestService(existing)
 
 	in := statuspage.CreateComponentInput{
-		DisplayName: "API Gateway",
-		Group:       "Infrastructure",
-		PortalRef:   "main",
+		DisplayName: tCompAPIGW,
+		Group:       tGroupInfra,
+		PortalRef:   tPortalMain,
 		Status:      sreportalv1alpha1.ComponentStatusOperational,
 	}
 
@@ -158,7 +158,7 @@ func TestCreateComponent_MissingPortalRef(t *testing.T) {
 
 func TestCreateComponent_MissingGroup(t *testing.T) {
 	svc := newTestService()
-	in := statuspage.CreateComponentInput{DisplayName: "x", PortalRef: "main"}
+	in := statuspage.CreateComponentInput{DisplayName: "x", PortalRef: tPortalMain}
 	_, err := svc.CreateComponent(context.Background(), in)
 	require.ErrorIs(t, err, statuspage.ErrGroupRequired)
 }
@@ -172,7 +172,7 @@ func TestUpdateComponent_UpdatesDisplayName(t *testing.T) {
 
 	newName := "Updated Gateway"
 	in := statuspage.UpdateComponentInput{
-		Name:        "comp-1",
+		Name:        tCompID,
 		DisplayName: &newName,
 	}
 
@@ -180,7 +180,7 @@ func TestUpdateComponent_UpdatesDisplayName(t *testing.T) {
 	require.NoError(t, err)
 
 	var comp sreportalv1alpha1.Component
-	err = c.Get(context.Background(), types.NamespacedName{Name: "comp-1", Namespace: testNamespace}, &comp)
+	err = c.Get(context.Background(), types.NamespacedName{Name: tCompID, Namespace: testNamespace}, &comp)
 	require.NoError(t, err)
 	assert.Equal(t, "Updated Gateway", comp.Spec.DisplayName)
 }
@@ -192,7 +192,7 @@ func TestUpdateComponent_UpdatesStatus(t *testing.T) {
 
 	newStatus := sreportalv1alpha1.ComponentStatusDegraded
 	in := statuspage.UpdateComponentInput{
-		Name:   "comp-1",
+		Name:   tCompID,
 		Status: &newStatus,
 	}
 
@@ -200,7 +200,7 @@ func TestUpdateComponent_UpdatesStatus(t *testing.T) {
 	require.NoError(t, err)
 
 	var comp sreportalv1alpha1.Component
-	err = c.Get(context.Background(), types.NamespacedName{Name: "comp-1", Namespace: testNamespace}, &comp)
+	err = c.Get(context.Background(), types.NamespacedName{Name: tCompID, Namespace: testNamespace}, &comp)
 	require.NoError(t, err)
 	assert.Equal(t, sreportalv1alpha1.ComponentStatusDegraded, comp.Spec.Status)
 }
@@ -212,7 +212,7 @@ func TestUpdateComponent_LeavesFieldsUnchanged(t *testing.T) {
 
 	newDesc := "updated desc"
 	in := statuspage.UpdateComponentInput{
-		Name:        "comp-1",
+		Name:        tCompID,
 		Description: &newDesc,
 	}
 
@@ -220,18 +220,18 @@ func TestUpdateComponent_LeavesFieldsUnchanged(t *testing.T) {
 	require.NoError(t, err)
 
 	var comp sreportalv1alpha1.Component
-	err = c.Get(context.Background(), types.NamespacedName{Name: "comp-1", Namespace: testNamespace}, &comp)
+	err = c.Get(context.Background(), types.NamespacedName{Name: tCompID, Namespace: testNamespace}, &comp)
 	require.NoError(t, err)
-	assert.Equal(t, "API Gateway", comp.Spec.DisplayName)
+	assert.Equal(t, tCompAPIGW, comp.Spec.DisplayName)
 	assert.Equal(t, "updated desc", comp.Spec.Description)
-	assert.Equal(t, "Infrastructure", comp.Spec.Group)
-	assert.Equal(t, "main", comp.Spec.PortalRef)
+	assert.Equal(t, tGroupInfra, comp.Spec.Group)
+	assert.Equal(t, tPortalMain, comp.Spec.PortalRef)
 	assert.Equal(t, sreportalv1alpha1.ComponentStatusOperational, comp.Spec.Status)
 }
 
 func TestUpdateComponent_NotFound(t *testing.T) {
 	svc := newTestService()
-	in := statuspage.UpdateComponentInput{Name: "nonexistent"}
+	in := statuspage.UpdateComponentInput{Name: tNameNonexistent}
 	_, err := svc.UpdateComponent(context.Background(), in)
 	require.ErrorIs(t, err, statuspage.ErrNotFound)
 }
@@ -250,8 +250,8 @@ func TestCreateMaintenance_AutoGeneratesName(t *testing.T) {
 	svc := statuspage.NewService(c, testNamespace)
 
 	in := statuspage.CreateMaintenanceInput{
-		Title:          "DB upgrade",
-		PortalRef:      "main",
+		Title:          tMaintDB,
+		PortalRef:      tPortalMain,
 		ScheduledStart: metav1.NewTime(time.Date(2026, 4, 1, 6, 0, 0, 0, time.UTC)),
 		ScheduledEnd:   metav1.NewTime(time.Date(2026, 4, 1, 8, 0, 0, 0, time.UTC)),
 	}
@@ -264,7 +264,7 @@ func TestCreateMaintenance_AutoGeneratesName(t *testing.T) {
 	var maint sreportalv1alpha1.Maintenance
 	err = c.Get(context.Background(), types.NamespacedName{Name: name, Namespace: testNamespace}, &maint)
 	require.NoError(t, err)
-	assert.Equal(t, "DB upgrade", maint.Spec.Title)
+	assert.Equal(t, tMaintDB, maint.Spec.Title)
 }
 
 func TestCreateIncident_AutoGeneratesName(t *testing.T) {
@@ -273,7 +273,7 @@ func TestCreateIncident_AutoGeneratesName(t *testing.T) {
 
 	in := statuspage.CreateIncidentInput{
 		Title:     "API down",
-		PortalRef: "main",
+		PortalRef: tPortalMain,
 		Severity:  sreportalv1alpha1.IncidentSeverityCritical,
 		InitialUpdate: sreportalv1alpha1.IncidentUpdate{
 			Timestamp: metav1.Now(),
@@ -297,12 +297,12 @@ func TestCreateIncident_AutoGeneratesName(t *testing.T) {
 
 func makeMaintenanceCR() *sreportalv1alpha1.Maintenance {
 	return &sreportalv1alpha1.Maintenance{
-		ObjectMeta: metav1.ObjectMeta{Name: "maint-1", Namespace: testNamespace},
+		ObjectMeta: metav1.ObjectMeta{Name: tMaintID, Namespace: testNamespace},
 		Spec: sreportalv1alpha1.MaintenanceSpec{
-			Title:          "existing maintenance",
-			PortalRef:      "main",
+			Title:          tMaintTitle,
+			PortalRef:      tPortalMain,
 			Description:    "original desc",
-			Components:     []string{"api"},
+			Components:     []string{tNameAPI},
 			ScheduledStart: metav1.NewTime(time.Date(2026, 4, 1, 6, 0, 0, 0, time.UTC)),
 			ScheduledEnd:   metav1.NewTime(time.Date(2026, 4, 1, 8, 0, 0, 0, time.UTC)),
 			AffectedStatus: sreportalv1alpha1.MaintenanceAffectedMaintenance,
@@ -315,9 +315,9 @@ func TestCreateMaintenance_Success(t *testing.T) {
 	svc := statuspage.NewService(c, testNamespace)
 
 	in := statuspage.CreateMaintenanceInput{
-		Title:          "DB upgrade",
+		Title:          tMaintDB,
 		Description:    "Upgrading PostgreSQL",
-		PortalRef:      "main",
+		PortalRef:      tPortalMain,
 		Components:     []string{"db"},
 		ScheduledStart: metav1.NewTime(time.Date(2026, 4, 1, 6, 0, 0, 0, time.UTC)),
 		ScheduledEnd:   metav1.NewTime(time.Date(2026, 4, 1, 8, 0, 0, 0, time.UTC)),
@@ -331,9 +331,9 @@ func TestCreateMaintenance_Success(t *testing.T) {
 	var maint sreportalv1alpha1.Maintenance
 	err = c.Get(context.Background(), types.NamespacedName{Name: name, Namespace: testNamespace}, &maint)
 	require.NoError(t, err)
-	assert.Equal(t, "DB upgrade", maint.Spec.Title)
+	assert.Equal(t, tMaintDB, maint.Spec.Title)
 	assert.Equal(t, "Upgrading PostgreSQL", maint.Spec.Description)
-	assert.Equal(t, "main", maint.Spec.PortalRef)
+	assert.Equal(t, tPortalMain, maint.Spec.PortalRef)
 	assert.Equal(t, []string{"db"}, maint.Spec.Components)
 	assert.Equal(t, sreportalv1alpha1.MaintenanceAffectedMaintenance, maint.Spec.AffectedStatus)
 }
@@ -343,8 +343,8 @@ func TestCreateMaintenance_DefaultAffectedStatus(t *testing.T) {
 	svc := statuspage.NewService(c, testNamespace)
 
 	in := statuspage.CreateMaintenanceInput{
-		Title:          "DB upgrade",
-		PortalRef:      "main",
+		Title:          tMaintDB,
+		PortalRef:      tPortalMain,
 		ScheduledStart: metav1.NewTime(time.Date(2026, 4, 1, 6, 0, 0, 0, time.UTC)),
 		ScheduledEnd:   metav1.NewTime(time.Date(2026, 4, 1, 8, 0, 0, 0, time.UTC)),
 	}
@@ -359,19 +359,19 @@ func TestCreateMaintenance_DefaultAffectedStatus(t *testing.T) {
 }
 
 func TestCreateMaintenance_AlreadyExists(t *testing.T) {
-	generatedName := statuspage.GenerateCRName("main", "existing maintenance")
+	generatedName := statuspage.GenerateCRName(tPortalMain, tMaintTitle)
 	existing := &sreportalv1alpha1.Maintenance{
 		ObjectMeta: metav1.ObjectMeta{Name: generatedName, Namespace: testNamespace},
 		Spec: sreportalv1alpha1.MaintenanceSpec{
-			Title:     "existing maintenance",
-			PortalRef: "main",
+			Title:     tMaintTitle,
+			PortalRef: tPortalMain,
 		},
 	}
 	svc := newTestService(existing)
 
 	in := statuspage.CreateMaintenanceInput{
-		Title:     "existing maintenance",
-		PortalRef: "main",
+		Title:     tMaintTitle,
+		PortalRef: tPortalMain,
 	}
 
 	_, err := svc.CreateMaintenance(context.Background(), in)
@@ -387,7 +387,7 @@ func TestCreateMaintenance_MissingPortalRef(t *testing.T) {
 
 func TestCreateMaintenance_MissingTitle(t *testing.T) {
 	svc := newTestService()
-	in := statuspage.CreateMaintenanceInput{PortalRef: "main"}
+	in := statuspage.CreateMaintenanceInput{PortalRef: tPortalMain}
 	_, err := svc.CreateMaintenance(context.Background(), in)
 	require.ErrorIs(t, err, statuspage.ErrTitleRequired)
 }
@@ -401,7 +401,7 @@ func TestUpdateMaintenance_UpdatesTitle(t *testing.T) {
 
 	newTitle := "Updated maintenance"
 	in := statuspage.UpdateMaintenanceInput{
-		Name:  "maint-1",
+		Name:  tMaintID,
 		Title: &newTitle,
 	}
 
@@ -409,7 +409,7 @@ func TestUpdateMaintenance_UpdatesTitle(t *testing.T) {
 	require.NoError(t, err)
 
 	var maint sreportalv1alpha1.Maintenance
-	err = c.Get(context.Background(), types.NamespacedName{Name: "maint-1", Namespace: testNamespace}, &maint)
+	err = c.Get(context.Background(), types.NamespacedName{Name: tMaintID, Namespace: testNamespace}, &maint)
 	require.NoError(t, err)
 	assert.Equal(t, "Updated maintenance", maint.Spec.Title)
 }
@@ -421,7 +421,7 @@ func TestUpdateMaintenance_UpdatesDescription(t *testing.T) {
 
 	newDesc := "new description"
 	in := statuspage.UpdateMaintenanceInput{
-		Name:        "maint-1",
+		Name:        tMaintID,
 		Description: &newDesc,
 	}
 
@@ -429,7 +429,7 @@ func TestUpdateMaintenance_UpdatesDescription(t *testing.T) {
 	require.NoError(t, err)
 
 	var maint sreportalv1alpha1.Maintenance
-	err = c.Get(context.Background(), types.NamespacedName{Name: "maint-1", Namespace: testNamespace}, &maint)
+	err = c.Get(context.Background(), types.NamespacedName{Name: tMaintID, Namespace: testNamespace}, &maint)
 	require.NoError(t, err)
 	assert.Equal(t, "new description", maint.Spec.Description)
 }
@@ -440,17 +440,17 @@ func TestUpdateMaintenance_UpdatesComponents(t *testing.T) {
 	svc := statuspage.NewService(c, testNamespace)
 
 	in := statuspage.UpdateMaintenanceInput{
-		Name:       "maint-1",
-		Components: []string{"api", "db"},
+		Name:       tMaintID,
+		Components: []string{tNameAPI, "db"},
 	}
 
 	_, err := svc.UpdateMaintenance(context.Background(), in)
 	require.NoError(t, err)
 
 	var maint sreportalv1alpha1.Maintenance
-	err = c.Get(context.Background(), types.NamespacedName{Name: "maint-1", Namespace: testNamespace}, &maint)
+	err = c.Get(context.Background(), types.NamespacedName{Name: tMaintID, Namespace: testNamespace}, &maint)
 	require.NoError(t, err)
-	assert.Equal(t, []string{"api", "db"}, maint.Spec.Components)
+	assert.Equal(t, []string{tNameAPI, "db"}, maint.Spec.Components)
 }
 
 func TestUpdateMaintenance_UpdatesSchedule(t *testing.T) {
@@ -461,7 +461,7 @@ func TestUpdateMaintenance_UpdatesSchedule(t *testing.T) {
 	newStart := metav1.NewTime(time.Date(2026, 5, 1, 10, 0, 0, 0, time.UTC))
 	newEnd := metav1.NewTime(time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC))
 	in := statuspage.UpdateMaintenanceInput{
-		Name:           "maint-1",
+		Name:           tMaintID,
 		ScheduledStart: &newStart,
 		ScheduledEnd:   &newEnd,
 	}
@@ -470,7 +470,7 @@ func TestUpdateMaintenance_UpdatesSchedule(t *testing.T) {
 	require.NoError(t, err)
 
 	var maint sreportalv1alpha1.Maintenance
-	err = c.Get(context.Background(), types.NamespacedName{Name: "maint-1", Namespace: testNamespace}, &maint)
+	err = c.Get(context.Background(), types.NamespacedName{Name: tMaintID, Namespace: testNamespace}, &maint)
 	require.NoError(t, err)
 	assert.True(t, newStart.Time.Equal(maint.Spec.ScheduledStart.Time), "scheduled_start mismatch")
 	assert.True(t, newEnd.Time.Equal(maint.Spec.ScheduledEnd.Time), "scheduled_end mismatch")
@@ -483,7 +483,7 @@ func TestUpdateMaintenance_UpdatesAffectedStatus(t *testing.T) {
 
 	newStatus := sreportalv1alpha1.MaintenanceAffectedDegraded
 	in := statuspage.UpdateMaintenanceInput{
-		Name:           "maint-1",
+		Name:           tMaintID,
 		AffectedStatus: &newStatus,
 	}
 
@@ -491,7 +491,7 @@ func TestUpdateMaintenance_UpdatesAffectedStatus(t *testing.T) {
 	require.NoError(t, err)
 
 	var maint sreportalv1alpha1.Maintenance
-	err = c.Get(context.Background(), types.NamespacedName{Name: "maint-1", Namespace: testNamespace}, &maint)
+	err = c.Get(context.Background(), types.NamespacedName{Name: tMaintID, Namespace: testNamespace}, &maint)
 	require.NoError(t, err)
 	assert.Equal(t, sreportalv1alpha1.MaintenanceAffectedDegraded, maint.Spec.AffectedStatus)
 }
@@ -503,7 +503,7 @@ func TestUpdateMaintenance_LeavesFieldsUnchanged(t *testing.T) {
 
 	newTitle := "changed title"
 	in := statuspage.UpdateMaintenanceInput{
-		Name:  "maint-1",
+		Name:  tMaintID,
 		Title: &newTitle,
 	}
 
@@ -511,18 +511,18 @@ func TestUpdateMaintenance_LeavesFieldsUnchanged(t *testing.T) {
 	require.NoError(t, err)
 
 	var maint sreportalv1alpha1.Maintenance
-	err = c.Get(context.Background(), types.NamespacedName{Name: "maint-1", Namespace: testNamespace}, &maint)
+	err = c.Get(context.Background(), types.NamespacedName{Name: tMaintID, Namespace: testNamespace}, &maint)
 	require.NoError(t, err)
 	assert.Equal(t, "changed title", maint.Spec.Title)
 	assert.Equal(t, "original desc", maint.Spec.Description)
-	assert.Equal(t, "main", maint.Spec.PortalRef)
-	assert.Equal(t, []string{"api"}, maint.Spec.Components)
+	assert.Equal(t, tPortalMain, maint.Spec.PortalRef)
+	assert.Equal(t, []string{tNameAPI}, maint.Spec.Components)
 	assert.Equal(t, sreportalv1alpha1.MaintenanceAffectedMaintenance, maint.Spec.AffectedStatus)
 }
 
 func TestUpdateMaintenance_NotFound(t *testing.T) {
 	svc := newTestService()
-	in := statuspage.UpdateMaintenanceInput{Name: "nonexistent"}
+	in := statuspage.UpdateMaintenanceInput{Name: tNameNonexistent}
 	_, err := svc.UpdateMaintenance(context.Background(), in)
 	require.ErrorIs(t, err, statuspage.ErrNotFound)
 }
@@ -543,8 +543,8 @@ func TestCreateIncident_Success(t *testing.T) {
 	ts := metav1.NewTime(time.Date(2026, 3, 28, 10, 0, 0, 0, time.UTC))
 	in := statuspage.CreateIncidentInput{
 		Title:      "API down",
-		PortalRef:  "main",
-		Components: []string{"api"},
+		PortalRef:  tPortalMain,
+		Components: []string{tNameAPI},
 		Severity:   sreportalv1alpha1.IncidentSeverityCritical,
 		InitialUpdate: sreportalv1alpha1.IncidentUpdate{
 			Timestamp: ts,
@@ -561,8 +561,8 @@ func TestCreateIncident_Success(t *testing.T) {
 	err = c.Get(context.Background(), types.NamespacedName{Name: name, Namespace: testNamespace}, &inc)
 	require.NoError(t, err)
 	assert.Equal(t, "API down", inc.Spec.Title)
-	assert.Equal(t, "main", inc.Spec.PortalRef)
-	assert.Equal(t, []string{"api"}, inc.Spec.Components)
+	assert.Equal(t, tPortalMain, inc.Spec.PortalRef)
+	assert.Equal(t, []string{tNameAPI}, inc.Spec.Components)
 	assert.Equal(t, sreportalv1alpha1.IncidentSeverityCritical, inc.Spec.Severity)
 	require.Len(t, inc.Spec.Updates, 1)
 	assert.Equal(t, sreportalv1alpha1.IncidentPhaseInvestigating, inc.Spec.Updates[0].Phase)
@@ -570,20 +570,20 @@ func TestCreateIncident_Success(t *testing.T) {
 }
 
 func TestCreateIncident_AlreadyExists(t *testing.T) {
-	generatedName := statuspage.GenerateCRName("main", "existing incident")
+	generatedName := statuspage.GenerateCRName(tPortalMain, tIncTitle)
 	existing := &sreportalv1alpha1.Incident{
 		ObjectMeta: metav1.ObjectMeta{Name: generatedName, Namespace: testNamespace},
 		Spec: sreportalv1alpha1.IncidentSpec{
-			Title:     "existing incident",
-			PortalRef: "main",
+			Title:     tIncTitle,
+			PortalRef: tPortalMain,
 			Severity:  sreportalv1alpha1.IncidentSeverityCritical,
 		},
 	}
 	svc := newTestService(existing)
 
 	in := statuspage.CreateIncidentInput{
-		Title:     "existing incident",
-		PortalRef: "main",
+		Title:     tIncTitle,
+		PortalRef: tPortalMain,
 		Severity:  sreportalv1alpha1.IncidentSeverityCritical,
 		InitialUpdate: sreportalv1alpha1.IncidentUpdate{
 			Timestamp: metav1.Now(),
@@ -605,14 +605,14 @@ func TestCreateIncident_MissingPortalRef(t *testing.T) {
 
 func TestCreateIncident_MissingTitle(t *testing.T) {
 	svc := newTestService()
-	in := statuspage.CreateIncidentInput{PortalRef: "main", Severity: sreportalv1alpha1.IncidentSeverityMinor}
+	in := statuspage.CreateIncidentInput{PortalRef: tPortalMain, Severity: sreportalv1alpha1.IncidentSeverityMinor}
 	_, err := svc.CreateIncident(context.Background(), in)
 	require.ErrorIs(t, err, statuspage.ErrTitleRequired)
 }
 
 func TestCreateIncident_MissingSeverity(t *testing.T) {
 	svc := newTestService()
-	in := statuspage.CreateIncidentInput{Title: "x", PortalRef: "main"}
+	in := statuspage.CreateIncidentInput{Title: "x", PortalRef: tPortalMain}
 	_, err := svc.CreateIncident(context.Background(), in)
 	require.ErrorIs(t, err, statuspage.ErrSeverityRequired)
 }
@@ -629,7 +629,7 @@ func TestUpdateIncident_AppendsUpdate(t *testing.T) {
 
 	ts2 := metav1.NewTime(time.Date(2026, 3, 28, 11, 0, 0, 0, time.UTC))
 	in := statuspage.UpdateIncidentInput{
-		Name: "inc-1",
+		Name: tIncID,
 		Update: sreportalv1alpha1.IncidentUpdate{
 			Timestamp: ts2,
 			Phase:     sreportalv1alpha1.IncidentPhaseIdentified,
@@ -639,10 +639,10 @@ func TestUpdateIncident_AppendsUpdate(t *testing.T) {
 
 	name, err := svc.UpdateIncident(context.Background(), in)
 	require.NoError(t, err)
-	assert.Equal(t, "inc-1", name)
+	assert.Equal(t, tIncID, name)
 
 	var inc sreportalv1alpha1.Incident
-	err = c.Get(context.Background(), types.NamespacedName{Name: "inc-1", Namespace: testNamespace}, &inc)
+	err = c.Get(context.Background(), types.NamespacedName{Name: tIncID, Namespace: testNamespace}, &inc)
 	require.NoError(t, err)
 	require.Len(t, inc.Spec.Updates, 2)
 	assert.Equal(t, sreportalv1alpha1.IncidentPhaseInvestigating, inc.Spec.Updates[0].Phase)
@@ -657,7 +657,7 @@ func TestUpdateIncident_UpdatesTitle(t *testing.T) {
 
 	newTitle := "Updated title"
 	in := statuspage.UpdateIncidentInput{
-		Name:  "inc-1",
+		Name:  tIncID,
 		Title: &newTitle,
 		Update: sreportalv1alpha1.IncidentUpdate{
 			Timestamp: metav1.Now(),
@@ -670,7 +670,7 @@ func TestUpdateIncident_UpdatesTitle(t *testing.T) {
 	require.NoError(t, err)
 
 	var inc sreportalv1alpha1.Incident
-	err = c.Get(context.Background(), types.NamespacedName{Name: "inc-1", Namespace: testNamespace}, &inc)
+	err = c.Get(context.Background(), types.NamespacedName{Name: tIncID, Namespace: testNamespace}, &inc)
 	require.NoError(t, err)
 	assert.Equal(t, "Updated title", inc.Spec.Title)
 }
@@ -682,7 +682,7 @@ func TestUpdateIncident_UpdatesSeverity(t *testing.T) {
 
 	sev := sreportalv1alpha1.IncidentSeverityMinor
 	in := statuspage.UpdateIncidentInput{
-		Name:     "inc-1",
+		Name:     tIncID,
 		Severity: &sev,
 		Update: sreportalv1alpha1.IncidentUpdate{
 			Timestamp: metav1.Now(),
@@ -695,7 +695,7 @@ func TestUpdateIncident_UpdatesSeverity(t *testing.T) {
 	require.NoError(t, err)
 
 	var inc sreportalv1alpha1.Incident
-	err = c.Get(context.Background(), types.NamespacedName{Name: "inc-1", Namespace: testNamespace}, &inc)
+	err = c.Get(context.Background(), types.NamespacedName{Name: tIncID, Namespace: testNamespace}, &inc)
 	require.NoError(t, err)
 	assert.Equal(t, sreportalv1alpha1.IncidentSeverityMinor, inc.Spec.Severity)
 }
@@ -706,8 +706,8 @@ func TestUpdateIncident_UpdatesComponents(t *testing.T) {
 	svc := statuspage.NewService(c, testNamespace)
 
 	in := statuspage.UpdateIncidentInput{
-		Name:       "inc-1",
-		Components: []string{"api", "db"},
+		Name:       tIncID,
+		Components: []string{tNameAPI, "db"},
 		Update: sreportalv1alpha1.IncidentUpdate{
 			Timestamp: metav1.Now(),
 			Phase:     sreportalv1alpha1.IncidentPhaseIdentified,
@@ -719,9 +719,9 @@ func TestUpdateIncident_UpdatesComponents(t *testing.T) {
 	require.NoError(t, err)
 
 	var inc sreportalv1alpha1.Incident
-	err = c.Get(context.Background(), types.NamespacedName{Name: "inc-1", Namespace: testNamespace}, &inc)
+	err = c.Get(context.Background(), types.NamespacedName{Name: tIncID, Namespace: testNamespace}, &inc)
 	require.NoError(t, err)
-	assert.Equal(t, []string{"api", "db"}, inc.Spec.Components)
+	assert.Equal(t, []string{tNameAPI, "db"}, inc.Spec.Components)
 }
 
 func TestUpdateIncident_LeavesFieldsUnchanged(t *testing.T) {
@@ -730,7 +730,7 @@ func TestUpdateIncident_LeavesFieldsUnchanged(t *testing.T) {
 	svc := statuspage.NewService(c, testNamespace)
 
 	in := statuspage.UpdateIncidentInput{
-		Name: "inc-1",
+		Name: tIncID,
 		Update: sreportalv1alpha1.IncidentUpdate{
 			Timestamp: metav1.Now(),
 			Phase:     sreportalv1alpha1.IncidentPhaseMonitoring,
@@ -742,10 +742,10 @@ func TestUpdateIncident_LeavesFieldsUnchanged(t *testing.T) {
 	require.NoError(t, err)
 
 	var inc sreportalv1alpha1.Incident
-	err = c.Get(context.Background(), types.NamespacedName{Name: "inc-1", Namespace: testNamespace}, &inc)
+	err = c.Get(context.Background(), types.NamespacedName{Name: tIncID, Namespace: testNamespace}, &inc)
 	require.NoError(t, err)
-	assert.Equal(t, "existing incident", inc.Spec.Title)
-	assert.Equal(t, "main", inc.Spec.PortalRef)
+	assert.Equal(t, tIncTitle, inc.Spec.Title)
+	assert.Equal(t, tPortalMain, inc.Spec.PortalRef)
 	assert.Equal(t, sreportalv1alpha1.IncidentSeverityCritical, inc.Spec.Severity)
 }
 
@@ -753,7 +753,7 @@ func TestUpdateIncident_NotFound(t *testing.T) {
 	svc := newTestService()
 
 	in := statuspage.UpdateIncidentInput{
-		Name: "nonexistent",
+		Name: tNameNonexistent,
 		Update: sreportalv1alpha1.IncidentUpdate{
 			Timestamp: metav1.Now(),
 			Phase:     sreportalv1alpha1.IncidentPhaseInvestigating,

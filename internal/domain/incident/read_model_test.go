@@ -13,9 +13,9 @@ func TestSeverityToComponentStatus(t *testing.T) {
 		severity IncidentSeverity
 		want     string
 	}{
-		{"critical maps to major_outage", SeverityCritical, "major_outage"},
-		{"major maps to partial_outage", SeverityMajor, "partial_outage"},
-		{"minor maps to degraded", SeverityMinor, "degraded"},
+		{"critical maps to major_outage", SeverityCritical, statusMajorOutage},
+		{"major maps to partial_outage", SeverityMajor, statusPartialOut},
+		{"minor maps to degraded", SeverityMinor, statusDegraded},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -27,13 +27,13 @@ func TestSeverityToComponentStatus(t *testing.T) {
 
 func TestSeverityToComponentStatus_UnknownSeverity(t *testing.T) {
 	got := SeverityToComponentStatus("unknown")
-	assert.Equal(t, "degraded", got, "unknown severity should default to degraded")
+	assert.Equal(t, statusDegraded, got, "unknown severity should default to degraded")
 }
 
 func TestIncidentView_AffectsComponent(t *testing.T) {
 	view := IncidentView{
-		PortalRef:    "portal-a",
-		Components:   []string{"comp-1", "comp-2"},
+		PortalRef:    tPortalA,
+		Components:   []string{tCompID, "comp-2"},
 		CurrentPhase: PhaseInvestigating,
 	}
 
@@ -43,9 +43,9 @@ func TestIncidentView_AffectsComponent(t *testing.T) {
 		componentName string
 		want          bool
 	}{
-		{"matching portal and component", "portal-a", "comp-1", true},
-		{"matching portal, different component", "portal-a", "comp-3", false},
-		{"different portal, matching component", "portal-b", "comp-1", false},
+		{"matching portal and component", tPortalA, tCompID, true},
+		{"matching portal, different component", tPortalA, "comp-3", false},
+		{"different portal, matching component", "portal-b", tCompID, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -57,12 +57,12 @@ func TestIncidentView_AffectsComponent(t *testing.T) {
 
 func TestIncidentView_AffectsComponent_ResolvedIncident(t *testing.T) {
 	view := IncidentView{
-		PortalRef:    "portal-a",
-		Components:   []string{"comp-1"},
+		PortalRef:    tPortalA,
+		Components:   []string{tCompID},
 		CurrentPhase: PhaseResolved,
 	}
 
-	require.False(t, view.AffectsComponent("portal-a", "comp-1"),
+	require.False(t, view.AffectsComponent(tPortalA, tCompID),
 		"resolved incident should not affect any component")
 }
 
@@ -72,9 +72,9 @@ func TestIncidentView_ComponentStatus(t *testing.T) {
 		severity IncidentSeverity
 		want     string
 	}{
-		{"critical", SeverityCritical, "major_outage"},
-		{"major", SeverityMajor, "partial_outage"},
-		{"minor", SeverityMinor, "degraded"},
+		{"critical", SeverityCritical, statusMajorOutage},
+		{"major", SeverityMajor, statusPartialOut},
+		{"minor", SeverityMinor, statusDegraded},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

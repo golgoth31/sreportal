@@ -11,8 +11,8 @@ import (
 func TestAlert_AlertName_ReturnsAlertNameLabel(t *testing.T) {
 	a := alertmanager.Alert{
 		Labels: map[string]string{
-			"alertname": "HighMemoryUsage",
-			"severity":  "critical",
+			labelAlertname: "HighMemoryUsage",
+			"severity":     "critical",
 		},
 	}
 
@@ -29,7 +29,7 @@ func TestAlert_AlertName_WhenMissing_ReturnsEmpty(t *testing.T) {
 
 func TestAlert_IsSilenced_WhenSilencedByNotEmpty_ReturnsTrue(t *testing.T) {
 	a := alertmanager.Alert{
-		Labels:     map[string]string{"alertname": "Test"},
+		Labels:     map[string]string{labelAlertname: alertNameTest},
 		SilencedBy: []string{"silence-uuid-1"},
 	}
 	assert.True(t, a.IsSilenced())
@@ -37,7 +37,7 @@ func TestAlert_IsSilenced_WhenSilencedByNotEmpty_ReturnsTrue(t *testing.T) {
 
 func TestAlert_IsSilenced_WhenSilencedByEmpty_ReturnsFalse(t *testing.T) {
 	a := alertmanager.Alert{
-		Labels:     map[string]string{"alertname": "Test"},
+		Labels:     map[string]string{labelAlertname: alertNameTest},
 		SilencedBy: nil,
 	}
 	assert.False(t, a.IsSilenced())

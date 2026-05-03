@@ -132,7 +132,7 @@ func (h *SyncRemoteDNSHandler) reconcileRemoteDNS(ctx context.Context, portal *s
 	dns.Status.LastReconcileTime = &now
 
 	readyCondition := metav1.Condition{
-		Type:               "Ready",
+		Type:               conditionTypeReady,
 		Status:             metav1.ConditionTrue,
 		Reason:             "RemoteSyncSuccess",
 		Message:            fmt.Sprintf("Successfully synced %d FQDNs from remote portal", result.FQDNCount),

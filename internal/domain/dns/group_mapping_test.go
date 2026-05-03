@@ -26,9 +26,9 @@ import (
 
 func TestGroupMappingStrategy_Resolve(t *testing.T) {
 	fullStrategy := dns.GroupMappingStrategy{
-		DefaultGroup: "Default",
-		LabelKey:     "app.io/group",
-		ByNamespace:  map[string]string{"prod": "Production", "staging": "Staging"},
+		DefaultGroup: groupDefault,
+		LabelKey:     labelKeyGroup,
+		ByNamespace:  map[string]string{nsProd: "Production", "staging": "Staging"},
 	}
 
 	cases := []struct {
@@ -42,7 +42,7 @@ func TestGroupMappingStrategy_Resolve(t *testing.T) {
 			name:      "groups annotation yields multiple groups",
 			strategy:  fullStrategy,
 			labels:    map[string]string{dns.GroupsAnnotationKey: "APIs, Applications"},
-			namespace: "prod",
+			namespace: nsProd,
 			want:      []string{"APIs", "Applications"},
 		},
 		{
@@ -55,36 +55,36 @@ func TestGroupMappingStrategy_Resolve(t *testing.T) {
 		{
 			name:      "groups annotation takes priority over label key",
 			strategy:  fullStrategy,
-			labels:    map[string]string{dns.GroupsAnnotationKey: "FromAnnotation", "app.io/group": "FromLabel"},
-			namespace: "prod",
-			want:      []string{"FromAnnotation"},
+			labels:    map[string]string{dns.GroupsAnnotationKey: groupFromAnno, labelKeyGroup: groupFromLabel},
+			namespace: nsProd,
+			want:      []string{groupFromAnno},
 		},
 		{
 			name:      "groups annotation takes priority over namespace mapping",
 			strategy:  fullStrategy,
-			labels:    map[string]string{dns.GroupsAnnotationKey: "FromAnnotation"},
-			namespace: "prod",
-			want:      []string{"FromAnnotation"},
+			labels:    map[string]string{dns.GroupsAnnotationKey: groupFromAnno},
+			namespace: nsProd,
+			want:      []string{groupFromAnno},
 		},
 		{
 			name:      "label key used when no groups annotation",
 			strategy:  fullStrategy,
-			labels:    map[string]string{"app.io/group": "FromLabel"},
-			namespace: "prod",
-			want:      []string{"FromLabel"},
+			labels:    map[string]string{labelKeyGroup: groupFromLabel},
+			namespace: nsProd,
+			want:      []string{groupFromLabel},
 		},
 		{
 			name:      "label key takes priority over namespace mapping",
 			strategy:  fullStrategy,
-			labels:    map[string]string{"app.io/group": "FromLabel"},
-			namespace: "prod",
-			want:      []string{"FromLabel"},
+			labels:    map[string]string{labelKeyGroup: groupFromLabel},
+			namespace: nsProd,
+			want:      []string{groupFromLabel},
 		},
 		{
 			name:      "namespace mapping used when no annotation or label",
 			strategy:  fullStrategy,
 			labels:    map[string]string{},
-			namespace: "prod",
+			namespace: nsProd,
 			want:      []string{"Production"},
 		},
 		{
@@ -99,14 +99,14 @@ func TestGroupMappingStrategy_Resolve(t *testing.T) {
 			strategy:  fullStrategy,
 			labels:    map[string]string{},
 			namespace: "unknown",
-			want:      []string{"Default"},
+			want:      []string{groupDefault},
 		},
 		{
 			name:      "empty namespace falls back to default group",
 			strategy:  fullStrategy,
 			labels:    map[string]string{},
 			namespace: "",
-			want:      []string{"Default"},
+			want:      []string{groupDefault},
 		},
 		{
 			name:      "no rules match uses default group",
@@ -127,14 +127,14 @@ func TestGroupMappingStrategy_Resolve(t *testing.T) {
 			strategy:  fullStrategy,
 			labels:    nil,
 			namespace: "",
-			want:      []string{"Default"},
+			want:      []string{groupDefault},
 		},
 		{
 			name:      "groups annotation with only whitespace entries is ignored",
 			strategy:  fullStrategy,
 			labels:    map[string]string{dns.GroupsAnnotationKey: " , , "},
 			namespace: "",
-			want:      []string{"Default"},
+			want:      []string{groupDefault},
 		},
 		{
 			name:      "groups annotation single value without comma",
@@ -145,9 +145,9 @@ func TestGroupMappingStrategy_Resolve(t *testing.T) {
 		},
 		{
 			name:      "label key not configured falls through to namespace",
-			strategy:  dns.GroupMappingStrategy{DefaultGroup: "Default", ByNamespace: map[string]string{"prod": "Prod"}},
-			labels:    map[string]string{"app.io/group": "SomeValue"},
-			namespace: "prod",
+			strategy:  dns.GroupMappingStrategy{DefaultGroup: groupDefault, ByNamespace: map[string]string{nsProd: "Prod"}},
+			labels:    map[string]string{labelKeyGroup: "SomeValue"},
+			namespace: nsProd,
 			want:      []string{"Prod"},
 		},
 	}

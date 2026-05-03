@@ -81,25 +81,25 @@ func seedDNSStore() *dnsstore.FQDNStore {
 	ctx := context.Background()
 	now := time.Now()
 
-	// dns1: default/test-dns-1 with portalRef "main"
+	// dns1: default/test-dns-1 with portalRef portalMain
 	_ = store.Replace(ctx, "default/test-dns-1", []domaindns.FQDNView{
 		{
-			Name: "api.example.com", Source: domaindns.SourceExternalDNS,
-			Groups: []string{"web"}, Description: "Main API",
-			RecordType: "A", Targets: []string{"192.168.1.1"},
-			LastSeen: now, PortalName: "main", Namespace: "default",
+			Name: fqdnAPI, Source: domaindns.SourceExternalDNS,
+			Groups: []string{fqdnWeb}, Description: "Main API",
+			RecordType: "A", Targets: []string{ip192dot1},
+			LastSeen: now, PortalName: portalMain, Namespace: nsDefault,
 		},
 		{
 			Name: "web.example.com", Source: domaindns.SourceExternalDNS,
-			Groups: []string{"web"}, RecordType: "A",
-			Targets: []string{"192.168.1.2"}, LastSeen: now,
-			PortalName: "main", Namespace: "default",
+			Groups: []string{fqdnWeb}, RecordType: "A",
+			Targets: []string{ip192dot2}, LastSeen: now,
+			PortalName: portalMain, Namespace: nsDefault,
 		},
 		{
 			Name: "internal.example.com", Source: domaindns.SourceManual,
 			Groups: []string{"internal"}, RecordType: "A",
-			Targets:    []string{"10.0.0.1"},
-			PortalName: "main", Namespace: "default",
+			Targets:    []string{ip10dot1},
+			PortalName: portalMain, Namespace: nsDefault,
 		},
 	})
 
@@ -160,7 +160,7 @@ var _ = Describe("MCP Server", func() {
 
 				text := extractTextContent(result)
 				Expect(text).To(ContainSubstring("Found 4 FQDN(s)"))
-				Expect(text).To(ContainSubstring("api.example.com"))
+				Expect(text).To(ContainSubstring(fqdnAPI))
 				Expect(text).To(ContainSubstring("web.example.com"))
 				Expect(text).To(ContainSubstring("internal.example.com"))
 				Expect(text).To(ContainSubstring("prod-api.example.com"))
@@ -172,7 +172,7 @@ var _ = Describe("MCP Server", func() {
 				store := seedDNSStore()
 				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("search_fqdns", map[string]any{
-					"query": "api",
+					keyQuery: keyAPI,
 				})
 
 				result, err := server.handleSearchFQDNs(ctx, request)
@@ -182,7 +182,7 @@ var _ = Describe("MCP Server", func() {
 
 				text := extractTextContent(result)
 				Expect(text).To(ContainSubstring("Found 2 FQDN(s)"))
-				Expect(text).To(ContainSubstring("api.example.com"))
+				Expect(text).To(ContainSubstring(fqdnAPI))
 				Expect(text).To(ContainSubstring("prod-api.example.com"))
 				Expect(text).NotTo(ContainSubstring("web.example.com"))
 				Expect(text).NotTo(ContainSubstring("internal.example.com"))
@@ -192,14 +192,14 @@ var _ = Describe("MCP Server", func() {
 				store := seedDNSStore()
 				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("search_fqdns", map[string]any{
-					"query": "API",
+					keyQuery: "API",
 				})
 
 				result, err := server.handleSearchFQDNs(ctx, request)
 
 				Expect(err).NotTo(HaveOccurred())
 				text := extractTextContent(result)
-				Expect(text).To(ContainSubstring("api.example.com"))
+				Expect(text).To(ContainSubstring(fqdnAPI))
 			})
 		})
 
@@ -208,7 +208,7 @@ var _ = Describe("MCP Server", func() {
 				store := seedDNSStore()
 				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("search_fqdns", map[string]any{
-					"source": "manual",
+					keySource: "manual",
 				})
 
 				result, err := server.handleSearchFQDNs(ctx, request)
@@ -217,14 +217,14 @@ var _ = Describe("MCP Server", func() {
 				text := extractTextContent(result)
 				Expect(text).To(ContainSubstring("Found 1 FQDN(s)"))
 				Expect(text).To(ContainSubstring("internal.example.com"))
-				Expect(text).NotTo(ContainSubstring("api.example.com"))
+				Expect(text).NotTo(ContainSubstring(fqdnAPI))
 			})
 
 			It("should filter by external-dns source", func() {
 				store := seedDNSStore()
 				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("search_fqdns", map[string]any{
-					"source": "external-dns",
+					keySource: "external-dns",
 				})
 
 				result, err := server.handleSearchFQDNs(ctx, request)
@@ -233,7 +233,7 @@ var _ = Describe("MCP Server", func() {
 				text := extractTextContent(result)
 				// 3 external-dns FQDNs: api, web (from dns1) + prod-api (from dns2)
 				Expect(text).To(ContainSubstring("Found 3 FQDN(s)"))
-				Expect(text).To(ContainSubstring("api.example.com"))
+				Expect(text).To(ContainSubstring(fqdnAPI))
 				Expect(text).To(ContainSubstring("web.example.com"))
 				Expect(text).NotTo(ContainSubstring("internal.example.com"))
 			})
@@ -244,7 +244,7 @@ var _ = Describe("MCP Server", func() {
 				store := seedDNSStore()
 				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("search_fqdns", map[string]any{
-					"group": "web",
+					"group": fqdnWeb,
 				})
 
 				result, err := server.handleSearchFQDNs(ctx, request)
@@ -252,7 +252,7 @@ var _ = Describe("MCP Server", func() {
 				Expect(err).NotTo(HaveOccurred())
 				text := extractTextContent(result)
 				Expect(text).To(ContainSubstring("Found 2 FQDN(s)"))
-				Expect(text).To(ContainSubstring("api.example.com"))
+				Expect(text).To(ContainSubstring(fqdnAPI))
 				Expect(text).To(ContainSubstring("web.example.com"))
 			})
 		})
@@ -279,8 +279,8 @@ var _ = Describe("MCP Server", func() {
 				store := seedDNSStore()
 				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("search_fqdns", map[string]any{
-					"query":  "example",
-					"source": "manual",
+					keyQuery:  "example",
+					keySource: "manual",
 				})
 
 				result, err := server.handleSearchFQDNs(ctx, request)
@@ -297,7 +297,7 @@ var _ = Describe("MCP Server", func() {
 				store := seedDNSStore()
 				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("search_fqdns", map[string]any{
-					"query": "nonexistent",
+					keyQuery: "nonexistent",
 				})
 
 				result, err := server.handleSearchFQDNs(ctx, request)
@@ -326,15 +326,15 @@ var _ = Describe("MCP Server", func() {
 				_ = store.Replace(ctx, "default/test-dns-sync", []domaindns.FQDNView{
 					{
 						Name: "synced.example.com", Source: domaindns.SourceExternalDNS,
-						Groups: []string{"web"}, RecordType: "A",
-						Targets: []string{"10.0.0.1"}, SyncStatus: "sync",
-						PortalName: "main", Namespace: "default",
+						Groups: []string{fqdnWeb}, RecordType: "A",
+						Targets: []string{ip10dot1}, SyncStatus: "sync",
+						PortalName: portalMain, Namespace: nsDefault,
 					},
 					{
 						Name: "drifted.example.com", Source: domaindns.SourceExternalDNS,
-						Groups: []string{"web"}, RecordType: "A",
+						Groups: []string{fqdnWeb}, RecordType: "A",
 						Targets: []string{"10.0.0.2"}, SyncStatus: "notsync",
-						PortalName: "main", Namespace: "default",
+						PortalName: portalMain, Namespace: nsDefault,
 					},
 				})
 
@@ -363,22 +363,22 @@ var _ = Describe("MCP Server", func() {
 				store := dnsstore.NewFQDNStore(nil)
 				views := []domaindns.FQDNView{
 					{
-						Name: "api.example.com", Source: domaindns.SourceExternalDNS,
-						Groups: []string{"web"}, RecordType: "A",
-						Targets:    []string{"192.168.1.1"},
-						PortalName: "main", Namespace: "default",
+						Name: fqdnAPI, Source: domaindns.SourceExternalDNS,
+						Groups: []string{fqdnWeb}, RecordType: "A",
+						Targets:    []string{ip192dot1},
+						PortalName: portalMain, Namespace: nsDefault,
 					},
 					{
 						Name: "web.example.com", Source: domaindns.SourceExternalDNS,
-						Groups: []string{"web"}, RecordType: "A",
-						Targets:    []string{"192.168.1.2"},
-						PortalName: "main", Namespace: "default",
+						Groups: []string{fqdnWeb}, RecordType: "A",
+						Targets:    []string{ip192dot2},
+						PortalName: portalMain, Namespace: nsDefault,
 					},
 					{
 						Name: "internal.example.com", Source: domaindns.SourceManual,
 						Groups: []string{"internal"}, RecordType: "A",
-						Targets:    []string{"10.0.0.1"},
-						PortalName: "main", Namespace: "default",
+						Targets:    []string{ip10dot1},
+						PortalName: portalMain, Namespace: nsDefault,
 					},
 				}
 				// Same FQDNs in two different resources
@@ -403,12 +403,12 @@ var _ = Describe("MCP Server", func() {
 			It("should list all portals with their details", func() {
 				pStore := portalstore.NewPortalStore()
 				_ = pStore.Replace(ctx, "sreportal-system/main", domainportal.PortalView{
-					Name: "main", Namespace: "sreportal-system",
+					Name: portalMain, Namespace: nsSystem,
 					Title: "Main Portal", Main: true, Ready: true,
 				})
 				_ = pStore.Replace(ctx, "sreportal-system/dev", domainportal.PortalView{
-					Name: "dev", Namespace: "sreportal-system",
-					Title: "Dev Portal", SubPath: "dev", Ready: false,
+					Name: nsDev, Namespace: nsSystem,
+					Title: "Dev Portal", SubPath: nsDev, Ready: false,
 				})
 
 				store := dnsstore.NewFQDNStore(nil)
@@ -431,7 +431,7 @@ var _ = Describe("MCP Server", func() {
 			It("should include remote URL when configured", func() {
 				pStore := portalstore.NewPortalStore()
 				_ = pStore.Replace(ctx, "sreportal-system/remote", domainportal.PortalView{
-					Name: "remote", Namespace: "sreportal-system",
+					Name: "remote", Namespace: nsSystem,
 					Title: "Remote Portal", IsRemote: true, Ready: true,
 					URL: "https://remote.example.com",
 				})
@@ -450,7 +450,7 @@ var _ = Describe("MCP Server", func() {
 			It("should include remoteSync with lastSyncError when remote sync failed", func() {
 				pStore := portalstore.NewPortalStore()
 				_ = pStore.Replace(ctx, "sreportal-system/remote", domainportal.PortalView{
-					Name: "remote", Namespace: "sreportal-system",
+					Name: "remote", Namespace: nsSystem,
 					Title: "Remote Portal", IsRemote: true, Ready: true,
 					URL: "https://remote.example.com",
 					RemoteSync: &domainportal.RemoteSyncView{
@@ -492,23 +492,23 @@ var _ = Describe("MCP Server", func() {
 				store := dnsstore.NewFQDNStore(nil)
 				_ = store.Replace(ctx, "default/test-dns", []domaindns.FQDNView{
 					{
-						Name: "api.example.com", Source: domaindns.SourceExternalDNS,
-						Groups: []string{"api"}, Description: "Main API endpoint",
-						RecordType: "A", Targets: []string{"192.168.1.1", "192.168.1.2"},
+						Name: fqdnAPI, Source: domaindns.SourceExternalDNS,
+						Groups: []string{keyAPI}, Description: "Main API endpoint",
+						RecordType: "A", Targets: []string{ip192dot1, ip192dot2},
 						LastSeen:   time.Date(2026, 1, 15, 10, 30, 0, 0, time.UTC),
-						PortalName: "main", Namespace: "default",
+						PortalName: portalMain, Namespace: nsDefault,
 					},
 					{
 						Name: "api-v2.example.com", Source: domaindns.SourceExternalDNS,
-						Groups: []string{"api"}, RecordType: "CNAME",
-						Targets:    []string{"api.example.com"},
-						PortalName: "main", Namespace: "default",
+						Groups: []string{keyAPI}, RecordType: "CNAME",
+						Targets:    []string{fqdnAPI},
+						PortalName: portalMain, Namespace: nsDefault,
 					},
 				})
 
 				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("get_fqdn_details", map[string]any{
-					"fqdn": "api.example.com",
+					keyFqdn: fqdnAPI,
 				})
 
 				result, err := server.handleGetFQDNDetails(ctx, request)
@@ -523,8 +523,8 @@ var _ = Describe("MCP Server", func() {
 				Expect(text).To(ContainSubstring(`"group": "api"`))
 				Expect(text).To(ContainSubstring(`"description": "Main API endpoint"`))
 				Expect(text).To(ContainSubstring(`"record_type": "A"`))
-				Expect(text).To(ContainSubstring("192.168.1.1"))
-				Expect(text).To(ContainSubstring("192.168.1.2"))
+				Expect(text).To(ContainSubstring(ip192dot1))
+				Expect(text).To(ContainSubstring(ip192dot2))
 				Expect(text).To(ContainSubstring(`"portal": "main"`))
 				Expect(text).To(ContainSubstring(`"dns_resource": "default/main"`))
 				Expect(text).To(ContainSubstring("2026-01-15"))
@@ -534,16 +534,16 @@ var _ = Describe("MCP Server", func() {
 				store := dnsstore.NewFQDNStore(nil)
 				_ = store.Replace(ctx, "default/test-dns", []domaindns.FQDNView{
 					{
-						Name: "api.example.com", Source: domaindns.SourceExternalDNS,
-						Groups: []string{"api"}, RecordType: "A",
-						Targets:    []string{"192.168.1.1"},
-						PortalName: "main", Namespace: "default",
+						Name: fqdnAPI, Source: domaindns.SourceExternalDNS,
+						Groups: []string{keyAPI}, RecordType: "A",
+						Targets:    []string{ip192dot1},
+						PortalName: portalMain, Namespace: nsDefault,
 					},
 				})
 
 				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("get_fqdn_details", map[string]any{
-					"fqdn": "API.EXAMPLE.COM",
+					keyFqdn: "API.EXAMPLE.COM",
 				})
 
 				result, err := server.handleGetFQDNDetails(ctx, request)
@@ -551,23 +551,23 @@ var _ = Describe("MCP Server", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(isErrorResult(result)).To(BeFalse())
 				text := extractTextContent(result)
-				Expect(text).To(ContainSubstring("api.example.com"))
+				Expect(text).To(ContainSubstring(fqdnAPI))
 			})
 
 			It("should handle trailing dot in FQDN", func() {
 				store := dnsstore.NewFQDNStore(nil)
 				_ = store.Replace(ctx, "default/test-dns", []domaindns.FQDNView{
 					{
-						Name: "api.example.com", Source: domaindns.SourceExternalDNS,
-						Groups: []string{"api"}, RecordType: "A",
-						Targets:    []string{"192.168.1.1"},
-						PortalName: "main", Namespace: "default",
+						Name: fqdnAPI, Source: domaindns.SourceExternalDNS,
+						Groups: []string{keyAPI}, RecordType: "A",
+						Targets:    []string{ip192dot1},
+						PortalName: portalMain, Namespace: nsDefault,
 					},
 				})
 
 				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("get_fqdn_details", map[string]any{
-					"fqdn": "api.example.com.",
+					keyFqdn: "api.example.com.",
 				})
 
 				result, err := server.handleGetFQDNDetails(ctx, request)
@@ -575,7 +575,7 @@ var _ = Describe("MCP Server", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(isErrorResult(result)).To(BeFalse())
 				text := extractTextContent(result)
-				Expect(text).To(ContainSubstring("api.example.com"))
+				Expect(text).To(ContainSubstring(fqdnAPI))
 			})
 		})
 
@@ -584,16 +584,16 @@ var _ = Describe("MCP Server", func() {
 				store := dnsstore.NewFQDNStore(nil)
 				_ = store.Replace(ctx, "default/test-dns", []domaindns.FQDNView{
 					{
-						Name: "api.example.com", Source: domaindns.SourceExternalDNS,
-						Groups: []string{"api"}, RecordType: "A",
-						Targets: []string{"192.168.1.1"}, SyncStatus: "sync",
-						PortalName: "main", Namespace: "default",
+						Name: fqdnAPI, Source: domaindns.SourceExternalDNS,
+						Groups: []string{keyAPI}, RecordType: "A",
+						Targets: []string{ip192dot1}, SyncStatus: "sync",
+						PortalName: portalMain, Namespace: nsDefault,
 					},
 				})
 
 				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("get_fqdn_details", map[string]any{
-					"fqdn": "api.example.com",
+					keyFqdn: fqdnAPI,
 				})
 
 				result, err := server.handleGetFQDNDetails(ctx, request)
@@ -615,7 +615,7 @@ var _ = Describe("MCP Server", func() {
 				store := seedDNSStore()
 				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("get_fqdn_details", map[string]any{
-					"fqdn": "nonexistent.example.com",
+					keyFqdn: "nonexistent.example.com",
 				})
 
 				result, err := server.handleGetFQDNDetails(ctx, request)
@@ -648,10 +648,10 @@ var _ = Describe("MCP Server", func() {
 			store := dnsstore.NewFQDNStore(nil)
 			_ = store.Replace(ctx, "default/test-dns", []domaindns.FQDNView{
 				{
-					Name: "api.example.com", Source: domaindns.SourceExternalDNS,
-					Groups: []string{"web"}, RecordType: "A",
-					Targets:    []string{"192.168.1.1"},
-					PortalName: "main", Namespace: "default",
+					Name: fqdnAPI, Source: domaindns.SourceExternalDNS,
+					Groups: []string{fqdnWeb}, RecordType: "A",
+					Targets:    []string{ip192dot1},
+					PortalName: portalMain, Namespace: nsDefault,
 				},
 			})
 
@@ -671,13 +671,13 @@ var _ = Describe("MCP Server", func() {
 			err = json.Unmarshal([]byte(jsonStr), &results)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(results).To(HaveLen(1))
-			Expect(results[0].Name).To(Equal("api.example.com"))
+			Expect(results[0].Name).To(Equal(fqdnAPI))
 		})
 
 		It("should produce valid JSON in portal list results", func() {
 			pStore := portalstore.NewPortalStore()
 			_ = pStore.Replace(ctx, "sreportal-system/main", domainportal.PortalView{
-				Name: "main", Namespace: "sreportal-system",
+				Name: portalMain, Namespace: nsSystem,
 				Title: "Main Portal", Main: true, Ready: true,
 			})
 
@@ -706,16 +706,16 @@ var _ = Describe("MCP Server", func() {
 			store := dnsstore.NewFQDNStore(nil)
 			_ = store.Replace(ctx, "default/test-dns", []domaindns.FQDNView{
 				{
-					Name: "api.example.com", Source: domaindns.SourceExternalDNS,
-					Groups: []string{"api"}, RecordType: "A",
-					Targets:    []string{"192.168.1.1"},
-					PortalName: "main", Namespace: "default",
+					Name: fqdnAPI, Source: domaindns.SourceExternalDNS,
+					Groups: []string{keyAPI}, RecordType: "A",
+					Targets:    []string{ip192dot1},
+					PortalName: portalMain, Namespace: nsDefault,
 				},
 			})
 
 			server := NewDNSServer(store, emptyPortalStore())
 			request := newCallToolRequest("get_fqdn_details", map[string]any{
-				"fqdn": "api.example.com",
+				keyFqdn: fqdnAPI,
 			})
 
 			result, err := server.handleGetFQDNDetails(ctx, request)
@@ -730,7 +730,7 @@ var _ = Describe("MCP Server", func() {
 			var details FQDNDetails
 			err = json.Unmarshal([]byte(jsonStr), &details)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(details.Name).To(Equal("api.example.com"))
+			Expect(details.Name).To(Equal(fqdnAPI))
 			Expect(details.RecordType).To(Equal("A"))
 		})
 	})
@@ -750,10 +750,10 @@ var _ = Describe("MCP Server", func() {
 			It("should return all sreportal metrics", func() {
 				reg := prometheus.NewRegistry()
 				gauge := prometheus.NewGauge(prometheus.GaugeOpts{
-					Namespace: "sreportal",
-					Subsystem: "dns",
-					Name:      "fqdns_total",
-					Help:      "Total FQDNs",
+					Namespace: mNsSreport,
+					Subsystem: mSubDNS,
+					Name:      mFqdnTotal,
+					Help:      mFqdnHelp,
 				})
 				reg.MustRegister(gauge)
 				gauge.Set(42)
@@ -779,13 +779,13 @@ var _ = Describe("MCP Server", func() {
 			It("should filter by subsystem", func() {
 				reg := prometheus.NewRegistry()
 				dnsGauge := prometheus.NewGauge(prometheus.GaugeOpts{
-					Namespace: "sreportal",
-					Subsystem: "dns",
-					Name:      "fqdns_total",
-					Help:      "Total FQDNs",
+					Namespace: mNsSreport,
+					Subsystem: mSubDNS,
+					Name:      mFqdnTotal,
+					Help:      mFqdnHelp,
 				})
 				httpCounter := prometheus.NewCounter(prometheus.CounterOpts{
-					Namespace: "sreportal",
+					Namespace: mNsSreport,
 					Subsystem: "http",
 					Name:      "requests_total",
 					Help:      "Total HTTP requests",
@@ -794,7 +794,7 @@ var _ = Describe("MCP Server", func() {
 
 				server := NewMetricsServer(reg)
 				request := newCallToolRequest("list_metrics", map[string]any{
-					"subsystem": "dns",
+					"subsystem": mSubDNS,
 				})
 
 				result, err := server.handleListMetrics(ctx, request)
@@ -808,14 +808,14 @@ var _ = Describe("MCP Server", func() {
 			It("should filter by search", func() {
 				reg := prometheus.NewRegistry()
 				fqdnGauge := prometheus.NewGauge(prometheus.GaugeOpts{
-					Namespace: "sreportal",
-					Subsystem: "dns",
-					Name:      "fqdns_total",
-					Help:      "Total FQDNs",
+					Namespace: mNsSreport,
+					Subsystem: mSubDNS,
+					Name:      mFqdnTotal,
+					Help:      mFqdnHelp,
 				})
 				groupGauge := prometheus.NewGauge(prometheus.GaugeOpts{
-					Namespace: "sreportal",
-					Subsystem: "dns",
+					Namespace: mNsSreport,
+					Subsystem: mSubDNS,
 					Name:      "groups_total",
 					Help:      "Total groups",
 				})
@@ -823,7 +823,7 @@ var _ = Describe("MCP Server", func() {
 
 				server := NewMetricsServer(reg)
 				request := newCallToolRequest("list_metrics", map[string]any{
-					"search": "fqdn",
+					"search": keyFqdn,
 				})
 
 				result, err := server.handleListMetrics(ctx, request)
@@ -869,7 +869,7 @@ var _ = Describe("MCP Server", func() {
 			It("should list releases for a day", func() {
 				_ = store.Replace(ctx, "default/release-2026-03-21", []domainrelease.EntryView{
 					{
-						PortalRef: "main",
+						PortalRef: portalMain,
 						Day:       "2026-03-21",
 						Type:      "deployment",
 						Version:   "v1.0.0",
@@ -928,28 +928,28 @@ var _ = Describe("MCP Server", func() {
 		Describe("handleListImages", func() {
 			Context("with images in the store", func() {
 				BeforeEach(func() {
-					_ = store.ReplaceAll(ctx, "main", map[domainimage.WorkloadKey][]domainimage.ImageView{
-						{Kind: "Deployment", Namespace: "default", Name: "api"}: {
+					_ = store.ReplaceAll(ctx, portalMain, map[domainimage.WorkloadKey][]domainimage.ImageView{
+						{Kind: kindDeploy, Namespace: nsDefault, Name: keyAPI}: {
 							{
-								PortalRef:  "main",
+								PortalRef:  portalMain,
 								Registry:   "docker.io",
 								Repository: "myorg/api",
 								Tag:        "v1.2.3",
 								TagType:    domainimage.TagTypeSemver,
 								Workloads: []domainimage.WorkloadRef{
-									{Kind: "Deployment", Namespace: "default", Name: "api", Container: "api"},
+									{Kind: kindDeploy, Namespace: nsDefault, Name: keyAPI, Container: keyAPI},
 								},
 							},
 						},
-						{Kind: "Deployment", Namespace: "default", Name: "worker"}: {
+						{Kind: kindDeploy, Namespace: nsDefault, Name: nameWorker}: {
 							{
-								PortalRef:  "main",
+								PortalRef:  portalMain,
 								Registry:   "ghcr.io",
 								Repository: "myorg/worker",
 								Tag:        "abc1234",
 								TagType:    domainimage.TagTypeCommit,
 								Workloads: []domainimage.WorkloadRef{
-									{Kind: "Deployment", Namespace: "default", Name: "worker", Container: "worker"},
+									{Kind: kindDeploy, Namespace: nsDefault, Name: nameWorker, Container: nameWorker},
 								},
 							},
 						},
@@ -971,20 +971,20 @@ var _ = Describe("MCP Server", func() {
 				})
 
 				It("should filter by portal", func() {
-					_ = store.ReplaceAll(ctx, "dev", map[domainimage.WorkloadKey][]domainimage.ImageView{
-						{Kind: "Deployment", Namespace: "dev", Name: "svc"}: {
+					_ = store.ReplaceAll(ctx, nsDev, map[domainimage.WorkloadKey][]domainimage.ImageView{
+						{Kind: kindDeploy, Namespace: nsDev, Name: nameSvc}: {
 							{
-								PortalRef:  "dev",
+								PortalRef:  nsDev,
 								Registry:   "docker.io",
 								Repository: "myorg/svc",
 								Tag:        "latest",
 								TagType:    domainimage.TagTypeLatest,
-								Workloads:  []domainimage.WorkloadRef{{Kind: "Deployment", Namespace: "dev", Name: "svc", Container: "svc"}},
+								Workloads:  []domainimage.WorkloadRef{{Kind: kindDeploy, Namespace: nsDev, Name: nameSvc, Container: nameSvc}},
 							},
 						},
 					})
 					s := NewImageServer(store)
-					req := newCallToolRequest("list_images", map[string]any{"portal": "dev"})
+					req := newCallToolRequest("list_images", map[string]any{"portal": nsDev})
 
 					result, err := s.handleListImages(ctx, req)
 
@@ -1022,7 +1022,7 @@ var _ = Describe("MCP Server", func() {
 
 				It("should filter by search substring", func() {
 					s := NewImageServer(store)
-					req := newCallToolRequest("list_images", map[string]any{"search": "worker"})
+					req := newCallToolRequest("list_images", map[string]any{"search": nameWorker})
 
 					result, err := s.handleListImages(ctx, req)
 

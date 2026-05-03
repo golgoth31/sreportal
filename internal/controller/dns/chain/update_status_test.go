@@ -52,8 +52,8 @@ var _ = Describe("UpdateStatusHandler", func() {
 	newDNS := func() *sreportalv1alpha1.DNS {
 		return &sreportalv1alpha1.DNS{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-dns",
-				Namespace: "default",
+				Name:      tNameDNS,
+				Namespace: tNsDefault,
 			},
 		}
 	}
@@ -68,7 +68,7 @@ var _ = Describe("UpdateStatusHandler", func() {
 				{
 					Name:   "APIs",
 					Source: dnspkg.SourceExternalDNS,
-					FQDNs:  []sreportalv1alpha1.FQDNStatus{{FQDN: "api.example.com"}},
+					FQDNs:  []sreportalv1alpha1.FQDNStatus{{FQDN: tFqdnAPI}},
 				},
 				{
 					Name:   "Internal",
@@ -88,7 +88,7 @@ var _ = Describe("UpdateStatusHandler", func() {
 
 			// Verify the status was persisted via the fake client
 			var updated sreportalv1alpha1.DNS
-			Expect(c.Get(context.Background(), types.NamespacedName{Name: "test-dns", Namespace: "default"}, &updated)).To(Succeed())
+			Expect(c.Get(context.Background(), types.NamespacedName{Name: tNameDNS, Namespace: tNsDefault}, &updated)).To(Succeed())
 			Expect(updated.Status.Groups).To(HaveLen(2))
 			Expect(updated.Status.Groups[0].Name).To(Equal("APIs"))
 			Expect(updated.Status.Groups[1].Name).To(Equal("Internal"))
@@ -116,7 +116,7 @@ var _ = Describe("UpdateStatusHandler", func() {
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
 			var updated sreportalv1alpha1.DNS
-			Expect(c.Get(context.Background(), types.NamespacedName{Name: "test-dns", Namespace: "default"}, &updated)).To(Succeed())
+			Expect(c.Get(context.Background(), types.NamespacedName{Name: tNameDNS, Namespace: tNsDefault}, &updated)).To(Succeed())
 			Expect(updated.Status.Groups).To(BeEmpty())
 			Expect(updated.Status.LastReconcileTime).NotTo(BeNil())
 
@@ -151,7 +151,7 @@ var _ = Describe("UpdateStatusHandler", func() {
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 
 			var updated sreportalv1alpha1.DNS
-			Expect(c.Get(context.Background(), types.NamespacedName{Name: "test-dns", Namespace: "default"}, &updated)).To(Succeed())
+			Expect(c.Get(context.Background(), types.NamespacedName{Name: tNameDNS, Namespace: tNsDefault}, &updated)).To(Succeed())
 
 			readyCond := findCondition(updated.Status.Conditions, dnspkg.ConditionTypeReady)
 			Expect(readyCond).NotTo(BeNil())

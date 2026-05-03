@@ -18,11 +18,11 @@ func seedStore(t *testing.T) *portalstore.PortalStore {
 
 	_ = store.Replace(ctx, "ns/main", domainportal.PortalView{
 		Name: "main", Title: "Main Portal", Main: true,
-		Namespace: "sreportal-system", Ready: true,
+		Namespace: tNsSreportalSystem, Ready: true,
 	})
 	_ = store.Replace(ctx, "ns/dev", domainportal.PortalView{
 		Name: "dev", Title: "Dev Portal", SubPath: "dev",
-		Namespace: "sreportal-system", Ready: false,
+		Namespace: tNsSreportalSystem, Ready: false,
 	})
 	_ = store.Replace(ctx, "ns/remote", domainportal.PortalView{
 		Name: "remote", Title: "Remote Portal", IsRemote: true,
@@ -49,7 +49,7 @@ func TestPortalStore_List_ReturnsAllSorted(t *testing.T) {
 func TestPortalStore_List_FiltersByNamespace(t *testing.T) {
 	store := seedStore(t)
 	views, err := store.List(context.Background(), domainportal.PortalFilters{
-		Namespace: "sreportal-system",
+		Namespace: tNsSreportalSystem,
 	})
 
 	require.NoError(t, err)

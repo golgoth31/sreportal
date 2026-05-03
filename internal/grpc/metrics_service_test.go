@@ -33,10 +33,10 @@ func TestListMetrics_ReturnsOnlySreportalMetrics(t *testing.T) {
 	reg := prometheus.NewRegistry()
 
 	sreportalGauge := prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "sreportal",
-		Subsystem: "dns",
-		Name:      "fqdns_total",
-		Help:      "Total FQDNs",
+		Namespace: tNamespaceSreportal,
+		Subsystem: tSubsystemDNS,
+		Name:      tMetricFQDNTotal,
+		Help:      tHelpFQDNTotal,
 	})
 	goGauge := prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "go_goroutines",
@@ -60,13 +60,13 @@ func TestListMetrics_SubsystemFilter(t *testing.T) {
 	reg := prometheus.NewRegistry()
 
 	dnsGauge := prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "sreportal",
-		Subsystem: "dns",
-		Name:      "fqdns_total",
-		Help:      "Total FQDNs",
+		Namespace: tNamespaceSreportal,
+		Subsystem: tSubsystemDNS,
+		Name:      tMetricFQDNTotal,
+		Help:      tHelpFQDNTotal,
 	})
 	controllerCounter := prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace: "sreportal",
+		Namespace: tNamespaceSreportal,
 		Subsystem: "controller",
 		Name:      "reconcile_total",
 		Help:      "Total reconciliations",
@@ -86,14 +86,14 @@ func TestListMetrics_SearchFilter(t *testing.T) {
 	reg := prometheus.NewRegistry()
 
 	fqdnGauge := prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "sreportal",
-		Subsystem: "dns",
-		Name:      "fqdns_total",
-		Help:      "Total FQDNs",
+		Namespace: tNamespaceSreportal,
+		Subsystem: tSubsystemDNS,
+		Name:      tMetricFQDNTotal,
+		Help:      tHelpFQDNTotal,
 	})
 	groupGauge := prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "sreportal",
-		Subsystem: "dns",
+		Namespace: tNamespaceSreportal,
+		Subsystem: tSubsystemDNS,
 		Name:      "groups_total",
 		Help:      "Total groups",
 	})
@@ -112,7 +112,7 @@ func TestListMetrics_HistogramValues(t *testing.T) {
 	reg := prometheus.NewRegistry()
 
 	hist := prometheus.NewHistogram(prometheus.HistogramOpts{
-		Namespace: "sreportal",
+		Namespace: tNamespaceSreportal,
 		Subsystem: "http",
 		Name:      "request_duration_seconds",
 		Help:      "HTTP request latency",

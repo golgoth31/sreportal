@@ -65,7 +65,7 @@ func (h *HealthCheckRemoteHandler) Handle(ctx context.Context, rc *reconciler.Re
 		portal.Status.RemoteSync.LastSyncError = err.Error()
 
 		meta.SetStatusCondition(&portal.Status.Conditions, metav1.Condition{
-			Type:               "Ready",
+			Type:               conditionTypeReady,
 			Status:             metav1.ConditionFalse,
 			Reason:             "RemoteConnectionFailed",
 			Message:            "Failed to connect to remote portal: " + err.Error(),

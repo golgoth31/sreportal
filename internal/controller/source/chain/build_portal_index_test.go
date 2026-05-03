@@ -39,11 +39,11 @@ func newScheme(t *testing.T) *runtime.Scheme {
 func TestBuildPortalIndex_NoMainPortal_IndexMainIsNil(t *testing.T) {
 	// Two local portals, neither has spec.main=true
 	portalA := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: "team-a", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: "team-a", Namespace: tNsDefault},
 		Spec:       sreportalv1alpha1.PortalSpec{Title: "Team A"},
 	}
 	portalB := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: "team-b", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: "team-b", Namespace: tNsDefault},
 		Spec:       sreportalv1alpha1.PortalSpec{Title: "Team B"},
 	}
 
@@ -68,11 +68,11 @@ func TestBuildPortalIndex_NoMainPortal_IndexMainIsNil(t *testing.T) {
 
 func TestBuildPortalIndex_MainPortalExists_IndexMainIsSet(t *testing.T) {
 	mainPortal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: "main", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: tPortalMain, Namespace: tNsDefault},
 		Spec:       sreportalv1alpha1.PortalSpec{Title: "Main Portal", Main: true},
 	}
 	otherPortal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: "team-a", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: "team-a", Namespace: tNsDefault},
 		Spec:       sreportalv1alpha1.PortalSpec{Title: "Team A"},
 	}
 
@@ -89,7 +89,7 @@ func TestBuildPortalIndex_MainPortalExists_IndexMainIsSet(t *testing.T) {
 
 	require.NotNil(t, rc.Data.Index)
 	require.NotNil(t, rc.Data.Index.Main)
-	assert.Equal(t, "main", rc.Data.Index.Main.Name)
+	assert.Equal(t, tPortalMain, rc.Data.Index.Main.Name)
 	assert.Len(t, rc.Data.Index.Local, 2)
 }
 
@@ -109,7 +109,7 @@ func TestBuildPortalIndex_NoPortals_IndexNil(t *testing.T) {
 
 func TestBuildPortalIndex_OnlyRemotePortals_IndexNilAndReturnsEarly(t *testing.T) {
 	remotePortal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: "remote", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: "remote", Namespace: tNsDefault},
 		Spec: sreportalv1alpha1.PortalSpec{
 			Title:  "Remote",
 			Remote: &sreportalv1alpha1.RemotePortalSpec{URL: "https://remote.example.com"},
