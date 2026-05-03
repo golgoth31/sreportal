@@ -20,7 +20,7 @@ require (
 	github.com/prometheus/common v0.67.5
 	github.com/stretchr/testify v1.11.1
 	go.elastic.co/ecszap v1.0.3
-	go.uber.org/zap v1.27.1
+	go.uber.org/zap v1.28.0
 	go.uber.org/zap/exp v0.3.0
 	golang.org/x/net v0.53.0
 	google.golang.org/protobuf v1.36.11
