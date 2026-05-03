@@ -11,7 +11,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/go-containerregistry v0.21.5
 	github.com/labstack/echo/v5 v5.1.1
-	github.com/mark3labs/mcp-go v0.46.0
+	github.com/mark3labs/mcp-go v0.50.0
 	github.com/onsi/ginkgo/v2 v2.28.3
 	github.com/onsi/gomega v1.40.0
 	github.com/openshift/client-go v0.0.0-20260320040014-4b5fc2cdad98
@@ -90,6 +90,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/projectcontour/contour v1.33.2 // indirect
 	github.com/prometheus/procfs v0.20.1 // indirect
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/smartystreets/goconvey v1.7.2 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
