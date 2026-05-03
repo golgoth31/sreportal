@@ -18,9 +18,11 @@ package service
 
 import (
 	"context"
+	"fmt"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	externaldnssource "sigs.k8s.io/external-dns/source"
+	"sigs.k8s.io/external-dns/source/template"
 
 	"github.com/golgoth31/sreportal/internal/config"
 	"github.com/golgoth31/sreportal/internal/source/registry"
@@ -48,25 +50,22 @@ func (b *Builder) Build(ctx context.Context, deps registry.Deps, cfg *config.Ope
 	if err != nil {
 		return nil, err
 	}
+	tmpls, err := template.NewEngine(sc.FQDNTemplate, "", "", sc.CombineFQDNAndAnnotation)
+	if err != nil {
+		return nil, fmt.Errorf("build template engine: %w", err)
+	}
 
-	return externaldnssource.NewServiceSource(
-		ctx,
-		deps.KubeClient,
-		sc.Namespace,
-		sc.AnnotationFilter,
-		sc.FQDNTemplate,
-		sc.CombineFQDNAndAnnotation,
-		"",
-		sc.PublishInternal,
-		sc.PublishHostIP,
-		false,
-		sc.ServiceTypeFilter,
-		sc.IgnoreHostnameAnnotation,
-		labelSelector,
-		sc.ResolveLoadBalancerHostname,
-		false,
-		false,
-	)
+	return externaldnssource.NewServiceSource(ctx, deps.KubeClient, &externaldnssource.Config{
+		Namespace:                   sc.Namespace,
+		AnnotationFilter:            sc.AnnotationFilter,
+		LabelFilter:                 labelSelector,
+		TemplateEngine:              tmpls,
+		ServiceTypeFilter:           sc.ServiceTypeFilter,
+		PublishInternal:             sc.PublishInternal,
+		PublishHostIP:               sc.PublishHostIP,
+		IgnoreHostnameAnnotation:    sc.IgnoreHostnameAnnotation,
+		ResolveLoadBalancerHostname: sc.ResolveLoadBalancerHostname,
+	})
 }
 
 func (b *Builder) GVR() (schema.GroupVersionResource, bool) {

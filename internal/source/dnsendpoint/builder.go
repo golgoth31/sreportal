@@ -27,6 +27,11 @@ import (
 	"github.com/golgoth31/sreportal/internal/source/registry"
 )
 
+const (
+	dnsEndpointAPIVersion = "externaldns.k8s.io/v1alpha1"
+	dnsEndpointKind       = "DNSEndpoint"
+)
+
 // +kubebuilder:rbac:groups=externaldns.k8s.io,resources=dnsendpoints,verbs=get;list;watch
 
 const SourceTypeDNSEndpoint registry.SourceType = "dnsendpoint"
@@ -43,27 +48,13 @@ func (b *Builder) Enabled(cfg *config.OperatorConfig) bool {
 	return cfg.Sources.DNSEndpoint != nil && cfg.Sources.DNSEndpoint.Enabled
 }
 
-func (b *Builder) Build(_ context.Context, deps registry.Deps, cfg *config.OperatorConfig) (registry.Source, error) {
-	crdClient, scheme, err := externaldnssource.NewCRDClientForAPIVersionKind(
-		deps.KubeClient,
-		"",
-		"",
-		"externaldns.k8s.io/v1alpha1",
-		"DNSEndpoint",
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return externaldnssource.NewCRDSource(
-		crdClient,
-		cfg.Sources.DNSEndpoint.Namespace,
-		"DNSEndpoint",
-		"",
-		labels.Everything(),
-		scheme,
-		true,
-	)
+func (b *Builder) Build(ctx context.Context, deps registry.Deps, cfg *config.OperatorConfig) (registry.Source, error) {
+	return externaldnssource.NewCRDSource(ctx, deps.RestConfig, &externaldnssource.Config{
+		Namespace:           cfg.Sources.DNSEndpoint.Namespace,
+		LabelFilter:         labels.Everything(),
+		CRDSourceAPIVersion: dnsEndpointAPIVersion,
+		CRDSourceKind:       dnsEndpointKind,
+	})
 }
 
 func (b *Builder) GVR() (schema.GroupVersionResource, bool) {

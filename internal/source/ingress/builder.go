@@ -18,9 +18,11 @@ package ingress
 
 import (
 	"context"
+	"fmt"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	externaldnssource "sigs.k8s.io/external-dns/source"
+	"sigs.k8s.io/external-dns/source/template"
 
 	"github.com/golgoth31/sreportal/internal/config"
 	"github.com/golgoth31/sreportal/internal/source/registry"
@@ -48,20 +50,21 @@ func (b *Builder) Build(ctx context.Context, deps registry.Deps, cfg *config.Ope
 	if err != nil {
 		return nil, err
 	}
+	tmpls, err := template.NewEngine(ic.FQDNTemplate, "", "", ic.CombineFQDNAndAnnotation)
+	if err != nil {
+		return nil, fmt.Errorf("build template engine: %w", err)
+	}
 
-	return externaldnssource.NewIngressSource(
-		ctx,
-		deps.KubeClient,
-		ic.Namespace,
-		ic.AnnotationFilter,
-		ic.FQDNTemplate,
-		ic.CombineFQDNAndAnnotation,
-		ic.IgnoreHostnameAnnotation,
-		ic.IgnoreIngressTLSSpec,
-		ic.IgnoreIngressRulesSpec,
-		labelSelector,
-		ic.IngressClassNames,
-	)
+	return externaldnssource.NewIngressSource(ctx, deps.KubeClient, &externaldnssource.Config{
+		Namespace:                ic.Namespace,
+		AnnotationFilter:         ic.AnnotationFilter,
+		LabelFilter:              labelSelector,
+		IngressClassNames:        ic.IngressClassNames,
+		TemplateEngine:           tmpls,
+		IgnoreHostnameAnnotation: ic.IgnoreHostnameAnnotation,
+		IgnoreIngressTLSSpec:     ic.IgnoreIngressTLSSpec,
+		IgnoreIngressRulesSpec:   ic.IgnoreIngressRulesSpec,
+	})
 }
 
 // GVR returns false: ingress annotation enrichment was not enabled in the

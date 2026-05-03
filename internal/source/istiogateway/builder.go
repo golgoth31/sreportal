@@ -18,10 +18,12 @@ package istiogateway
 
 import (
 	"context"
+	"fmt"
 
 	istioclient "istio.io/client-go/pkg/clientset/versioned"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	externaldnssource "sigs.k8s.io/external-dns/source"
+	"sigs.k8s.io/external-dns/source/template"
 
 	"github.com/golgoth31/sreportal/internal/config"
 	"github.com/golgoth31/sreportal/internal/source/registry"
@@ -50,16 +52,16 @@ func (b *Builder) Build(ctx context.Context, deps registry.Deps, cfg *config.Ope
 		return nil, err
 	}
 	gc := cfg.Sources.IstioGateway
-	return externaldnssource.NewIstioGatewaySource(
-		ctx,
-		deps.KubeClient,
-		b.istioClient,
-		gc.Namespace,
-		gc.AnnotationFilter,
-		gc.FQDNTemplate,
-		gc.CombineFQDNAndAnnotation,
-		gc.IgnoreHostnameAnnotation,
-	)
+	tmpls, err := template.NewEngine(gc.FQDNTemplate, "", "", gc.CombineFQDNAndAnnotation)
+	if err != nil {
+		return nil, fmt.Errorf("build template engine: %w", err)
+	}
+	return externaldnssource.NewIstioGatewaySource(ctx, deps.KubeClient, b.istioClient, &externaldnssource.Config{
+		Namespace:                gc.Namespace,
+		AnnotationFilter:         gc.AnnotationFilter,
+		TemplateEngine:           tmpls,
+		IgnoreHostnameAnnotation: gc.IgnoreHostnameAnnotation,
+	})
 }
 
 func (b *Builder) GVR() (schema.GroupVersionResource, bool) {

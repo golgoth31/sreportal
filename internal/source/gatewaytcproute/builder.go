@@ -46,7 +46,7 @@ func (b *Builder) Enabled(cfg *config.OperatorConfig) bool {
 	return cfg.Sources.GatewayTCPRoute != nil && cfg.Sources.GatewayTCPRoute.Enabled
 }
 
-func (b *Builder) Build(_ context.Context, deps registry.Deps, cfg *config.OperatorConfig) (registry.Source, error) {
+func (b *Builder) Build(ctx context.Context, deps registry.Deps, cfg *config.OperatorConfig) (registry.Source, error) {
 	if err := b.ensureGatewayClient(deps); err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func (b *Builder) Build(_ context.Context, deps registry.Deps, cfg *config.Opera
 		return nil, err
 	}
 	clients := registry.NewGatewayClientGenerator(deps, b.gatewayClient)
-	return externaldnssource.NewGatewayTCPRouteSource(clients, srcCfg)
+	return externaldnssource.NewGatewayTCPRouteSource(ctx, clients, srcCfg)
 }
 
 func (b *Builder) GVR() (schema.GroupVersionResource, bool) {

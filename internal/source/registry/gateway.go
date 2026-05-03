@@ -21,6 +21,7 @@ import (
 
 	"k8s.io/client-go/rest"
 	externaldnssource "sigs.k8s.io/external-dns/source"
+	"sigs.k8s.io/external-dns/source/template"
 	gateway "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 
 	"github.com/golgoth31/sreportal/internal/config"
@@ -43,12 +44,15 @@ func NewGatewaySourceConfig(gc *config.GatewayRouteConfig) (*externaldnssource.C
 	if err != nil {
 		return nil, err
 	}
+	tmpls, err := template.NewEngine(gc.FQDNTemplate, "", "", gc.CombineFQDNAndAnnotation)
+	if err != nil {
+		return nil, fmt.Errorf("build template engine: %w", err)
+	}
 	return &externaldnssource.Config{
 		Namespace:                gc.Namespace,
 		AnnotationFilter:         gc.AnnotationFilter,
 		LabelFilter:              labelSelector,
-		FQDNTemplate:             gc.FQDNTemplate,
-		CombineFQDNAndAnnotation: gc.CombineFQDNAndAnnotation,
+		TemplateEngine:           tmpls,
 		IgnoreHostnameAnnotation: gc.IgnoreHostnameAnnotation,
 		GatewayName:              gc.GatewayName,
 		GatewayNamespace:         gc.GatewayNamespace,

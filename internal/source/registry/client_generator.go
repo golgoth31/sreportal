@@ -24,6 +24,7 @@ import (
 	istioclient "istio.io/client-go/pkg/clientset/versioned"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	externaldnssource "sigs.k8s.io/external-dns/source"
 	gateway "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 )
@@ -77,5 +78,10 @@ func (g *GatewayClientGenerator) DynamicKubernetesClient() (dynamic.Interface, e
 
 // OpenShiftClient is not supported by this adapter.
 func (g *GatewayClientGenerator) OpenShiftClient() (openshift.Interface, error) {
+	return nil, errUnsupportedClient
+}
+
+// RESTConfig is not supported by this adapter.
+func (g *GatewayClientGenerator) RESTConfig() (*rest.Config, error) {
 	return nil, errUnsupportedClient
 }
