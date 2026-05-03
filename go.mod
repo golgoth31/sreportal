@@ -13,7 +13,7 @@ require (
 	github.com/labstack/echo/v5 v5.1.0
 	github.com/mark3labs/mcp-go v0.46.0
 	github.com/onsi/ginkgo/v2 v2.28.1
-	github.com/onsi/gomega v1.39.1
+	github.com/onsi/gomega v1.40.0
 	github.com/openshift/client-go v0.0.0-20260320040014-4b5fc2cdad98
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
