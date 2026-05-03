@@ -50,7 +50,7 @@
       "matchManagers": ["npm"],
       "matchFileNames": ["web/package.json"],
       "matchPackageNames": ["@connectrpc/*", "@bufbuild/*"],
-      "groupName": "connect-npm"
+      "groupName": "web-connect"
     },
     {
       "description": "Tailwind v4 + plugins associés",
@@ -62,7 +62,102 @@
         "tailwind-merge",
         "tw-animate-css"
       ],
-      "groupName": "tailwind"
+      "groupName": "web-tailwind"
+    },
+    {
+      "description": "React core + bindings (router, day-picker, themes, types, plugin Vite, plugins ESLint react)",
+      "matchManagers": ["npm"],
+      "matchFileNames": ["web/package.json"],
+      "matchPackageNames": [
+        "react",
+        "react-dom",
+        "@types/react",
+        "@types/react-dom",
+        "react-router",
+        "react-day-picker",
+        "next-themes",
+        "@vitejs/plugin-react",
+        "eslint-plugin-react-hooks",
+        "eslint-plugin-react-refresh"
+      ],
+      "groupName": "web-react"
+    },
+    {
+      "description": "TanStack (Query, etc.)",
+      "matchManagers": ["npm"],
+      "matchFileNames": ["web/package.json"],
+      "matchPackageNames": ["@tanstack/*"],
+      "groupName": "web-tanstack"
+    },
+    {
+      "description": "Composants UI (Radix, Base UI, shadcn, Lucide, Recharts, Sonner, helpers de styling)",
+      "matchManagers": ["npm"],
+      "matchFileNames": ["web/package.json"],
+      "matchPackageNames": [
+        "radix-ui",
+        "@radix-ui/*",
+        "@base-ui/react",
+        "shadcn",
+        "lucide-react",
+        "recharts",
+        "sonner",
+        "class-variance-authority",
+        "clsx"
+      ],
+      "groupName": "web-ui"
+    },
+    {
+      "description": "Fonts (Fontsource)",
+      "matchManagers": ["npm"],
+      "matchFileNames": ["web/package.json"],
+      "matchPackageNames": ["@fontsource/*", "@fontsource-variable/*"],
+      "groupName": "web-fonts"
+    },
+    {
+      "description": "Outillage de tests (Vitest, Testing Library, happy-dom, MSW, Playwright)",
+      "matchManagers": ["npm"],
+      "matchFileNames": ["web/package.json"],
+      "matchPackageNames": [
+        "vitest",
+        "@testing-library/*",
+        "happy-dom",
+        "msw",
+        "@playwright/test"
+      ],
+      "groupName": "web-testing"
+    },
+    {
+      "description": "Lint + TypeScript (ESLint, TS, typescript-eslint, types Node, globals)",
+      "matchManagers": ["npm"],
+      "matchFileNames": ["web/package.json"],
+      "matchPackageNames": [
+        "eslint",
+        "@eslint/js",
+        "typescript",
+        "typescript-eslint",
+        "@types/node",
+        "globals"
+      ],
+      "groupName": "web-lint"
+    },
+    {
+      "description": "Outillage de build (Vite, tsx, emojibase-data, date-fns)",
+      "matchManagers": ["npm"],
+      "matchFileNames": ["web/package.json"],
+      "matchPackageNames": [
+        "vite",
+        "tsx",
+        "emojibase-data",
+        "date-fns"
+      ],
+      "groupName": "web-build"
+    },
+    {
+      "description": "Filet de sécurité : regroupe toutes les autres mises à jour non-major web non couvertes par les règles ci-dessus",
+      "matchManagers": ["npm"],
+      "matchFileNames": ["web/package.json"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "web-misc"
     }
   ]
 }
