@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.32.2](https://github.com/golgoth31/sreportal/compare/v1.32.1...v1.32.2) (2026-05-03)
+
+
+### Bug Fixes
+
+* **deps:** update kubernetes ([#227](https://github.com/golgoth31/sreportal/issues/227)) ([1fee50c](https://github.com/golgoth31/sreportal/commit/1fee50c059ef7c5f981cd3b10223d842573b2ddd))
+* **deps:** update module connectrpc.com/connect to v1.19.2 ([#228](https://github.com/golgoth31/sreportal/issues/228)) ([52d8d23](https://github.com/golgoth31/sreportal/commit/52d8d23710831c78283e6411598ed9763b4ec9c5))
+* **deps:** update module github.com/labstack/echo/v5 to v5.1.1 ([#229](https://github.com/golgoth31/sreportal/issues/229)) ([c1d6838](https://github.com/golgoth31/sreportal/commit/c1d6838e88c58efbb264279615caa3baf71681b1))
+* **deps:** update module github.com/mark3labs/mcp-go to v0.50.0 ([#232](https://github.com/golgoth31/sreportal/issues/232)) ([0840251](https://github.com/golgoth31/sreportal/commit/08402515d790a5fd98736aed2b0eecfcc0447ab0))
+* **deps:** update module github.com/onsi/ginkgo/v2 to v2.28.3 ([#230](https://github.com/golgoth31/sreportal/issues/230)) ([ec55a12](https://github.com/golgoth31/sreportal/commit/ec55a1234792b9b2f2dc7b420e1f9955f081b967))
+* **deps:** update module github.com/onsi/gomega to v1.40.0 ([#233](https://github.com/golgoth31/sreportal/issues/233)) ([d10ac4c](https://github.com/golgoth31/sreportal/commit/d10ac4c6396452f0a890c0b7770652fafd9ce56e))
+* **deps:** update module go.uber.org/zap to v1.28.0 ([#234](https://github.com/golgoth31/sreportal/issues/234)) ([5c2a420](https://github.com/golgoth31/sreportal/commit/5c2a42059d0885415fa48bf87d4c54fc3121aab3))
+* **deps:** update web-misc ([#235](https://github.com/golgoth31/sreportal/issues/235)) ([3576cbd](https://github.com/golgoth31/sreportal/commit/3576cbd12917c0b602bfa92b1a1464f68ffc2189))
+* **source:** adapt to external-dns v0.21.0 breaking API changes ([9d1d387](https://github.com/golgoth31/sreportal/commit/9d1d3872767d516cae6be98a9de510d7c1b3a316))
+
 ## [1.32.1](https://github.com/golgoth31/sreportal/compare/v1.32.0...v1.32.1) (2026-05-02)
 
 
