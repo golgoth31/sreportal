@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { useImages } from "@/features/image/hooks/useImages";
-import { changeTypeBadgeClass, tagTypeBadgeClass, tagTypeBadgeMutedClass } from "@/features/image/ui/image.badge-utils";
+import { tagTypeBadgeClass, tagTypeBadgeMutedClass } from "@/features/image/ui/image.badge-utils";
 import { ImageGroupList } from "@/features/image/ui/ImageGroupList";
 import { cn } from "@/lib/utils";
 
@@ -32,8 +32,6 @@ const UPGRADE_BADGE_ACTIVE =
   "border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300";
 const UPGRADE_BADGE_MUTED =
   "border-emerald-300/70 bg-transparent text-emerald-700/70 hover:bg-emerald-50 hover:text-emerald-800 dark:border-emerald-800/50 dark:text-emerald-400/70 dark:hover:bg-emerald-900/20 dark:hover:text-emerald-300";
-
-const CHANGE_TYPES = ["none", "mutated", "injected"] as const;
 
 export function ImagesPage() {
   const { portalName = "main" } = useParams<{ portalName: string }>();
@@ -52,8 +50,6 @@ export function ImagesPage() {
     setInjectedFilter,
     namespaceFilter,
     toggleNamespace,
-    changeTypeFilter,
-    setChangeTypeFilter,
     upgradeFilter,
     setUpgradeFilter,
     groupByHost,
@@ -77,12 +73,6 @@ export function ImagesPage() {
       filters.push({ label: "webhook", value: "mutated", onRemove: () => setMutatedFilter(false) });
     if (injectedFilter)
       filters.push({ label: "webhook", value: "injected", onRemove: () => setInjectedFilter(false) });
-    if (changeTypeFilter)
-      filters.push({
-        label: "changeType",
-        value: changeTypeFilter,
-        onRemove: () => setChangeTypeFilter(""),
-      });
     if (upgradeFilter)
       filters.push({ label: "upgrade", value: "available", onRemove: () => setUpgradeFilter(false) });
     for (const ns of namespaceFilter) {
@@ -98,14 +88,12 @@ export function ImagesPage() {
     tagTypeFilter,
     mutatedFilter,
     injectedFilter,
-    changeTypeFilter,
     upgradeFilter,
     namespaceFilter,
     setSearch,
     setTagTypeFilter,
     setMutatedFilter,
     setInjectedFilter,
-    setChangeTypeFilter,
     setUpgradeFilter,
     toggleNamespace,
   ]);
@@ -224,34 +212,6 @@ export function ImagesPage() {
             <span className="ml-0.5 font-mono text-[10px] opacity-70">{upgradeCount}</span>
           </Badge>
         )}
-
-        {/* Change type facet */}
-        {CHANGE_TYPES.map((ct) => {
-          const cls = changeTypeBadgeClass(ct);
-          if (!cls) return null;
-          return (
-            <Badge
-              key={ct}
-              variant="outline"
-              role="button"
-              aria-pressed={changeTypeFilter === ct}
-              tabIndex={0}
-              className={cn(
-                "cursor-pointer transition-colors",
-                changeTypeFilter === ct
-                  ? cls
-                  : "border-gray-200/70 bg-transparent text-gray-600/70 hover:bg-gray-50 dark:border-gray-700/50 dark:text-gray-400/70 dark:hover:bg-gray-800/30",
-              )}
-              onClick={() => setChangeTypeFilter(changeTypeFilter === ct ? "" : ct)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ")
-                  setChangeTypeFilter(changeTypeFilter === ct ? "" : ct);
-              }}
-            >
-              {ct}
-            </Badge>
-          );
-        })}
 
         {/* Namespace multi-select popover */}
         {namespaces.length > 0 && (
