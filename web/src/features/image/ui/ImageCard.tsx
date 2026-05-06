@@ -28,7 +28,6 @@ import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 import { cn } from "@/lib/utils";
 import type { Image } from "../domain/image.types";
 import {
-  changeTypeBadgeClass,
   formatRelativeTime,
   tagTypeBadgeClass,
 } from "./image.badge-utils";
@@ -81,7 +80,6 @@ export function ImageCard({ image }: ImageCardProps) {
   const fullRef = `${image.registry}/${image.repository}:${image.tag}`;
   const display = `${image.repository}:${image.tag}`;
 
-  const ctBadgeClass = changeTypeBadgeClass(image.changeType);
   const relativeTime = formatRelativeTime(image.latestCheckedAt);
   // mutatedImage is registry/repository:tag (the observed image = this card's ref)
   const mutatedImage = image.changeType === "mutated" ? fullRef : undefined;
@@ -101,19 +99,12 @@ export function ImageCard({ image }: ImageCardProps) {
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 min-w-0">
             {image.upgradeAvailable && (
-              <Tooltip>
-                <TooltipTrigger asChild>
                   <span
                     className="inline-flex items-center text-emerald-600 dark:text-emerald-400 shrink-0"
                     aria-label="Upgrade available"
                   >
                     <ArrowUpCircleIcon className="size-3.5" />
                   </span>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  <p className="text-xs">Upgrade available: {image.latestVersion}</p>
-                </TooltipContent>
-              </Tooltip>
             )}
             <p className="font-medium text-sm tracking-tight truncate">{shortName}</p>
           </div>
@@ -164,20 +155,11 @@ export function ImageCard({ image }: ImageCardProps) {
 
         {/* Registry version lookup row */}
         <div className="flex items-center gap-2 flex-wrap">
-          {ctBadgeClass && (
-            <Badge
-              variant="outline"
-              className={cn("font-mono uppercase text-[10px] tracking-wider", ctBadgeClass)}
-              aria-label={`Change type: ${image.changeType}`}
-            >
-              {image.changeType}
-            </Badge>
-          )}
           {image.tagType === "semver" && (
             <span className="font-mono text-[11px] text-muted-foreground">
               {image.latestVersion ? (
                 <>
-                  latest:{" "}
+                  Upgrade available:{" "}
                   <span
                     className={cn(
                       "font-semibold",
@@ -192,11 +174,6 @@ export function ImageCard({ image }: ImageCardProps) {
               ) : (
                 <span className="opacity-40">latest: —</span>
               )}
-            </span>
-          )}
-          {relativeTime && (
-            <span className="font-mono text-[10px] text-muted-foreground/60 ml-auto">
-              {relativeTime}
             </span>
           )}
         </div>
@@ -251,15 +228,6 @@ export function ImageCard({ image }: ImageCardProps) {
               <Badge variant="outline" className={cn(tagTypeBadgeClass(image.tagType))}>
                 {image.tagType}
               </Badge>
-              {ctBadgeClass && (
-                <Badge
-                  variant="outline"
-                  className={cn(ctBadgeClass)}
-                  aria-label={`Change type: ${image.changeType}`}
-                >
-                  {image.changeType}
-                </Badge>
-              )}
               <span className="text-xs text-muted-foreground">
                 {total} workload{total > 1 ? "s" : ""}
               </span>
