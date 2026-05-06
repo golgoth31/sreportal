@@ -54,11 +54,12 @@ export interface ImageFilters {
   readonly registryFilter: string;
   readonly tagTypeFilter: string;
   // When true, restrict to images touched by a MutatingWebhook in the
-  // matching way. mutatedFilter and injectedFilter combine with OR — any
-  // image matching at least one enabled flag is kept. When neither is on,
-  // webhook activity is not used as a filter.
+  // matching way. mutatedFilter, injectedFilter and noneFilter combine with
+  // OR — any image matching at least one enabled flag is kept. When none is
+  // on, webhook activity is not used as a filter.
   readonly mutatedFilter?: boolean;
   readonly injectedFilter?: boolean;
+  readonly noneFilter?: boolean;
   // Namespace multi-select filter: keep images that have at least one workload
   // in any of the selected namespaces. Empty array = no restriction.
   readonly namespaceFilter?: readonly string[];
@@ -156,7 +157,7 @@ export function hasVisibleWorkloads(img: Image): boolean {
 
 export function filterImages(images: readonly Image[], filters: ImageFilters): Image[] {
   const search = filters.search.toLowerCase();
-  const webhookFilterActive = Boolean(filters.mutatedFilter || filters.injectedFilter);
+  const webhookFilterActive = Boolean(filters.mutatedFilter || filters.injectedFilter || filters.noneFilter);
   const nsFilter = filters.namespaceFilter ?? [];
   return images.filter((img) => {
     if (filters.registryFilter && img.registry !== filters.registryFilter) return false;
@@ -165,7 +166,8 @@ export function filterImages(images: readonly Image[], filters: ImageFilters): I
     if (webhookFilterActive) {
       const matchesMutated = filters.mutatedFilter && img.hasMutation;
       const matchesInjected = filters.injectedFilter && img.hasInjection;
-      if (!matchesMutated && !matchesInjected) return false;
+      const matchesNone = filters.noneFilter && !img.hasMutation && !img.hasInjection;
+      if (!matchesMutated && !matchesInjected && !matchesNone) return false;
     }
     if (nsFilter.length > 0) {
       const imageNs = new Set(img.workloads.filter((w) => !w.hidden).map((w) => w.namespace));

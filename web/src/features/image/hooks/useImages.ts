@@ -14,6 +14,7 @@ export function useImages(portal: string) {
   const [tagTypeFilter, setTagTypeFilter] = useState("");
   const [mutatedFilter, setMutatedFilter] = useState(false);
   const [injectedFilter, setInjectedFilter] = useState(false);
+  const [noneFilter, setNoneFilter] = useState(false);
   const [namespaceFilter, setNamespaceFilter] = useState<string[]>([]);
   const [changeTypeFilter, setChangeTypeFilter] = useState("");
   const [upgradeFilter, setUpgradeFilter] = useState(false);
@@ -34,6 +35,7 @@ export function useImages(portal: string) {
         tagTypeFilter,
         mutatedFilter,
         injectedFilter,
+        noneFilter,
         namespaceFilter,
         changeTypeFilter,
         upgradeFilter,
@@ -45,6 +47,7 @@ export function useImages(portal: string) {
       tagTypeFilter,
       mutatedFilter,
       injectedFilter,
+      noneFilter,
       namespaceFilter,
       changeTypeFilter,
       upgradeFilter,
@@ -83,6 +86,7 @@ export function useImages(portal: string) {
     () => ({
       mutated: images.reduce((n, img) => n + (img.hasMutation ? 1 : 0), 0),
       injected: images.reduce((n, img) => n + (img.hasInjection ? 1 : 0), 0),
+      none: images.reduce((n, img) => n + (!img.hasMutation && !img.hasInjection ? 1 : 0), 0),
     }),
     [images],
   );
@@ -104,6 +108,7 @@ export function useImages(portal: string) {
     setTagTypeFilter("");
     setMutatedFilter(false);
     setInjectedFilter(false);
+    setNoneFilter(false);
     setNamespaceFilter([]);
     setChangeTypeFilter("");
     setUpgradeFilter(false);
@@ -115,6 +120,7 @@ export function useImages(portal: string) {
     tagTypeFilter !== "" ||
     mutatedFilter ||
     injectedFilter ||
+    noneFilter ||
     namespaceFilter.length > 0 ||
     changeTypeFilter !== "" ||
     upgradeFilter;
@@ -139,6 +145,7 @@ export function useImages(portal: string) {
     tagTypeFilter,
     mutatedFilter,
     injectedFilter,
+    noneFilter,
     namespaceFilter,
     changeTypeFilter,
     upgradeFilter,
@@ -148,6 +155,7 @@ export function useImages(portal: string) {
     setTagTypeFilter,
     setMutatedFilter,
     setInjectedFilter,
+    setNoneFilter,
     setNamespaceFilter,
     toggleNamespace,
     setChangeTypeFilter,

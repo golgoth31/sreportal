@@ -1,6 +1,7 @@
 import {
   ArrowUpCircleIcon,
   CheckIcon,
+  CircleIcon,
   LayersIcon,
   PackagePlusIcon,
   WandSparklesIcon,
@@ -32,6 +33,10 @@ const UPGRADE_BADGE_ACTIVE =
   "border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300";
 const UPGRADE_BADGE_MUTED =
   "border-emerald-300/70 bg-transparent text-emerald-700/70 hover:bg-emerald-50 hover:text-emerald-800 dark:border-emerald-800/50 dark:text-emerald-400/70 dark:hover:bg-emerald-900/20 dark:hover:text-emerald-300";
+const NONE_BADGE_ACTIVE =
+  "border-gray-300 bg-gray-100 text-gray-800 dark:border-gray-600 dark:bg-gray-800/50 dark:text-gray-300";
+const NONE_BADGE_MUTED =
+  "border-gray-200/70 bg-transparent text-gray-600/70 hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700/50 dark:text-gray-400/70 dark:hover:bg-gray-800/30 dark:hover:text-gray-300";
 
 export function ImagesPage() {
   const { portalName = "main" } = useParams<{ portalName: string }>();
@@ -50,6 +55,8 @@ export function ImagesPage() {
     setInjectedFilter,
     namespaceFilter,
     toggleNamespace,
+    noneFilter,
+    setNoneFilter,
     upgradeFilter,
     setUpgradeFilter,
     groupByHost,
@@ -73,6 +80,8 @@ export function ImagesPage() {
       filters.push({ label: "webhook", value: "mutated", onRemove: () => setMutatedFilter(false) });
     if (injectedFilter)
       filters.push({ label: "webhook", value: "injected", onRemove: () => setInjectedFilter(false) });
+    if (noneFilter)
+      filters.push({ label: "webhook", value: "none", onRemove: () => setNoneFilter(false) });
     if (upgradeFilter)
       filters.push({ label: "upgrade", value: "available", onRemove: () => setUpgradeFilter(false) });
     for (const ns of namespaceFilter) {
@@ -88,12 +97,14 @@ export function ImagesPage() {
     tagTypeFilter,
     mutatedFilter,
     injectedFilter,
+    noneFilter,
     upgradeFilter,
     namespaceFilter,
     setSearch,
     setTagTypeFilter,
     setMutatedFilter,
     setInjectedFilter,
+    setNoneFilter,
     setUpgradeFilter,
     toggleNamespace,
   ]);
@@ -189,6 +200,24 @@ export function ImagesPage() {
           <PackagePlusIcon className="size-3" aria-hidden="true" />
           injected
           <span className="ml-0.5 font-mono text-[10px] opacity-70">{webhookCounts.injected}</span>
+        </Badge>
+        <Badge
+          variant="outline"
+          role="button"
+          aria-pressed={noneFilter}
+          tabIndex={0}
+          className={cn(
+            "cursor-pointer transition-colors gap-1",
+            noneFilter ? NONE_BADGE_ACTIVE : NONE_BADGE_MUTED,
+          )}
+          onClick={() => setNoneFilter(!noneFilter)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") setNoneFilter(!noneFilter);
+          }}
+        >
+          <CircleIcon className="size-3" aria-hidden="true" />
+          none
+          <span className="ml-0.5 font-mono text-[10px] opacity-70">{webhookCounts.none}</span>
         </Badge>
 
         {/* Upgrades shortcut — shown only when there are upgrades */}
