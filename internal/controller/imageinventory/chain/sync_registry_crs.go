@@ -104,7 +104,14 @@ func (h *SyncRegistryCRsHandler) Handle(ctx context.Context, rc *reconciler.Reco
 		refs = append(refs, ref)
 	}
 	sort.SliceStable(refs, func(i, j int) bool { return refs[i].Hash < refs[j].Hash })
+	base := inv.DeepCopy()
 	inv.Status.Registries = refs
+	if err := h.client.Status().Patch(ctx, inv, client.MergeFrom(base)); err != nil {
+		metrics.ImageInventorySyncTotal.WithLabelValues(inv.Name, "error").Inc()
+		wrapped := fmt.Errorf("patch Status.Registries: %w", err)
+		_ = statusutil.SetConditionAndPatch(ctx, h.client, inv, ReadyConditionType, metav1.ConditionFalse, ReasonProjectionFailed, wrapped.Error())
+		return wrapped
+	}
 
 	metrics.ImageInventorySyncTotal.WithLabelValues(inv.Name, "success").Inc()
 	return nil
