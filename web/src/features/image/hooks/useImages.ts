@@ -18,7 +18,6 @@ export function useImages(portal: string) {
   const [namespaceFilter, setNamespaceFilter] = useState<string[]>([]);
   const [changeTypeFilter, setChangeTypeFilter] = useState("");
   const [upgradeFilter, setUpgradeFilter] = useState(false);
-  const [groupByHost, setGroupByHost] = useState(false);
 
   const { images: rawImages, isLoading, isFetching, error, refetch } = useImageQuery(portal);
 
@@ -134,7 +133,6 @@ export function useImages(portal: string) {
     countsByTag,
     webhookCounts,
     upgradeCount,
-    groupByHost,
     totalCount: images.length,
     filteredCount: filtered.length,
     isLoading,
@@ -160,7 +158,6 @@ export function useImages(portal: string) {
     toggleNamespace,
     setChangeTypeFilter,
     setUpgradeFilter,
-    setGroupByHost,
     clearAllFilters,
     refetch,
   };

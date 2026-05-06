@@ -10,7 +10,6 @@ interface ImageGroupListProps {
   isLoading: boolean;
   hasFilters: boolean;
   onClearFilters: () => void;
-  showGroupStats?: boolean;
 }
 
 export function ImageGroupList({
@@ -18,7 +17,6 @@ export function ImageGroupList({
   isLoading,
   hasFilters,
   onClearFilters,
-  showGroupStats = false,
 }: ImageGroupListProps) {
   if (isLoading) {
     return (
@@ -45,7 +43,7 @@ export function ImageGroupList({
   return (
     <div className="space-y-3">
       {groups.map((group) => (
-        <ImageGroupCard key={group.registry} group={group} showStats={showGroupStats} />
+        <ImageGroupCard key={group.registry} group={group} />
       ))}
     </div>
   );

@@ -9,10 +9,9 @@ import { ImageCard } from "./ImageCard";
 
 interface ImageGroupCardProps {
   group: ImageGroup;
-  showStats?: boolean;
 }
 
-export function ImageGroupCard({ group, showStats = false }: ImageGroupCardProps) {
+export function ImageGroupCard({ group }: ImageGroupCardProps) {
   const [open, setOpen] = useState(true);
   const { stats } = group;
   return (
@@ -32,36 +31,32 @@ export function ImageGroupCard({ group, showStats = false }: ImageGroupCardProps
               <span className="text-muted-foreground text-[11px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-muted/60">
                 {stats.total} {stats.total === 1 ? "image" : "images"}
               </span>
-              {showStats && (
-                <>
-                  {stats.upgrades > 0 && (
-                    <span
-                      className="inline-flex items-center gap-1 text-[11px] font-mono text-emerald-700 dark:text-emerald-400"
-                      aria-label={`${stats.upgrades} upgrade${stats.upgrades > 1 ? "s" : ""} available`}
-                    >
-                      <ArrowUpCircleIcon className="size-3" aria-hidden="true" />
-                      {stats.upgrades}
-                    </span>
-                  )}
-                  {stats.mutated > 0 && (
-                    <span
-                      className="inline-flex items-center gap-1 text-[11px] font-mono text-amber-700 dark:text-amber-400"
-                      aria-label={`${stats.mutated} mutated`}
-                    >
-                      <WandSparklesIcon className="size-3" aria-hidden="true" />
-                      {stats.mutated}
-                    </span>
-                  )}
-                  {stats.injected > 0 && (
-                    <span
-                      className="inline-flex items-center gap-1 text-[11px] font-mono text-violet-700 dark:text-violet-400"
-                      aria-label={`${stats.injected} injected`}
-                    >
-                      <PackagePlusIcon className="size-3" aria-hidden="true" />
-                      {stats.injected}
-                    </span>
-                  )}
-                </>
+              {stats.upgrades > 0 && (
+                <span
+                  className="inline-flex items-center gap-1 text-[11px] font-mono text-emerald-700 dark:text-emerald-400"
+                  aria-label={`${stats.upgrades} upgrade${stats.upgrades > 1 ? "s" : ""} available`}
+                >
+                  <ArrowUpCircleIcon className="size-3" aria-hidden="true" />
+                  {stats.upgrades}
+                </span>
+              )}
+              {stats.mutated > 0 && (
+                <span
+                  className="inline-flex items-center gap-1 text-[11px] font-mono text-amber-700 dark:text-amber-400"
+                  aria-label={`${stats.mutated} mutated`}
+                >
+                  <WandSparklesIcon className="size-3" aria-hidden="true" />
+                  {stats.mutated}
+                </span>
+              )}
+              {stats.injected > 0 && (
+                <span
+                  className="inline-flex items-center gap-1 text-[11px] font-mono text-violet-700 dark:text-violet-400"
+                  aria-label={`${stats.injected} injected`}
+                >
+                  <PackagePlusIcon className="size-3" aria-hidden="true" />
+                  {stats.injected}
+                </span>
               )}
             </div>
             <ChevronDownIcon

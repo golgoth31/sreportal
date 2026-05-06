@@ -59,8 +59,6 @@ export function ImagesPage() {
     setNoneFilter,
     upgradeFilter,
     setUpgradeFilter,
-    groupByHost,
-    setGroupByHost,
     webhookCounts,
     upgradeCount,
     namespaces,
@@ -117,18 +115,6 @@ export function ImagesPage() {
           Image <span className="italic text-primary">inventory</span>
         </h1>
         <div className="flex items-center gap-2 ml-auto flex-wrap justify-end">
-          {/* Group by host toggle */}
-          <Button
-            variant={groupByHost ? "secondary" : "outline"}
-            size="sm"
-            onClick={() => setGroupByHost(!groupByHost)}
-            aria-pressed={groupByHost}
-            className="gap-1.5"
-          >
-            <LayersIcon className="size-3.5" aria-hidden="true" />
-            Group by host
-            {groupByHost && <CheckIcon className="size-3.5" aria-hidden="true" />}
-          </Button>
           <PageRefreshButton onRefresh={() => void refetch()} isFetching={isFetching} />
           {!isLoading && !error && (
             <span className="text-muted-foreground text-sm font-mono">
@@ -216,7 +202,7 @@ export function ImagesPage() {
           }}
         >
           <CircleIcon className="size-3" aria-hidden="true" />
-          none
+          not modified
           <span className="ml-0.5 font-mono text-[10px] opacity-70">{webhookCounts.none}</span>
         </Badge>
 
@@ -323,7 +309,6 @@ export function ImagesPage() {
           isLoading={isLoading}
           hasFilters={hasFilters}
           onClearFilters={clearAllFilters}
-          showGroupStats={groupByHost}
         />
       )}
     </div>
