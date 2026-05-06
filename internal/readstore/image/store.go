@@ -3,7 +3,6 @@ package image
 import (
 	"cmp"
 	"context"
-	"maps"
 	"slices"
 	"strings"
 	"sync"
@@ -11,11 +10,28 @@ import (
 	domainimage "github.com/golgoth31/sreportal/internal/domain/image"
 )
 
-// Store is an in-memory image projection keyed by portalRef and then by
-// WorkloadKey so that a single workload event touches only its own slot.
+// scopeKey identifies a single (portal, host, namespace) contribution scope.
+type scopeKey struct{ Portal, Host, Namespace string }
+
+// entryKey identifies a deduplicated image entry inside a portal.
+type entryKey struct{ Registry, Repo, Tag string }
+
+// Store is an in-memory image projection. It maintains:
+//   - per-scope contributions, indexed by (portal, host, namespace),
+//   - aggregated views per portal, where contributions to the same
+//     (registry, repo, tag) are merged across namespaces.
+//
+// The single writer in production is the ImageRegistry controller; remote
+// portals use the same writer interface to project shadow contributions.
 type Store struct {
-	mu   sync.RWMutex
-	data map[string]map[domainimage.WorkloadKey][]domainimage.ImageView
+	mu sync.RWMutex
+
+	// contributions[scope][entryKey] = ImageView contributed by that scope.
+	contributions map[scopeKey]map[entryKey]domainimage.ImageView
+	// aggregated[portalRef][entryKey] = ImageView merged across all scopes
+	// of that portal (workload list union; latest-version metadata wins by
+	// LatestCheckedAt).
+	aggregated map[string]map[entryKey]domainimage.ImageView
 
 	notifyMu sync.Mutex
 	notifyCh chan struct{}
@@ -29,77 +45,125 @@ var (
 // NewStore creates an empty Store.
 func NewStore() *Store {
 	return &Store{
-		data:     make(map[string]map[domainimage.WorkloadKey][]domainimage.ImageView),
-		notifyCh: make(chan struct{}),
+		contributions: make(map[scopeKey]map[entryKey]domainimage.ImageView),
+		aggregated:    make(map[string]map[entryKey]domainimage.ImageView),
+		notifyCh:      make(chan struct{}),
 	}
 }
 
-// ReplaceWorkload implements ImageWriter.
-func (s *Store) ReplaceWorkload(_ context.Context, portalRef string, wk domainimage.WorkloadKey, images []domainimage.ImageView) error {
+// ReplaceForNamespace implements ImageWriter.
+//
+// It replaces all contributions of (portalRef, host, namespace) with `views`
+// and re-aggregates the affected portal. Empty `views` means "drop the scope".
+func (s *Store) ReplaceForNamespace(_ context.Context, portalRef, host, namespace string, views []domainimage.ImageView) error {
+	scope := scopeKey{Portal: portalRef, Host: host, Namespace: namespace}
+
 	s.mu.Lock()
-	portal, ok := s.data[portalRef]
-	if !ok {
-		portal = make(map[domainimage.WorkloadKey][]domainimage.ImageView)
-		s.data[portalRef] = portal
-	}
-	if len(images) == 0 {
-		delete(portal, wk)
+	if len(views) == 0 {
+		delete(s.contributions, scope)
 	} else {
-		portal[wk] = images
+		bucket := make(map[entryKey]domainimage.ImageView, len(views))
+		for _, v := range views {
+			k := entryKey{Registry: v.Registry, Repo: v.Repository, Tag: v.Tag}
+			// Merge duplicates inside the same scope (defensive).
+			if existing, ok := bucket[k]; ok {
+				bucket[k] = mergeViews(existing, v)
+				continue
+			}
+			bucket[k] = v
+		}
+		s.contributions[scope] = bucket
 	}
+	s.recomputePortalLocked(portalRef)
 	s.mu.Unlock()
 
 	s.broadcast()
 	return nil
 }
 
-// DeleteWorkloadAllPortals implements ImageWriter.
-func (s *Store) DeleteWorkloadAllPortals(_ context.Context, wk domainimage.WorkloadKey) error {
-	s.mu.Lock()
-	for _, portal := range s.data {
-		delete(portal, wk)
+// RemoveForNamespace implements ImageWriter. It is a convenience wrapper for
+// ReplaceForNamespace(..., nil).
+func (s *Store) RemoveForNamespace(ctx context.Context, portalRef, host, namespace string) error {
+	return s.ReplaceForNamespace(ctx, portalRef, host, namespace, nil)
+}
+
+// recomputePortalLocked rebuilds aggregated[portalRef] from scratch by walking
+// every contribution scope of that portal. Caller must hold s.mu.
+func (s *Store) recomputePortalLocked(portalRef string) {
+	agg := make(map[entryKey]domainimage.ImageView)
+	for scope, bucket := range s.contributions {
+		if scope.Portal != portalRef {
+			continue
+		}
+		for k, v := range bucket {
+			if existing, ok := agg[k]; ok {
+				agg[k] = mergeViews(existing, v)
+				continue
+			}
+			// Defensive copy of Workloads slice so later merges don't mutate
+			// the contribution-side bucket.
+			cp := v
+			cp.Workloads = append([]domainimage.WorkloadRef(nil), v.Workloads...)
+			agg[k] = cp
+		}
 	}
-	s.mu.Unlock()
-
-	s.broadcast()
-	return nil
+	if len(agg) == 0 {
+		delete(s.aggregated, portalRef)
+		return
+	}
+	s.aggregated[portalRef] = agg
 }
 
-// ReplaceAll implements ImageWriter.
-func (s *Store) ReplaceAll(_ context.Context, portalRef string, byWorkload map[domainimage.WorkloadKey][]domainimage.ImageView) error {
-	// Defensive copy so the caller can't mutate the stored map after the call.
-	copyMap := make(map[domainimage.WorkloadKey][]domainimage.ImageView, len(byWorkload))
-	maps.Copy(copyMap, byWorkload)
+// mergeViews unions workloads of two views with the same entryKey and picks
+// the most recent latest-version metadata (by LatestCheckedAt). All other
+// scalar fields default to `b`'s value when `a`'s is empty.
+func mergeViews(a, b domainimage.ImageView) domainimage.ImageView {
+	out := a
+	out.Workloads = append([]domainimage.WorkloadRef(nil), a.Workloads...)
+	out.Workloads = append(out.Workloads, b.Workloads...)
 
-	s.mu.Lock()
-	s.data[portalRef] = copyMap
-	s.mu.Unlock()
+	// Prefer non-empty scalar fields.
+	if out.OriginalImage == "" {
+		out.OriginalImage = b.OriginalImage
+	}
+	if out.MutatedImage == "" {
+		out.MutatedImage = b.MutatedImage
+	}
+	if out.ChangeType == "" {
+		out.ChangeType = b.ChangeType
+	}
+	if out.TagType == "" {
+		out.TagType = b.TagType
+	}
 
-	s.broadcast()
-	return nil
+	// Latest-version metadata: the contribution with the most recent
+	// LastCheckedAt wins. If only one side has a timestamp, that side wins.
+	switch {
+	case a.LatestCheckedAt == nil && b.LatestCheckedAt != nil:
+		out.LatestVersion = b.LatestVersion
+		out.LatestCheckedAt = b.LatestCheckedAt
+		out.LatestError = b.LatestError
+		out.UpgradeAvailable = b.UpgradeAvailable
+	case a.LatestCheckedAt != nil && b.LatestCheckedAt != nil && b.LatestCheckedAt.After(*a.LatestCheckedAt):
+		out.LatestVersion = b.LatestVersion
+		out.LatestCheckedAt = b.LatestCheckedAt
+		out.LatestError = b.LatestError
+		out.UpgradeAvailable = b.UpgradeAvailable
+	}
+	return out
 }
 
-// DeletePortal implements ImageWriter.
-func (s *Store) DeletePortal(_ context.Context, portalRef string) error {
-	s.mu.Lock()
-	delete(s.data, portalRef)
-	s.mu.Unlock()
-
-	s.broadcast()
-	return nil
-}
-
-// List implements ImageReader. Returns a deduplicated, sorted view of all
-// workload contributions that match the filters.
+// List implements ImageReader. It returns the deduplicated and sorted image
+// projections matching the filters.
 func (s *Store) List(_ context.Context, filters domainimage.ImageFilters) ([]domainimage.ImageView, error) {
 	s.mu.RLock()
 	collected := make([]domainimage.ImageView, 0)
-	for portalRef, byWorkload := range s.data {
+	for portalRef, bucket := range s.aggregated {
 		if filters.Portal != "" && portalRef != filters.Portal {
 			continue
 		}
-		for _, views := range byWorkload {
-			collected = append(collected, views...)
+		for _, v := range bucket {
+			collected = append(collected, copyView(v))
 		}
 	}
 	s.mu.RUnlock()
@@ -119,8 +183,6 @@ func (s *Store) List(_ context.Context, filters domainimage.ImageFilters) ([]dom
 		out = append(out, img)
 	}
 
-	out = deduplicate(out)
-
 	slices.SortFunc(out, func(a, b domainimage.ImageView) int {
 		if c := cmp.Compare(a.Registry, b.Registry); c != 0 {
 			return c
@@ -139,7 +201,7 @@ func (s *Store) Count(ctx context.Context, filters domainimage.ImageFilters) (in
 	return len(out), err
 }
 
-// Subscribe returns a channel closed on the next mutation.
+// Subscribe returns a channel that is closed on the next mutation.
 func (s *Store) Subscribe() <-chan struct{} {
 	s.notifyMu.Lock()
 	defer s.notifyMu.Unlock()
@@ -154,18 +216,10 @@ func (s *Store) broadcast() {
 	close(old)
 }
 
-func deduplicate(images []domainimage.ImageView) []domainimage.ImageView {
-	type k struct{ registry, repository, tag string }
-	seen := make(map[k]int, len(images))
-	out := make([]domainimage.ImageView, 0, len(images))
-	for _, img := range images {
-		key := k{registry: img.Registry, repository: img.Repository, tag: img.Tag}
-		if idx, ok := seen[key]; ok {
-			out[idx].Workloads = append(out[idx].Workloads, img.Workloads...)
-			continue
-		}
-		seen[key] = len(out)
-		out = append(out, img)
-	}
+// copyView returns a deep-enough copy: scalar fields are copied by value, the
+// Workloads slice is reallocated so callers may not mutate the cache.
+func copyView(v domainimage.ImageView) domainimage.ImageView {
+	out := v
+	out.Workloads = append([]domainimage.WorkloadRef(nil), v.Workloads...)
 	return out
 }

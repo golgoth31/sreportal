@@ -928,29 +928,27 @@ var _ = Describe("MCP Server", func() {
 		Describe("handleListImages", func() {
 			Context("with images in the store", func() {
 				BeforeEach(func() {
-					_ = store.ReplaceAll(ctx, portalMain, map[domainimage.WorkloadKey][]domainimage.ImageView{
-						{Kind: kindDeploy, Namespace: nsDefault, Name: keyAPI}: {
-							{
-								PortalRef:  portalMain,
-								Registry:   "docker.io",
-								Repository: "myorg/api",
-								Tag:        "v1.2.3",
-								TagType:    domainimage.TagTypeSemver,
-								Workloads: []domainimage.WorkloadRef{
-									{Kind: kindDeploy, Namespace: nsDefault, Name: keyAPI, Container: keyAPI},
-								},
+					_ = store.ReplaceForNamespace(ctx, portalMain, "docker.io", nsDefault, []domainimage.ImageView{
+						{
+							PortalRef:  portalMain,
+							Registry:   "docker.io",
+							Repository: "myorg/api",
+							Tag:        "v1.2.3",
+							TagType:    domainimage.TagTypeSemver,
+							Workloads: []domainimage.WorkloadRef{
+								{Kind: kindDeploy, Namespace: nsDefault, Name: keyAPI, Container: keyAPI},
 							},
 						},
-						{Kind: kindDeploy, Namespace: nsDefault, Name: nameWorker}: {
-							{
-								PortalRef:  portalMain,
-								Registry:   "ghcr.io",
-								Repository: "myorg/worker",
-								Tag:        "abc1234",
-								TagType:    domainimage.TagTypeCommit,
-								Workloads: []domainimage.WorkloadRef{
-									{Kind: kindDeploy, Namespace: nsDefault, Name: nameWorker, Container: nameWorker},
-								},
+					})
+					_ = store.ReplaceForNamespace(ctx, portalMain, "ghcr.io", nsDefault, []domainimage.ImageView{
+						{
+							PortalRef:  portalMain,
+							Registry:   "ghcr.io",
+							Repository: "myorg/worker",
+							Tag:        "abc1234",
+							TagType:    domainimage.TagTypeCommit,
+							Workloads: []domainimage.WorkloadRef{
+								{Kind: kindDeploy, Namespace: nsDefault, Name: nameWorker, Container: nameWorker},
 							},
 						},
 					})
@@ -971,16 +969,14 @@ var _ = Describe("MCP Server", func() {
 				})
 
 				It("should filter by portal", func() {
-					_ = store.ReplaceAll(ctx, nsDev, map[domainimage.WorkloadKey][]domainimage.ImageView{
-						{Kind: kindDeploy, Namespace: nsDev, Name: nameSvc}: {
-							{
-								PortalRef:  nsDev,
-								Registry:   "docker.io",
-								Repository: "myorg/svc",
-								Tag:        "latest",
-								TagType:    domainimage.TagTypeLatest,
-								Workloads:  []domainimage.WorkloadRef{{Kind: kindDeploy, Namespace: nsDev, Name: nameSvc, Container: nameSvc}},
-							},
+					_ = store.ReplaceForNamespace(ctx, nsDev, "docker.io", nsDev, []domainimage.ImageView{
+						{
+							PortalRef:  nsDev,
+							Registry:   "docker.io",
+							Repository: "myorg/svc",
+							Tag:        "latest",
+							TagType:    domainimage.TagTypeLatest,
+							Workloads:  []domainimage.WorkloadRef{{Kind: kindDeploy, Namespace: nsDev, Name: nameSvc, Container: nameSvc}},
 						},
 					})
 					s := NewImageServer(store)

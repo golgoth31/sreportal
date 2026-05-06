@@ -95,11 +95,33 @@ type ImageInventoryStatus struct {
 	// +optional
 	LastScanError string `json:"lastScanError,omitempty"`
 
+	// registries is a lookup table mapping each child ImageRegistry CR
+	// (created by the SyncRegistryCRs handler) to its (host, namespace)
+	// context. PortalRef is implicit (= Spec.PortalRef).
+	// +listType=map
+	// +listMapKey=hash
+	// +optional
+	Registries []ImageRegistryRef `json:"registries,omitempty"`
+
 	// conditions represent the current state of the ImageInventory resource.
 	// +listType=map
 	// +listMapKey=type
 	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
+}
+
+// ImageRegistryRef references a child ImageRegistry CR managed by this
+// ImageInventory.
+type ImageRegistryRef struct {
+	// hash is the 12-char sha256 hex used as the CR name.
+	// +kubebuilder:validation:Required
+	Hash string `json:"hash"`
+	// host is the registry-of-origin for the referenced CR.
+	// +kubebuilder:validation:Required
+	Host string `json:"host"`
+	// namespace is the targeted Kubernetes namespace.
+	// +kubebuilder:validation:Required
+	Namespace string `json:"namespace"`
 }
 
 // +kubebuilder:object:root=true

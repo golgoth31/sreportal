@@ -4,4 +4,8 @@ const (
 	tNsDefault      = "default"
 	tPortalMain     = "main"
 	tKindDeployment = "deployment"
+	tImgNginxDocker = "docker.io/library/nginx:1.25.0"
+	tChangeTypeNone = "none"
+	tChangeTypeMut  = "mutated"
+	tChangeTypeInj  = "injected"
 )

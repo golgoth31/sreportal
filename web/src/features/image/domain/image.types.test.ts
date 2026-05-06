@@ -2,12 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import {
   annotateImages,
+  computeGroupStats,
   filterImages,
   groupImagesByRegistry,
   hasVisibleWorkloads,
   type Image,
 } from "./image.types";
-import { tagTypeBadgeClass } from "../ui/ImageCard";
+import { changeTypeBadgeClass, formatRelativeTime, tagTypeBadgeClass } from "../ui/image.badge-utils";
 
 const base: Image[] = [
   {
@@ -333,5 +334,181 @@ describe("tagTypeBadgeClass", () => {
 
   it("returns gray classes for other", () => {
     expect(tagTypeBadgeClass("other")).toContain("gray");
+  });
+});
+
+// -------------------------------------------------------------------
+// New filter fields: namespace, changeType, upgradeAvailable
+// -------------------------------------------------------------------
+
+const enriched: Image[] = [
+  {
+    registry: "ghcr.io",
+    repository: "acme/api",
+    tag: "1.0.0",
+    tagType: "semver",
+    changeType: "none",
+    upgradeAvailable: true,
+    latestVersion: "1.1.0",
+    workloads: [
+      { kind: "Deployment", namespace: "prod", name: "api", container: "main", source: "spec" },
+    ],
+  },
+  {
+    registry: "ghcr.io",
+    repository: "acme/web",
+    tag: "1.0.0",
+    tagType: "semver",
+    changeType: "mutated",
+    upgradeAvailable: false,
+    workloads: [
+      { kind: "Deployment", namespace: "staging", name: "web", container: "main", source: "pod" },
+    ],
+  },
+  {
+    registry: "docker.io",
+    repository: "istio/proxyv2",
+    tag: "1.20.0",
+    tagType: "semver",
+    changeType: "injected",
+    upgradeAvailable: false,
+    workloads: [
+      { kind: "Deployment", namespace: "prod", name: "api", container: "istio-proxy", source: "pod" },
+    ],
+  },
+];
+
+describe("filterImages — new fields", () => {
+  it("filters by upgradeFilter", () => {
+    const out = filterImages(enriched, {
+      search: "",
+      registryFilter: "",
+      tagTypeFilter: "",
+      upgradeFilter: true,
+    });
+    expect(out).toHaveLength(1);
+    expect(out[0]?.repository).toBe("acme/api");
+  });
+
+  it("filters by changeTypeFilter", () => {
+    const out = filterImages(enriched, {
+      search: "",
+      registryFilter: "",
+      tagTypeFilter: "",
+      changeTypeFilter: "injected",
+    });
+    expect(out).toHaveLength(1);
+    expect(out[0]?.repository).toBe("istio/proxyv2");
+  });
+
+  it("filters by namespace (multi-select, OR)", () => {
+    const out = filterImages(enriched, {
+      search: "",
+      registryFilter: "",
+      tagTypeFilter: "",
+      namespaceFilter: ["staging"],
+    });
+    expect(out).toHaveLength(1);
+    expect(out[0]?.repository).toBe("acme/web");
+  });
+
+  it("namespace filter with two values returns images in either ns", () => {
+    const out = filterImages(enriched, {
+      search: "",
+      registryFilter: "",
+      tagTypeFilter: "",
+      namespaceFilter: ["prod", "staging"],
+    });
+    // acme/api (prod) + acme/web (staging) + istio/proxyv2 (prod)
+    expect(out).toHaveLength(3);
+  });
+
+  it("empty namespaceFilter returns all images", () => {
+    const out = filterImages(enriched, {
+      search: "",
+      registryFilter: "",
+      tagTypeFilter: "",
+      namespaceFilter: [],
+    });
+    expect(out).toHaveLength(3);
+  });
+
+  it("combines changeTypeFilter and upgradeFilter", () => {
+    const out = filterImages(enriched, {
+      search: "",
+      registryFilter: "",
+      tagTypeFilter: "",
+      changeTypeFilter: "none",
+      upgradeFilter: true,
+    });
+    expect(out).toHaveLength(1);
+    expect(out[0]?.repository).toBe("acme/api");
+  });
+});
+
+describe("computeGroupStats", () => {
+  it("counts upgrades, mutated, and injected images correctly", () => {
+    const stats = computeGroupStats(enriched);
+    expect(stats.total).toBe(3);
+    expect(stats.upgrades).toBe(1);
+    expect(stats.mutated).toBe(1);
+    expect(stats.injected).toBe(1);
+  });
+
+  it("returns zeros for plain images", () => {
+    const stats = computeGroupStats(base);
+    expect(stats.total).toBe(3);
+    expect(stats.upgrades).toBe(0);
+    expect(stats.mutated).toBe(0);
+    expect(stats.injected).toBe(0);
+  });
+});
+
+describe("groupImagesByRegistry — stats", () => {
+  it("includes stats on each group", () => {
+    const groups = groupImagesByRegistry(enriched);
+    const ghcr = groups.find((g) => g.registry === "ghcr.io");
+    expect(ghcr?.stats.total).toBe(2);
+    expect(ghcr?.stats.upgrades).toBe(1);
+    expect(ghcr?.stats.mutated).toBe(1);
+  });
+});
+
+describe("changeTypeBadgeClass", () => {
+  it("returns null for unspecified", () => {
+    expect(changeTypeBadgeClass("unspecified")).toBeNull();
+  });
+
+  it("returns null for undefined", () => {
+    expect(changeTypeBadgeClass(undefined)).toBeNull();
+  });
+
+  it("returns gray classes for none", () => {
+    expect(changeTypeBadgeClass("none")).toContain("gray");
+  });
+
+  it("returns orange classes for mutated", () => {
+    expect(changeTypeBadgeClass("mutated")).toContain("orange");
+  });
+
+  it("returns blue classes for injected", () => {
+    expect(changeTypeBadgeClass("injected")).toContain("blue");
+  });
+});
+
+describe("formatRelativeTime", () => {
+  it("returns null for undefined", () => {
+    expect(formatRelativeTime(undefined)).toBeNull();
+  });
+
+  it("returns a relative string for a valid ISO date", () => {
+    const recent = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(); // 2h ago
+    const result = formatRelativeTime(recent);
+    expect(result).not.toBeNull();
+    expect(result).toContain("ago");
+  });
+
+  it("returns null for an invalid date string", () => {
+    expect(formatRelativeTime("not-a-date")).toBeNull();
   });
 });

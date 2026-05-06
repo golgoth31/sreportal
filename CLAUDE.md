@@ -85,3 +85,25 @@ kubebuilder create webhook --group sreportal --version v1alpha1 --kind <Kind> \
 - Conventional commits: `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`
 - PRs require: constitutional compliance, tests, 80%+ coverage, lint pass, generated code up to date
 - After changes: `make helm` -> `make test` -> `make lint` -> `make doc`
+
+## Default Workflow for Feature Development
+
+For any non-trivial feature, follow this 3-phase workflow:
+
+### Phase 1 — Interactive explore + plan
+- Use `superpowers:brainstorming` and/or `feature-dev:code-explorer` to map the existing code.
+- Use `superpowers:writing-plans` to produce a written plan in `plans/<feature>.md`.
+- Validate the plan interactively with the user before any implementation.
+
+### Phase 2 — Proto implementation (main agent)
+- The main agent itself implements the proto layer (`proto/sreportal/v1/*.proto`).
+- Run `make proto` to regenerate Go (`internal/grpc/gen/`) and TypeScript (`web/src/gen/`) bindings.
+- Verify build (`go build ./...`) and types (`npx tsc -b` in `web/`) before delegating.
+- Rationale: proto is the contract shared by Go + Web subagents — it must be stable before fan-out.
+
+### Phase 3 — Parallel implementation via subagents
+- Spawn one Go subagent (Go layer: domain, controllers, adapters, readstore, tests).
+- Spawn one Web subagent (UI extension: `web/src/features/...`).
+- Pick the cheapest model that fits each subtask (Haiku / Sonnet / Opus per `~/.claude/CLAUDE.md` Subagents v1.0).
+- Run them in parallel (single message, multiple Agent tool calls).
+- Main agent owns final synthesis, cross-cutting verification (`make helm`, `make test`, `make lint`, `make doc`), and reporting.

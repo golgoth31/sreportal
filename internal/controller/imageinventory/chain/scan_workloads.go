@@ -28,18 +28,20 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
-	imagectrl "github.com/golgoth31/sreportal/internal/controller/image"
 	"github.com/golgoth31/sreportal/internal/controller/statusutil"
-	domainimage "github.com/golgoth31/sreportal/internal/domain/image"
+	domainimageregistry "github.com/golgoth31/sreportal/internal/domain/imageregistry"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/metrics"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
 // ScanWorkloadsHandler performs a full scan of the cluster (filtered by the
-// ImageInventory spec) and populates ChainData.ByWorkload. The actual store
-// projection happens in ProjectImagesHandler so the local and remote paths
-// share a single write path.
+// ImageInventory spec) and populates ChainData.Observations with one entry
+// per (workload, container). The aggregation into ImageRegistry CRs happens
+// in SyncRegistryCRsHandler.
+//
+// No-op for remote inventories — those are populated by FetchRemoteImagesHandler
+// directly into the readstore.
 type ScanWorkloadsHandler struct {
 	client client.Client
 }
@@ -50,16 +52,13 @@ func NewScanWorkloadsHandler(c client.Client) *ScanWorkloadsHandler {
 }
 
 // Handle implements reconciler.Handler.
-// Scans the cluster for the inventory's watched workload kinds and stores the
-// projection in ChainData. No-op for remote inventories — those are populated
-// by FetchRemoteImagesHandler.
 func (h *ScanWorkloadsHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.ImageInventory, ChainData]) error {
 	inv := rc.Resource
 	if inv.Spec.IsRemote {
 		return nil
 	}
 
-	byWorkload, err := h.scanAll(ctx, inv)
+	obs, err := h.scanAll(ctx, inv)
 	if err != nil {
 		metrics.ImageInventorySyncTotal.WithLabelValues(inv.Name, "error").Inc()
 		wrapped := fmt.Errorf("full scan: %w", err)
@@ -67,11 +66,11 @@ func (h *ScanWorkloadsHandler) Handle(ctx context.Context, rc *reconciler.Reconc
 		return wrapped
 	}
 
-	rc.Data.ByWorkload = byWorkload
+	rc.Data.Observations = obs
 	return nil
 }
 
-func (h *ScanWorkloadsHandler) scanAll(ctx context.Context, inv *sreportalv1alpha1.ImageInventory) (map[domainimage.WorkloadKey][]domainimage.ImageView, error) {
+func (h *ScanWorkloadsHandler) scanAll(ctx context.Context, inv *sreportalv1alpha1.ImageInventory) ([]domainimageregistry.ContainerObservation, error) {
 	selector := labels.Everything()
 	if inv.Spec.LabelSelector != "" {
 		parsed, err := labels.Parse(inv.Spec.LabelSelector)
@@ -85,40 +84,44 @@ func (h *ScanWorkloadsHandler) scanAll(ctx context.Context, inv *sreportalv1alph
 		opts = append(opts, client.InNamespace(inv.Spec.NamespaceFilter))
 	}
 
-	out := make(map[domainimage.WorkloadKey][]domainimage.ImageView)
-	portalRef := inv.Spec.PortalRef
+	var out []domainimageregistry.ContainerObservation
 	for _, kind := range inv.Spec.EffectiveWatchedKinds() {
-		if err := h.scanKind(ctx, portalRef, kind, out, opts...); err != nil {
+		obs, err := h.scanKind(ctx, kind, opts...)
+		if err != nil {
 			return nil, err
 		}
+		out = append(out, obs...)
 	}
 	return out, nil
 }
 
-func (h *ScanWorkloadsHandler) scanKind(ctx context.Context, portalRef string, kind sreportalv1alpha1.ImageInventoryKind, out map[domainimage.WorkloadKey][]domainimage.ImageView, opts ...client.ListOption) error {
+func (h *ScanWorkloadsHandler) scanKind(ctx context.Context, kind sreportalv1alpha1.ImageInventoryKind, opts ...client.ListOption) ([]domainimageregistry.ContainerObservation, error) {
 	kindStr := string(kind)
-	logger := log.FromContext(ctx).WithValues("kind", kindStr, "portalRef", portalRef)
+	logger := log.FromContext(ctx).WithValues("kind", kindStr)
 
+	var out []domainimageregistry.ContainerObservation
 	collect := func(ns, name string, spec corev1.PodSpec, podSelector *metav1.LabelSelector) {
-		wk := domainimage.WorkloadKey{Kind: kindStr, Namespace: ns, Name: name}
-		views := imagectrl.ImageViewsFromPodSpec(portalRef, kindStr, ns, name, spec, domainimage.ContainerSourceSpec)
-
+		// Map container-name -> running-pod image (if any). When no running
+		// pod is found, podImageByName is nil and we fall back to using the
+		// template image as the runtime image (ChangeType=none).
+		var podImageByName map[string]string
 		if sel := selectorFromLabelSelector(podSelector); sel != nil {
-			pod, err := imagectrl.FindRunningPodForWorkload(ctx, h.client, ns, sel)
+			pod, err := findRunningPodForWorkload(ctx, h.client, ns, sel)
 			if err != nil {
-				logger.Error(err, "find running pod failed; falling back to spec", "workload", wk)
+				logger.Error(err, "find running pod failed; falling back to spec", "namespace", ns, "name", name)
 			} else if pod != nil {
-				views = append(views, imagectrl.ImageViewsFromPodDiff(portalRef, kindStr, ns, name, spec, pod.Spec)...)
+				podImageByName = buildContainerImageMap(pod.Spec)
 			}
 		}
-		out[wk] = views
+
+		out = append(out, observationsFromWorkload(kindStr, ns, name, spec, podImageByName)...)
 	}
 
 	switch kind {
 	case sreportalv1alpha1.ImageInventoryKindDeployment:
 		var list appsv1.DeploymentList
 		if err := h.client.List(ctx, &list, opts...); err != nil {
-			return err
+			return nil, err
 		}
 		for i := range list.Items {
 			it := &list.Items[i]
@@ -127,7 +130,7 @@ func (h *ScanWorkloadsHandler) scanKind(ctx context.Context, portalRef string, k
 	case sreportalv1alpha1.ImageInventoryKindStatefulSet:
 		var list appsv1.StatefulSetList
 		if err := h.client.List(ctx, &list, opts...); err != nil {
-			return err
+			return nil, err
 		}
 		for i := range list.Items {
 			it := &list.Items[i]
@@ -136,7 +139,7 @@ func (h *ScanWorkloadsHandler) scanKind(ctx context.Context, portalRef string, k
 	case sreportalv1alpha1.ImageInventoryKindDaemonSet:
 		var list appsv1.DaemonSetList
 		if err := h.client.List(ctx, &list, opts...); err != nil {
-			return err
+			return nil, err
 		}
 		for i := range list.Items {
 			it := &list.Items[i]
@@ -145,7 +148,7 @@ func (h *ScanWorkloadsHandler) scanKind(ctx context.Context, portalRef string, k
 	case sreportalv1alpha1.ImageInventoryKindCronJob:
 		var list batchv1.CronJobList
 		if err := h.client.List(ctx, &list, opts...); err != nil {
-			return err
+			return nil, err
 		}
 		for i := range list.Items {
 			it := &list.Items[i]
@@ -155,16 +158,89 @@ func (h *ScanWorkloadsHandler) scanKind(ctx context.Context, portalRef string, k
 	case sreportalv1alpha1.ImageInventoryKindJob:
 		var list batchv1.JobList
 		if err := h.client.List(ctx, &list, opts...); err != nil {
-			return err
+			return nil, err
 		}
 		for i := range list.Items {
 			it := &list.Items[i]
 			collect(it.Namespace, it.Name, it.Spec.Template.Spec, it.Spec.Selector)
 		}
 	default:
-		return fmt.Errorf("unsupported kind %q", kind)
+		return nil, fmt.Errorf("unsupported kind %q", kind)
 	}
-	return nil
+	return out, nil
+}
+
+// observationsFromWorkload yields one ContainerObservation per
+// (container in workload spec) plus one per injected container observed
+// only in the running pod.
+//
+// Mapping rules:
+//   - For each container declared in spec, TemplateImage = spec image and
+//     PodImage = pod image (if found in podImageByName), else equal to
+//     TemplateImage (degraded fallback when no running pod is available).
+//   - For each container present in the pod but absent from spec
+//     (injected by webhook), TemplateImage="" and PodImage=pod image.
+func observationsFromWorkload(
+	kind, namespace, name string,
+	spec corev1.PodSpec,
+	podImageByName map[string]string,
+) []domainimageregistry.ContainerObservation {
+	out := make([]domainimageregistry.ContainerObservation, 0, len(spec.Containers)+len(spec.InitContainers))
+	declared := map[string]struct{}{}
+
+	emitSpec := func(c corev1.Container) {
+		declared[c.Name] = struct{}{}
+		podImg := c.Image
+		if podImageByName != nil {
+			if got, ok := podImageByName[c.Name]; ok {
+				podImg = got
+			}
+		}
+		out = append(out, domainimageregistry.ContainerObservation{
+			WorkloadKind:      kind,
+			WorkloadName:      name,
+			WorkloadNamespace: namespace,
+			ContainerName:     c.Name,
+			TemplateImage:     c.Image,
+			PodImage:          podImg,
+		})
+	}
+	for _, c := range spec.Containers {
+		emitSpec(c)
+	}
+	for _, c := range spec.InitContainers {
+		emitSpec(c)
+	}
+
+	// Injected containers — present in pod but not in spec.
+	// Stable order: iterate over a sorted list for determinism in tests.
+	for cname, img := range podImageByName {
+		if _, ok := declared[cname]; ok {
+			continue
+		}
+		out = append(out, domainimageregistry.ContainerObservation{
+			WorkloadKind:      kind,
+			WorkloadName:      name,
+			WorkloadNamespace: namespace,
+			ContainerName:     cname,
+			TemplateImage:     "",
+			PodImage:          img,
+		})
+	}
+	return out
+}
+
+// buildContainerImageMap returns containerName -> image for every container
+// (regular and init) declared in spec.
+func buildContainerImageMap(spec corev1.PodSpec) map[string]string {
+	m := make(map[string]string, len(spec.Containers)+len(spec.InitContainers))
+	for _, c := range spec.Containers {
+		m[c.Name] = c.Image
+	}
+	for _, c := range spec.InitContainers {
+		m[c.Name] = c.Image
+	}
+	return m
 }
 
 // selectorFromLabelSelector converts a *metav1.LabelSelector to a labels.Selector,

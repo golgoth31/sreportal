@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package image
+package chain
 
 import (
 	"context"
@@ -57,14 +57,4 @@ func findRunningPodForWorkload(
 		}
 	}
 	return newest, nil
-}
-
-// FindRunningPodForWorkload is the exported wrapper used by the full-scan handler.
-func FindRunningPodForWorkload(
-	ctx context.Context,
-	c client.Client,
-	namespace string,
-	selector labels.Selector,
-) (*corev1.Pod, error) {
-	return findRunningPodForWorkload(ctx, c, namespace, selector)
 }

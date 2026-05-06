@@ -39,8 +39,9 @@ import (
 )
 
 // finalizerName is the finalizer added to ImageInventory CRs so the controller
-// can purge the portal's projection from the in-memory store before the CR is
-// actually removed from the API server.
+// can purge per-scope readstore contributions before the CR is deleted from
+// the API server. (Local-path child ImageRegistry CRs are GC'd automatically
+// via their ownerRef.)
 const finalizerName = "sreportal.io/imageinventory"
 
 // ImageInventoryReconciler reconciles an ImageInventory object using a chain of handlers.
@@ -55,9 +56,9 @@ func NewImageInventoryReconciler(c client.Client, store domainimage.ImageWriter,
 	chain := reconciler.NewChain(
 		imageinventorychain.NewValidateSpecHandler(c),
 		imageinventorychain.NewValidatePortalRefHandler(c),
-		imageinventorychain.NewFetchRemoteImagesHandler(c, remoteClientCache),
+		imageinventorychain.NewFetchRemoteImagesHandler(c, remoteClientCache, store),
 		imageinventorychain.NewScanWorkloadsHandler(c),
-		imageinventorychain.NewProjectImagesHandler(c, store),
+		imageinventorychain.NewSyncRegistryCRsHandler(c),
 		imageinventorychain.NewUpdateStatusHandler(c),
 	)
 	return &ImageInventoryReconciler{
@@ -70,6 +71,7 @@ func NewImageInventoryReconciler(c client.Client, store domainimage.ImageWriter,
 // +kubebuilder:rbac:groups=sreportal.io,resources=imageinventories,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=sreportal.io,resources=imageinventories/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=imageinventories/finalizers,verbs=update
+// +kubebuilder:rbac:groups=sreportal.io,resources=imageregistries,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile validates an ImageInventory resource via the handler chain.
 func (r *ImageInventoryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -88,8 +90,18 @@ func (r *ImageInventoryReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	if !inv.DeletionTimestamp.IsZero() {
 		if controllerutil.ContainsFinalizer(&inv, finalizerName) {
-			if err := r.store.DeletePortal(ctx, inv.Spec.PortalRef); err != nil {
-				return ctrl.Result{}, fmt.Errorf("delete portal projection: %w", err)
+			// Drop every readstore scope previously contributed by this CR.
+			// Local-path CRs typically have empty Registries here (writes flow
+			// through child ImageRegistry CRs which clean themselves up), but
+			// remote-path CRs persist their (host, namespace) scopes here so
+			// we can call RemoveForNamespace on each one.
+			for _, ref := range inv.Status.Registries {
+				if ref.Host == "" || ref.Namespace == "" {
+					continue
+				}
+				if err := r.store.RemoveForNamespace(ctx, inv.Spec.PortalRef, ref.Host, ref.Namespace); err != nil {
+					return ctrl.Result{}, fmt.Errorf("remove readstore scope (host=%s ns=%s): %w", ref.Host, ref.Namespace, err)
+				}
 			}
 			// Drop stale metric children for the deleted CR. If another
 			// ImageInventory still targets the same portalRef, the next
@@ -138,6 +150,7 @@ func (r *ImageInventoryReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 func (r *ImageInventoryReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&sreportalv1alpha1.ImageInventory{}).
+		Owns(&sreportalv1alpha1.ImageRegistry{}).
 		Named("imageinventory").
 		Complete(r)
 }

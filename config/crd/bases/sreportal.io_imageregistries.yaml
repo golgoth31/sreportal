@@ -1,0 +1,297 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.20.0
+  name: imageregistries.sreportal.io
+spec:
+  group: sreportal.io
+  names:
+    kind: ImageRegistry
+    listKind: ImageRegistryList
+    plural: imageregistries
+    singular: imageregistry
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.host
+      name: Host
+      type: string
+    - jsonPath: .spec.portalRef
+      name: Portal
+      type: string
+    - jsonPath: .spec.namespace
+      name: Namespace
+      type: string
+    - jsonPath: .status.imageCount
+      name: Images
+      type: integer
+    - jsonPath: .status.upgradeAvailableCount
+      name: Upgrades
+      type: integer
+    - jsonPath: .status.mutatedCount
+      name: Mutated
+      priority: 1
+      type: integer
+    - jsonPath: .status.injectedCount
+      name: Injected
+      priority: 1
+      type: integer
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: ImageRegistry is the Schema for the imageregistries API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: spec defines the desired state of ImageRegistry
+            properties:
+              host:
+                description: host is the registry-of-origin (e.g. "docker.io", "ghcr.io").
+                minLength: 1
+                type: string
+              images:
+                description: images is the list of images observed in (portalRef,
+                  host, namespace).
+                items:
+                  description: ImageRegistrySpecEntry is one image entry inside an
+                    ImageRegistry CR.
+                  properties:
+                    changeType:
+                      description: |-
+                        changeType classifies the relationship between OriginalImage and
+                        MutatedImage. Allowed values: none, mutated, injected.
+                      enum:
+                      - none
+                      - mutated
+                      - injected
+                      type: string
+                    key:
+                      description: |-
+                        key is sha256(originalImage|mutatedImage|container)[:16] — used as
+                        listMapKey for stable patches.
+                      minLength: 1
+                      type: string
+                    mutatedImage:
+                      description: mutatedImage is the image observed in the running
+                        Pod.
+                      minLength: 1
+                      type: string
+                    originalImage:
+                      description: |-
+                        originalImage is the image declared in the workload's PodSpec
+                        template. Empty when changeType=injected.
+                      type: string
+                    originalTag:
+                      description: originalTag is the tag of the lookup target image.
+                      type: string
+                    repository:
+                      description: |-
+                        repository is the parsed repository name (e.g. "library/nginx") from
+                        the lookup target image (originalImage if non-empty, else
+                        mutatedImage).
+                      type: string
+                    tagType:
+                      description: tagType classifies the OriginalTag (semver/commit/digest/latest/other).
+                      type: string
+                    workloads:
+                      description: workloads lists the workloads referencing this
+                        entry. No cap in v1.
+                      items:
+                        description: ImageRegistryWorkloadRef identifies a workload+container
+                          referencing an entry.
+                        properties:
+                          container:
+                            description: container is the name of the container/initContainer
+                              using the image.
+                            type: string
+                          kind:
+                            description: kind of the workload (Deployment, StatefulSet,
+                              etc.).
+                            type: string
+                          name:
+                            description: name of the workload.
+                            type: string
+                          namespace:
+                            description: namespace of the workload (info; may differ
+                              for cross-ns mutations).
+                            type: string
+                        required:
+                        - container
+                        - kind
+                        - name
+                        - namespace
+                        type: object
+                      type: array
+                  required:
+                  - changeType
+                  - key
+                  - mutatedImage
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - key
+                x-kubernetes-list-type: map
+              namespace:
+                description: |-
+                  namespace is the Kubernetes namespace targeted by this aggregation
+                  (NOT the namespace the CR itself lives in — they may differ).
+                minLength: 1
+                type: string
+              portalRef:
+                description: portalRef is the Portal name this registry inventory
+                  is derived from.
+                minLength: 1
+                type: string
+            required:
+            - host
+            - namespace
+            - portalRef
+            type: object
+          status:
+            description: status defines the observed state of ImageRegistry
+            properties:
+              conditions:
+                description: conditions represents the current state of the ImageRegistry
+                  resource.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              imageCount:
+                description: imageCount is the total number of entries in Spec.Images.
+                format: int32
+                type: integer
+              images:
+                description: images carries per-entry resolution state, keyed by Spec.Images[].Key.
+                items:
+                  description: ImageRegistryStatusEntry is the per-image lookup result.
+                  properties:
+                    key:
+                      description: key joins Spec.Images[].Key.
+                      type: string
+                    lastCheckedAt:
+                      description: lastCheckedAt is the timestamp of the most recent
+                        successful lookup.
+                      format: date-time
+                      type: string
+                    lastError:
+                      description: lastError carries the last lookup error, if any.
+                      type: string
+                    latestVersion:
+                      description: |-
+                        latestVersion is the highest semver tag found on the registry. Empty
+                        when not applicable (non-semver tag) or after a failed lookup.
+                      type: string
+                    upgradeAvailable:
+                      description: upgradeAvailable is true when latestVersion > originalTag.
+                      type: boolean
+                  required:
+                  - key
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - key
+                x-kubernetes-list-type: map
+              injectedCount:
+                description: injectedCount is the count of entries with ChangeType=injected.
+                format: int32
+                type: integer
+              lastError:
+                description: lastError contains the last reconciliation error, if
+                  any.
+                type: string
+              mutatedCount:
+                description: mutatedCount is the count of entries with ChangeType=mutated.
+                format: int32
+                type: integer
+              observedGeneration:
+                description: observedGeneration is the most recently observed generation.
+                format: int64
+                type: integer
+              upgradeAvailableCount:
+                description: upgradeAvailableCount is the count of entries with UpgradeAvailable=true.
+                format: int32
+                type: integer
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

@@ -996,6 +996,17 @@
       },
       "title": "AlertmanagerResource represents an Alertmanager CR with its metadata and alerts"
     },
+    "v1ChangeType": {
+      "type": "string",
+      "enum": [
+        "CHANGE_TYPE_UNSPECIFIED",
+        "CHANGE_TYPE_NONE",
+        "CHANGE_TYPE_MUTATED",
+        "CHANGE_TYPE_INJECTED"
+      ],
+      "default": "CHANGE_TYPE_UNSPECIFIED",
+      "description": "ChangeType describes how an image observed in a Pod relates to the image\ndeclared in the workload template.\n\n - CHANGE_TYPE_NONE: The Pod image matches the template image.\n - CHANGE_TYPE_MUTATED: The Pod image was rewritten by a mutating webhook (e.g. mirror rewrite).\n - CHANGE_TYPE_INJECTED: The container is not declared in the template (sidecar injected at admission)."
+    },
     "v1ComponentResource": {
       "type": "object",
       "properties": {
@@ -1372,6 +1383,31 @@
             "type": "object",
             "$ref": "#/definitions/v1WorkloadRef"
           }
+        },
+        "latestVersion": {
+          "type": "string",
+          "description": "latest_version is the highest semver tag found on the origin registry,\nempty when tag_type is not \"semver\" or when the lookup has not run yet."
+        },
+        "latestCheckedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "latest_checked_at is the timestamp of the last successful registry lookup\nfor this image. Unset when no lookup has succeeded yet."
+        },
+        "latestError": {
+          "type": "string",
+          "description": "latest_error is the last registry lookup error message, empty on success."
+        },
+        "upgradeAvailable": {
+          "type": "boolean",
+          "description": "upgrade_available is true when latest_version exists and is strictly greater\nthan the current tag (semver comparison)."
+        },
+        "changeType": {
+          "$ref": "#/definitions/v1ChangeType",
+          "description": "change_type indicates how the observed Pod image relates to the workload\ntemplate image (none, mutated, injected)."
+        },
+        "originalImage": {
+          "type": "string",
+          "description": "original_image is the image reference declared in the workload template\n(PodSpec). Empty when change_type is CHANGE_TYPE_INJECTED."
         }
       }
     },

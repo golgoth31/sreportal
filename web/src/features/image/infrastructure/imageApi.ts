@@ -3,12 +3,13 @@ import { createClient } from "@connectrpc/connect";
 import { createGrpcWebTransport } from "@connectrpc/connect-web";
 
 import {
+  ChangeType as ProtoChangeType,
   ImageService,
   ListImagesRequestSchema,
-  type WorkloadRef as ProtoWorkloadRef,
   type Image as ProtoImage,
+  type WorkloadRef as ProtoWorkloadRef,
 } from "@/gen/sreportal/v1/image_pb";
-import type { ContainerSource, Image, WorkloadRef } from "../domain/image.types";
+import type { ChangeType, ContainerSource, Image, WorkloadRef } from "../domain/image.types";
 
 const transport = createGrpcWebTransport({ baseUrl: window.location.origin });
 const client = createClient(ImageService, transport);
@@ -27,6 +28,19 @@ function toDomainWorkload(w: ProtoWorkloadRef): WorkloadRef {
   };
 }
 
+function toDomainChangeType(ct: ProtoChangeType): ChangeType {
+  switch (ct) {
+    case ProtoChangeType.NONE:
+      return "none";
+    case ProtoChangeType.MUTATED:
+      return "mutated";
+    case ProtoChangeType.INJECTED:
+      return "injected";
+    default:
+      return "unspecified";
+  }
+}
+
 function toDomainImage(i: ProtoImage): Image {
   return {
     registry: i.registry,
@@ -34,6 +48,17 @@ function toDomainImage(i: ProtoImage): Image {
     tag: i.tag,
     tagType: i.tagType as Image["tagType"],
     workloads: i.workloads.map(toDomainWorkload),
+    latestVersion: i.latestVersion || undefined,
+    latestCheckedAt: i.latestCheckedAt
+      ? new Date(
+          Number(i.latestCheckedAt.seconds) * 1000 +
+            Math.round(i.latestCheckedAt.nanos / 1_000_000),
+        ).toISOString()
+      : undefined,
+    latestError: i.latestError || undefined,
+    upgradeAvailable: i.upgradeAvailable || undefined,
+    changeType: toDomainChangeType(i.changeType),
+    originalImage: i.originalImage || undefined,
   };
 }
 

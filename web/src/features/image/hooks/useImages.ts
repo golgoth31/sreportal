@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import {
   annotateImages,
@@ -14,6 +14,11 @@ export function useImages(portal: string) {
   const [tagTypeFilter, setTagTypeFilter] = useState("");
   const [mutatedFilter, setMutatedFilter] = useState(false);
   const [injectedFilter, setInjectedFilter] = useState(false);
+  const [namespaceFilter, setNamespaceFilter] = useState<string[]>([]);
+  const [changeTypeFilter, setChangeTypeFilter] = useState("");
+  const [upgradeFilter, setUpgradeFilter] = useState(false);
+  const [groupByHost, setGroupByHost] = useState(false);
+
   const { images: rawImages, isLoading, isFetching, error, refetch } = useImageQuery(portal);
 
   const images = useMemo(
@@ -29,14 +34,40 @@ export function useImages(portal: string) {
         tagTypeFilter,
         mutatedFilter,
         injectedFilter,
+        namespaceFilter,
+        changeTypeFilter,
+        upgradeFilter,
       }),
-    [images, search, registryFilter, tagTypeFilter, mutatedFilter, injectedFilter],
+    [
+      images,
+      search,
+      registryFilter,
+      tagTypeFilter,
+      mutatedFilter,
+      injectedFilter,
+      namespaceFilter,
+      changeTypeFilter,
+      upgradeFilter,
+    ],
   );
+
   const groupedByRegistry = useMemo(() => groupImagesByRegistry(filtered), [filtered]);
+
   const registries = useMemo(
     () => [...new Set(images.map((img) => img.registry))].sort(),
     [images],
   );
+
+  // All namespaces present across all (unfiltered) images.
+  const namespaces = useMemo(() => {
+    const ns = new Set<string>();
+    for (const img of images) {
+      for (const w of img.workloads) {
+        if (!w.hidden) ns.add(w.namespace);
+      }
+    }
+    return [...ns].sort();
+  }, [images]);
 
   const countsByTag = useMemo(() => {
     return filtered.reduce<Record<string, number>>(
@@ -56,13 +87,48 @@ export function useImages(portal: string) {
     [images],
   );
 
+  const upgradeCount = useMemo(
+    () => images.reduce((n, img) => n + (img.upgradeAvailable ? 1 : 0), 0),
+    [images],
+  );
+
+  const toggleNamespace = useCallback((ns: string) => {
+    setNamespaceFilter((prev) =>
+      prev.includes(ns) ? prev.filter((n) => n !== ns) : [...prev, ns],
+    );
+  }, []);
+
+  const clearAllFilters = useCallback(() => {
+    setSearch("");
+    setRegistryFilter("");
+    setTagTypeFilter("");
+    setMutatedFilter(false);
+    setInjectedFilter(false);
+    setNamespaceFilter([]);
+    setChangeTypeFilter("");
+    setUpgradeFilter(false);
+  }, []);
+
+  const hasFilters =
+    search !== "" ||
+    registryFilter !== "" ||
+    tagTypeFilter !== "" ||
+    mutatedFilter ||
+    injectedFilter ||
+    namespaceFilter.length > 0 ||
+    changeTypeFilter !== "" ||
+    upgradeFilter;
+
   return {
     images,
     filtered,
     groupedByRegistry,
     registries,
+    namespaces,
     countsByTag,
     webhookCounts,
+    upgradeCount,
+    groupByHost,
     totalCount: images.length,
     filteredCount: filtered.length,
     isLoading,
@@ -73,11 +139,21 @@ export function useImages(portal: string) {
     tagTypeFilter,
     mutatedFilter,
     injectedFilter,
+    namespaceFilter,
+    changeTypeFilter,
+    upgradeFilter,
+    hasFilters,
     setSearch,
     setRegistryFilter,
     setTagTypeFilter,
     setMutatedFilter,
     setInjectedFilter,
+    setNamespaceFilter,
+    toggleNamespace,
+    setChangeTypeFilter,
+    setUpgradeFilter,
+    setGroupByHost,
+    clearAllFilters,
     refetch,
   };
 }

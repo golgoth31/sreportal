@@ -4,12 +4,28 @@ import (
 	"context"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	domainimage "github.com/golgoth31/sreportal/internal/domain/image"
+	domainimageregistry "github.com/golgoth31/sreportal/internal/domain/imageregistry"
 	domainportal "github.com/golgoth31/sreportal/internal/domain/portal"
 	imagev1 "github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1"
 	"github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1/sreportalv1connect"
 )
+
+// toProtoChangeType maps the readstore string ChangeType to the proto enum.
+func toProtoChangeType(s string) imagev1.ChangeType {
+	switch domainimageregistry.ChangeType(s) {
+	case domainimageregistry.ChangeTypeNone:
+		return imagev1.ChangeType_CHANGE_TYPE_NONE
+	case domainimageregistry.ChangeTypeMutated:
+		return imagev1.ChangeType_CHANGE_TYPE_MUTATED
+	case domainimageregistry.ChangeTypeInjected:
+		return imagev1.ChangeType_CHANGE_TYPE_INJECTED
+	default:
+		return imagev1.ChangeType_CHANGE_TYPE_UNSPECIFIED
+	}
+}
 
 // ImageService implements ImageServiceHandler.
 type ImageService struct {
@@ -54,13 +70,22 @@ func (s *ImageService) ListImages(
 				Source:    string(w.Source),
 			})
 		}
-		images = append(images, &imagev1.Image{
-			Registry:   v.Registry,
-			Repository: v.Repository,
-			Tag:        v.Tag,
-			TagType:    string(v.TagType),
-			Workloads:  workloads,
-		})
+		img := &imagev1.Image{
+			Registry:         v.Registry,
+			Repository:       v.Repository,
+			Tag:              v.Tag,
+			TagType:          string(v.TagType),
+			Workloads:        workloads,
+			LatestVersion:    v.LatestVersion,
+			LatestError:      v.LatestError,
+			UpgradeAvailable: v.UpgradeAvailable,
+			ChangeType:       toProtoChangeType(v.ChangeType),
+			OriginalImage:    v.OriginalImage,
+		}
+		if v.LatestCheckedAt != nil {
+			img.LatestCheckedAt = timestamppb.New(*v.LatestCheckedAt)
+		}
+		images = append(images, img)
 	}
 
 	return connect.NewResponse(&imagev1.ListImagesResponse{

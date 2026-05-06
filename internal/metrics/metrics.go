@@ -24,20 +24,24 @@ import (
 const (
 	namespace = "sreportal"
 
-	subsystemController   = "controller"
-	subsystemAlertmanager = "alertmanager"
-	subsystemRelease      = "release"
-	subsystemStatusPage   = "statuspage"
-	subsystemHTTP         = "http"
-	subsystemMCP          = "mcp"
-	subsystemPortal       = "portal"
-	subsystemSource       = "source"
+	subsystemController    = "controller"
+	subsystemAlertmanager  = "alertmanager"
+	subsystemRelease       = "release"
+	subsystemStatusPage    = "statuspage"
+	subsystemHTTP          = "http"
+	subsystemMCP           = "mcp"
+	subsystemPortal        = "portal"
+	subsystemSource        = "source"
+	subsystemImageRegistry = "imageregistry"
 
 	labelPortal     = "portal"
 	labelServer     = "server"
 	labelSourceType = "source_type"
 	labelSource     = "source"
 	labelTool       = "tool"
+	labelHost       = "host"
+	labelNamespace  = "namespace"
+	labelResult     = "result"
 )
 
 // --- Controller metrics ---
@@ -373,6 +377,86 @@ var (
 	)
 )
 
+// --- Image registry metrics ---
+
+var (
+	// ImageRegistryEntriesTotal tracks the number of image entries per (portal, host, namespace).
+	ImageRegistryEntriesTotal = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: subsystemImageRegistry,
+			Name:      "entries_total",
+			Help:      "Total number of image entries per (portal, host, namespace).",
+		},
+		[]string{labelPortal, labelHost, labelNamespace},
+	)
+
+	// ImageRegistryUpgradesTotal tracks the number of entries with UpgradeAvailable=true.
+	ImageRegistryUpgradesTotal = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: subsystemImageRegistry,
+			Name:      "upgrades_total",
+			Help:      "Number of images with an upgrade available per (portal, host, namespace).",
+		},
+		[]string{labelPortal, labelHost, labelNamespace},
+	)
+
+	// ImageRegistryMutatedTotal tracks the number of entries with ChangeType=mutated.
+	ImageRegistryMutatedTotal = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: subsystemImageRegistry,
+			Name:      "mutated_total",
+			Help:      "Number of mutated images per (portal, host, namespace).",
+		},
+		[]string{labelPortal, labelHost, labelNamespace},
+	)
+
+	// ImageRegistryInjectedTotal tracks the number of entries with ChangeType=injected.
+	ImageRegistryInjectedTotal = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: subsystemImageRegistry,
+			Name:      "injected_total",
+			Help:      "Number of injected images per (portal, host, namespace).",
+		},
+		[]string{labelPortal, labelHost, labelNamespace},
+	)
+
+	// RegistryLookupTotal counts registry tag-list calls by host and result.
+	RegistryLookupTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: subsystemImageRegistry,
+			Name:      "lookup_total",
+			Help:      "Total number of registry tag-list calls by host and result (success, error, rate_limited, skipped).",
+		},
+		[]string{labelHost, labelResult},
+	)
+
+	// RegistryLookupDuration tracks the duration of registry tag-list calls.
+	RegistryLookupDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: namespace,
+			Subsystem: subsystemImageRegistry,
+			Name:      "lookup_duration_seconds",
+			Help:      "Duration of registry tag-list calls in seconds, by host.",
+			Buckets:   prometheus.DefBuckets,
+		},
+		[]string{labelHost},
+	)
+)
+
+// ResetImageRegistryMetrics removes the Gauge label-sets for the given (portal,
+// host, namespace) triplet. Called by the ImageRegistry finalizer.
+func ResetImageRegistryMetrics(portal, host, namespace string) {
+	ImageRegistryEntriesTotal.DeleteLabelValues(portal, host, namespace)
+	ImageRegistryUpgradesTotal.DeleteLabelValues(portal, host, namespace)
+	ImageRegistryMutatedTotal.DeleteLabelValues(portal, host, namespace)
+	ImageRegistryInjectedTotal.DeleteLabelValues(portal, host, namespace)
+}
+
 func init() {
 	// Register all metrics with the controller-runtime metrics registry
 	// so they are exposed on the /metrics endpoint.
@@ -415,5 +499,12 @@ func init() {
 		MCPToolCallDuration,
 		MCPToolCallErrorsTotal,
 		MCPSessionsActive,
+		// Image registry
+		ImageRegistryEntriesTotal,
+		ImageRegistryUpgradesTotal,
+		ImageRegistryMutatedTotal,
+		ImageRegistryInjectedTotal,
+		RegistryLookupTotal,
+		RegistryLookupDuration,
 	)
 }

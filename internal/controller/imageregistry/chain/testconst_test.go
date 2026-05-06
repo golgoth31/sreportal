@@ -14,13 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package image
+package chain_test
 
-// WorkloadKey uniquely identifies a scanned Kubernetes workload across the
-// cluster. It is used to partition the per-portal image projection so that a
-// single workload event can update only its own contribution.
-type WorkloadKey struct {
-	Kind      string
-	Namespace string
-	Name      string
-}
+// Test-only string constants extracted to satisfy goconst lint rule.
+const (
+	tNsDefault         = "default"
+	tPortalMain        = "main"
+	tRegistryGhcr      = "ghcr.io"
+	tVersion100        = "1.0.0"
+	tTagTypeSemver     = "semver"
+	tChangeTypeNone    = "none"
+	tImgGhcrMyorgMyapp = "ghcr.io/myorg/myapp:1.0.0"
+	tTestName          = "test"
+)

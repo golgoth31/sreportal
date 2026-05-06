@@ -12,4 +12,5 @@ resources:
 - v1alpha1_incident.yaml
 - v1alpha1_flowobserver.yaml
 - v1alpha1_imageinventory.yaml
+- v1alpha1_imageregistry.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples

@@ -1,0 +1,208 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package chain
+
+import (
+	"context"
+	"fmt"
+	"sort"
+
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	"github.com/golgoth31/sreportal/internal/controller/statusutil"
+	domainimageregistry "github.com/golgoth31/sreportal/internal/domain/imageregistry"
+	"github.com/golgoth31/sreportal/internal/log"
+	"github.com/golgoth31/sreportal/internal/metrics"
+	"github.com/golgoth31/sreportal/internal/reconciler"
+)
+
+// SyncRegistryCRsHandler aggregates ChainData.Observations by (host, namespace)
+// and reconciles the corresponding child ImageRegistry CRs (create/patch/delete)
+// owned by the parent ImageInventory.
+//
+// No-op for remote inventories — those write directly to the readstore via
+// FetchRemoteImagesHandler and don't own ImageRegistry CRs (those belong to the
+// source portal's controller).
+type SyncRegistryCRsHandler struct {
+	client client.Client
+}
+
+// NewSyncRegistryCRsHandler constructs a SyncRegistryCRsHandler.
+func NewSyncRegistryCRsHandler(c client.Client) *SyncRegistryCRsHandler {
+	return &SyncRegistryCRsHandler{client: c}
+}
+
+// Handle implements reconciler.Handler.
+func (h *SyncRegistryCRsHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.ImageInventory, ChainData]) error {
+	inv := rc.Resource
+	if inv.Spec.IsRemote {
+		return nil
+	}
+
+	groups := domainimageregistry.AggregateForCRs(inv.Spec.PortalRef, rc.Data.Observations)
+
+	desired := make(map[string]sreportalv1alpha1.ImageRegistryRef, len(groups))
+	// Stable iteration: sort group keys.
+	gKeys := make([]domainimageregistry.Group, 0, len(groups))
+	for g := range groups {
+		gKeys = append(gKeys, g)
+	}
+	sort.SliceStable(gKeys, func(i, j int) bool {
+		if gKeys[i].Host != gKeys[j].Host {
+			return gKeys[i].Host < gKeys[j].Host
+		}
+		return gKeys[i].Namespace < gKeys[j].Namespace
+	})
+
+	for _, g := range gKeys {
+		entries := groups[g]
+		hash := domainimageregistry.CRName(inv.Spec.PortalRef, g.Host, g.Namespace)
+		if err := h.upsertCR(ctx, inv, hash, g, entries); err != nil {
+			metrics.ImageInventorySyncTotal.WithLabelValues(inv.Name, "error").Inc()
+			wrapped := fmt.Errorf("upsert ImageRegistry %s: %w", hash, err)
+			_ = statusutil.SetConditionAndPatch(ctx, h.client, inv, ReadyConditionType, metav1.ConditionFalse, ReasonProjectionFailed, wrapped.Error())
+			return wrapped
+		}
+		desired[hash] = sreportalv1alpha1.ImageRegistryRef{
+			Hash:      hash,
+			Host:      g.Host,
+			Namespace: g.Namespace,
+		}
+	}
+
+	// Garbage-collect child ImageRegistry CRs that were previously owned by
+	// this ImageInventory but no longer match any group in the latest scan.
+	if err := h.deleteOrphans(ctx, inv, desired); err != nil {
+		metrics.ImageInventorySyncTotal.WithLabelValues(inv.Name, "error").Inc()
+		wrapped := fmt.Errorf("delete orphan ImageRegistry CRs: %w", err)
+		_ = statusutil.SetConditionAndPatch(ctx, h.client, inv, ReadyConditionType, metav1.ConditionFalse, ReasonProjectionFailed, wrapped.Error())
+		return wrapped
+	}
+
+	// Project desired refs into the parent's Status.Registries (deterministic order).
+	refs := make([]sreportalv1alpha1.ImageRegistryRef, 0, len(desired))
+	for _, ref := range desired {
+		refs = append(refs, ref)
+	}
+	sort.SliceStable(refs, func(i, j int) bool { return refs[i].Hash < refs[j].Hash })
+	inv.Status.Registries = refs
+
+	metrics.ImageInventorySyncTotal.WithLabelValues(inv.Name, "success").Inc()
+	return nil
+}
+
+// upsertCR creates or patches a single ImageRegistry CR owned by `inv`.
+//
+// The CR is created in the same namespace as the parent ImageInventory so
+// ownerRef-driven garbage collection works (Kubernetes requires owner and
+// dependent to be in the same namespace for namespaced owner refs).
+func (h *SyncRegistryCRsHandler) upsertCR(
+	ctx context.Context,
+	inv *sreportalv1alpha1.ImageInventory,
+	hash string,
+	group domainimageregistry.Group,
+	entries []domainimageregistry.Entry,
+) error {
+	logger := log.FromContext(ctx).WithValues("imageregistry", hash, "host", group.Host, "namespace", group.Namespace)
+
+	cr := &sreportalv1alpha1.ImageRegistry{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      hash,
+			Namespace: inv.Namespace,
+		},
+	}
+	op, err := controllerutil.CreateOrPatch(ctx, h.client, cr, func() error {
+		// Owner reference for cascading delete.
+		if err := controllerutil.SetControllerReference(inv, cr, h.client.Scheme()); err != nil {
+			return fmt.Errorf("set owner reference: %w", err)
+		}
+		cr.Spec.Host = group.Host
+		cr.Spec.PortalRef = inv.Spec.PortalRef
+		cr.Spec.Namespace = group.Namespace
+		cr.Spec.Images = entriesToSpecImages(entries)
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	logger.V(1).Info("ImageRegistry reconciled", "operation", op, "imageCount", len(entries))
+	return nil
+}
+
+// deleteOrphans deletes every ImageRegistry CR previously listed in
+// inv.Status.Registries that is no longer in `desired`. We rely on the parent
+// status (rather than listing children by ownerRef) so the controller works
+// without a field/label index — at the cost of needing the status to be in
+// sync, which it is, since we always update it on success.
+func (h *SyncRegistryCRsHandler) deleteOrphans(
+	ctx context.Context,
+	inv *sreportalv1alpha1.ImageInventory,
+	desired map[string]sreportalv1alpha1.ImageRegistryRef,
+) error {
+	logger := log.FromContext(ctx)
+	for _, prev := range inv.Status.Registries {
+		if _, keep := desired[prev.Hash]; keep {
+			continue
+		}
+		cr := &sreportalv1alpha1.ImageRegistry{}
+		key := types.NamespacedName{Namespace: inv.Namespace, Name: prev.Hash}
+		if err := h.client.Get(ctx, key, cr); err != nil {
+			if apierrors.IsNotFound(err) {
+				continue
+			}
+			return fmt.Errorf("get orphan ImageRegistry %s: %w", prev.Hash, err)
+		}
+		if err := h.client.Delete(ctx, cr); err != nil && !apierrors.IsNotFound(err) {
+			return fmt.Errorf("delete orphan ImageRegistry %s: %w", prev.Hash, err)
+		}
+		logger.V(1).Info("deleted orphan ImageRegistry", "name", prev.Hash)
+	}
+	return nil
+}
+
+// entriesToSpecImages converts the domain Entry slice into the API
+// ImageRegistrySpecEntry slice consumed by the CRD.
+func entriesToSpecImages(entries []domainimageregistry.Entry) []sreportalv1alpha1.ImageRegistrySpecEntry {
+	out := make([]sreportalv1alpha1.ImageRegistrySpecEntry, 0, len(entries))
+	for _, e := range entries {
+		workloads := make([]sreportalv1alpha1.ImageRegistryWorkloadRef, 0, len(e.Workloads))
+		for _, w := range e.Workloads {
+			workloads = append(workloads, sreportalv1alpha1.ImageRegistryWorkloadRef{
+				Kind:      w.Kind,
+				Namespace: w.Namespace,
+				Name:      w.Name,
+				Container: w.Container,
+			})
+		}
+		out = append(out, sreportalv1alpha1.ImageRegistrySpecEntry{
+			Key:           e.Key,
+			OriginalImage: e.OriginalImage,
+			MutatedImage:  e.MutatedImage,
+			ChangeType:    string(e.ChangeType),
+			Repository:    e.Repository,
+			OriginalTag:   e.OriginalTag,
+			TagType:       string(e.TagType),
+			Workloads:     workloads,
+		})
+	}
+	return out
+}

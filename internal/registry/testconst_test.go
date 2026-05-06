@@ -14,17 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package image
+package registry
 
+// Test-only string constants extracted to satisfy goconst lint rule.
 const (
-	tNsDefault = "default"
-	tPortalA   = "portal-a"
-	tInvName   = "inv"
-	tNameAPI   = "api"
-	tNameWeb   = "web"
-	tNameApp   = "app"
-	tNsSRE     = "sre"
-	tOther     = "other"
-	tNameAPI1  = "api-1"
-	tImgGhcr   = "ghcr.io/acme/api:v1.2.3"
+	tV2Path = "/v2/"
 )

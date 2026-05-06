@@ -32,7 +32,7 @@ import (
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/controller/statusutil"
-	domainimage "github.com/golgoth31/sreportal/internal/domain/image"
+	domainimageregistry "github.com/golgoth31/sreportal/internal/domain/imageregistry"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
@@ -56,11 +56,17 @@ var ErrInvalidSpec = errors.New("invalid ImageInventory spec")
 var ErrPortalNotFound = errors.New("portal not found")
 
 // ChainData holds shared state between handlers.
+//
+// Local-path: ScanWorkloadsHandler populates `Observations` with raw
+// (workload, container, template, pod) tuples; SyncRegistryCRsHandler then
+// aggregates them by (host, namespace) and creates/patches/deletes child
+// ImageRegistry CRs.
+//
+// Remote-path: FetchRemoteImagesHandler bypasses Observations entirely and
+// projects directly into the readstore via ReplaceForNamespace. It does NOT
+// create ImageRegistry CRs (those are owned by the source portal's controller).
 type ChainData struct {
-	// ByWorkload is the per-workload image projection for the inventory's
-	// portal, populated either by ScanWorkloadsHandler (local) or by
-	// FetchRemoteImagesHandler (remote), and consumed by ProjectImagesHandler.
-	ByWorkload map[domainimage.WorkloadKey][]domainimage.ImageView
+	Observations []domainimageregistry.ContainerObservation
 }
 
 // --- Handler 1: ValidateSpec ---
