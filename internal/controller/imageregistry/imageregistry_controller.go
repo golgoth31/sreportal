@@ -78,8 +78,12 @@ func NewImageRegistryReconciler(
 	handlers := []reconciler.Handler[*sreportalv1alpha1.ImageRegistry, imageregistrychain.ChainData]{
 		imageregistrychain.NewValidateSpecHandler(c),
 		imageregistrychain.NewSelectDueImagesHandler(),
-		imageregistrychain.NewResolveLatestVersionsHandler(registryClient, hostLimiter),
+		// Early readstore pass: populate immediately from current spec+status so
+		// readers see up-to-date data without waiting for the registry lookup.
 		imageregistrychain.NewUpdateReadstoreHandler(imageStore),
+		imageregistrychain.NewResolveLatestVersionsHandler(registryClient, hostLimiter, c),
+		// Second readstore pass: only runs when the lookup produced new versions.
+		imageregistrychain.NewUpdateReadstoreIfResolvedHandler(imageStore),
 		imageregistrychain.NewUpdateStatusHandler(c),
 	}
 

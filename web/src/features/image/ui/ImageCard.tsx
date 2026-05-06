@@ -91,13 +91,9 @@ export function ImageCard({ image }: ImageCardProps) {
       <div
         className={cn(
           "group rounded-lg border border-border/70 bg-card/60 backdrop-blur-sm p-4 flex flex-col gap-2 transition-all hover:border-primary/40 hover:bg-card hover:shadow-md hover:shadow-primary/5",
-          image.upgradeAvailable &&
-            "bg-emerald-50/30 dark:bg-emerald-950/20 border-emerald-300/60 dark:border-emerald-700/50 hover:border-emerald-400 dark:hover:border-emerald-600",
-          !image.upgradeAvailable &&
-            image.hasMutation &&
+          image.hasMutation &&
             "border-amber-300/70 dark:border-amber-700/60 hover:border-amber-400 dark:hover:border-amber-600",
-          !image.upgradeAvailable &&
-            !image.hasMutation &&
+          !image.hasMutation &&
             image.hasInjection &&
             "border-violet-300/70 dark:border-violet-700/60 hover:border-violet-400 dark:hover:border-violet-600",
         )}

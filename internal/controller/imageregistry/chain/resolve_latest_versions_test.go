@@ -57,7 +57,7 @@ var _ = Describe("ResolveLatestVersionsHandler", func() {
 	Context("no due images", func() {
 		It("is a no-op", func() {
 			client := &fakeRegistryClient{}
-			h := chain.NewResolveLatestVersionsHandler(client, limiter)
+			h := chain.NewResolveLatestVersionsHandler(client, limiter, nil)
 			rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageRegistry, chain.ChainData]{
 				Resource: makeIR(tRegistryGhcr),
 			}
@@ -73,30 +73,24 @@ var _ = Describe("ResolveLatestVersionsHandler", func() {
 					"ghcr.io/myorg/myapp": {tVersion100, "1.1.0", "1.2.0", "latest"},
 				},
 			}
-			h := chain.NewResolveLatestVersionsHandler(client, limiter)
+			h := chain.NewResolveLatestVersionsHandler(client, limiter, nil)
 
-			ir := makeIR(tRegistryGhcr)
-			rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageRegistry, chain.ChainData]{
-				Resource: ir,
-				Data: chain.ChainData{
-					DueImages: []chain.DueImage{
-						{
-							Spec: sreportalv1alpha1.ImageRegistrySpecEntry{
-								Key:           "key1",
-								OriginalImage: tImgGhcrMyorgMyapp,
-								MutatedImage:  tImgGhcrMyorgMyapp,
-								Repository:    "myorg/myapp",
-								OriginalTag:   tVersion100,
-								TagType:       tTagTypeSemver,
-								ChangeType:    tChangeTypeNone,
-							},
-						},
+			dueImages := []chain.DueImage{
+				{
+					Spec: sreportalv1alpha1.ImageRegistrySpecEntry{
+						Key:           "key1",
+						OriginalImage: tImgGhcrMyorgMyapp,
+						MutatedImage:  tImgGhcrMyorgMyapp,
+						Repository:    "myorg/myapp",
+						OriginalTag:   tVersion100,
+						TagType:       tTagTypeSemver,
+						ChangeType:    tChangeTypeNone,
 					},
 				},
 			}
-			Expect(h.Handle(ctx, rc)).To(Succeed())
-			Expect(rc.Data.Resolutions).To(HaveKey("key1"))
-			res := rc.Data.Resolutions["key1"]
+			resolutions := h.ResolveSync(ctx, tRegistryGhcr, dueImages)
+			Expect(resolutions).To(HaveKey("key1"))
+			res := resolutions["key1"]
 			Expect(res.LatestVersion).To(Equal("1.2.0"))
 			Expect(res.UpgradeAvailable).To(BeTrue())
 			Expect(res.LastError).To(BeEmpty())
@@ -106,26 +100,20 @@ var _ = Describe("ResolveLatestVersionsHandler", func() {
 	Context("non-semver tag", func() {
 		It("marks as checked with no version", func() {
 			client := &fakeRegistryClient{}
-			h := chain.NewResolveLatestVersionsHandler(client, limiter)
+			h := chain.NewResolveLatestVersionsHandler(client, limiter, nil)
 
-			ir := makeIR(tRegistryGhcr)
-			rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageRegistry, chain.ChainData]{
-				Resource: ir,
-				Data: chain.ChainData{
-					DueImages: []chain.DueImage{
-						{
-							Spec: sreportalv1alpha1.ImageRegistrySpecEntry{
-								Key:          "key-digest",
-								MutatedImage: "ghcr.io/myorg/myapp@sha256:abc",
-								TagType:      "digest",
-								ChangeType:   tChangeTypeNone,
-							},
-						},
+			dueImages := []chain.DueImage{
+				{
+					Spec: sreportalv1alpha1.ImageRegistrySpecEntry{
+						Key:          "key-digest",
+						MutatedImage: "ghcr.io/myorg/myapp@sha256:abc",
+						TagType:      "digest",
+						ChangeType:   tChangeTypeNone,
 					},
 				},
 			}
-			Expect(h.Handle(ctx, rc)).To(Succeed())
-			res := rc.Data.Resolutions["key-digest"]
+			resolutions := h.ResolveSync(ctx, tRegistryGhcr, dueImages)
+			res := resolutions["key-digest"]
 			Expect(res.LatestVersion).To(BeEmpty())
 			Expect(res.UpgradeAvailable).To(BeFalse())
 			Expect(res.LastError).To(BeEmpty())
@@ -137,28 +125,22 @@ var _ = Describe("ResolveLatestVersionsHandler", func() {
 		It("records the error in LastError", func() {
 			lookupErr := errors.New("network failure")
 			client := &fakeRegistryClient{err: lookupErr}
-			h := chain.NewResolveLatestVersionsHandler(client, limiter)
+			h := chain.NewResolveLatestVersionsHandler(client, limiter, nil)
 
-			ir := makeIR(tRegistryGhcr)
-			rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageRegistry, chain.ChainData]{
-				Resource: ir,
-				Data: chain.ChainData{
-					DueImages: []chain.DueImage{
-						{
-							Spec: sreportalv1alpha1.ImageRegistrySpecEntry{
-								Key:          "key-err",
-								MutatedImage: tImgGhcrMyorgMyapp,
-								Repository:   "myorg/myapp",
-								OriginalTag:  tVersion100,
-								TagType:      tTagTypeSemver,
-								ChangeType:   tChangeTypeNone,
-							},
-						},
+			dueImages := []chain.DueImage{
+				{
+					Spec: sreportalv1alpha1.ImageRegistrySpecEntry{
+						Key:          "key-err",
+						MutatedImage: tImgGhcrMyorgMyapp,
+						Repository:   "myorg/myapp",
+						OriginalTag:  tVersion100,
+						TagType:      tTagTypeSemver,
+						ChangeType:   tChangeTypeNone,
 					},
 				},
 			}
-			Expect(h.Handle(ctx, rc)).To(Succeed()) // handler never returns an error itself
-			res := rc.Data.Resolutions["key-err"]
+			resolutions := h.ResolveSync(ctx, tRegistryGhcr, dueImages)
+			res := resolutions["key-err"]
 			Expect(res.LastError).NotTo(BeEmpty())
 			Expect(res.LatestVersion).To(BeEmpty())
 		})
@@ -168,28 +150,22 @@ var _ = Describe("ResolveLatestVersionsHandler", func() {
 		It("records a LastError with rate-limited info", func() {
 			rateLimitErr := fmt.Errorf("list tags: %w", domainimageregistry.ErrRateLimited)
 			client := &fakeRegistryClient{err: rateLimitErr}
-			h := chain.NewResolveLatestVersionsHandler(client, limiter)
+			h := chain.NewResolveLatestVersionsHandler(client, limiter, nil)
 
-			ir := makeIR("docker.io")
-			rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageRegistry, chain.ChainData]{
-				Resource: ir,
-				Data: chain.ChainData{
-					DueImages: []chain.DueImage{
-						{
-							Spec: sreportalv1alpha1.ImageRegistrySpecEntry{
-								Key:          "key-rate",
-								MutatedImage: "docker.io/library/nginx:1.25",
-								Repository:   "library/nginx",
-								OriginalTag:  "1.25",
-								TagType:      tTagTypeSemver,
-								ChangeType:   tChangeTypeNone,
-							},
-						},
+			dueImages := []chain.DueImage{
+				{
+					Spec: sreportalv1alpha1.ImageRegistrySpecEntry{
+						Key:          "key-rate",
+						MutatedImage: "docker.io/library/nginx:1.25",
+						Repository:   "library/nginx",
+						OriginalTag:  "1.25",
+						TagType:      tTagTypeSemver,
+						ChangeType:   tChangeTypeNone,
 					},
 				},
 			}
-			Expect(h.Handle(ctx, rc)).To(Succeed())
-			res := rc.Data.Resolutions["key-rate"]
+			resolutions := h.ResolveSync(ctx, "docker.io", dueImages)
+			res := resolutions["key-rate"]
 			Expect(res.LastError).NotTo(BeEmpty())
 		})
 	})
@@ -201,29 +177,23 @@ var _ = Describe("ResolveLatestVersionsHandler", func() {
 					"ghcr.io/istio/proxy": {"1.19.0", "1.20.0"},
 				},
 			}
-			h := chain.NewResolveLatestVersionsHandler(client, limiter)
+			h := chain.NewResolveLatestVersionsHandler(client, limiter, nil)
 
-			ir := makeIR(tRegistryGhcr)
-			rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageRegistry, chain.ChainData]{
-				Resource: ir,
-				Data: chain.ChainData{
-					DueImages: []chain.DueImage{
-						{
-							Spec: sreportalv1alpha1.ImageRegistrySpecEntry{
-								Key:           "key-injected",
-								OriginalImage: "", // injected: no original
-								MutatedImage:  "ghcr.io/istio/proxy:1.19.0",
-								Repository:    "istio/proxy",
-								OriginalTag:   "1.19.0",
-								TagType:       tTagTypeSemver,
-								ChangeType:    "injected",
-							},
-						},
+			dueImages := []chain.DueImage{
+				{
+					Spec: sreportalv1alpha1.ImageRegistrySpecEntry{
+						Key:           "key-injected",
+						OriginalImage: "", // injected: no original
+						MutatedImage:  "ghcr.io/istio/proxy:1.19.0",
+						Repository:    "istio/proxy",
+						OriginalTag:   "1.19.0",
+						TagType:       tTagTypeSemver,
+						ChangeType:    "injected",
 					},
 				},
 			}
-			Expect(h.Handle(ctx, rc)).To(Succeed())
-			res := rc.Data.Resolutions["key-injected"]
+			resolutions := h.ResolveSync(ctx, tRegistryGhcr, dueImages)
+			res := resolutions["key-injected"]
 			Expect(res.LatestVersion).To(Equal("1.20.0"))
 			Expect(res.UpgradeAvailable).To(BeTrue())
 		})

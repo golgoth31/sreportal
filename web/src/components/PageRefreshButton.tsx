@@ -26,7 +26,7 @@ export function PageRefreshButton({
       size="sm"
       className={cn("gap-2 shrink-0", className)}
       onClick={() => void onRefresh()}
-      disabled={disabled || isFetching}
+      disabled={disabled}
     >
       <RefreshCwIcon
         className={cn("size-4", isFetching && "animate-spin")}

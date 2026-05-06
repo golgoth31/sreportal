@@ -29,18 +29,34 @@ import (
 // UpdateReadstoreHandler builds the full ImageView slice from Spec.Images merged
 // with resolution results (for due images) and the previous Status (for non-due
 // images), then calls ImageWriter.ReplaceForNamespace.
+//
+// When onlyWhenResolved is true the handler is a no-op if no resolutions were
+// produced this cycle (used for the post-lookup pass).
 type UpdateReadstoreHandler struct {
-	imageStore domainimage.ImageWriter
+	imageStore       domainimage.ImageWriter
+	onlyWhenResolved bool
 }
 
-// NewUpdateReadstoreHandler constructs an UpdateReadstoreHandler.
+// NewUpdateReadstoreHandler constructs an UpdateReadstoreHandler for the early
+// pass (always runs, uses current status data only).
 func NewUpdateReadstoreHandler(imageStore domainimage.ImageWriter) *UpdateReadstoreHandler {
 	return &UpdateReadstoreHandler{imageStore: imageStore}
+}
+
+// NewUpdateReadstoreIfResolvedHandler constructs an UpdateReadstoreHandler for
+// the post-lookup pass (skips when no resolutions were produced).
+func NewUpdateReadstoreIfResolvedHandler(imageStore domainimage.ImageWriter) *UpdateReadstoreHandler {
+	return &UpdateReadstoreHandler{imageStore: imageStore, onlyWhenResolved: true}
 }
 
 // Handle implements reconciler.Handler.
 func (h *UpdateReadstoreHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.ImageRegistry, ChainData]) error {
 	logger := log.FromContext(ctx).WithName("update-readstore")
+
+	if h.onlyWhenResolved && len(rc.Data.Resolutions) == 0 {
+		logger.V(2).Info("skipping readstore update: no new resolutions")
+		return nil
+	}
 
 	spec := rc.Resource.Spec
 	status := rc.Resource.Status

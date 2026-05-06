@@ -10,6 +10,7 @@ export function useImageQuery(portal: string) {
     queryKey: ["images", portal],
     queryFn: () => listImages(portal),
     staleTime: 30_000,
+    refetchInterval: 30_000,
   });
   return {
     images: query.data ?? EMPTY,
