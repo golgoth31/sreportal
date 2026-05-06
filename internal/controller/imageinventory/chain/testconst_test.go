@@ -19,7 +19,6 @@ package chain
 // Test-only string constants extracted to satisfy goconst lint rule.
 const (
 	tNsDefault        = "default"
-	tNsOther          = "other"
 	tNsKubeSystem     = "kube-system"
 	tPortalMain       = "main"
 	tRegistryGhcr     = "ghcr.io"

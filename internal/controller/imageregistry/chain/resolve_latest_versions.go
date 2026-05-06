@@ -193,6 +193,10 @@ func (h *ResolveLatestVersionsHandler) resolveOne(
 	now := time.Now()
 	key := img.Spec.Key
 
+	// LastCheckedAt is set unconditionally — this is intentional. The timestamp
+	// records when the lookup was attempted, not when it succeeded. isDue() uses
+	// it to pace retries at checkInterval regardless of outcome, avoiding a
+	// tight retry loop on persistent registry errors.
 	res := Resolution{
 		Key:           key,
 		LastCheckedAt: now,
