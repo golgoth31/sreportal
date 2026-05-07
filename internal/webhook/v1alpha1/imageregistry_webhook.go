@@ -96,11 +96,22 @@ func validateImageRegistry(obj *sreportalv1alpha1.ImageRegistry) error {
 		if e.MutatedImage == "" {
 			return fmt.Errorf("spec.images[%d].mutatedImage is required", i)
 		}
-		if err := assertImageHostMatches(e.MutatedImage, obj.Spec.Host); err != nil {
-			return fmt.Errorf("spec.images[%d].mutatedImage: %w", i, err)
-		}
+		// spec.host must match the *lookup target* — the registry the controller
+		// will query for tags. That is OriginalImage when present, else
+		// MutatedImage. MutatedImage may diverge legitimately when an admission
+		// controller rewrites references to a pull-through cache or mirror.
 		switch e.ChangeType {
-		case "none", "mutated":
+		case "none":
+			if e.OriginalImage == "" {
+				return fmt.Errorf("spec.images[%d]: changeType=%q requires originalImage", i, e.ChangeType)
+			}
+			if err := assertImageHostMatches(e.OriginalImage, obj.Spec.Host); err != nil {
+				return fmt.Errorf("spec.images[%d].originalImage: %w", i, err)
+			}
+			if err := assertImageHostMatches(e.MutatedImage, obj.Spec.Host); err != nil {
+				return fmt.Errorf("spec.images[%d].mutatedImage: %w", i, err)
+			}
+		case "mutated":
 			if e.OriginalImage == "" {
 				return fmt.Errorf("spec.images[%d]: changeType=%q requires originalImage", i, e.ChangeType)
 			}
@@ -110,6 +121,9 @@ func validateImageRegistry(obj *sreportalv1alpha1.ImageRegistry) error {
 		case "injected":
 			if e.OriginalImage != "" {
 				return fmt.Errorf("spec.images[%d]: changeType=injected forbids originalImage", i)
+			}
+			if err := assertImageHostMatches(e.MutatedImage, obj.Spec.Host); err != nil {
+				return fmt.Errorf("spec.images[%d].mutatedImage: %w", i, err)
 			}
 		default:
 			return fmt.Errorf("spec.images[%d].changeType %q must be one of none|mutated|injected", i, e.ChangeType)

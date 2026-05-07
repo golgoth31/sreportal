@@ -202,28 +202,50 @@ func TestImageRegistryValidate_HostDenylist(t *testing.T) {
 	}
 }
 
-func TestImageRegistryValidate_HostCoherence_MutatedMismatch(t *testing.T) {
+// TestImageRegistryValidate_HostCoherence_MutatedDivergesAllowed verifies that
+// for ChangeType=mutated, MutatedImage may live in a different registry than
+// spec.host. Rationale: the lookup target (used by the controller to query
+// versions) is OriginalImage. MutatedImage is the rewritten reference produced
+// by an admission controller (pull-through cache, registry mirror) and is
+// allowed to diverge.
+func TestImageRegistryValidate_HostCoherence_MutatedDivergesAllowed(t *testing.T) {
 	t.Parallel()
 	ir := mkIR(t, func(r *sreportalv1alpha1.ImageRegistry) {
-		r.Spec.Host = "ghcr.io"
+		r.Spec.Host = tHostGHCR
 		r.Spec.Images = []sreportalv1alpha1.ImageRegistrySpecEntry{{
 			Key:           "k",
 			OriginalImage: "ghcr.io/myorg/myapp:1.0.0",
-			MutatedImage:  tImgNginxDocker,
+			MutatedImage:  tImgNginxDocker, // docker.io — mirrored/rewritten
 			ChangeType:    tChangeTypeMut,
+		}}
+	})
+	v := &ImageRegistryCustomValidator{}
+	if _, err := v.ValidateCreate(context.Background(), ir); err != nil {
+		t.Fatalf("expected MutatedImage host divergence to be accepted for changeType=mutated, got %v", err)
+	}
+}
+
+func TestImageRegistryValidate_HostCoherence_InjectedMutatedMismatch(t *testing.T) {
+	t.Parallel()
+	ir := mkIR(t, func(r *sreportalv1alpha1.ImageRegistry) {
+		r.Spec.Host = tHostGHCR
+		r.Spec.Images = []sreportalv1alpha1.ImageRegistrySpecEntry{{
+			Key:          "k",
+			MutatedImage: tImgNginxDocker, // docker.io — must match spec.host for injected
+			ChangeType:   tChangeTypeInj,
 		}}
 	})
 	v := &ImageRegistryCustomValidator{}
 	_, err := v.ValidateCreate(context.Background(), ir)
 	if err == nil || !strings.Contains(err.Error(), "does not match spec.host") {
-		t.Fatalf("expected host mismatch error, got %v", err)
+		t.Fatalf("expected host mismatch error for injected mutatedImage, got %v", err)
 	}
 }
 
 func TestImageRegistryValidate_HostCoherence_OriginalMismatch(t *testing.T) {
 	t.Parallel()
 	ir := mkIR(t, func(r *sreportalv1alpha1.ImageRegistry) {
-		r.Spec.Host = "ghcr.io"
+		r.Spec.Host = tHostGHCR
 		r.Spec.Images = []sreportalv1alpha1.ImageRegistrySpecEntry{{
 			Key:           "k",
 			OriginalImage: tImgNginxDocker,
