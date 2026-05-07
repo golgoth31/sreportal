@@ -18,12 +18,14 @@ package chain_test
 
 // Test-only string constants extracted to satisfy goconst lint rule.
 const (
-	tNsDefault         = "default"
-	tPortalMain        = "main"
-	tRegistryGhcr      = "ghcr.io"
-	tVersion100        = "1.0.0"
-	tTagTypeSemver     = "semver"
-	tChangeTypeNone    = "none"
-	tImgGhcrMyorgMyapp = "ghcr.io/myorg/myapp:1.0.0"
-	tTestName          = "test"
+	tNsDefault          = "default"
+	tPortalMain         = "main"
+	tRegistryGhcr       = "ghcr.io"
+	tVersion100         = "1.0.0"
+	tTagTypeSemver      = "semver"
+	tChangeTypeNone     = "none"
+	tChangeTypeMutated  = "mutated"
+	tChangeTypeInjected = "injected"
+	tImgGhcrMyorgMyapp  = "ghcr.io/myorg/myapp:1.0.0"
+	tTestName           = "test"
 )

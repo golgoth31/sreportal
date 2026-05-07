@@ -30,8 +30,21 @@ import (
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
-// UpdateStatusHandler merges resolved entries into Status.Images[], recomputes
-// summary counters, sets the Ready condition, and updates Prometheus gauges.
+// UpdateStatusHandler recomputes summary counters from the current
+// Status.Images, sets the Ready condition, updates ObservedGeneration, and
+// refreshes Prometheus gauges.
+//
+// IMPORTANT: Status.Images is owned exclusively by
+// ResolveLatestVersionsHandler.patchStatus. This handler MUST NOT mutate
+// Status.Images — UpdateStatusHandler runs every reconcile while the resolve
+// goroutine runs once per checkInterval, and both use client.MergeFrom which
+// sends the full slice on diff. Mutating Status.Images here would clobber
+// resolutions written concurrently by the goroutine.
+//
+// Counters are computed from ir.Status.Images as-is. New spec entries that
+// have not yet been seen by patchStatus will not contribute to imageCount
+// until the next resolve cycle materialises their placeholder. This brief
+// inconsistency is preferred over racing on the slice.
 type UpdateStatusHandler struct {
 	client client.Client
 }
@@ -49,41 +62,8 @@ func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 	spec := ir.Spec
 	base := ir.DeepCopy()
 
-	// Build a mutable map from the existing Status.Images for merge.
-	statusByKey := make(map[string]sreportalv1alpha1.ImageRegistryStatusEntry, len(ir.Status.Images))
-	for _, st := range ir.Status.Images {
-		statusByKey[st.Key] = st
-	}
-
-	// Apply resolutions for due images.
-	for key, res := range rc.Data.Resolutions {
-		t := metav1.NewTime(res.LastCheckedAt)
-		statusByKey[key] = sreportalv1alpha1.ImageRegistryStatusEntry{
-			Key:              key,
-			LatestVersion:    res.LatestVersion,
-			UpgradeAvailable: res.UpgradeAvailable,
-			LastCheckedAt:    &t,
-			LastError:        res.LastError,
-		}
-	}
-
-	// Rebuild Status.Images in spec order for determinism.
-	newImages := make([]sreportalv1alpha1.ImageRegistryStatusEntry, 0, len(spec.Images))
-	for _, entry := range spec.Images {
-		if st, ok := statusByKey[entry.Key]; ok {
-			newImages = append(newImages, st)
-		} else {
-			// Entry not yet resolved — insert an empty placeholder so the
-			// listMapKey slot exists in the status.
-			newImages = append(newImages, sreportalv1alpha1.ImageRegistryStatusEntry{Key: entry.Key})
-		}
-	}
-	ir.Status.Images = newImages
-
-	// Recompute summary counters in a single pass over the merged status entries
-	// so all values come from the same source of truth. ChangeType is sourced
-	// from the spec, indexed by Key, to avoid drift if the slice order ever
-	// diverges from the spec.
+	// ChangeType is sourced from the spec, indexed by Key, so counters stay
+	// correct even if Status.Images and Spec.Images diverge transiently.
 	changeTypeByKey := make(map[string]string, len(spec.Images))
 	for _, entry := range spec.Images {
 		changeTypeByKey[entry.Key] = entry.ChangeType
@@ -94,7 +74,7 @@ func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 		mutatedCount  int32
 		injectedCount int32
 	)
-	for _, st := range newImages {
+	for _, st := range ir.Status.Images {
 		imageCount++
 		if st.UpgradeAvailable {
 			upgradeCount++
@@ -112,7 +92,6 @@ func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 	ir.Status.InjectedCount = injectedCount
 	ir.Status.ObservedGeneration = ir.GetGeneration()
 
-	// Set the Ready condition.
 	now := metav1.Now()
 	readyCondition := metav1.Condition{
 		Type:               ConditionTypeReady,
@@ -129,7 +108,6 @@ func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 		return fmt.Errorf("patch ImageRegistry status: %w", err)
 	}
 
-	// Update Prometheus gauges.
 	portal := spec.PortalRef
 	host := spec.Host
 	ns := spec.Namespace

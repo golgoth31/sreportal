@@ -24,7 +24,6 @@ import (
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -61,8 +60,7 @@ const (
 // +kubebuilder:rbac:groups=sreportal.io,resources=imageregistries/finalizers,verbs=update
 type ImageRegistryReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
-	chain  *reconciler.Chain[*sreportalv1alpha1.ImageRegistry, imageregistrychain.ChainData]
+	chain *reconciler.Chain[*sreportalv1alpha1.ImageRegistry, imageregistrychain.ChainData]
 
 	imageStore domainimage.ImageWriter
 }
@@ -143,7 +141,11 @@ func (r *ImageRegistryReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		logger.Error(err, "reconciliation chain failed")
 		metrics.ReconcileTotal.WithLabelValues("imageregistry", "error").Inc()
 		metrics.ReconcileDuration.WithLabelValues("imageregistry").Observe(time.Since(start).Seconds())
-		return ctrl.Result{RequeueAfter: defaultRequeueInterval}, nil
+		// Return the error so controller-runtime applies its native exponential
+		// backoff. The registry is protected by the running sync.Map (single-flight
+		// per CR), the per-host HostLimiter, and isDue()'s 24h pacing — fast retries
+		// won't cascade into registry calls.
+		return ctrl.Result{}, err
 	}
 
 	metrics.ReconcileTotal.WithLabelValues("imageregistry", "success").Inc()
@@ -160,13 +162,14 @@ func (r *ImageRegistryReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 // handleFinalizer cleans up readstore contributions and Prometheus metrics, then
 // removes the finalizer so Kubernetes can garbage-collect the CR.
 func (r *ImageRegistryReconciler) handleFinalizer(ctx context.Context, ir *sreportalv1alpha1.ImageRegistry) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
-
 	if controllerutil.ContainsFinalizer(ir, finalizerName) {
-		// Clean readstore.
+		// Clean readstore. Return on error so controller-runtime retries — the
+		// finalizer is removed only after a successful cleanup. The current
+		// in-memory store cannot fail outside of context cancellation, but a
+		// future persistent store (Redis, BoltDB, …) would leak entries if we
+		// swallowed the error here.
 		if err := r.imageStore.RemoveForNamespace(ctx, ir.Spec.PortalRef, ir.Spec.Host, ir.Spec.Namespace); err != nil {
-			logger.Error(err, "finalizer: failed to remove readstore contributions")
-			// Do not block deletion — log and proceed.
+			return ctrl.Result{}, fmt.Errorf("finalizer: remove readstore contributions: %w", err)
 		}
 
 		// Clean Prometheus metrics.

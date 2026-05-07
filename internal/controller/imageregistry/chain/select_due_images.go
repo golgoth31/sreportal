@@ -30,10 +30,6 @@ const (
 	// checkInterval is the nominal cadence for per-image registry lookups.
 	checkInterval = 24 * time.Hour
 
-	// jitterWindow is the maximum random spread applied to catch-up delays and
-	// to the final requeue interval.
-	jitterWindow = time.Hour
-
 	// catchUpThreshold is the fraction of due images that triggers catch-up jitter.
 	catchUpThreshold = 0.5
 )
@@ -112,7 +108,7 @@ func (h *SelectDueImagesHandler) Handle(ctx context.Context, rc *reconciler.Reco
 	// Catch-up jitter: assign random delay to each candidate.
 	logger.V(1).Info("applying catch-up jitter", "dueCount", dueCount, "total", total)
 
-	minDelay := checkInterval + jitterWindow // sentinel: "infinity"
+	var minDelay *time.Duration
 	rc.Data.DueImages = make([]DueImage, 0, dueCount)
 
 	for _, c := range candidates {
@@ -121,19 +117,17 @@ func (h *SelectDueImagesHandler) Handle(ctx context.Context, rc *reconciler.Reco
 		if delay == 0 {
 			// Process immediately.
 			rc.Data.DueImages = append(rc.Data.DueImages, c.due)
-		} else {
-			// Skip this cycle; track when to wake up.
-			if delay < minDelay {
-				minDelay = delay
-			}
+		} else if minDelay == nil || delay < *minDelay {
+			// Skip this cycle; track the earliest wake-up among deferred images.
+			minDelay = &delay
 		}
 	}
 
 	// If some images were deferred, ensure we requeue before their delay expires.
 	deferred := dueCount - len(rc.Data.DueImages)
-	if deferred > 0 {
-		rc.Data.RequeueAfter = minDelay
-		logger.V(1).Info("deferred images due to catch-up jitter", "deferred", deferred, "requeueAfter", minDelay)
+	if deferred > 0 && minDelay != nil {
+		rc.Data.RequeueAfter = *minDelay
+		logger.V(1).Info("deferred images due to catch-up jitter", "deferred", deferred, "requeueAfter", *minDelay)
 	}
 
 	logger.V(1).Info("images selected after jitter", "processing", len(rc.Data.DueImages), "deferred", deferred)

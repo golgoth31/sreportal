@@ -188,7 +188,7 @@ var _ = Describe("ResolveLatestVersionsHandler", func() {
 						Repository:    "istio/proxy",
 						OriginalTag:   "1.19.0",
 						TagType:       tTagTypeSemver,
-						ChangeType:    "injected",
+						ChangeType:    tChangeTypeInjected,
 					},
 				},
 			}
