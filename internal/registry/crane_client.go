@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -24,6 +25,11 @@ import (
 
 	domainimageregistry "github.com/golgoth31/sreportal/internal/domain/imageregistry"
 )
+
+// listTagsTimeout caps the duration of a single registry tag-list call. A slow
+// or unresponsive registry would otherwise hold a goroutine for the full
+// async-resolve budget (30 minutes), starving the in-flight semaphore.
+const listTagsTimeout = 30 * time.Second
 
 // CraneClient implements imageregistry.Client using google/go-containerregistry.
 //
@@ -50,7 +56,10 @@ func (c *CraneClient) ListTags(ctx context.Context, host, repository string) ([]
 	}
 	repo := reg.Repo(strings.TrimPrefix(repository, "/"))
 
-	tags, err := remote.List(repo, remote.WithContext(ctx), remote.WithAuthFromKeychain(authn.DefaultKeychain))
+	callCtx, cancel := context.WithTimeout(ctx, listTagsTimeout)
+	defer cancel()
+
+	tags, err := remote.List(repo, remote.WithContext(callCtx), remote.WithAuthFromKeychain(authn.DefaultKeychain))
 	if err == nil {
 		return tags, nil
 	}

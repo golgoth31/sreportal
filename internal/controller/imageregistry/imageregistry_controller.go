@@ -69,11 +69,15 @@ type ImageRegistryReconciler struct {
 
 // NewImageRegistryReconciler builds an ImageRegistryReconciler wired with the
 // handler chain.
+//
+// baseCtx is the manager's root context — propagated to the resolve handler so
+// async registry-lookup goroutines are cancelled on operator shutdown.
 func NewImageRegistryReconciler(
 	c client.Client,
 	imageStore domainimage.ImageWriter,
 	registryClient domainimageregistry.Client,
 	hostLimiter *registry.HostLimiter,
+	baseCtx context.Context,
 ) *ImageRegistryReconciler {
 	handlers := []reconciler.Handler[*sreportalv1alpha1.ImageRegistry, imageregistrychain.ChainData]{
 		imageregistrychain.NewValidateSpecHandler(c),
@@ -81,7 +85,7 @@ func NewImageRegistryReconciler(
 		// Early readstore pass: populate immediately from current spec+status so
 		// readers see up-to-date data without waiting for the registry lookup.
 		imageregistrychain.NewUpdateReadstoreHandler(imageStore),
-		imageregistrychain.NewResolveLatestVersionsHandler(registryClient, hostLimiter, c),
+		imageregistrychain.NewResolveLatestVersionsHandler(registryClient, hostLimiter, c, baseCtx),
 		// Second readstore pass: only runs when the lookup produced new versions.
 		imageregistrychain.NewUpdateReadstoreIfResolvedHandler(imageStore),
 		imageregistrychain.NewUpdateStatusHandler(c),

@@ -51,23 +51,38 @@ const (
 // goroutine patches the CR status directly, which triggers a new (fast)
 // reconciliation that updates the readstore and counters. A sync.Map prevents
 // duplicate goroutines per CR.
+//
+// The handler keeps a reference to the manager's root context (baseCtx). All
+// background goroutines derive their context from it so they are cancelled on
+// graceful shutdown — without this link, goroutines could outlive the operator
+// process for up to asyncResolveTimeout.
 type ResolveLatestVersionsHandler struct {
 	registryClient domainimageregistry.Client
 	hostLimiter    *registry.HostLimiter
 	client         client.Client
+	baseCtx        context.Context
 	running        sync.Map // CR "namespace/name" → struct{}
 }
 
 // NewResolveLatestVersionsHandler constructs a ResolveLatestVersionsHandler.
+//
+// baseCtx is the manager's root context — async goroutines are bound to it so
+// they exit on shutdown. A nil baseCtx falls back to context.Background() (only
+// useful for unit tests that exercise ResolveSync directly).
 func NewResolveLatestVersionsHandler(
 	registryClient domainimageregistry.Client,
 	hostLimiter *registry.HostLimiter,
 	c client.Client,
+	baseCtx context.Context,
 ) *ResolveLatestVersionsHandler {
+	if baseCtx == nil {
+		baseCtx = context.Background()
+	}
 	return &ResolveLatestVersionsHandler{
 		registryClient: registryClient,
 		hostLimiter:    hostLimiter,
 		client:         c,
+		baseCtx:        baseCtx,
 	}
 }
 
@@ -96,7 +111,8 @@ func (h *ResolveLatestVersionsHandler) Handle(ctx context.Context, rc *reconcile
 	go func() {
 		defer h.running.Delete(crKey)
 
-		bgCtx, cancel := context.WithTimeout(context.Background(), asyncResolveTimeout)
+		// Bind to the manager's root context so the goroutine exits on shutdown.
+		bgCtx, cancel := context.WithTimeout(h.baseCtx, asyncResolveTimeout)
 		defer cancel()
 
 		resolutions := h.ResolveSync(bgCtx, host, dueImages)
@@ -126,7 +142,19 @@ func (h *ResolveLatestVersionsHandler) ResolveSync(ctx context.Context, host str
 		wg.Add(1)
 		go func(idx int, img DueImage) {
 			defer wg.Done()
-			sem <- struct{}{}
+			// Acquire semaphore with ctx awareness so the goroutine doesn't
+			// block forever on shutdown if upstream slots are held by stalled
+			// network calls.
+			select {
+			case sem <- struct{}{}:
+			case <-ctx.Done():
+				results[idx] = result{resolution: Resolution{
+					Key:           img.Spec.Key,
+					LastCheckedAt: time.Now(),
+					LastError:     fmt.Sprintf("acquire semaphore: %s", ctx.Err()),
+				}}
+				return
+			}
 			defer func() { <-sem }()
 			results[idx] = result{resolution: h.resolveOne(ctx, host, img, logger)}
 		}(i, due)

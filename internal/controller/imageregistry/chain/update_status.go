@@ -80,19 +80,26 @@ func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 	}
 	ir.Status.Images = newImages
 
-	// Recompute summary counters.
+	// Recompute summary counters in a single pass over the merged status entries
+	// so all values come from the same source of truth. ChangeType is sourced
+	// from the spec, indexed by Key, to avoid drift if the slice order ever
+	// diverges from the spec.
+	changeTypeByKey := make(map[string]string, len(spec.Images))
+	for _, entry := range spec.Images {
+		changeTypeByKey[entry.Key] = entry.ChangeType
+	}
 	var (
 		imageCount    int32
 		upgradeCount  int32
 		mutatedCount  int32
 		injectedCount int32
 	)
-	for i, entry := range spec.Images {
+	for _, st := range newImages {
 		imageCount++
-		if i < len(newImages) && newImages[i].UpgradeAvailable {
+		if st.UpgradeAvailable {
 			upgradeCount++
 		}
-		switch entry.ChangeType {
+		switch changeTypeByKey[st.Key] {
 		case "mutated":
 			mutatedCount++
 		case "injected":

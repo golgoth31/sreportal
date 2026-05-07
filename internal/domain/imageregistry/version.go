@@ -55,10 +55,20 @@ func PickLatestSemver(tags []string) (string, bool) {
 
 // IsUpgrade reports whether `latest` is a strictly higher semver than
 // `current`. Returns false on either side being empty / non-semver.
+//
+// Pre-release suppression: when `current` is a stable release but `latest` is
+// a pre-release (e.g. current="1.3.0", latest="1.4.0-rc.1"), the function
+// returns false. Promoting users from a stable tag onto a pre-release would
+// surface false-positive "upgrade available" signals in production. Users
+// already on a pre-release track may still upgrade between pre-releases or
+// onto a stable release of equal-or-higher version.
 func IsUpgrade(current, latest string) bool {
 	c := canonicalSemver(current)
 	l := canonicalSemver(latest)
 	if c == "" || l == "" {
+		return false
+	}
+	if semver.Prerelease(c) == "" && semver.Prerelease(l) != "" {
 		return false
 	}
 	return semver.Compare(l, c) > 0

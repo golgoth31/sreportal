@@ -117,10 +117,14 @@ func (s *Store) recomputePortalLocked(portalRef string) {
 // mergeViews unions workloads of two views with the same entryKey and picks
 // the most recent latest-version metadata (by LatestCheckedAt). All other
 // scalar fields default to `b`'s value when `a`'s is empty.
+//
+// Workloads are deduplicated by (Kind, Namespace, Name, Container, Source) —
+// without this, the same image referenced by multiple scopes (e.g. overlapping
+// host/namespace contributions or repeated reconciles) would accumulate
+// duplicate workload entries in the aggregated view.
 func mergeViews(a, b domainimage.ImageView) domainimage.ImageView {
 	out := a
-	out.Workloads = append([]domainimage.WorkloadRef(nil), a.Workloads...)
-	out.Workloads = append(out.Workloads, b.Workloads...)
+	out.Workloads = dedupWorkloads(a.Workloads, b.Workloads)
 
 	// Prefer non-empty scalar fields.
 	if out.OriginalImage == "" {
@@ -221,5 +225,31 @@ func (s *Store) broadcast() {
 func copyView(v domainimage.ImageView) domainimage.ImageView {
 	out := v
 	out.Workloads = append([]domainimage.WorkloadRef(nil), v.Workloads...)
+	return out
+}
+
+// dedupWorkloads concatenates two WorkloadRef slices and removes duplicates by
+// (Kind, Namespace, Name, Container, Source). The first occurrence of a key
+// wins so the relative ordering of `a` is preserved.
+func dedupWorkloads(a, b []domainimage.WorkloadRef) []domainimage.WorkloadRef {
+	type wlKey struct{ Kind, Namespace, Name, Container, Source string }
+	seen := make(map[wlKey]struct{}, len(a)+len(b))
+	out := make([]domainimage.WorkloadRef, 0, len(a)+len(b))
+	for _, src := range [...][]domainimage.WorkloadRef{a, b} {
+		for _, w := range src {
+			k := wlKey{
+				Kind:      w.Kind,
+				Namespace: w.Namespace,
+				Name:      w.Name,
+				Container: w.Container,
+				Source:    string(w.Source),
+			}
+			if _, ok := seen[k]; ok {
+				continue
+			}
+			seen[k] = struct{}{}
+			out = append(out, w)
+		}
+	}
 	return out
 }

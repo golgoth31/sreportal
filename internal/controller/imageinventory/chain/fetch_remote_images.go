@@ -129,7 +129,16 @@ func (h *FetchRemoteImagesHandler) Handle(ctx context.Context, rc *reconciler.Re
 		refs = append(refs, sreportalv1alpha1.ImageRegistryRef{Host: k.Host, Namespace: k.Namespace})
 	}
 
+	// Persist Status.Registries so the next reconcile's dropMissingScopes can
+	// detect orphan scopes (otherwise the readstore retains entries for scopes
+	// that disappeared upstream).
+	base := inv.DeepCopy()
 	inv.Status.Registries = refs
+	if err := h.k8sClient.Status().Patch(ctx, inv, client.MergeFrom(base)); err != nil {
+		metrics.ImageInventorySyncTotal.WithLabelValues(inv.Name, "error").Inc()
+		return fmt.Errorf("patch Status.Registries: %w", err)
+	}
+
 	metrics.ImageInventorySyncTotal.WithLabelValues(inv.Name, "success").Inc()
 	logger.V(1).Info("fetched remote images", "scopes", len(scopes))
 	return nil

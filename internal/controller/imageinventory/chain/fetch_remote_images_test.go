@@ -144,10 +144,6 @@ func TestFetchRemoteImagesHandlerPopulatesFromRemote(t *testing.T) {
 			Remote: &sreportalv1alpha1.RemotePortalSpec{URL: server.URL, Portal: tPortalMain},
 		},
 	}
-	cli := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
-	writer := newFakeImageWriter()
-
-	h := NewFetchRemoteImagesHandler(cli, remoteclient.NewCache(), writer)
 	inv := &sreportalv1alpha1.ImageInventory{
 		ObjectMeta: metav1.ObjectMeta{Name: tPortalRemoteInv, Namespace: tNsDefault},
 		Spec: sreportalv1alpha1.ImageInventorySpec{
@@ -155,6 +151,10 @@ func TestFetchRemoteImagesHandlerPopulatesFromRemote(t *testing.T) {
 			IsRemote:  true,
 		},
 	}
+	cli := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal, inv).WithStatusSubresource(inv).Build()
+	writer := newFakeImageWriter()
+
+	h := NewFetchRemoteImagesHandler(cli, remoteclient.NewCache(), writer)
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageInventory, ChainData]{Resource: inv}
 	require.NoError(t, h.Handle(context.Background(), rc))
 
@@ -261,10 +261,6 @@ func TestFetchRemoteImagesHandlerBucketsByHostAndNamespace(t *testing.T) {
 			Remote: &sreportalv1alpha1.RemotePortalSpec{URL: server.URL, Portal: tPortalMain},
 		},
 	}
-	cli := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
-	writer := newFakeImageWriter()
-
-	h := NewFetchRemoteImagesHandler(cli, remoteclient.NewCache(), writer)
 	inv := &sreportalv1alpha1.ImageInventory{
 		ObjectMeta: metav1.ObjectMeta{Name: tPortalRemoteInv, Namespace: tNsDefault},
 		Spec: sreportalv1alpha1.ImageInventorySpec{
@@ -272,6 +268,10 @@ func TestFetchRemoteImagesHandlerBucketsByHostAndNamespace(t *testing.T) {
 			IsRemote:  true,
 		},
 	}
+	cli := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal, inv).WithStatusSubresource(inv).Build()
+	writer := newFakeImageWriter()
+
+	h := NewFetchRemoteImagesHandler(cli, remoteclient.NewCache(), writer)
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageInventory, ChainData]{Resource: inv}
 	require.NoError(t, h.Handle(context.Background(), rc))
 
@@ -327,10 +327,6 @@ func TestFetchRemoteImagesHandlerDropsMissingScopes(t *testing.T) {
 			Remote: &sreportalv1alpha1.RemotePortalSpec{URL: server.URL, Portal: tPortalMain},
 		},
 	}
-	cli := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
-	writer := newFakeImageWriter()
-
-	h := NewFetchRemoteImagesHandler(cli, remoteclient.NewCache(), writer)
 	inv := &sreportalv1alpha1.ImageInventory{
 		ObjectMeta: metav1.ObjectMeta{Name: tPortalRemoteInv, Namespace: tNsDefault},
 		Spec: sreportalv1alpha1.ImageInventorySpec{
@@ -344,6 +340,10 @@ func TestFetchRemoteImagesHandlerDropsMissingScopes(t *testing.T) {
 			},
 		},
 	}
+	cli := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal, inv).WithStatusSubresource(inv).Build()
+	writer := newFakeImageWriter()
+
+	h := NewFetchRemoteImagesHandler(cli, remoteclient.NewCache(), writer)
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageInventory, ChainData]{Resource: inv}
 	require.NoError(t, h.Handle(context.Background(), rc))
 

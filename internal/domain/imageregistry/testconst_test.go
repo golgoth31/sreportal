@@ -32,5 +32,6 @@ const (
 	tVersion124      = "1.2.4"
 	tVersionV120     = "v1.2.0"
 	tVersionRC       = "1.3.0-rc.1"
+	tVersion140RC1   = "1.4.0-rc.1"
 	tWorkloadWeb     = "web"
 )

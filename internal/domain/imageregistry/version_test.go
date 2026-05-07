@@ -132,6 +132,15 @@ func TestIsUpgrade(t *testing.T) {
 		{name: "latest invalid", current: tVersion100, latest: "main", want: false},
 		{name: "both empty", current: "", latest: "", want: false},
 		{name: "empty latest", current: tVersion100, latest: "", want: false},
+		// Pre-release suppression: stable → pre-release must NOT be flagged as
+		// an upgrade — production users on stable tags should not be promoted
+		// to release candidates without an explicit opt-in.
+		{name: "stable to higher pre-release suppressed", current: tVersion123, latest: tVersion140RC1, want: false},
+		{name: "stable to same-version pre-release suppressed", current: tVersion100, latest: "1.0.0-rc.1", want: false},
+		// Users already on a pre-release may still upgrade onto a higher
+		// pre-release or a stable release of greater version.
+		{name: "pre-release to higher pre-release", current: tVersion140RC1, latest: "1.4.0-rc.2", want: true},
+		{name: "pre-release to stable", current: tVersion140RC1, latest: "1.4.0", want: true},
 	}
 
 	for _, tc := range tests {

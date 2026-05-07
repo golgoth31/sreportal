@@ -480,6 +480,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Derive a cancellable context from the signal handler so that fatal
+	// errors in background servers (web, MCP) can trigger a clean shutdown.
+	// We create it early so it can be wired into reconcilers that own
+	// shutdown-sensitive background goroutines (e.g. ImageRegistry async
+	// registry lookups).
+	signalCtx := ctrl.SetupSignalHandler()
+	ctx, cancel := context.WithCancel(signalCtx)
+	defer cancel()
+
 	// Create kubernetes clientset for external-dns sources
 	restConfig := ctrl.GetConfigOrDie()
 	kubeClient, err := kubernetes.NewForConfig(restConfig)
@@ -678,7 +687,7 @@ func main() {
 	registryClient := registry.NewCraneClient()
 	hostLimiter := registry.NewHostLimiter()
 	imageRegistryReconciler := imageregistryctrl.NewImageRegistryReconciler(
-		mgr.GetClient(), imageStore, registryClient, hostLimiter,
+		mgr.GetClient(), imageStore, registryClient, hostLimiter, signalCtx,
 	)
 	if err := imageRegistryReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Failed to create controller", "controller", "ImageRegistry")
@@ -701,12 +710,6 @@ func main() {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
-
-	// Derive a cancellable context from the signal handler so that fatal
-	// errors in background servers (web, MCP) can trigger a clean shutdown.
-	signalCtx := ctrl.SetupSignalHandler()
-	ctx, cancel := context.WithCancel(signalCtx)
-	defer cancel()
 
 	// Create Release service
 	releaseNamespace := operatorConfig.Release.Namespace

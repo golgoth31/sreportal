@@ -21,8 +21,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 
 	domainimage "github.com/golgoth31/sreportal/internal/domain/image"
+	domainimageregistry "github.com/golgoth31/sreportal/internal/domain/imageregistry"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/metrics"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -255,6 +257,15 @@ func (s *ImageServer) handleListUpgrades(ctx context.Context, request mcp.CallTo
 }
 
 func (s *ImageServer) handleListMutations(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	wantedType := request.GetString("change_type", "")
+	mutated := string(domainimageregistry.ChangeTypeMutated)
+	injected := string(domainimageregistry.ChangeTypeInjected)
+	if wantedType != "" && wantedType != mutated && wantedType != injected {
+		return mcp.NewToolResultError(
+			fmt.Sprintf("invalid change_type %q: must be %q or %q", wantedType, mutated, injected),
+		), nil
+	}
+
 	views, err := s.reader.List(ctx, domainimage.ImageFilters{
 		Portal:   request.GetString("portal", ""),
 		Registry: request.GetString("host", ""),
@@ -263,10 +274,9 @@ func (s *ImageServer) handleListMutations(ctx context.Context, request mcp.CallT
 		return mcp.NewToolResultError(fmt.Sprintf("failed to list images: %v", err)), nil
 	}
 
-	wantedType := request.GetString("change_type", "")
 	results := make([]ImageResult, 0)
 	for _, v := range views {
-		if v.ChangeType != "mutated" && v.ChangeType != "injected" {
+		if v.ChangeType != mutated && v.ChangeType != injected {
 			continue
 		}
 		if wantedType != "" && v.ChangeType != wantedType {
@@ -316,9 +326,9 @@ func (s *ImageServer) handleSummary(ctx context.Context, request mcp.CallToolReq
 			h.Upgrades++
 		}
 		switch v.ChangeType {
-		case "mutated":
+		case string(domainimageregistry.ChangeTypeMutated):
 			h.Mutated++
-		case "injected":
+		case string(domainimageregistry.ChangeTypeInjected):
 			h.Injected++
 		}
 	}
@@ -327,6 +337,8 @@ func (s *ImageServer) handleSummary(ctx context.Context, request mcp.CallToolReq
 	for _, h := range byHost {
 		out = append(out, *h)
 	}
+	// Deterministic order for diff-friendly tool output.
+	sort.Slice(out, func(i, j int) bool { return out[i].Host < out[j].Host })
 
 	jsonBytes, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {

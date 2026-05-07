@@ -57,7 +57,7 @@ var _ = Describe("ResolveLatestVersionsHandler", func() {
 	Context("no due images", func() {
 		It("is a no-op", func() {
 			client := &fakeRegistryClient{}
-			h := chain.NewResolveLatestVersionsHandler(client, limiter, nil)
+			h := chain.NewResolveLatestVersionsHandler(client, limiter, nil, ctx)
 			rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageRegistry, chain.ChainData]{
 				Resource: makeIR(tRegistryGhcr),
 			}
@@ -73,7 +73,7 @@ var _ = Describe("ResolveLatestVersionsHandler", func() {
 					"ghcr.io/myorg/myapp": {tVersion100, "1.1.0", "1.2.0", "latest"},
 				},
 			}
-			h := chain.NewResolveLatestVersionsHandler(client, limiter, nil)
+			h := chain.NewResolveLatestVersionsHandler(client, limiter, nil, ctx)
 
 			dueImages := []chain.DueImage{
 				{
@@ -100,7 +100,7 @@ var _ = Describe("ResolveLatestVersionsHandler", func() {
 	Context("non-semver tag", func() {
 		It("marks as checked with no version", func() {
 			client := &fakeRegistryClient{}
-			h := chain.NewResolveLatestVersionsHandler(client, limiter, nil)
+			h := chain.NewResolveLatestVersionsHandler(client, limiter, nil, ctx)
 
 			dueImages := []chain.DueImage{
 				{
@@ -125,7 +125,7 @@ var _ = Describe("ResolveLatestVersionsHandler", func() {
 		It("records the error in LastError", func() {
 			lookupErr := errors.New("network failure")
 			client := &fakeRegistryClient{err: lookupErr}
-			h := chain.NewResolveLatestVersionsHandler(client, limiter, nil)
+			h := chain.NewResolveLatestVersionsHandler(client, limiter, nil, ctx)
 
 			dueImages := []chain.DueImage{
 				{
@@ -150,7 +150,7 @@ var _ = Describe("ResolveLatestVersionsHandler", func() {
 		It("records a LastError with rate-limited info", func() {
 			rateLimitErr := fmt.Errorf("list tags: %w", domainimageregistry.ErrRateLimited)
 			client := &fakeRegistryClient{err: rateLimitErr}
-			h := chain.NewResolveLatestVersionsHandler(client, limiter, nil)
+			h := chain.NewResolveLatestVersionsHandler(client, limiter, nil, ctx)
 
 			dueImages := []chain.DueImage{
 				{
@@ -177,7 +177,7 @@ var _ = Describe("ResolveLatestVersionsHandler", func() {
 					"ghcr.io/istio/proxy": {"1.19.0", "1.20.0"},
 				},
 			}
-			h := chain.NewResolveLatestVersionsHandler(client, limiter, nil)
+			h := chain.NewResolveLatestVersionsHandler(client, limiter, nil, ctx)
 
 			dueImages := []chain.DueImage{
 				{
