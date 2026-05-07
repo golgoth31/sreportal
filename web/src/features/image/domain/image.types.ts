@@ -86,68 +86,28 @@ export interface ImageGroup {
   readonly stats: ImageGroupStats;
 }
 
-const containerKey = (w: WorkloadRef): string =>
-  `${w.kind}/${w.namespace}/${w.name}/${w.container}`;
-
-// annotateImages enriches the API response with webhook-activity flags.
+// annotateImages derives webhook-activity flags from the canonical
+// `changeType` field set per image by the backend (ImageRegistry pipeline).
 //
-// Pod-source refs come in two flavors:
-//   - Mutated: same workload+container appears in both a spec-source ref
-//     (image A) and a pod-source ref (image B). The backend only emits the
-//     pod ref when A != B, so any (spec, pod) pair for the same container is
-//     a mutation. The pod ref is marked `mutated`, the matching spec ref is
-//     `hidden` so the UI shows the actual running image with priority.
-//   - Injected: pod-source ref with no spec counterpart anywhere — the
-//     container was added by a MutatingWebhook (e.g. Istio sidecar). The ref
-//     is marked `injected` so the UI can display it distinctly.
+// Each ImageRegistry entry already classifies its image as "none", "mutated",
+// or "injected" — there is no need for cross-image (spec, pod) ref pairing.
+// We propagate the image-level classification down to every visible workload
+// so the per-row badges in WorkloadList keep rendering correctly.
 export function annotateImages(images: readonly Image[]): Image[] {
-  const specByContainer = new Map<string, Array<{ imgIdx: number; refIdx: number }>>();
-  const podByContainer = new Map<string, Array<{ imgIdx: number; refIdx: number }>>();
-
-  images.forEach((img, imgIdx) => {
-    img.workloads.forEach((w, refIdx) => {
-      const k = containerKey(w);
-      const bucket = w.source === "pod" ? podByContainer : specByContainer;
-      const list = bucket.get(k);
-      if (list) list.push({ imgIdx, refIdx });
-      else bucket.set(k, [{ imgIdx, refIdx }]);
-    });
-  });
-
-  const mutated = new Set<string>();
-  const hidden = new Set<string>();
-  const injected = new Set<string>();
-  for (const [k, podLocs] of podByContainer) {
-    const specLocs = specByContainer.get(k);
-    if (specLocs?.length) {
-      for (const l of podLocs) mutated.add(`${l.imgIdx}:${l.refIdx}`);
-      for (const l of specLocs) hidden.add(`${l.imgIdx}:${l.refIdx}`);
-    } else {
-      for (const l of podLocs) injected.add(`${l.imgIdx}:${l.refIdx}`);
-    }
-  }
-
-  return images.map((img, imgIdx) => {
-    const workloads = img.workloads.map((w, refIdx) => {
-      const key = `${imgIdx}:${refIdx}`;
-      const isMutated = mutated.has(key);
-      const isInjected = injected.has(key);
-      const isHidden = hidden.has(key);
-      if (!isMutated && !isInjected && !isHidden) return w;
-      return {
-        ...w,
-        mutated: isMutated || undefined,
-        injected: isInjected || undefined,
-        hidden: isHidden || undefined,
-      };
-    });
-    const hasMutation = workloads.some((w) => w.mutated);
-    const hasInjection = workloads.some((w) => w.injected);
+  return images.map((img) => {
+    const isMutated = img.changeType === "mutated";
+    const isInjected = img.changeType === "injected";
+    if (!isMutated && !isInjected) return img;
+    const workloads = img.workloads.map((w) => ({
+      ...w,
+      mutated: isMutated || undefined,
+      injected: isInjected || undefined,
+    }));
     return {
       ...img,
       workloads,
-      hasMutation: hasMutation || undefined,
-      hasInjection: hasInjection || undefined,
+      hasMutation: isMutated || undefined,
+      hasInjection: isInjected || undefined,
     };
   });
 }
