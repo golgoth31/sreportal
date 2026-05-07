@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.33.4](https://github.com/golgoth31/sreportal/compare/v1.33.3...v1.33.4) (2026-05-07)
+
+
+### Bug Fixes
+
+* **web:** drive mutated/injected counters from image changeType ([#247](https://github.com/golgoth31/sreportal/issues/247)) ([de27dd3](https://github.com/golgoth31/sreportal/commit/de27dd3430de39a4e64e412478eae5960f0c5b10))
+
 ## [1.33.3](https://github.com/golgoth31/sreportal/compare/v1.33.2...v1.33.3) (2026-05-07)
 
 
