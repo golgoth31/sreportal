@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.33.2](https://github.com/golgoth31/sreportal/compare/v1.33.1...v1.33.2) (2026-05-07)
+
+
+### Bug Fixes
+
+* **rbac:** allow inventory reconciliation to read workload resources ([fcc346d](https://github.com/golgoth31/sreportal/commit/fcc346ddd5397f9b98128a3105251068fdae4ec3))
+
 ## [1.33.1](https://github.com/golgoth31/sreportal/compare/v1.33.0...v1.33.1) (2026-05-07)
 
 
