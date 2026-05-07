@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.33.0](https://github.com/golgoth31/sreportal/compare/v1.32.2...v1.33.0) (2026-05-07)
+
+
+### Features
+
+* **image:** add ImageRegistry CRD with registry version lookup ([#242](https://github.com/golgoth31/sreportal/issues/242)) ([644ffc4](https://github.com/golgoth31/sreportal/commit/644ffc42e91f081b0b5e46c818c1660ec321b993))
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/mark3labs/mcp-go to v0.52.0 ([#240](https://github.com/golgoth31/sreportal/issues/240)) ([3a98c2f](https://github.com/golgoth31/sreportal/commit/3a98c2f6379f19a53594bd29ac7dcc26b3b9684d))
+
 ## [1.32.2](https://github.com/golgoth31/sreportal/compare/v1.32.1...v1.32.2) (2026-05-03)
 
 
