@@ -261,7 +261,10 @@ func (h *ResolveLatestVersionsHandler) resolveOne(
 
 	metrics.RegistryLookupTotal.WithLabelValues(host, "success").Inc()
 
-	latest, found := domainimageregistry.PickLatestSemver(tags)
+	latest, rejected, found := domainimageregistry.PickLatestSemver(tags)
+	if rejected > 0 {
+		metrics.RegistryLookupTotal.WithLabelValues(host, "unparsable").Add(float64(rejected))
+	}
 	if found {
 		res.LatestVersion = latest
 		res.UpgradeAvailable = domainimageregistry.IsUpgrade(img.Spec.OriginalTag, latest)

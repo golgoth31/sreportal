@@ -94,7 +94,7 @@ func TestImageRegistryValidate_MutatedRequiresOriginal(t *testing.T) {
 	ir := mkIR(t, func(r *sreportalv1alpha1.ImageRegistry) {
 		r.Spec.Images = []sreportalv1alpha1.ImageRegistrySpecEntry{{
 			Key:           "k",
-			MutatedImage:  "mirror.io/library/nginx:1.25.0",
+			MutatedImage:  tImgNginxDocker,
 			OriginalImage: "",
 			ChangeType:    tChangeTypeMut,
 		}}
@@ -173,12 +173,94 @@ func TestImageRegistryValidate_KeyRequired(t *testing.T) {
 	}
 }
 
+func TestImageRegistryValidate_HostDenylist(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		host string
+	}{
+		{"loopback v4", "127.0.0.1"},
+		{"loopback v6", "::1"},
+		{"localhost name", "localhost"},
+		{"link-local IMDS", "169.254.169.254"},
+		{"rfc1918 10/8", "10.0.0.1"},
+		{"rfc1918 172.16/12", "172.16.0.5"},
+		{"rfc1918 192.168/16", "192.168.1.1"},
+		{"unspecified", "0.0.0.0"},
+		{"in-cluster svc", "registry.kube-system.svc.cluster.local"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			ir := mkIR(t, func(r *sreportalv1alpha1.ImageRegistry) { r.Spec.Host = c.host })
+			v := &ImageRegistryCustomValidator{}
+			_, err := v.ValidateCreate(context.Background(), ir)
+			if err == nil {
+				t.Fatalf("expected error for forbidden host %q", c.host)
+			}
+		})
+	}
+}
+
+func TestImageRegistryValidate_HostCoherence_MutatedMismatch(t *testing.T) {
+	t.Parallel()
+	ir := mkIR(t, func(r *sreportalv1alpha1.ImageRegistry) {
+		r.Spec.Host = "ghcr.io"
+		r.Spec.Images = []sreportalv1alpha1.ImageRegistrySpecEntry{{
+			Key:           "k",
+			OriginalImage: "ghcr.io/myorg/myapp:1.0.0",
+			MutatedImage:  tImgNginxDocker,
+			ChangeType:    tChangeTypeMut,
+		}}
+	})
+	v := &ImageRegistryCustomValidator{}
+	_, err := v.ValidateCreate(context.Background(), ir)
+	if err == nil || !strings.Contains(err.Error(), "does not match spec.host") {
+		t.Fatalf("expected host mismatch error, got %v", err)
+	}
+}
+
+func TestImageRegistryValidate_HostCoherence_OriginalMismatch(t *testing.T) {
+	t.Parallel()
+	ir := mkIR(t, func(r *sreportalv1alpha1.ImageRegistry) {
+		r.Spec.Host = "ghcr.io"
+		r.Spec.Images = []sreportalv1alpha1.ImageRegistrySpecEntry{{
+			Key:           "k",
+			OriginalImage: tImgNginxDocker,
+			MutatedImage:  "ghcr.io/myorg/myapp:1.0.0",
+			ChangeType:    tChangeTypeMut,
+		}}
+	})
+	v := &ImageRegistryCustomValidator{}
+	_, err := v.ValidateCreate(context.Background(), ir)
+	if err == nil || !strings.Contains(err.Error(), "does not match spec.host") {
+		t.Fatalf("expected host mismatch error, got %v", err)
+	}
+}
+
+func TestImageRegistryValidate_DockerHubAliasesEqual(t *testing.T) {
+	t.Parallel()
+	ir := mkIR(t, func(r *sreportalv1alpha1.ImageRegistry) {
+		r.Spec.Host = "index.docker.io"
+		r.Spec.Images = []sreportalv1alpha1.ImageRegistrySpecEntry{{
+			Key:           "k",
+			OriginalImage: tImgNginxDocker, // docker.io/...
+			MutatedImage:  tImgNginxDocker,
+			ChangeType:    tChangeTypeNone,
+		}}
+	})
+	v := &ImageRegistryCustomValidator{}
+	if _, err := v.ValidateCreate(context.Background(), ir); err != nil {
+		t.Fatalf("docker.io and index.docker.io should be aliases, got %v", err)
+	}
+}
+
 func TestImageRegistryValidate_Valid(t *testing.T) {
 	t.Parallel()
 	ir := mkIR(t, func(r *sreportalv1alpha1.ImageRegistry) {
 		r.Spec.Images = []sreportalv1alpha1.ImageRegistrySpecEntry{
 			{Key: "k1", OriginalImage: tImgNginxDocker, MutatedImage: tImgNginxDocker, ChangeType: tChangeTypeNone},
-			{Key: "k2", OriginalImage: "docker.io/library/redis:7", MutatedImage: "mirror.io/library/redis:7", ChangeType: tChangeTypeMut},
+			{Key: "k2", OriginalImage: "docker.io/library/redis:7", MutatedImage: "docker.io/library/redis:7", ChangeType: tChangeTypeMut},
 			{Key: "k3", MutatedImage: "docker.io/istio/proxy:1.20", ChangeType: tChangeTypeInj},
 		}
 	})

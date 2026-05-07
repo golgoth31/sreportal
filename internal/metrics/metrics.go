@@ -430,7 +430,7 @@ var (
 			Namespace: namespace,
 			Subsystem: subsystemImageRegistry,
 			Name:      "lookup_total",
-			Help:      "Total number of registry tag-list calls by host and result (success, error, rate_limited, skipped).",
+			Help:      "Total number of registry tag-list calls by host and result (success, error, rate_limited, skipped, unparsable).",
 		},
 		[]string{labelHost, labelResult},
 	)

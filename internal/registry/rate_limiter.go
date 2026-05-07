@@ -13,6 +13,7 @@ You may obtain a copy of the License at
 package registry
 
 import (
+	"container/list"
 	"context"
 	"sync"
 	"time"
@@ -35,18 +36,44 @@ var hostLimits = map[string]rate.Limit{
 // defaultRate is used for hosts not present in hostLimits.
 const defaultRate rate.Limit = rate.Limit(1.0 / 3.0) // ~20/min
 
+// defaultLimiterCacheCap caps the number of cached per-host limiters. Any
+// realistic deployment touches a handful of registries; the bound exists to
+// prevent unbounded map growth if a misbehaving CR keeps rotating hosts.
+const defaultLimiterCacheCap = 256
+
 // HostLimiter is a per-host token bucket gate around registry calls. It
 // serialises requests by host so we never hammer a single registry, while
 // still allowing parallelism across distinct hosts.
+//
+// The internal limiter cache is an LRU bounded to defaultLimiterCacheCap
+// entries — evicting the least-recently-used host when full. Because each
+// limiter is a token bucket whose rate refills on its own timeline, evicting
+// a cold limiter has no functional consequence: the next lookup recreates it
+// with a fresh full bucket. This prevents an attacker from exhausting memory
+// by spawning CRs targeting unique hosts.
 type HostLimiter struct {
-	mu       sync.RWMutex
-	limiters map[string]*rate.Limiter
+	mu      sync.Mutex
+	cap     int
+	entries map[string]*list.Element
+	order   *list.List // front = MRU, back = LRU
 }
 
-// NewHostLimiter creates an empty HostLimiter; per-host limiters are
-// instantiated lazily on first Wait.
+type hostLimiterEntry struct {
+	host    string
+	limiter *rate.Limiter
+}
+
+// NewHostLimiter creates an empty HostLimiter with the default cache size.
 func NewHostLimiter() *HostLimiter {
-	return &HostLimiter{limiters: make(map[string]*rate.Limiter)}
+	return newHostLimiterWithCap(defaultLimiterCacheCap)
+}
+
+func newHostLimiterWithCap(c int) *HostLimiter {
+	return &HostLimiter{
+		cap:     c,
+		entries: make(map[string]*list.Element, c),
+		order:   list.New(),
+	}
 }
 
 // Wait blocks until a token is available for the given host, or until ctx
@@ -55,25 +82,31 @@ func (hl *HostLimiter) Wait(ctx context.Context, host string) error {
 	return hl.limiterFor(host).Wait(ctx)
 }
 
-// limiterFor returns (creating if needed) the limiter for the given host.
+// limiterFor returns (creating if needed) the limiter for the given host
+// and marks it as most-recently-used.
 func (hl *HostLimiter) limiterFor(host string) *rate.Limiter {
-	hl.mu.RLock()
-	lim, ok := hl.limiters[host]
-	hl.mu.RUnlock()
-	if ok {
-		return lim
-	}
-
 	hl.mu.Lock()
 	defer hl.mu.Unlock()
-	if lim, ok = hl.limiters[host]; ok {
-		return lim
+
+	if elem, ok := hl.entries[host]; ok {
+		hl.order.MoveToFront(elem)
+		return elem.Value.(*hostLimiterEntry).limiter
 	}
+
 	limit, ok := hostLimits[host]
 	if !ok {
 		limit = defaultRate
 	}
-	lim = rate.NewLimiter(limit, 1)
-	hl.limiters[host] = lim
+	lim := rate.NewLimiter(limit, 1)
+	elem := hl.order.PushFront(&hostLimiterEntry{host: host, limiter: lim})
+	hl.entries[host] = elem
+
+	if hl.order.Len() > hl.cap {
+		oldest := hl.order.Back()
+		if oldest != nil {
+			hl.order.Remove(oldest)
+			delete(hl.entries, oldest.Value.(*hostLimiterEntry).host)
+		}
+	}
 	return lim
 }

@@ -43,10 +43,11 @@ func TestPickLatestSemver(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name      string
-		tags      []string
-		wantTag   string
-		wantFound bool
+		name         string
+		tags         []string
+		wantTag      string
+		wantFound    bool
+		wantRejected int
 	}{
 		{
 			name:      "plain semver",
@@ -73,22 +74,24 @@ func TestPickLatestSemver(t *testing.T) {
 			wantFound: true,
 		},
 		{
-			name:      "ignore latest tag",
+			name:      "ignore latest tag does not count as rejected",
 			tags:      []string{"latest", tVersion123},
 			wantTag:   tVersion123,
 			wantFound: true,
 		},
 		{
-			name:      "ignore non-semver",
-			tags:      []string{tPortalMain, "abcdef1", tVersion100},
-			wantTag:   tVersion100,
-			wantFound: true,
+			name:         "ignore non-semver counts as rejected",
+			tags:         []string{tPortalMain, "abcdef1", tVersion100},
+			wantTag:      tVersion100,
+			wantFound:    true,
+			wantRejected: 2,
 		},
 		{
-			name:      "no semver",
-			tags:      []string{tPortalMain, "latest", "abcdef1"},
-			wantTag:   "",
-			wantFound: false,
+			name:         "no semver counts every non-latest tag as rejected",
+			tags:         []string{tPortalMain, "latest", "abcdef1"},
+			wantTag:      "",
+			wantFound:    false,
+			wantRejected: 2,
 		},
 		{
 			name:      "empty list",
@@ -102,14 +105,22 @@ func TestPickLatestSemver(t *testing.T) {
 			wantTag:   tVersionV120,
 			wantFound: true,
 		},
+		{
+			name:         "4-segment version is rejected (semver limitation)",
+			tags:         []string{"1.2.3.4"},
+			wantTag:      "",
+			wantFound:    false,
+			wantRejected: 1,
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			got, found := PickLatestSemver(tc.tags)
-			if found != tc.wantFound || got != tc.wantTag {
-				t.Fatalf("PickLatestSemver(%v) = (%q, %v), want (%q, %v)", tc.tags, got, found, tc.wantTag, tc.wantFound)
+			got, rejected, found := PickLatestSemver(tc.tags)
+			if found != tc.wantFound || got != tc.wantTag || rejected != tc.wantRejected {
+				t.Fatalf("PickLatestSemver(%v) = (%q, %d, %v), want (%q, %d, %v)",
+					tc.tags, got, rejected, found, tc.wantTag, tc.wantRejected, tc.wantFound)
 			}
 		})
 	}

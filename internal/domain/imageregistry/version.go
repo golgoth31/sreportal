@@ -26,15 +26,23 @@ func IsUpgradable(tt domainimage.TagType) bool {
 }
 
 // PickLatestSemver scans the given tag list and returns the highest valid
-// semver tag (and true) — or ("", false) when no semver tag was found.
+// semver tag, the count of tags rejected as non-semver, and a found flag.
+// Returns ("", 0, false) on an empty list and ("", n, false) when every
+// non-"latest" tag was rejected.
 //
 // Rules:
-//   - tags equal to "latest" are ignored (cf. plan §4.3),
-//   - non-semver tags are ignored,
+//   - tags equal to "latest" are ignored and do NOT count as rejected,
+//   - non-semver tags are rejected and counted (callers may emit a metric),
 //   - the tag's original prefix is preserved (e.g. "v1.2.0" returned as-is),
 //   - comparison uses golang.org/x/mod/semver, so stable releases win over
 //     pre-releases of the same major.minor.patch.
-func PickLatestSemver(tags []string) (string, bool) {
+//
+// LIMITATION: golang.org/x/mod/semver only accepts strict 3-segment versions
+// (major.minor.patch). Tags such as "1.2" or "1.2.3.4" will be rejected even
+// though some registries publish them. This trades a few false negatives for
+// a deterministic comparator and is intentional. The rejected counter exposes
+// how often the limitation is hit per host.
+func PickLatestSemver(tags []string) (latest string, rejected int, found bool) {
 	var best string
 	var bestCanon string
 	for _, t := range tags {
@@ -43,6 +51,7 @@ func PickLatestSemver(tags []string) (string, bool) {
 		}
 		canon := canonicalSemver(t)
 		if canon == "" {
+			rejected++
 			continue
 		}
 		if bestCanon == "" || semver.Compare(canon, bestCanon) > 0 {
@@ -50,7 +59,7 @@ func PickLatestSemver(tags []string) (string, bool) {
 			bestCanon = canon
 		}
 	}
-	return best, best != ""
+	return best, rejected, best != ""
 }
 
 // IsUpgrade reports whether `latest` is a strictly higher semver than

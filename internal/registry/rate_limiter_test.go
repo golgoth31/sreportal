@@ -12,6 +12,7 @@ package registry
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -60,13 +61,40 @@ func TestHostLimiter_WaitFastWhenBucketFull(t *testing.T) {
 	}
 }
 
+func TestHostLimiter_LRUEvictionBoundsMemory(t *testing.T) {
+	t.Parallel()
+
+	hl := newHostLimiterWithCap(4)
+	// Insert 6 distinct hosts → cap 4 means the first 2 should be evicted.
+	for i := range 6 {
+		hl.limiterFor(fmt.Sprintf("host-%d.example.com", i))
+	}
+
+	hl.mu.Lock()
+	defer hl.mu.Unlock()
+	if hl.order.Len() != 4 {
+		t.Fatalf("order list should be capped at 4, got %d", hl.order.Len())
+	}
+	if len(hl.entries) != 4 {
+		t.Fatalf("entries map should be capped at 4, got %d", len(hl.entries))
+	}
+	if _, present := hl.entries["host-0.example.com"]; present {
+		t.Fatalf("oldest entry should have been evicted")
+	}
+	if _, present := hl.entries["host-5.example.com"]; !present {
+		t.Fatalf("newest entry must be present")
+	}
+}
+
 func TestHostLimiter_WaitRespectsCancellation(t *testing.T) {
 	t.Parallel()
 
 	hl := NewHostLimiter()
 	// Drain the bucket on a fresh, very-slow host so the next Wait blocks.
 	hl.mu.Lock()
-	hl.limiters["slow.example.com"] = rate.NewLimiter(rate.Every(time.Hour), 1)
+	slow := rate.NewLimiter(rate.Every(time.Hour), 1)
+	elem := hl.order.PushFront(&hostLimiterEntry{host: "slow.example.com", limiter: slow})
+	hl.entries["slow.example.com"] = elem
 	hl.mu.Unlock()
 
 	// Consume the initial token.
