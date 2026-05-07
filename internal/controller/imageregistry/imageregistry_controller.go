@@ -54,16 +54,16 @@ const (
 )
 
 // ImageRegistryReconciler reconciles an ImageRegistry object.
-//
-// +kubebuilder:rbac:groups=sreportal.io,resources=imageregistries,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=sreportal.io,resources=imageregistries/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=sreportal.io,resources=imageregistries/finalizers,verbs=update
 type ImageRegistryReconciler struct {
 	client.Client
 	chain *reconciler.Chain[*sreportalv1alpha1.ImageRegistry, imageregistrychain.ChainData]
 
 	imageStore domainimage.ImageWriter
 }
+
+// +kubebuilder:rbac:groups=sreportal.io,resources=imageregistries,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=sreportal.io,resources=imageregistries/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=sreportal.io,resources=imageregistries/finalizers,verbs=update
 
 // NewImageRegistryReconciler builds an ImageRegistryReconciler wired with the
 // handler chain.

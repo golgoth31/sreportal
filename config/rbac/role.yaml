@@ -126,6 +126,7 @@ rules:
   - dns/finalizers
   - dnsrecords/finalizers
   - imageinventories/finalizers
+  - imageregistries/finalizers
   - incidents/finalizers
   - maintenances/finalizers
   - networkflowdiscoveries/finalizers
@@ -144,6 +145,7 @@ rules:
   - flownodesets/status
   - flowobservers/status
   - imageinventories/status
+  - imageregistries/status
   - incidents/status
   - maintenances/status
   - networkflowdiscoveries/status
