@@ -51,6 +51,13 @@ type ImageInventoryReconciler struct {
 	chain *reconciler.Chain[*sreportalv1alpha1.ImageInventory, imageinventorychain.ChainData]
 }
 
+// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch
+// +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch
+// +kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=get;list;watch
+// +kubebuilder:rbac:groups=batch,resources=cronjobs,verbs=get;list;watch
+// +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch
+// +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch
+
 // NewImageInventoryReconciler creates a new ImageInventoryReconciler with the handler chain.
 func NewImageInventoryReconciler(c client.Client, store domainimage.ImageWriter, remoteClientCache *remoteclient.Cache) *ImageInventoryReconciler {
 	chain := reconciler.NewChain(
