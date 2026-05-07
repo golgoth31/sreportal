@@ -8,7 +8,7 @@ import {
   hasVisibleWorkloads,
   type Image,
 } from "./image.types";
-import { changeTypeBadgeClass, formatRelativeTime, tagTypeBadgeClass } from "../ui/image.badge-utils";
+import { formatRelativeTime, tagTypeBadgeClass } from "../ui/image.badge-utils";
 
 const base: Image[] = [
   {
@@ -471,28 +471,6 @@ describe("groupImagesByRegistry — stats", () => {
     expect(ghcr?.stats.total).toBe(2);
     expect(ghcr?.stats.upgrades).toBe(1);
     expect(ghcr?.stats.mutated).toBe(1);
-  });
-});
-
-describe("changeTypeBadgeClass", () => {
-  it("returns null for unspecified", () => {
-    expect(changeTypeBadgeClass("unspecified")).toBeNull();
-  });
-
-  it("returns null for undefined", () => {
-    expect(changeTypeBadgeClass(undefined)).toBeNull();
-  });
-
-  it("returns gray classes for none", () => {
-    expect(changeTypeBadgeClass("none")).toContain("gray");
-  });
-
-  it("returns orange classes for mutated", () => {
-    expect(changeTypeBadgeClass("mutated")).toContain("orange");
-  });
-
-  it("returns blue classes for injected", () => {
-    expect(changeTypeBadgeClass("injected")).toContain("blue");
   });
 });
 

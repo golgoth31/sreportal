@@ -185,6 +185,7 @@ func groupRemoteImagesByHostNamespace(portalRef string, images []*remoteclient.R
 				TagType:          domainimage.TagType(img.TagType),
 				Workloads:        refs,
 				OriginalImage:    img.OriginalImage,
+				MutatedImage:     img.MutatedImage,
 				ChangeType:       img.ChangeType,
 				LatestVersion:    img.LatestVersion,
 				LatestCheckedAt:  img.LatestCheckedAt,

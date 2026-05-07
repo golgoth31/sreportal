@@ -59,6 +59,7 @@ function toDomainImage(i: ProtoImage): Image {
     upgradeAvailable: i.upgradeAvailable || undefined,
     changeType: toDomainChangeType(i.changeType),
     originalImage: i.originalImage || undefined,
+    mutatedImage: i.mutatedImage || undefined,
   };
 }
 

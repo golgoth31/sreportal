@@ -209,8 +209,9 @@ type Image struct {
 	// latest_version is the highest semver tag found on the origin registry,
 	// empty when tag_type is not "semver" or when the lookup has not run yet.
 	LatestVersion string `protobuf:"bytes,6,opt,name=latest_version,json=latestVersion,proto3" json:"latest_version,omitempty"`
-	// latest_checked_at is the timestamp of the last successful registry lookup
-	// for this image. Unset when no lookup has succeeded yet.
+	// latest_checked_at is the timestamp of the last registry lookup attempt
+	// for this image (set on every attempt — success or error). Unset when no
+	// lookup has run yet. Used by the controller to pace retries (isDue).
 	LatestCheckedAt *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=latest_checked_at,json=latestCheckedAt,proto3" json:"latest_checked_at,omitempty"`
 	// latest_error is the last registry lookup error message, empty on success.
 	LatestError string `protobuf:"bytes,8,opt,name=latest_error,json=latestError,proto3" json:"latest_error,omitempty"`
@@ -223,6 +224,11 @@ type Image struct {
 	// original_image is the image reference declared in the workload template
 	// (PodSpec). Empty when change_type is CHANGE_TYPE_INJECTED.
 	OriginalImage string `protobuf:"bytes,11,opt,name=original_image,json=originalImage,proto3" json:"original_image,omitempty"`
+	// mutated_image is the image reference observed on the running Pod after
+	// any MutatingWebhook rewrite (e.g. mirror redirection). Equal to
+	// original_image when change_type is CHANGE_TYPE_NONE; the canonical image
+	// reference when change_type is CHANGE_TYPE_INJECTED.
+	MutatedImage  string `protobuf:"bytes,12,opt,name=mutated_image,json=mutatedImage,proto3" json:"mutated_image,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -334,6 +340,13 @@ func (x *Image) GetOriginalImage() string {
 	return ""
 }
 
+func (x *Image) GetMutatedImage() string {
+	if x != nil {
+		return x.MutatedImage
+	}
+	return ""
+}
+
 type WorkloadRef struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	Kind      string                 `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
@@ -426,7 +439,7 @@ const file_sreportal_v1_image_proto_rawDesc = "" +
 	"\x12ListImagesResponse\x12+\n" +
 	"\x06images\x18\x01 \x03(\v2\x13.sreportal.v1.ImageR\x06images\x12\x1f\n" +
 	"\vtotal_count\x18\x02 \x01(\x05R\n" +
-	"totalCount\"\xca\x03\n" +
+	"totalCount\"\xef\x03\n" +
 	"\x05Image\x12\x1a\n" +
 	"\bregistry\x18\x01 \x01(\tR\bregistry\x12\x1e\n" +
 	"\n" +
@@ -442,7 +455,8 @@ const file_sreportal_v1_image_proto_rawDesc = "" +
 	"\vchange_type\x18\n" +
 	" \x01(\x0e2\x18.sreportal.v1.ChangeTypeR\n" +
 	"changeType\x12%\n" +
-	"\x0eoriginal_image\x18\v \x01(\tR\roriginalImage\"\x89\x01\n" +
+	"\x0eoriginal_image\x18\v \x01(\tR\roriginalImage\x12#\n" +
+	"\rmutated_image\x18\f \x01(\tR\fmutatedImage\"\x89\x01\n" +
 	"\vWorkloadRef\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x1c\n" +
 	"\tnamespace\x18\x02 \x01(\tR\tnamespace\x12\x12\n" +

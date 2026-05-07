@@ -140,6 +140,28 @@ func TestCraneClient_ListTags_ServerErrorPropagates(t *testing.T) {
 	}
 }
 
+func TestCraneClient_ListTags_ContextCanceled(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(fakeRegistryHandler(t, "library/nginx", http.StatusOK,
+		`{"name":"library/nginx","tags":["1.0.0"]}`))
+	defer srv.Close()
+
+	host := stripScheme(t, srv.URL)
+	c := NewCraneClient()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // cancel before the call so the request is aborted immediately
+
+	_, err := c.ListTags(ctx, host, "library/nginx")
+	if err == nil {
+		t.Fatalf("expected error from canceled context")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled, got %v", err)
+	}
+}
+
 func TestCraneClient_ListTags_InvalidHost(t *testing.T) {
 	t.Parallel()
 

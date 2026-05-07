@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file sreportal/v1/image.proto.
  */
 export const file_sreportal_v1_image: GenFile = /*@__PURE__*/
-  fileDesc("ChhzcmVwb3J0YWwvdjEvaW1hZ2UucHJvdG8SDHNyZXBvcnRhbC52MSJlChFMaXN0SW1hZ2VzUmVxdWVzdBIOCgZwb3J0YWwYASABKAkSDgoGc2VhcmNoGAIgASgJEhcKD3JlZ2lzdHJ5X2ZpbHRlchgDIAEoCRIXCg90YWdfdHlwZV9maWx0ZXIYBCABKAkiTgoSTGlzdEltYWdlc1Jlc3BvbnNlEiMKBmltYWdlcxgBIAMoCzITLnNyZXBvcnRhbC52MS5JbWFnZRITCgt0b3RhbF9jb3VudBgCIAEoBSLBAgoFSW1hZ2USEAoIcmVnaXN0cnkYASABKAkSEgoKcmVwb3NpdG9yeRgCIAEoCRILCgN0YWcYAyABKAkSEAoIdGFnX3R5cGUYBCABKAkSLAoJd29ya2xvYWRzGAUgAygLMhkuc3JlcG9ydGFsLnYxLldvcmtsb2FkUmVmEhYKDmxhdGVzdF92ZXJzaW9uGAYgASgJEjUKEWxhdGVzdF9jaGVja2VkX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIUCgxsYXRlc3RfZXJyb3IYCCABKAkSGQoRdXBncmFkZV9hdmFpbGFibGUYCSABKAgSLQoLY2hhbmdlX3R5cGUYCiABKA4yGC5zcmVwb3J0YWwudjEuQ2hhbmdlVHlwZRIWCg5vcmlnaW5hbF9pbWFnZRgLIAEoCSJfCgtXb3JrbG9hZFJlZhIMCgRraW5kGAEgASgJEhEKCW5hbWVzcGFjZRgCIAEoCRIMCgRuYW1lGAMgASgJEhEKCWNvbnRhaW5lchgEIAEoCRIOCgZzb3VyY2UYBSABKAkqcgoKQ2hhbmdlVHlwZRIbChdDSEFOR0VfVFlQRV9VTlNQRUNJRklFRBAAEhQKEENIQU5HRV9UWVBFX05PTkUQARIXChNDSEFOR0VfVFlQRV9NVVRBVEVEEAISGAoUQ0hBTkdFX1RZUEVfSU5KRUNURUQQAzJfCgxJbWFnZVNlcnZpY2USTwoKTGlzdEltYWdlcxIfLnNyZXBvcnRhbC52MS5MaXN0SW1hZ2VzUmVxdWVzdBogLnNyZXBvcnRhbC52MS5MaXN0SW1hZ2VzUmVzcG9uc2VCugEKEGNvbS5zcmVwb3J0YWwudjFCCkltYWdlUHJvdG9QAVpJZ2l0aHViLmNvbS9nb2xnb3RoMzEvc3JlcG9ydGFsL2ludGVybmFsL2dycGMvZ2VuL3NyZXBvcnRhbC92MTtzcmVwb3J0YWx2MaICA1NYWKoCDFNyZXBvcnRhbC5WMcoCDFNyZXBvcnRhbFxWMeICGFNyZXBvcnRhbFxWMVxHUEJNZXRhZGF0YeoCDVNyZXBvcnRhbDo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
+  fileDesc("ChhzcmVwb3J0YWwvdjEvaW1hZ2UucHJvdG8SDHNyZXBvcnRhbC52MSJlChFMaXN0SW1hZ2VzUmVxdWVzdBIOCgZwb3J0YWwYASABKAkSDgoGc2VhcmNoGAIgASgJEhcKD3JlZ2lzdHJ5X2ZpbHRlchgDIAEoCRIXCg90YWdfdHlwZV9maWx0ZXIYBCABKAkiTgoSTGlzdEltYWdlc1Jlc3BvbnNlEiMKBmltYWdlcxgBIAMoCzITLnNyZXBvcnRhbC52MS5JbWFnZRITCgt0b3RhbF9jb3VudBgCIAEoBSLYAgoFSW1hZ2USEAoIcmVnaXN0cnkYASABKAkSEgoKcmVwb3NpdG9yeRgCIAEoCRILCgN0YWcYAyABKAkSEAoIdGFnX3R5cGUYBCABKAkSLAoJd29ya2xvYWRzGAUgAygLMhkuc3JlcG9ydGFsLnYxLldvcmtsb2FkUmVmEhYKDmxhdGVzdF92ZXJzaW9uGAYgASgJEjUKEWxhdGVzdF9jaGVja2VkX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIUCgxsYXRlc3RfZXJyb3IYCCABKAkSGQoRdXBncmFkZV9hdmFpbGFibGUYCSABKAgSLQoLY2hhbmdlX3R5cGUYCiABKA4yGC5zcmVwb3J0YWwudjEuQ2hhbmdlVHlwZRIWCg5vcmlnaW5hbF9pbWFnZRgLIAEoCRIVCg1tdXRhdGVkX2ltYWdlGAwgASgJIl8KC1dvcmtsb2FkUmVmEgwKBGtpbmQYASABKAkSEQoJbmFtZXNwYWNlGAIgASgJEgwKBG5hbWUYAyABKAkSEQoJY29udGFpbmVyGAQgASgJEg4KBnNvdXJjZRgFIAEoCSpyCgpDaGFuZ2VUeXBlEhsKF0NIQU5HRV9UWVBFX1VOU1BFQ0lGSUVEEAASFAoQQ0hBTkdFX1RZUEVfTk9ORRABEhcKE0NIQU5HRV9UWVBFX01VVEFURUQQAhIYChRDSEFOR0VfVFlQRV9JTkpFQ1RFRBADMl8KDEltYWdlU2VydmljZRJPCgpMaXN0SW1hZ2VzEh8uc3JlcG9ydGFsLnYxLkxpc3RJbWFnZXNSZXF1ZXN0GiAuc3JlcG9ydGFsLnYxLkxpc3RJbWFnZXNSZXNwb25zZUK6AQoQY29tLnNyZXBvcnRhbC52MUIKSW1hZ2VQcm90b1ABWklnaXRodWIuY29tL2dvbGdvdGgzMS9zcmVwb3J0YWwvaW50ZXJuYWwvZ3JwYy9nZW4vc3JlcG9ydGFsL3YxO3NyZXBvcnRhbHYxogIDU1hYqgIMU3JlcG9ydGFsLlYxygIMU3JlcG9ydGFsXFYx4gIYU3JlcG9ydGFsXFYxXEdQQk1ldGFkYXRh6gINU3JlcG9ydGFsOjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message sreportal.v1.ListImagesRequest
@@ -106,8 +106,9 @@ export type Image = Message<"sreportal.v1.Image"> & {
   latestVersion: string;
 
   /**
-   * latest_checked_at is the timestamp of the last successful registry lookup
-   * for this image. Unset when no lookup has succeeded yet.
+   * latest_checked_at is the timestamp of the last registry lookup attempt
+   * for this image (set on every attempt — success or error). Unset when no
+   * lookup has run yet. Used by the controller to pace retries (isDue).
    *
    * @generated from field: google.protobuf.Timestamp latest_checked_at = 7;
    */
@@ -143,6 +144,16 @@ export type Image = Message<"sreportal.v1.Image"> & {
    * @generated from field: string original_image = 11;
    */
   originalImage: string;
+
+  /**
+   * mutated_image is the image reference observed on the running Pod after
+   * any MutatingWebhook rewrite (e.g. mirror redirection). Equal to
+   * original_image when change_type is CHANGE_TYPE_NONE; the canonical image
+   * reference when change_type is CHANGE_TYPE_INJECTED.
+   *
+   * @generated from field: string mutated_image = 12;
+   */
+  mutatedImage: string;
 };
 
 /**

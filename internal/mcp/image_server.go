@@ -160,6 +160,7 @@ type ImageResult struct {
 	Tag              string                `json:"tag"`
 	TagType          string                `json:"tag_type"`
 	OriginalImage    string                `json:"original_image,omitempty"`
+	MutatedImage     string                `json:"mutated_image,omitempty"`
 	ChangeType       string                `json:"change_type,omitempty"`
 	LatestVersion    string                `json:"latest_version,omitempty"`
 	LatestCheckedAt  string                `json:"latest_checked_at,omitempty"`
@@ -215,6 +216,7 @@ func toImageResult(v domainimage.ImageView, workloads []ImageWorkloadResult) Ima
 		Tag:              v.Tag,
 		TagType:          string(v.TagType),
 		OriginalImage:    v.OriginalImage,
+		MutatedImage:     v.MutatedImage,
 		ChangeType:       v.ChangeType,
 		LatestVersion:    v.LatestVersion,
 		LatestError:      v.LatestError,

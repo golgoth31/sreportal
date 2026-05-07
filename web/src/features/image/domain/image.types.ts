@@ -47,6 +47,10 @@ export interface Image {
   readonly changeType?: ChangeType;
   // originalImage is the workload template image ref. Empty when changeType === "injected".
   readonly originalImage?: string;
+  // mutatedImage is the running-pod image ref after any MutatingWebhook
+  // rewrite. Equal to originalImage when changeType === "none"; canonical
+  // image ref when changeType === "injected".
+  readonly mutatedImage?: string;
 }
 
 export interface ImageFilters {

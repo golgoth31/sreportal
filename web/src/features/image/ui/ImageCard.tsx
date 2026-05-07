@@ -81,8 +81,12 @@ export function ImageCard({ image }: ImageCardProps) {
   const display = `${image.repository}:${image.tag}`;
 
   const relativeTime = formatRelativeTime(image.latestCheckedAt);
-  // mutatedImage is registry/repository:tag (the observed image = this card's ref)
-  const mutatedImage = image.changeType === "mutated" ? fullRef : undefined;
+  // Show the running-pod ref only when it actually differs from the
+  // template ref (changeType === "mutated"). For "none" they're equal —
+  // displaying both would be redundant. For "injected" there is no
+  // template ref, so mutatedImage already represents the only known ref.
+  const mutatedImage =
+    image.changeType === "mutated" ? image.mutatedImage ?? fullRef : undefined;
 
   return (
     <>

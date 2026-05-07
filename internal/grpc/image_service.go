@@ -81,6 +81,7 @@ func (s *ImageService) ListImages(
 			UpgradeAvailable: v.UpgradeAvailable,
 			ChangeType:       toProtoChangeType(v.ChangeType),
 			OriginalImage:    v.OriginalImage,
+			MutatedImage:     v.MutatedImage,
 		}
 		if v.LatestCheckedAt != nil {
 			img.LatestCheckedAt = timestamppb.New(*v.LatestCheckedAt)

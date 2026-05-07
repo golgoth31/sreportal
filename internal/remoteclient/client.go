@@ -477,6 +477,7 @@ type RemoteImage struct {
 	// Registry-version-lookup fields, projected from the source portal so the
 	// shadow doesn't need to call the registry itself.
 	OriginalImage    string
+	MutatedImage     string
 	ChangeType       string
 	LatestVersion    string
 	LatestCheckedAt  *time.Time
@@ -573,6 +574,7 @@ func (c *Client) doFetchImages(ctx context.Context, baseURL string, portalName s
 			TagType:          in.TagType,
 			Workloads:        workloads,
 			OriginalImage:    in.OriginalImage,
+			MutatedImage:     in.MutatedImage,
 			ChangeType:       fromProtoChangeType(in.ChangeType),
 			LatestVersion:    in.LatestVersion,
 			LatestError:      in.LatestError,

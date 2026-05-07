@@ -1391,7 +1391,7 @@
         "latestCheckedAt": {
           "type": "string",
           "format": "date-time",
-          "description": "latest_checked_at is the timestamp of the last successful registry lookup\nfor this image. Unset when no lookup has succeeded yet."
+          "description": "latest_checked_at is the timestamp of the last registry lookup attempt\nfor this image (set on every attempt — success or error). Unset when no\nlookup has run yet. Used by the controller to pace retries (isDue)."
         },
         "latestError": {
           "type": "string",
@@ -1408,6 +1408,10 @@
         "originalImage": {
           "type": "string",
           "description": "original_image is the image reference declared in the workload template\n(PodSpec). Empty when change_type is CHANGE_TYPE_INJECTED."
+        },
+        "mutatedImage": {
+          "type": "string",
+          "description": "mutated_image is the image reference observed on the running Pod after\nany MutatingWebhook rewrite (e.g. mirror redirection). Equal to\noriginal_image when change_type is CHANGE_TYPE_NONE; the canonical image\nreference when change_type is CHANGE_TYPE_INJECTED."
         }
       }
     },
