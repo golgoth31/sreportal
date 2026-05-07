@@ -15,6 +15,7 @@ resources:
   - bases/sreportal.io_incidents.yaml
   - bases/sreportal.io_flowobservers.yaml
   - bases/sreportal.io_imageinventories.yaml
+  - bases/sreportal.io_imageregistries.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches: []

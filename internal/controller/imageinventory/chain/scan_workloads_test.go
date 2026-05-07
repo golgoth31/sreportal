@@ -1,8 +1,23 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package chain
 
 import (
 	"context"
-	"sync"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -14,37 +29,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
-	domainimage "github.com/golgoth31/sreportal/internal/domain/image"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
-
-type replaceAllCall struct {
-	portalRef  string
-	byWorkload map[domainimage.WorkloadKey][]domainimage.ImageView
-}
-
-type fakeImageWriter struct {
-	mu          sync.Mutex
-	replaceAlls []replaceAllCall
-	replaceErr  error
-}
-
-func (f *fakeImageWriter) ReplaceWorkload(_ context.Context, _ string, _ domainimage.WorkloadKey, _ []domainimage.ImageView) error {
-	return nil
-}
-func (f *fakeImageWriter) DeleteWorkloadAllPortals(_ context.Context, _ domainimage.WorkloadKey) error {
-	return nil
-}
-func (f *fakeImageWriter) ReplaceAll(_ context.Context, portalRef string, byWorkload map[domainimage.WorkloadKey][]domainimage.ImageView) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.replaceErr != nil {
-		return f.replaceErr
-	}
-	f.replaceAlls = append(f.replaceAlls, replaceAllCall{portalRef, byWorkload})
-	return nil
-}
-func (f *fakeImageWriter) DeletePortal(_ context.Context, _ string) error { return nil }
 
 func newChainScheme(t *testing.T) *runtime.Scheme {
 	t.Helper()
@@ -60,15 +46,16 @@ func newChainScheme(t *testing.T) *runtime.Scheme {
 
 // --- ScanWorkloadsHandler tests ---
 
-func TestScanWorkloadsPopulatesByWorkload(t *testing.T) {
+func TestScanWorkloadsPopulatesObservations(t *testing.T) {
 	t.Parallel()
 	sch := newChainScheme(t)
 
 	dep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{Name: tNameAPI, Namespace: tNsDefault},
 		Spec: appsv1.DeploymentSpec{
+			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{tLabelApp: tNameAPI}},
 			Template: corev1.PodTemplateSpec{
-				Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: tNameWeb, Image: "ghcr.io/acme/api:v1"}}},
+				Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: tNameWeb, Image: tImgGhcrAPIv1}}},
 			},
 		},
 	}
@@ -87,16 +74,101 @@ func TestScanWorkloadsPopulatesByWorkload(t *testing.T) {
 	if err := h.Handle(context.Background(), rc); err != nil {
 		t.Fatalf("Handle: %v", err)
 	}
-	if len(rc.Data.ByWorkload) != 1 {
-		t.Fatalf("ByWorkload entries=%d want 1", len(rc.Data.ByWorkload))
+	if len(rc.Data.Observations) != 1 {
+		t.Fatalf("Observations=%d want 1", len(rc.Data.Observations))
 	}
-	wk := domainimage.WorkloadKey{Kind: tKindDeploy, Namespace: tNsDefault, Name: tNameAPI}
-	views, ok := rc.Data.ByWorkload[wk]
-	if !ok {
-		t.Fatalf("expected workload key %+v in ByWorkload", wk)
+	got := rc.Data.Observations[0]
+	if got.WorkloadKind != tKindDeploy {
+		t.Errorf("WorkloadKind=%q want %q", got.WorkloadKind, tKindDeploy)
 	}
-	if len(views) == 0 {
-		t.Fatalf("expected at least one ImageView for workload %+v", wk)
+	if got.WorkloadName != tNameAPI {
+		t.Errorf("WorkloadName=%q want %q", got.WorkloadName, tNameAPI)
+	}
+	if got.WorkloadNamespace != tNsDefault {
+		t.Errorf("WorkloadNamespace=%q want %q", got.WorkloadNamespace, tNsDefault)
+	}
+	if got.ContainerName != tNameWeb {
+		t.Errorf("ContainerName=%q want %q", got.ContainerName, tNameWeb)
+	}
+	if got.TemplateImage != tImgGhcrAPIv1 {
+		t.Errorf("TemplateImage=%q want %q", got.TemplateImage, tImgGhcrAPIv1)
+	}
+	// No running pod found — PodImage falls back to template.
+	if got.PodImage != tImgGhcrAPIv1 {
+		t.Errorf("PodImage=%q want %q (fallback to spec)", got.PodImage, tImgGhcrAPIv1)
+	}
+}
+
+func TestScanWorkloadsCapturesMutatedAndInjectedFromPod(t *testing.T) {
+	t.Parallel()
+	sch := newChainScheme(t)
+
+	dep := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: tNameAPI, Namespace: tNsDefault},
+		Spec: appsv1.DeploymentSpec{
+			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{tLabelApp: tNameAPI}},
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: tNameWeb, Image: tImgGhcrAPIv1}}},
+			},
+		},
+	}
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "api-1", Namespace: tNsDefault,
+			Labels: map[string]string{tLabelApp: tNameAPI},
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{Name: tNameWeb, Image: tImgGhcrAPIv2},              // mutated
+				{Name: tContainerSidecar, Image: "ghcr.io/x/y:1.0"}, // injected
+			},
+		},
+		Status: corev1.PodStatus{Phase: corev1.PodRunning},
+	}
+	c := fake.NewClientBuilder().WithScheme(sch).WithObjects(dep, pod).Build()
+	h := NewScanWorkloadsHandler(c)
+
+	inv := &sreportalv1alpha1.ImageInventory{
+		ObjectMeta: metav1.ObjectMeta{Name: tNameInv, Namespace: tNsSre},
+		Spec: sreportalv1alpha1.ImageInventorySpec{
+			PortalRef:    tPortalA,
+			WatchedKinds: []sreportalv1alpha1.ImageInventoryKind{sreportalv1alpha1.ImageInventoryKindDeployment},
+		},
+	}
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageInventory, ChainData]{Resource: inv}
+
+	if err := h.Handle(context.Background(), rc); err != nil {
+		t.Fatalf("Handle: %v", err)
+	}
+	if len(rc.Data.Observations) != 2 {
+		t.Fatalf("Observations=%d want 2", len(rc.Data.Observations))
+	}
+
+	var spec, injected *struct {
+		template, pod string
+	}
+	_ = spec
+	_ = injected
+
+	for _, o := range rc.Data.Observations {
+		switch o.ContainerName {
+		case tNameWeb:
+			if o.TemplateImage != tImgGhcrAPIv1 {
+				t.Errorf("spec container TemplateImage=%q want %q", o.TemplateImage, tImgGhcrAPIv1)
+			}
+			if o.PodImage != tImgGhcrAPIv2 {
+				t.Errorf("spec container PodImage=%q want %q (mutated)", o.PodImage, tImgGhcrAPIv2)
+			}
+		case tContainerSidecar:
+			if o.TemplateImage != "" {
+				t.Errorf("injected TemplateImage=%q want empty", o.TemplateImage)
+			}
+			if o.PodImage != "ghcr.io/x/y:1.0" {
+				t.Errorf("injected PodImage=%q want ghcr.io/x/y:1.0", o.PodImage)
+			}
+		default:
+			t.Errorf("unexpected container %q", o.ContainerName)
+		}
 	}
 }
 
@@ -108,7 +180,7 @@ func TestScanWorkloadsIsRemoteNoOp(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: tNameAPI, Namespace: tNsDefault},
 		Spec: appsv1.DeploymentSpec{
 			Template: corev1.PodTemplateSpec{
-				Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: tNameWeb, Image: "ghcr.io/acme/api:v1"}}},
+				Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: tNameWeb, Image: tImgGhcrAPIv1}}},
 			},
 		},
 	}
@@ -128,8 +200,8 @@ func TestScanWorkloadsIsRemoteNoOp(t *testing.T) {
 	if err := h.Handle(context.Background(), rc); err != nil {
 		t.Fatalf("Handle: %v", err)
 	}
-	if rc.Data.ByWorkload != nil {
-		t.Fatalf("expected ByWorkload to be nil for remote inventory, got %v", rc.Data.ByWorkload)
+	if rc.Data.Observations != nil {
+		t.Fatalf("expected Observations to be nil for remote inventory, got %v", rc.Data.Observations)
 	}
 }
 

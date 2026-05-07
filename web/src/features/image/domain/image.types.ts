@@ -2,6 +2,9 @@ export type TagType = "semver" | "commit" | "digest" | "latest" | "other";
 
 export type ContainerSource = "spec" | "pod";
 
+// ChangeType mirrors the proto enum sreportal.v1.ChangeType.
+export type ChangeType = "unspecified" | "none" | "mutated" | "injected";
+
 export interface WorkloadRef {
   readonly kind: string;
   readonly namespace: string;
@@ -34,6 +37,20 @@ export interface Image {
   // hasInjection: true when at least one of this image's workload refs is a
   // webhook-injected container (pod-only, no spec counterpart).
   readonly hasInjection?: boolean;
+
+  // Registry version lookup fields (may be empty when not yet populated).
+  readonly latestVersion?: string;
+  // ISO string (from Timestamp); undefined when lookup has not run.
+  readonly latestCheckedAt?: string;
+  readonly latestError?: string;
+  readonly upgradeAvailable?: boolean;
+  readonly changeType?: ChangeType;
+  // originalImage is the workload template image ref. Empty when changeType === "injected".
+  readonly originalImage?: string;
+  // mutatedImage is the running-pod image ref after any MutatingWebhook
+  // rewrite. Equal to originalImage when changeType === "none"; canonical
+  // image ref when changeType === "injected".
+  readonly mutatedImage?: string;
 }
 
 export interface ImageFilters {
@@ -41,16 +58,32 @@ export interface ImageFilters {
   readonly registryFilter: string;
   readonly tagTypeFilter: string;
   // When true, restrict to images touched by a MutatingWebhook in the
-  // matching way. mutatedFilter and injectedFilter combine with OR — any
-  // image matching at least one enabled flag is kept. When neither is on,
-  // webhook activity is not used as a filter.
+  // matching way. mutatedFilter, injectedFilter and noneFilter combine with
+  // OR — any image matching at least one enabled flag is kept. When none is
+  // on, webhook activity is not used as a filter.
   readonly mutatedFilter?: boolean;
   readonly injectedFilter?: boolean;
+  readonly noneFilter?: boolean;
+  // Namespace multi-select filter: keep images that have at least one workload
+  // in any of the selected namespaces. Empty array = no restriction.
+  readonly namespaceFilter?: readonly string[];
+  // changeTypeFilter: "none" | "mutated" | "injected" | "" (empty = all)
+  readonly changeTypeFilter?: string;
+  // upgradeFilter: when true, keep only images with upgradeAvailable === true
+  readonly upgradeFilter?: boolean;
+}
+
+export interface ImageGroupStats {
+  readonly total: number;
+  readonly upgrades: number;
+  readonly mutated: number;
+  readonly injected: number;
 }
 
 export interface ImageGroup {
   readonly registry: string;
   readonly images: readonly Image[];
+  readonly stats: ImageGroupStats;
 }
 
 const containerKey = (w: WorkloadRef): string =>
@@ -128,7 +161,8 @@ export function hasVisibleWorkloads(img: Image): boolean {
 
 export function filterImages(images: readonly Image[], filters: ImageFilters): Image[] {
   const search = filters.search.toLowerCase();
-  const webhookFilterActive = Boolean(filters.mutatedFilter || filters.injectedFilter);
+  const webhookFilterActive = Boolean(filters.mutatedFilter || filters.injectedFilter || filters.noneFilter);
+  const nsFilter = filters.namespaceFilter ?? [];
   return images.filter((img) => {
     if (filters.registryFilter && img.registry !== filters.registryFilter) return false;
     if (filters.tagTypeFilter && img.tagType !== filters.tagTypeFilter) return false;
@@ -136,10 +170,31 @@ export function filterImages(images: readonly Image[], filters: ImageFilters): I
     if (webhookFilterActive) {
       const matchesMutated = filters.mutatedFilter && img.hasMutation;
       const matchesInjected = filters.injectedFilter && img.hasInjection;
-      if (!matchesMutated && !matchesInjected) return false;
+      const matchesNone = filters.noneFilter && !img.hasMutation && !img.hasInjection;
+      if (!matchesMutated && !matchesInjected && !matchesNone) return false;
     }
+    if (nsFilter.length > 0) {
+      const imageNs = new Set(img.workloads.filter((w) => !w.hidden).map((w) => w.namespace));
+      if (!nsFilter.some((ns) => imageNs.has(ns))) return false;
+    }
+    if (filters.changeTypeFilter) {
+      if ((img.changeType ?? "unspecified") !== filters.changeTypeFilter) return false;
+    }
+    if (filters.upgradeFilter && !img.upgradeAvailable) return false;
     return true;
   });
+}
+
+export function computeGroupStats(images: readonly Image[]): ImageGroupStats {
+  let upgrades = 0;
+  let mutated = 0;
+  let injected = 0;
+  for (const img of images) {
+    if (img.upgradeAvailable) upgrades++;
+    if (img.changeType === "mutated") mutated++;
+    if (img.changeType === "injected") injected++;
+  }
+  return { total: images.length, upgrades, mutated, injected };
 }
 
 export function groupImagesByRegistry(images: readonly Image[]): ImageGroup[] {
@@ -150,8 +205,12 @@ export function groupImagesByRegistry(images: readonly Image[]): ImageGroup[] {
   }
   return Array.from(map.entries())
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([registry, grouped]) => ({
-      registry,
-      images: [...grouped].sort((a, b) => a.repository.localeCompare(b.repository)),
-    }));
+    .map(([registry, grouped]) => {
+      const sorted = [...grouped].sort((a, b) => a.repository.localeCompare(b.repository));
+      return {
+        registry,
+        images: sorted,
+        stats: computeGroupStats(sorted),
+      };
+    });
 }

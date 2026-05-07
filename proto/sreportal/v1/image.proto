@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package sreportal.v1;
 
+import "google/protobuf/timestamp.proto";
+
 service ImageService {
   rpc ListImages(ListImagesRequest) returns (ListImagesResponse);
 }
@@ -18,12 +20,54 @@ message ListImagesResponse {
   int32 total_count = 2;
 }
 
+// ChangeType describes how an image observed in a Pod relates to the image
+// declared in the workload template.
+enum ChangeType {
+  CHANGE_TYPE_UNSPECIFIED = 0;
+  // The Pod image matches the template image.
+  CHANGE_TYPE_NONE = 1;
+  // The Pod image was rewritten by a mutating webhook (e.g. mirror rewrite).
+  CHANGE_TYPE_MUTATED = 2;
+  // The container is not declared in the template (sidecar injected at admission).
+  CHANGE_TYPE_INJECTED = 3;
+}
+
 message Image {
   string registry = 1;
   string repository = 2;
   string tag = 3;
   string tag_type = 4;
   repeated WorkloadRef workloads = 5;
+
+  // latest_version is the highest semver tag found on the origin registry,
+  // empty when tag_type is not "semver" or when the lookup has not run yet.
+  string latest_version = 6;
+
+  // latest_checked_at is the timestamp of the last registry lookup attempt
+  // for this image (set on every attempt — success or error). Unset when no
+  // lookup has run yet. Used by the controller to pace retries (isDue).
+  google.protobuf.Timestamp latest_checked_at = 7;
+
+  // latest_error is the last registry lookup error message, empty on success.
+  string latest_error = 8;
+
+  // upgrade_available is true when latest_version exists and is strictly greater
+  // than the current tag (semver comparison).
+  bool upgrade_available = 9;
+
+  // change_type indicates how the observed Pod image relates to the workload
+  // template image (none, mutated, injected).
+  ChangeType change_type = 10;
+
+  // original_image is the image reference declared in the workload template
+  // (PodSpec). Empty when change_type is CHANGE_TYPE_INJECTED.
+  string original_image = 11;
+
+  // mutated_image is the image reference observed on the running Pod after
+  // any MutatingWebhook rewrite (e.g. mirror redirection). Equal to
+  // original_image when change_type is CHANGE_TYPE_NONE; the canonical image
+  // reference when change_type is CHANGE_TYPE_INJECTED.
+  string mutated_image = 12;
 }
 
 message WorkloadRef {

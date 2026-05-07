@@ -36,24 +36,30 @@ import (
 	"github.com/golgoth31/sreportal/internal/remoteclient"
 )
 
+// trackingImageWriter records calls to the ImageWriter interface so tests can
+// assert which scopes were created/cleared during reconciliation.
 type trackingImageWriter struct {
-	mu      sync.Mutex
-	deleted []string
+	mu       sync.Mutex
+	replaces []scopeCall
+	removes  []scopeCall
 }
 
-func (w *trackingImageWriter) ReplaceWorkload(_ context.Context, _ string, _ domainimage.WorkloadKey, _ []domainimage.ImageView) error {
-	return nil
+type scopeCall struct {
+	Portal, Host, Namespace string
+	Views                   []domainimage.ImageView
 }
-func (w *trackingImageWriter) DeleteWorkloadAllPortals(_ context.Context, _ domainimage.WorkloadKey) error {
-	return nil
-}
-func (w *trackingImageWriter) ReplaceAll(_ context.Context, _ string, _ map[domainimage.WorkloadKey][]domainimage.ImageView) error {
-	return nil
-}
-func (w *trackingImageWriter) DeletePortal(_ context.Context, portalRef string) error {
+
+func (w *trackingImageWriter) ReplaceForNamespace(_ context.Context, portal, host, namespace string, views []domainimage.ImageView) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	w.deleted = append(w.deleted, portalRef)
+	w.replaces = append(w.replaces, scopeCall{Portal: portal, Host: host, Namespace: namespace, Views: views})
+	return nil
+}
+
+func (w *trackingImageWriter) RemoveForNamespace(_ context.Context, portal, host, namespace string) error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.removes = append(w.removes, scopeCall{Portal: portal, Host: host, Namespace: namespace})
 	return nil
 }
 
@@ -98,7 +104,7 @@ func TestReconcileAddsFinalizerOnFirstPass(t *testing.T) {
 	}
 }
 
-func TestReconcileDeletesPortalProjectionOnDeletion(t *testing.T) {
+func TestReconcileRemovesScopesOnDeletion(t *testing.T) {
 	t.Parallel()
 	sch := newControllerScheme(t)
 
@@ -111,6 +117,12 @@ func TestReconcileDeletesPortalProjectionOnDeletion(t *testing.T) {
 			DeletionTimestamp: &now,
 		},
 		Spec: sreportalv1alpha1.ImageInventorySpec{PortalRef: tPortalA},
+		Status: sreportalv1alpha1.ImageInventoryStatus{
+			Registries: []sreportalv1alpha1.ImageRegistryRef{
+				{Hash: "h1", Host: "ghcr.io", Namespace: "default"},
+				{Hash: "h2", Host: "docker.io", Namespace: "kube-system"},
+			},
+		},
 	}
 	c := fake.NewClientBuilder().WithScheme(sch).
 		WithObjects(inv).
@@ -124,8 +136,13 @@ func TestReconcileDeletesPortalProjectionOnDeletion(t *testing.T) {
 		t.Fatalf("Reconcile: %v", err)
 	}
 
-	if len(writer.deleted) != 1 || writer.deleted[0] != tPortalA {
-		t.Fatalf("deleted=%v want [portal-a]", writer.deleted)
+	if len(writer.removes) != 2 {
+		t.Fatalf("removes=%d want 2", len(writer.removes))
+	}
+	for _, r := range writer.removes {
+		if r.Portal != tPortalA {
+			t.Errorf("remove call portal=%q want %q", r.Portal, tPortalA)
+		}
 	}
 }
 

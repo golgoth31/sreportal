@@ -12,11 +12,18 @@ interface ImageGroupListProps {
   onClearFilters: () => void;
 }
 
-export function ImageGroupList({ groups, isLoading, hasFilters, onClearFilters }: ImageGroupListProps) {
+export function ImageGroupList({
+  groups,
+  isLoading,
+  hasFilters,
+  onClearFilters,
+}: ImageGroupListProps) {
   if (isLoading) {
     return (
       <div className="space-y-3" aria-label="Loading image groups">
-        {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-14 w-full rounded-lg" />
+        ))}
       </div>
     );
   }
@@ -25,7 +32,11 @@ export function ImageGroupList({ groups, isLoading, hasFilters, onClearFilters }
       <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
         <SearchXIcon className="size-10 text-muted-foreground" />
         <p className="text-muted-foreground text-sm">No images found.</p>
-        {hasFilters && <Button variant="outline" size="sm" onClick={onClearFilters}>Clear filters</Button>}
+        {hasFilters && (
+          <Button variant="outline" size="sm" onClick={onClearFilters}>
+            Clear filters
+          </Button>
+        )}
       </div>
     );
   }

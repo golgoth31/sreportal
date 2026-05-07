@@ -1,5 +1,6 @@
-import { useState } from "react";
 import {
+  AlertCircleIcon,
+  ArrowUpCircleIcon,
   CheckIcon,
   CopyIcon,
   ExternalLinkIcon,
@@ -7,6 +8,7 @@ import {
   PackagePlusIcon,
   WandSparklesIcon,
 } from "lucide-react";
+import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -24,7 +26,11 @@ import {
 } from "@/components/ui/tooltip";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 import { cn } from "@/lib/utils";
-import type { Image, TagType } from "../domain/image.types";
+import type { Image } from "../domain/image.types";
+import {
+  formatRelativeTime,
+  tagTypeBadgeClass,
+} from "./image.badge-utils";
 import { WorkloadList } from "./WorkloadList";
 
 interface ImageCardProps {
@@ -32,38 +38,6 @@ interface ImageCardProps {
 }
 
 const PREVIEW_LIMIT = 3;
-
-export function tagTypeBadgeClass(tagType: TagType): string {
-  const classes: Record<TagType, string> = {
-    semver:
-      "border-blue-200 bg-blue-100 text-blue-800 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-    commit:
-      "border-blue-200 bg-blue-100 text-blue-800 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-    digest:
-      "border-green-200 bg-green-100 text-green-800 dark:border-green-800 dark:bg-green-900/30 dark:text-green-300",
-    latest:
-      "border-red-200 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300",
-    other:
-      "border-gray-200 bg-gray-100 text-gray-700 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-300",
-  };
-  return classes[tagType];
-}
-
-export function tagTypeBadgeMutedClass(tagType: TagType): string {
-  const classes: Record<TagType, string> = {
-    semver:
-      "border-blue-200/70 bg-transparent text-blue-700/70 hover:bg-blue-50 hover:text-blue-800 dark:border-blue-800/50 dark:text-blue-400/70 dark:hover:bg-blue-900/20 dark:hover:text-blue-300",
-    commit:
-      "border-blue-200/70 bg-transparent text-blue-700/70 hover:bg-blue-50 hover:text-blue-800 dark:border-blue-800/50 dark:text-blue-400/70 dark:hover:bg-blue-900/20 dark:hover:text-blue-300",
-    digest:
-      "border-green-200/70 bg-transparent text-green-700/70 hover:bg-green-50 hover:text-green-800 dark:border-green-800/50 dark:text-green-400/70 dark:hover:bg-green-900/20 dark:hover:text-green-300",
-    latest:
-      "border-red-200/70 bg-transparent text-red-700/70 hover:bg-red-50 hover:text-red-800 dark:border-red-800/50 dark:text-red-400/70 dark:hover:bg-red-900/20 dark:hover:text-red-300",
-    other:
-      "border-gray-200/70 bg-transparent text-gray-600/70 hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700/50 dark:text-gray-400/70 dark:hover:bg-gray-800/30 dark:hover:text-gray-200",
-  };
-  return classes[tagType];
-}
 
 interface CopyableImageRefProps {
   display: string;
@@ -106,6 +80,14 @@ export function ImageCard({ image }: ImageCardProps) {
   const fullRef = `${image.registry}/${image.repository}:${image.tag}`;
   const display = `${image.repository}:${image.tag}`;
 
+  const relativeTime = formatRelativeTime(image.latestCheckedAt);
+  // Show the running-pod ref only when it actually differs from the
+  // template ref (changeType === "mutated"). For "none" they're equal —
+  // displaying both would be redundant. For "injected" there is no
+  // template ref, so mutatedImage already represents the only known ref.
+  const mutatedImage =
+    image.changeType === "mutated" ? image.mutatedImage ?? fullRef : undefined;
+
   return (
     <>
       <div
@@ -113,13 +95,24 @@ export function ImageCard({ image }: ImageCardProps) {
           "group rounded-lg border border-border/70 bg-card/60 backdrop-blur-sm p-4 flex flex-col gap-2 transition-all hover:border-primary/40 hover:bg-card hover:shadow-md hover:shadow-primary/5",
           image.hasMutation &&
             "border-amber-300/70 dark:border-amber-700/60 hover:border-amber-400 dark:hover:border-amber-600",
-          !image.hasMutation && image.hasInjection &&
+          !image.hasMutation &&
+            image.hasInjection &&
             "border-violet-300/70 dark:border-violet-700/60 hover:border-violet-400 dark:hover:border-violet-600",
         )}
       >
         <div className="flex items-center justify-between gap-2">
-          <p className="font-medium text-sm tracking-tight">{shortName}</p>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 min-w-0">
+            {image.upgradeAvailable && (
+                  <span
+                    className="inline-flex items-center text-emerald-600 dark:text-emerald-400 shrink-0"
+                    aria-label="Upgrade available"
+                  >
+                    <ArrowUpCircleIcon className="size-3.5" />
+                  </span>
+            )}
+            <p className="font-medium text-sm tracking-tight truncate">{shortName}</p>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
             {image.hasMutation && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -161,7 +154,33 @@ export function ImageCard({ image }: ImageCardProps) {
             </Badge>
           </div>
         </div>
+
         <CopyableImageRef display={display} fullRef={fullRef} />
+
+        {/* Registry version lookup row */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {image.tagType === "semver" && (
+            <span className="font-mono text-[11px] text-muted-foreground">
+              {image.latestVersion ? (
+                <>
+                  Upgrade available:{" "}
+                  <span
+                    className={cn(
+                      "font-semibold",
+                      image.upgradeAvailable
+                        ? "text-emerald-700 dark:text-emerald-400"
+                        : "text-foreground/70",
+                    )}
+                  >
+                    {image.latestVersion}
+                  </span>
+                </>
+              ) : (
+                <span className="opacity-40">latest: —</span>
+              )}
+            </span>
+          )}
+        </div>
 
         <Tooltip>
           <TooltipTrigger asChild>
@@ -209,7 +228,7 @@ export function ImageCard({ image }: ImageCardProps) {
             <SheetDescription asChild>
               <CopyableImageRef display={display} fullRef={fullRef} />
             </SheetDescription>
-            <div className="mt-2 flex items-center gap-2">
+            <div className="mt-2 flex items-center gap-2 flex-wrap">
               <Badge variant="outline" className={cn(tagTypeBadgeClass(image.tagType))}>
                 {image.tagType}
               </Badge>
@@ -218,7 +237,82 @@ export function ImageCard({ image }: ImageCardProps) {
               </span>
             </div>
           </SheetHeader>
-          <SheetBody className="mt-4">
+          <SheetBody className="mt-4 space-y-4">
+            {/* Registry details section */}
+            {(image.originalImage ||
+              mutatedImage ||
+              image.latestVersion ||
+              image.latestError) && (
+              <section
+                className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2.5 space-y-2"
+                aria-label="Registry details"
+              >
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Registry details
+                </p>
+                {image.originalImage && (
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                      Original image
+                    </span>
+                    <CopyableImageRef
+                      display={image.originalImage}
+                      fullRef={image.originalImage}
+                    />
+                  </div>
+                )}
+                {mutatedImage && (
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                      Mutated image (running)
+                    </span>
+                    <CopyableImageRef display={mutatedImage} fullRef={mutatedImage} />
+                  </div>
+                )}
+                {image.tagType === "semver" && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                      Latest version
+                    </span>
+                    <span
+                      className={cn(
+                        "font-mono text-xs",
+                        image.upgradeAvailable
+                          ? "text-emerald-700 dark:text-emerald-400 font-semibold"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      {image.latestVersion ?? "—"}
+                    </span>
+                    {image.upgradeAvailable && (
+                      <ArrowUpCircleIcon
+                        className="size-3.5 text-emerald-600 dark:text-emerald-400"
+                        aria-label="Upgrade available"
+                      />
+                    )}
+                  </div>
+                )}
+                {relativeTime && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                      Last checked
+                    </span>
+                    <span className="font-mono text-xs text-muted-foreground">{relativeTime}</span>
+                  </div>
+                )}
+                {image.latestError && (
+                  <div
+                    className="flex items-start gap-1.5 rounded bg-destructive/10 border border-destructive/20 px-2 py-1.5"
+                    role="alert"
+                  >
+                    <AlertCircleIcon className="size-3.5 mt-0.5 shrink-0 text-destructive" aria-hidden="true" />
+                    <p className="font-mono text-[11px] text-destructive break-all">
+                      {image.latestError}
+                    </p>
+                  </div>
+                )}
+              </section>
+            )}
             <WorkloadList workloads={visibleWorkloads} variant="full" />
           </SheetBody>
         </SheetContent>

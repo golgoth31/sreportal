@@ -15,6 +15,7 @@
 - [sreportal.io/v1alpha1.FlowNodeSet](#sreportaliov1alpha1flownodeset)
 - [sreportal.io/v1alpha1.FlowObserver](#sreportaliov1alpha1flowobserver)
 - [sreportal.io/v1alpha1.ImageInventory](#sreportaliov1alpha1imageinventory)
+- [sreportal.io/v1alpha1.ImageRegistry](#sreportaliov1alpha1imageregistry)
 - [sreportal.io/v1alpha1.Incident](#sreportaliov1alpha1incident)
 - [sreportal.io/v1alpha1.Maintenance](#sreportaliov1alpha1maintenance)
 - [sreportal.io/v1alpha1.NetworkFlowDiscovery](#sreportaliov1alpha1networkflowdiscovery)
@@ -131,6 +132,20 @@ ImageInventory is the Schema for the imageinventories API
 | `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#objectmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |   |   |
 | `spec` _[sreportal.io/v1alpha1.ImageInventorySpec](#sreportaliov1alpha1imageinventoryspec)_ | spec defines the desired state of ImageInventory |   |   |
 | `status` _[sreportal.io/v1alpha1.ImageInventoryStatus](#sreportaliov1alpha1imageinventorystatus)_ | status defines the observed state of ImageInventory |   |   |
+
+
+
+#### sreportal.io/v1alpha1.ImageRegistry
+
+ImageRegistry is the Schema for the imageregistries API.
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `apiVersion` _string_ | `sreportal.io/v1alpha1` |   |   |
+| `kind` _string_ | `ImageRegistry` |   |   |
+| `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#objectmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |   |   |
+| `spec` _[sreportal.io/v1alpha1.ImageRegistrySpec](#sreportaliov1alpha1imageregistryspec)_ | spec defines the desired state of ImageRegistry |   |   |
+| `status` _[sreportal.io/v1alpha1.ImageRegistryStatus](#sreportaliov1alpha1imageregistrystatus)_ | status defines the observed state of ImageRegistry |   |   |
 
 
 
@@ -665,7 +680,113 @@ _Appears in:_
 | `observedGeneration` _integer_ | observedGeneration is the most recently observed generation. |   |   |
 | `lastScanTime` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | lastScanTime is the timestamp of the latest completed scan. |   |   |
 | `lastScanError` _string_ | lastScanError contains the latest scan error, if any. |   |   |
+| `registries` _[sreportal.io/v1alpha1.ImageRegistryRef](#sreportaliov1alpha1imageregistryref) array_ | registries is a lookup table mapping each child ImageRegistry CR (created by the SyncRegistryCRs handler) to its (host, namespace) context. PortalRef is implicit (= Spec.PortalRef). |   |   |
 | `conditions` _[Condition](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#condition-v1-meta) array_ | conditions represent the current state of the ImageInventory resource. |   |   |
+
+
+
+#### sreportal.io/v1alpha1.ImageRegistryRef
+
+ImageRegistryRef references a child ImageRegistry CR managed by this ImageInventory.
+
+_Appears in:_
+- [sreportal.io/v1alpha1.ImageInventoryStatus](#sreportaliov1alpha1imageinventorystatus)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `hash` _string_ | hash is the 12-char sha256 hex used as the CR name. |   |   |
+| `host` _string_ | host is the registry-of-origin for the referenced CR. |   |   |
+| `namespace` _string_ | namespace is the targeted Kubernetes namespace. |   |   |
+
+
+
+#### sreportal.io/v1alpha1.ImageRegistrySpec
+
+ImageRegistrySpec defines the desired state of an ImageRegistry CR. The whole spec is controller-managed by the ImageInventory controller — it is not user-edited in v1.
+
+_Appears in:_
+- [sreportal.io/v1alpha1.ImageRegistry](#sreportaliov1alpha1imageregistry)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `host` _string_ | host is the registry-of-origin (e.g. "docker.io", "ghcr.io"). |   |   |
+| `portalRef` _string_ | portalRef is the Portal name this registry inventory is derived from. |   |   |
+| `namespace` _string_ | namespace is the Kubernetes namespace targeted by this aggregation (NOT the namespace the CR itself lives in — they may differ). |   |   |
+| `images` _[sreportal.io/v1alpha1.ImageRegistrySpecEntry](#sreportaliov1alpha1imageregistryspecentry) array_ | images is the list of images observed in (portalRef, host, namespace). |   |   |
+
+
+
+#### sreportal.io/v1alpha1.ImageRegistrySpecEntry
+
+ImageRegistrySpecEntry is one image entry inside an ImageRegistry CR.
+
+_Appears in:_
+- [sreportal.io/v1alpha1.ImageRegistrySpec](#sreportaliov1alpha1imageregistryspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `key` _string_ | key is sha256(originalImage\|mutatedImage\|container)[:16] — used as listMapKey for stable patches. |   |   |
+| `originalImage` _string_ | originalImage is the image declared in the workload's PodSpec template. Empty when changeType=injected. |   |   |
+| `mutatedImage` _string_ | mutatedImage is the image observed in the running Pod. |   |   |
+| `changeType` _string_ | changeType classifies the relationship between OriginalImage and MutatedImage. Allowed values: none, mutated, injected. |   | Enum: [none mutated injected] |
+| `repository` _string_ | repository is the parsed repository name (e.g. "library/nginx") from the lookup target image (originalImage if non-empty, else mutatedImage). |   |   |
+| `originalTag` _string_ | originalTag is the tag of the lookup target image. |   |   |
+| `tagType` _string_ | tagType classifies the OriginalTag (semver/commit/digest/latest/other). |   |   |
+| `workloads` _[sreportal.io/v1alpha1.ImageRegistryWorkloadRef](#sreportaliov1alpha1imageregistryworkloadref) array_ | workloads lists the workloads referencing this entry. No cap in v1. |   |   |
+
+
+
+#### sreportal.io/v1alpha1.ImageRegistryWorkloadRef
+
+ImageRegistryWorkloadRef identifies a workload+container referencing an entry.
+
+_Appears in:_
+- [sreportal.io/v1alpha1.ImageRegistrySpecEntry](#sreportaliov1alpha1imageregistryspecentry)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `kind` _string_ | kind of the workload (Deployment, StatefulSet, etc.). |   |   |
+| `namespace` _string_ | namespace of the workload (info; may differ for cross-ns mutations). |   |   |
+| `name` _string_ | name of the workload. |   |   |
+| `container` _string_ | container is the name of the container/initContainer using the image. |   |   |
+
+
+
+#### sreportal.io/v1alpha1.ImageRegistryStatus
+
+ImageRegistryStatus defines the observed state of ImageRegistry.
+container is the name of the container/initContainer using the image.
+
+_Appears in:_
+- [sreportal.io/v1alpha1.ImageRegistry](#sreportaliov1alpha1imageregistry)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `observedGeneration` _integer_ | observedGeneration is the most recently observed generation. |   |   |
+| `lastError` _string_ | lastError contains the last reconciliation error, if any. |   |   |
+| `imageCount` _integer_ | imageCount is the total number of entries in Spec.Images. |   |   |
+| `upgradeAvailableCount` _integer_ | upgradeAvailableCount is the count of entries with UpgradeAvailable=true. |   |   |
+| `mutatedCount` _integer_ | mutatedCount is the count of entries with ChangeType=mutated. |   |   |
+| `injectedCount` _integer_ | injectedCount is the count of entries with ChangeType=injected. |   |   |
+| `images` _[sreportal.io/v1alpha1.ImageRegistryStatusEntry](#sreportaliov1alpha1imageregistrystatusentry) array_ | images carries per-entry resolution state, keyed by Spec.Images[].Key. |   |   |
+| `conditions` _[Condition](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#condition-v1-meta) array_ | conditions represents the current state of the ImageRegistry resource. |   |   |
+
+
+
+#### sreportal.io/v1alpha1.ImageRegistryStatusEntry
+
+ImageRegistryStatusEntry is the per-image lookup result.
+
+_Appears in:_
+- [sreportal.io/v1alpha1.ImageRegistryStatus](#sreportaliov1alpha1imageregistrystatus)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `key` _string_ | key joins Spec.Images[].Key. |   |   |
+| `latestVersion` _string_ | latestVersion is the highest semver tag found on the registry. Empty when not applicable (non-semver tag) or after a failed lookup. |   |   |
+| `upgradeAvailable` _boolean_ | upgradeAvailable is true when latestVersion > originalTag. |   |   |
+| `lastCheckedAt` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | lastCheckedAt is the timestamp of the most recent successful lookup. |   |   |
+| `lastError` _string_ | lastError carries the last lookup error, if any. |   |   |
 
 
 

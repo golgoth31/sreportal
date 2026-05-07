@@ -9,6 +9,7 @@ package sreportalv1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -20,6 +21,63 @@ const (
 	// Verify that runtime/protoimpl is sufficiently up-to-date.
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
+
+// ChangeType describes how an image observed in a Pod relates to the image
+// declared in the workload template.
+type ChangeType int32
+
+const (
+	ChangeType_CHANGE_TYPE_UNSPECIFIED ChangeType = 0
+	// The Pod image matches the template image.
+	ChangeType_CHANGE_TYPE_NONE ChangeType = 1
+	// The Pod image was rewritten by a mutating webhook (e.g. mirror rewrite).
+	ChangeType_CHANGE_TYPE_MUTATED ChangeType = 2
+	// The container is not declared in the template (sidecar injected at admission).
+	ChangeType_CHANGE_TYPE_INJECTED ChangeType = 3
+)
+
+// Enum value maps for ChangeType.
+var (
+	ChangeType_name = map[int32]string{
+		0: "CHANGE_TYPE_UNSPECIFIED",
+		1: "CHANGE_TYPE_NONE",
+		2: "CHANGE_TYPE_MUTATED",
+		3: "CHANGE_TYPE_INJECTED",
+	}
+	ChangeType_value = map[string]int32{
+		"CHANGE_TYPE_UNSPECIFIED": 0,
+		"CHANGE_TYPE_NONE":        1,
+		"CHANGE_TYPE_MUTATED":     2,
+		"CHANGE_TYPE_INJECTED":    3,
+	}
+)
+
+func (x ChangeType) Enum() *ChangeType {
+	p := new(ChangeType)
+	*p = x
+	return p
+}
+
+func (x ChangeType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ChangeType) Descriptor() protoreflect.EnumDescriptor {
+	return file_sreportal_v1_image_proto_enumTypes[0].Descriptor()
+}
+
+func (ChangeType) Type() protoreflect.EnumType {
+	return &file_sreportal_v1_image_proto_enumTypes[0]
+}
+
+func (x ChangeType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ChangeType.Descriptor instead.
+func (ChangeType) EnumDescriptor() ([]byte, []int) {
+	return file_sreportal_v1_image_proto_rawDescGZIP(), []int{0}
+}
 
 type ListImagesRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
@@ -142,12 +200,35 @@ func (x *ListImagesResponse) GetTotalCount() int32 {
 }
 
 type Image struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Registry      string                 `protobuf:"bytes,1,opt,name=registry,proto3" json:"registry,omitempty"`
-	Repository    string                 `protobuf:"bytes,2,opt,name=repository,proto3" json:"repository,omitempty"`
-	Tag           string                 `protobuf:"bytes,3,opt,name=tag,proto3" json:"tag,omitempty"`
-	TagType       string                 `protobuf:"bytes,4,opt,name=tag_type,json=tagType,proto3" json:"tag_type,omitempty"`
-	Workloads     []*WorkloadRef         `protobuf:"bytes,5,rep,name=workloads,proto3" json:"workloads,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Registry   string                 `protobuf:"bytes,1,opt,name=registry,proto3" json:"registry,omitempty"`
+	Repository string                 `protobuf:"bytes,2,opt,name=repository,proto3" json:"repository,omitempty"`
+	Tag        string                 `protobuf:"bytes,3,opt,name=tag,proto3" json:"tag,omitempty"`
+	TagType    string                 `protobuf:"bytes,4,opt,name=tag_type,json=tagType,proto3" json:"tag_type,omitempty"`
+	Workloads  []*WorkloadRef         `protobuf:"bytes,5,rep,name=workloads,proto3" json:"workloads,omitempty"`
+	// latest_version is the highest semver tag found on the origin registry,
+	// empty when tag_type is not "semver" or when the lookup has not run yet.
+	LatestVersion string `protobuf:"bytes,6,opt,name=latest_version,json=latestVersion,proto3" json:"latest_version,omitempty"`
+	// latest_checked_at is the timestamp of the last registry lookup attempt
+	// for this image (set on every attempt — success or error). Unset when no
+	// lookup has run yet. Used by the controller to pace retries (isDue).
+	LatestCheckedAt *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=latest_checked_at,json=latestCheckedAt,proto3" json:"latest_checked_at,omitempty"`
+	// latest_error is the last registry lookup error message, empty on success.
+	LatestError string `protobuf:"bytes,8,opt,name=latest_error,json=latestError,proto3" json:"latest_error,omitempty"`
+	// upgrade_available is true when latest_version exists and is strictly greater
+	// than the current tag (semver comparison).
+	UpgradeAvailable bool `protobuf:"varint,9,opt,name=upgrade_available,json=upgradeAvailable,proto3" json:"upgrade_available,omitempty"`
+	// change_type indicates how the observed Pod image relates to the workload
+	// template image (none, mutated, injected).
+	ChangeType ChangeType `protobuf:"varint,10,opt,name=change_type,json=changeType,proto3,enum=sreportal.v1.ChangeType" json:"change_type,omitempty"`
+	// original_image is the image reference declared in the workload template
+	// (PodSpec). Empty when change_type is CHANGE_TYPE_INJECTED.
+	OriginalImage string `protobuf:"bytes,11,opt,name=original_image,json=originalImage,proto3" json:"original_image,omitempty"`
+	// mutated_image is the image reference observed on the running Pod after
+	// any MutatingWebhook rewrite (e.g. mirror redirection). Equal to
+	// original_image when change_type is CHANGE_TYPE_NONE; the canonical image
+	// reference when change_type is CHANGE_TYPE_INJECTED.
+	MutatedImage  string `protobuf:"bytes,12,opt,name=mutated_image,json=mutatedImage,proto3" json:"mutated_image,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -215,6 +296,55 @@ func (x *Image) GetWorkloads() []*WorkloadRef {
 		return x.Workloads
 	}
 	return nil
+}
+
+func (x *Image) GetLatestVersion() string {
+	if x != nil {
+		return x.LatestVersion
+	}
+	return ""
+}
+
+func (x *Image) GetLatestCheckedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LatestCheckedAt
+	}
+	return nil
+}
+
+func (x *Image) GetLatestError() string {
+	if x != nil {
+		return x.LatestError
+	}
+	return ""
+}
+
+func (x *Image) GetUpgradeAvailable() bool {
+	if x != nil {
+		return x.UpgradeAvailable
+	}
+	return false
+}
+
+func (x *Image) GetChangeType() ChangeType {
+	if x != nil {
+		return x.ChangeType
+	}
+	return ChangeType_CHANGE_TYPE_UNSPECIFIED
+}
+
+func (x *Image) GetOriginalImage() string {
+	if x != nil {
+		return x.OriginalImage
+	}
+	return ""
+}
+
+func (x *Image) GetMutatedImage() string {
+	if x != nil {
+		return x.MutatedImage
+	}
+	return ""
 }
 
 type WorkloadRef struct {
@@ -300,7 +430,7 @@ var File_sreportal_v1_image_proto protoreflect.FileDescriptor
 
 const file_sreportal_v1_image_proto_rawDesc = "" +
 	"\n" +
-	"\x18sreportal/v1/image.proto\x12\fsreportal.v1\"\x94\x01\n" +
+	"\x18sreportal/v1/image.proto\x12\fsreportal.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x94\x01\n" +
 	"\x11ListImagesRequest\x12\x16\n" +
 	"\x06portal\x18\x01 \x01(\tR\x06portal\x12\x16\n" +
 	"\x06search\x18\x02 \x01(\tR\x06search\x12'\n" +
@@ -309,7 +439,7 @@ const file_sreportal_v1_image_proto_rawDesc = "" +
 	"\x12ListImagesResponse\x12+\n" +
 	"\x06images\x18\x01 \x03(\v2\x13.sreportal.v1.ImageR\x06images\x12\x1f\n" +
 	"\vtotal_count\x18\x02 \x01(\x05R\n" +
-	"totalCount\"\xa9\x01\n" +
+	"totalCount\"\xef\x03\n" +
 	"\x05Image\x12\x1a\n" +
 	"\bregistry\x18\x01 \x01(\tR\bregistry\x12\x1e\n" +
 	"\n" +
@@ -317,13 +447,28 @@ const file_sreportal_v1_image_proto_rawDesc = "" +
 	"repository\x12\x10\n" +
 	"\x03tag\x18\x03 \x01(\tR\x03tag\x12\x19\n" +
 	"\btag_type\x18\x04 \x01(\tR\atagType\x127\n" +
-	"\tworkloads\x18\x05 \x03(\v2\x19.sreportal.v1.WorkloadRefR\tworkloads\"\x89\x01\n" +
+	"\tworkloads\x18\x05 \x03(\v2\x19.sreportal.v1.WorkloadRefR\tworkloads\x12%\n" +
+	"\x0elatest_version\x18\x06 \x01(\tR\rlatestVersion\x12F\n" +
+	"\x11latest_checked_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x0flatestCheckedAt\x12!\n" +
+	"\flatest_error\x18\b \x01(\tR\vlatestError\x12+\n" +
+	"\x11upgrade_available\x18\t \x01(\bR\x10upgradeAvailable\x129\n" +
+	"\vchange_type\x18\n" +
+	" \x01(\x0e2\x18.sreportal.v1.ChangeTypeR\n" +
+	"changeType\x12%\n" +
+	"\x0eoriginal_image\x18\v \x01(\tR\roriginalImage\x12#\n" +
+	"\rmutated_image\x18\f \x01(\tR\fmutatedImage\"\x89\x01\n" +
 	"\vWorkloadRef\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x1c\n" +
 	"\tnamespace\x18\x02 \x01(\tR\tnamespace\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x1c\n" +
 	"\tcontainer\x18\x04 \x01(\tR\tcontainer\x12\x16\n" +
-	"\x06source\x18\x05 \x01(\tR\x06source2_\n" +
+	"\x06source\x18\x05 \x01(\tR\x06source*r\n" +
+	"\n" +
+	"ChangeType\x12\x1b\n" +
+	"\x17CHANGE_TYPE_UNSPECIFIED\x10\x00\x12\x14\n" +
+	"\x10CHANGE_TYPE_NONE\x10\x01\x12\x17\n" +
+	"\x13CHANGE_TYPE_MUTATED\x10\x02\x12\x18\n" +
+	"\x14CHANGE_TYPE_INJECTED\x10\x032_\n" +
 	"\fImageService\x12O\n" +
 	"\n" +
 	"ListImages\x12\x1f.sreportal.v1.ListImagesRequest\x1a .sreportal.v1.ListImagesResponseB\xba\x01\n" +
@@ -342,23 +487,28 @@ func file_sreportal_v1_image_proto_rawDescGZIP() []byte {
 	return file_sreportal_v1_image_proto_rawDescData
 }
 
+var file_sreportal_v1_image_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_sreportal_v1_image_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_sreportal_v1_image_proto_goTypes = []any{
-	(*ListImagesRequest)(nil),  // 0: sreportal.v1.ListImagesRequest
-	(*ListImagesResponse)(nil), // 1: sreportal.v1.ListImagesResponse
-	(*Image)(nil),              // 2: sreportal.v1.Image
-	(*WorkloadRef)(nil),        // 3: sreportal.v1.WorkloadRef
+	(ChangeType)(0),               // 0: sreportal.v1.ChangeType
+	(*ListImagesRequest)(nil),     // 1: sreportal.v1.ListImagesRequest
+	(*ListImagesResponse)(nil),    // 2: sreportal.v1.ListImagesResponse
+	(*Image)(nil),                 // 3: sreportal.v1.Image
+	(*WorkloadRef)(nil),           // 4: sreportal.v1.WorkloadRef
+	(*timestamppb.Timestamp)(nil), // 5: google.protobuf.Timestamp
 }
 var file_sreportal_v1_image_proto_depIdxs = []int32{
-	2, // 0: sreportal.v1.ListImagesResponse.images:type_name -> sreportal.v1.Image
-	3, // 1: sreportal.v1.Image.workloads:type_name -> sreportal.v1.WorkloadRef
-	0, // 2: sreportal.v1.ImageService.ListImages:input_type -> sreportal.v1.ListImagesRequest
-	1, // 3: sreportal.v1.ImageService.ListImages:output_type -> sreportal.v1.ListImagesResponse
-	3, // [3:4] is the sub-list for method output_type
-	2, // [2:3] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	3, // 0: sreportal.v1.ListImagesResponse.images:type_name -> sreportal.v1.Image
+	4, // 1: sreportal.v1.Image.workloads:type_name -> sreportal.v1.WorkloadRef
+	5, // 2: sreportal.v1.Image.latest_checked_at:type_name -> google.protobuf.Timestamp
+	0, // 3: sreportal.v1.Image.change_type:type_name -> sreportal.v1.ChangeType
+	1, // 4: sreportal.v1.ImageService.ListImages:input_type -> sreportal.v1.ListImagesRequest
+	2, // 5: sreportal.v1.ImageService.ListImages:output_type -> sreportal.v1.ListImagesResponse
+	5, // [5:6] is the sub-list for method output_type
+	4, // [4:5] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_sreportal_v1_image_proto_init() }
@@ -371,13 +521,14 @@ func file_sreportal_v1_image_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_sreportal_v1_image_proto_rawDesc), len(file_sreportal_v1_image_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_sreportal_v1_image_proto_goTypes,
 		DependencyIndexes: file_sreportal_v1_image_proto_depIdxs,
+		EnumInfos:         file_sreportal_v1_image_proto_enumTypes,
 		MessageInfos:      file_sreportal_v1_image_proto_msgTypes,
 	}.Build()
 	File_sreportal_v1_image_proto = out.File

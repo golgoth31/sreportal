@@ -473,6 +473,16 @@ type RemoteImage struct {
 	Tag        string
 	TagType    string
 	Workloads  []RemoteImageWorkload
+
+	// Registry-version-lookup fields, projected from the source portal so the
+	// shadow doesn't need to call the registry itself.
+	OriginalImage    string
+	MutatedImage     string
+	ChangeType       string
+	LatestVersion    string
+	LatestCheckedAt  *time.Time
+	LatestError      string
+	UpgradeAvailable bool
 }
 
 // RemoteImageWorkload describes a workload using a remote image.
@@ -482,6 +492,22 @@ type RemoteImageWorkload struct {
 	Name      string
 	Container string
 	Source    string
+}
+
+// fromProtoChangeType converts the proto ChangeType enum into the readstore
+// string representation. Unspecified maps to empty string (treated as "none"
+// downstream where appropriate).
+func fromProtoChangeType(c sreportalv1.ChangeType) string {
+	switch c {
+	case sreportalv1.ChangeType_CHANGE_TYPE_NONE:
+		return "none"
+	case sreportalv1.ChangeType_CHANGE_TYPE_MUTATED:
+		return "mutated"
+	case sreportalv1.ChangeType_CHANGE_TYPE_INJECTED:
+		return "injected"
+	default:
+		return ""
+	}
 }
 
 // ImagesFetchResult contains the result of fetching images from a remote portal.
@@ -541,13 +567,24 @@ func (c *Client) doFetchImages(ctx context.Context, baseURL string, portalName s
 				Source:    w.Source,
 			})
 		}
-		images = append(images, &RemoteImage{
-			Registry:   in.Registry,
-			Repository: in.Repository,
-			Tag:        in.Tag,
-			TagType:    in.TagType,
-			Workloads:  workloads,
-		})
+		ri := &RemoteImage{
+			Registry:         in.Registry,
+			Repository:       in.Repository,
+			Tag:              in.Tag,
+			TagType:          in.TagType,
+			Workloads:        workloads,
+			OriginalImage:    in.OriginalImage,
+			MutatedImage:     in.MutatedImage,
+			ChangeType:       fromProtoChangeType(in.ChangeType),
+			LatestVersion:    in.LatestVersion,
+			LatestError:      in.LatestError,
+			UpgradeAvailable: in.UpgradeAvailable,
+		}
+		if in.LatestCheckedAt != nil {
+			t := in.LatestCheckedAt.AsTime()
+			ri.LatestCheckedAt = &t
+		}
+		images = append(images, ri)
 	}
 
 	return &ImagesFetchResult{Images: images}, nil

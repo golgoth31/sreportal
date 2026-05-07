@@ -20,6 +20,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -55,6 +56,41 @@ func (m *fetchRemoteImagesMockService) ListImages(
 	}), nil
 }
 
+// fakeImageWriter records calls to ReplaceForNamespace / RemoveForNamespace so
+// tests can assert which scopes were written and with which views.
+type fakeImageWriter struct {
+	mu       sync.Mutex
+	scopes   map[fakeScopeKey][]domainimage.ImageView
+	removes  []fakeScopeKey
+	replaces []fakeScopeKey // ordered record of replace calls
+}
+
+type fakeScopeKey struct {
+	Portal, Host, Namespace string
+}
+
+func newFakeImageWriter() *fakeImageWriter {
+	return &fakeImageWriter{scopes: map[fakeScopeKey][]domainimage.ImageView{}}
+}
+
+func (w *fakeImageWriter) ReplaceForNamespace(_ context.Context, portal, host, namespace string, views []domainimage.ImageView) error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	k := fakeScopeKey{Portal: portal, Host: host, Namespace: namespace}
+	w.scopes[k] = append([]domainimage.ImageView(nil), views...)
+	w.replaces = append(w.replaces, k)
+	return nil
+}
+
+func (w *fakeImageWriter) RemoveForNamespace(_ context.Context, portal, host, namespace string) error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	k := fakeScopeKey{Portal: portal, Host: host, Namespace: namespace}
+	delete(w.scopes, k)
+	w.removes = append(w.removes, k)
+	return nil
+}
+
 func newFetchRemoteImagesScheme(t *testing.T) *runtime.Scheme {
 	t.Helper()
 	scheme := runtime.NewScheme()
@@ -63,9 +99,11 @@ func newFetchRemoteImagesScheme(t *testing.T) *runtime.Scheme {
 }
 
 func TestFetchRemoteImagesHandlerNoOpWhenLocal(t *testing.T) {
+	t.Parallel()
 	scheme := newFetchRemoteImagesScheme(t)
 	cli := fake.NewClientBuilder().WithScheme(scheme).Build()
-	h := NewFetchRemoteImagesHandler(cli, remoteclient.NewCache())
+	writer := newFakeImageWriter()
+	h := NewFetchRemoteImagesHandler(cli, remoteclient.NewCache(), writer)
 
 	inv := &sreportalv1alpha1.ImageInventory{
 		ObjectMeta: metav1.ObjectMeta{Name: "local-inv", Namespace: tNsDefault},
@@ -73,10 +111,12 @@ func TestFetchRemoteImagesHandlerNoOpWhenLocal(t *testing.T) {
 	}
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageInventory, ChainData]{Resource: inv}
 	require.NoError(t, h.Handle(context.Background(), rc))
-	require.Nil(t, rc.Data.ByWorkload)
+	require.Empty(t, writer.replaces, "local-path inventory must not call the writer")
+	require.Empty(t, writer.removes)
 }
 
 func TestFetchRemoteImagesHandlerPopulatesFromRemote(t *testing.T) {
+	t.Parallel()
 	scheme := newFetchRemoteImagesScheme(t)
 
 	mux := http.NewServeMux()
@@ -85,7 +125,7 @@ func TestFetchRemoteImagesHandlerPopulatesFromRemote(t *testing.T) {
 			{
 				Registry:   tRegistryGhcr,
 				Repository: tRepoAcmeAPI,
-				Tag:        "1.2.3",
+				Tag:        tVersion123,
 				TagType:    tTagTypeSemver,
 				Workloads: []*sreportalv1.WorkloadRef{
 					{Kind: tKindDeploy, Namespace: tNsDefault, Name: tNameAPI, Container: tPortalMain, Source: tFieldSpec},
@@ -100,27 +140,28 @@ func TestFetchRemoteImagesHandlerPopulatesFromRemote(t *testing.T) {
 	portal := &sreportalv1alpha1.Portal{
 		ObjectMeta: metav1.ObjectMeta{Name: tPortalRemote, Namespace: tNsDefault},
 		Spec: sreportalv1alpha1.PortalSpec{
-			Title:  "Remote",
+			Title:  tTypeRemote,
 			Remote: &sreportalv1alpha1.RemotePortalSpec{URL: server.URL, Portal: tPortalMain},
 		},
 	}
-	cli := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
-
-	h := NewFetchRemoteImagesHandler(cli, remoteclient.NewCache())
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "remote-remote-portal", Namespace: tNsDefault},
+		ObjectMeta: metav1.ObjectMeta{Name: tPortalRemoteInv, Namespace: tNsDefault},
 		Spec: sreportalv1alpha1.ImageInventorySpec{
 			PortalRef: tPortalRemote,
 			IsRemote:  true,
 		},
 	}
+	cli := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal, inv).WithStatusSubresource(inv).Build()
+	writer := newFakeImageWriter()
+
+	h := NewFetchRemoteImagesHandler(cli, remoteclient.NewCache(), writer)
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageInventory, ChainData]{Resource: inv}
 	require.NoError(t, h.Handle(context.Background(), rc))
-	require.NotNil(t, rc.Data.ByWorkload)
 
-	wk := domainimage.WorkloadKey{Kind: tKindDeploy, Namespace: tNsDefault, Name: tNameAPI}
-	views, ok := rc.Data.ByWorkload[wk]
-	require.True(t, ok, "expected workload key to be present")
+	// One scope: (tPortalRemote, ghcr.io, default).
+	wantKey := fakeScopeKey{Portal: tPortalRemote, Host: tRegistryGhcr, Namespace: tNsDefault}
+	views, ok := writer.scopes[wantKey]
+	require.True(t, ok, "expected scope %+v in writer", wantKey)
 	require.Len(t, views, 1)
 	require.Equal(t, tRegistryGhcr, views[0].Registry)
 	require.Equal(t, tRepoAcmeAPI, views[0].Repository)
@@ -128,12 +169,20 @@ func TestFetchRemoteImagesHandlerPopulatesFromRemote(t *testing.T) {
 	require.Equal(t, tPortalRemote, views[0].PortalRef)
 	require.Len(t, views[0].Workloads, 1)
 	require.Equal(t, domainimage.ContainerSourceSpec, views[0].Workloads[0].Source)
+
+	// inv.Status.Registries should record the scope (Hash empty for remote-path).
+	require.Len(t, inv.Status.Registries, 1)
+	require.Equal(t, "", inv.Status.Registries[0].Hash)
+	require.Equal(t, tRegistryGhcr, inv.Status.Registries[0].Host)
+	require.Equal(t, tNsDefault, inv.Status.Registries[0].Namespace)
 }
 
 func TestFetchRemoteImagesHandlerErrorWhenPortalMissing(t *testing.T) {
+	t.Parallel()
 	scheme := newFetchRemoteImagesScheme(t)
 	cli := fake.NewClientBuilder().WithScheme(scheme).Build()
-	h := NewFetchRemoteImagesHandler(cli, remoteclient.NewCache())
+	writer := newFakeImageWriter()
+	h := NewFetchRemoteImagesHandler(cli, remoteclient.NewCache(), writer)
 
 	inv := &sreportalv1alpha1.ImageInventory{
 		ObjectMeta: metav1.ObjectMeta{Name: "remote-inv", Namespace: tNsDefault},
@@ -148,13 +197,15 @@ func TestFetchRemoteImagesHandlerErrorWhenPortalMissing(t *testing.T) {
 }
 
 func TestFetchRemoteImagesHandlerErrorWhenPortalNotRemote(t *testing.T) {
+	t.Parallel()
 	scheme := newFetchRemoteImagesScheme(t)
 	portal := &sreportalv1alpha1.Portal{
 		ObjectMeta: metav1.ObjectMeta{Name: "main-portal", Namespace: tNsDefault},
 		Spec:       sreportalv1alpha1.PortalSpec{Title: "Main", Main: true},
 	}
 	cli := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
-	h := NewFetchRemoteImagesHandler(cli, remoteclient.NewCache())
+	writer := newFakeImageWriter()
+	h := NewFetchRemoteImagesHandler(cli, remoteclient.NewCache(), writer)
 
 	inv := &sreportalv1alpha1.ImageInventory{
 		ObjectMeta: metav1.ObjectMeta{Name: "remote-inv", Namespace: tNsDefault},
@@ -169,7 +220,8 @@ func TestFetchRemoteImagesHandlerErrorWhenPortalNotRemote(t *testing.T) {
 	require.Contains(t, err.Error(), "no remote configuration")
 }
 
-func TestFetchRemoteImagesHandlerBucketsWorkloadsCorrectly(t *testing.T) {
+func TestFetchRemoteImagesHandlerBucketsByHostAndNamespace(t *testing.T) {
+	t.Parallel()
 	scheme := newFetchRemoteImagesScheme(t)
 
 	mux := http.NewServeMux()
@@ -178,20 +230,22 @@ func TestFetchRemoteImagesHandlerBucketsWorkloadsCorrectly(t *testing.T) {
 			{
 				Registry:   tRegistryGhcr,
 				Repository: tRepoAcmeAPI,
-				Tag:        "1.2.3",
+				Tag:        tVersion123,
 				TagType:    tTagTypeSemver,
 				Workloads: []*sreportalv1.WorkloadRef{
+					// Same image referenced from two namespaces -> two scopes.
 					{Kind: tKindDeploy, Namespace: tNsDefault, Name: tNameAPI, Container: tPortalMain, Source: tFieldSpec},
-					{Kind: tKindDeploy, Namespace: tNsDefault, Name: tNameWeb, Container: tPortalMain, Source: tFieldSpec},
+					{Kind: tKindDeploy, Namespace: tNsKubeSystem, Name: tNameWeb, Container: tPortalMain, Source: tFieldSpec},
 				},
 			},
 			{
-				Registry:   tRegistryGhcr,
+				// Different host -> independent scope.
+				Registry:   tRegistryDocker,
 				Repository: "acme/web",
 				Tag:        "2.0.0",
 				TagType:    tTagTypeSemver,
 				Workloads: []*sreportalv1.WorkloadRef{
-					{Kind: tKindDeploy, Namespace: tNsDefault, Name: tNameAPI, Container: "sidecar", Source: tFieldSpec},
+					{Kind: tKindDeploy, Namespace: tNsDefault, Name: tNameAPI, Container: tContainerSidecar, Source: tFieldSpec},
 				},
 			},
 		},
@@ -203,36 +257,100 @@ func TestFetchRemoteImagesHandlerBucketsWorkloadsCorrectly(t *testing.T) {
 	portal := &sreportalv1alpha1.Portal{
 		ObjectMeta: metav1.ObjectMeta{Name: tPortalRemote, Namespace: tNsDefault},
 		Spec: sreportalv1alpha1.PortalSpec{
-			Title:  "Remote",
+			Title:  tTypeRemote,
 			Remote: &sreportalv1alpha1.RemotePortalSpec{URL: server.URL, Portal: tPortalMain},
 		},
 	}
-	cli := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
-
-	h := NewFetchRemoteImagesHandler(cli, remoteclient.NewCache())
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "remote-remote-portal", Namespace: tNsDefault},
+		ObjectMeta: metav1.ObjectMeta{Name: tPortalRemoteInv, Namespace: tNsDefault},
 		Spec: sreportalv1alpha1.ImageInventorySpec{
 			PortalRef: tPortalRemote,
 			IsRemote:  true,
 		},
 	}
+	cli := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal, inv).WithStatusSubresource(inv).Build()
+	writer := newFakeImageWriter()
+
+	h := NewFetchRemoteImagesHandler(cli, remoteclient.NewCache(), writer)
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageInventory, ChainData]{Resource: inv}
 	require.NoError(t, h.Handle(context.Background(), rc))
-	require.NotNil(t, rc.Data.ByWorkload)
 
-	w1 := domainimage.WorkloadKey{Kind: tKindDeploy, Namespace: tNsDefault, Name: tNameAPI}
-	w2 := domainimage.WorkloadKey{Kind: tKindDeploy, Namespace: tNsDefault, Name: tNameWeb}
+	// Three distinct (host, namespace) scopes are expected.
+	require.Len(t, writer.scopes, 3)
 
-	require.Len(t, rc.Data.ByWorkload[w1], 2, "expected 2 views in bucket W1 (one per image referencing it)")
-	require.Len(t, rc.Data.ByWorkload[w2], 1, "expected 1 view in bucket W2")
+	ghcrDefault := writer.scopes[fakeScopeKey{Portal: tPortalRemote, Host: tRegistryGhcr, Namespace: tNsDefault}]
+	require.Len(t, ghcrDefault, 1, "ghcr.io/default scope must hold the API image")
+	require.Equal(t, tRepoAcmeAPI, ghcrDefault[0].Repository)
+	require.Len(t, ghcrDefault[0].Workloads, 1)
+	require.Equal(t, tNsDefault, ghcrDefault[0].Workloads[0].Namespace)
 
-	for _, v := range rc.Data.ByWorkload[w1] {
-		require.Len(t, v.Workloads, 1, "each ImageView must hold exactly one WorkloadRef")
-		require.Equal(t, tNameAPI, v.Workloads[0].Name)
+	ghcrKubeSystem := writer.scopes[fakeScopeKey{Portal: tPortalRemote, Host: tRegistryGhcr, Namespace: tNsKubeSystem}]
+	require.Len(t, ghcrKubeSystem, 1, "ghcr.io/kube-system scope must hold the API image bucketed for kube-system only")
+	require.Equal(t, tRepoAcmeAPI, ghcrKubeSystem[0].Repository)
+	require.Len(t, ghcrKubeSystem[0].Workloads, 1)
+	require.Equal(t, tNsKubeSystem, ghcrKubeSystem[0].Workloads[0].Namespace)
+
+	dockerDefault := writer.scopes[fakeScopeKey{Portal: tPortalRemote, Host: tRegistryDocker, Namespace: tNsDefault}]
+	require.Len(t, dockerDefault, 1, "docker.io/default scope must hold the web image")
+	require.Equal(t, "acme/web", dockerDefault[0].Repository)
+}
+
+func TestFetchRemoteImagesHandlerDropsMissingScopes(t *testing.T) {
+	t.Parallel()
+	scheme := newFetchRemoteImagesScheme(t)
+
+	// Mock returns only the ghcr.io / default scope. The previous reconcile
+	// (recorded in inv.Status.Registries) had an extra docker.io / kube-system
+	// scope that must be dropped.
+	mux := http.NewServeMux()
+	mockSvc := &fetchRemoteImagesMockService{
+		images: []*sreportalv1.Image{
+			{
+				Registry:   tRegistryGhcr,
+				Repository: tRepoAcmeAPI,
+				Tag:        tVersion123,
+				TagType:    tTagTypeSemver,
+				Workloads: []*sreportalv1.WorkloadRef{
+					{Kind: tKindDeploy, Namespace: tNsDefault, Name: tNameAPI, Container: tPortalMain, Source: tFieldSpec},
+				},
+			},
+		},
 	}
-	for _, v := range rc.Data.ByWorkload[w2] {
-		require.Len(t, v.Workloads, 1, "each ImageView must hold exactly one WorkloadRef")
-		require.Equal(t, tNameWeb, v.Workloads[0].Name)
+	mux.Handle(sreportalv1connect.NewImageServiceHandler(mockSvc))
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	portal := &sreportalv1alpha1.Portal{
+		ObjectMeta: metav1.ObjectMeta{Name: tPortalRemote, Namespace: tNsDefault},
+		Spec: sreportalv1alpha1.PortalSpec{
+			Title:  tTypeRemote,
+			Remote: &sreportalv1alpha1.RemotePortalSpec{URL: server.URL, Portal: tPortalMain},
+		},
 	}
+	inv := &sreportalv1alpha1.ImageInventory{
+		ObjectMeta: metav1.ObjectMeta{Name: tPortalRemoteInv, Namespace: tNsDefault},
+		Spec: sreportalv1alpha1.ImageInventorySpec{
+			PortalRef: tPortalRemote,
+			IsRemote:  true,
+		},
+		Status: sreportalv1alpha1.ImageInventoryStatus{
+			Registries: []sreportalv1alpha1.ImageRegistryRef{
+				{Host: tRegistryGhcr, Namespace: tNsDefault},      // still present
+				{Host: tRegistryDocker, Namespace: tNsKubeSystem}, // gone -> must be removed
+			},
+		},
+	}
+	cli := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal, inv).WithStatusSubresource(inv).Build()
+	writer := newFakeImageWriter()
+
+	h := NewFetchRemoteImagesHandler(cli, remoteclient.NewCache(), writer)
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageInventory, ChainData]{Resource: inv}
+	require.NoError(t, h.Handle(context.Background(), rc))
+
+	require.Len(t, writer.removes, 1, "the orphan scope must be removed once")
+	require.Equal(t, fakeScopeKey{Portal: tPortalRemote, Host: tRegistryDocker, Namespace: tNsKubeSystem}, writer.removes[0])
+
+	// The kept scope was rewritten via Replace, the orphan was Removed.
+	_, hasGhcr := writer.scopes[fakeScopeKey{Portal: tPortalRemote, Host: tRegistryGhcr, Namespace: tNsDefault}]
+	require.True(t, hasGhcr)
 }

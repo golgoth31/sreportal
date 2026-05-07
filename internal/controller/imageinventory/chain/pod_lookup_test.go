@@ -1,4 +1,20 @@
-package image
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package chain
 
 import (
 	"context"
@@ -25,20 +41,20 @@ func newPod(name, ns string, lbls map[string]string, phase corev1.PodPhase, crea
 
 func TestFindRunningPodForWorkloadReturnsNewestRunning(t *testing.T) {
 	t.Parallel()
-	sch := newTestScheme(t)
+	sch := newChainScheme(t)
 
 	now := time.Now()
-	older := newPod("old", tNsDefault, map[string]string{tNameApp: tNameAPI}, corev1.PodRunning, now.Add(-2*time.Hour))
-	newer := newPod("new", tNsDefault, map[string]string{tNameApp: tNameAPI}, corev1.PodRunning, now.Add(-1*time.Hour))
-	pending := newPod("pending", tNsDefault, map[string]string{tNameApp: tNameAPI}, corev1.PodPending, now)
-	otherNs := newPod("other-ns", "kube-system", map[string]string{tNameApp: tNameAPI}, corev1.PodRunning, now)
-	otherLabel := newPod("other-label", tNsDefault, map[string]string{tNameApp: tOther}, corev1.PodRunning, now)
+	older := newPod("old", tNsDefault, map[string]string{tLabelApp: tNameAPI}, corev1.PodRunning, now.Add(-2*time.Hour))
+	newer := newPod("new", tNsDefault, map[string]string{tLabelApp: tNameAPI}, corev1.PodRunning, now.Add(-1*time.Hour))
+	pending := newPod("pending", tNsDefault, map[string]string{tLabelApp: tNameAPI}, corev1.PodPending, now)
+	otherNs := newPod("other-ns", "kube-system", map[string]string{tLabelApp: tNameAPI}, corev1.PodRunning, now)
+	otherLabel := newPod("other-label", tNsDefault, map[string]string{tLabelApp: "other"}, corev1.PodRunning, now)
 
 	c := fake.NewClientBuilder().WithScheme(sch).
 		WithObjects(older, newer, pending, otherNs, otherLabel).
 		Build()
 
-	sel := labels.SelectorFromSet(labels.Set{tNameApp: tNameAPI})
+	sel := labels.SelectorFromSet(labels.Set{tLabelApp: tNameAPI})
 	pod, err := findRunningPodForWorkload(context.Background(), c, tNsDefault, sel)
 	if err != nil {
 		t.Fatalf("findRunningPodForWorkload: %v", err)
@@ -53,10 +69,10 @@ func TestFindRunningPodForWorkloadReturnsNewestRunning(t *testing.T) {
 
 func TestFindRunningPodForWorkloadNoMatch(t *testing.T) {
 	t.Parallel()
-	sch := newTestScheme(t)
+	sch := newChainScheme(t)
 	c := fake.NewClientBuilder().WithScheme(sch).Build()
 
-	sel := labels.SelectorFromSet(labels.Set{tNameApp: tNameAPI})
+	sel := labels.SelectorFromSet(labels.Set{tLabelApp: tNameAPI})
 	pod, err := findRunningPodForWorkload(context.Background(), c, tNsDefault, sel)
 	if err != nil {
 		t.Fatalf("findRunningPodForWorkload: %v", err)
@@ -68,7 +84,7 @@ func TestFindRunningPodForWorkloadNoMatch(t *testing.T) {
 
 func TestFindRunningPodForWorkloadNilSelector(t *testing.T) {
 	t.Parallel()
-	sch := newTestScheme(t)
+	sch := newChainScheme(t)
 	c := fake.NewClientBuilder().WithScheme(sch).Build()
 
 	pod, err := findRunningPodForWorkload(context.Background(), c, tNsDefault, nil)
@@ -82,12 +98,12 @@ func TestFindRunningPodForWorkloadNilSelector(t *testing.T) {
 
 func TestFindRunningPodForWorkloadOnlyNonRunning(t *testing.T) {
 	t.Parallel()
-	sch := newTestScheme(t)
+	sch := newChainScheme(t)
 	now := time.Now()
-	pod := newPod("p", tNsDefault, map[string]string{tNameApp: tNameAPI}, corev1.PodPending, now)
+	pod := newPod("p", tNsDefault, map[string]string{tLabelApp: tNameAPI}, corev1.PodPending, now)
 	c := fake.NewClientBuilder().WithScheme(sch).WithObjects(pod).Build()
 
-	sel := labels.SelectorFromSet(labels.Set{tNameApp: tNameAPI})
+	sel := labels.SelectorFromSet(labels.Set{tLabelApp: tNameAPI})
 	got, err := findRunningPodForWorkload(context.Background(), c, tNsDefault, sel)
 	if err != nil {
 		t.Fatalf("findRunningPodForWorkload: %v", err)

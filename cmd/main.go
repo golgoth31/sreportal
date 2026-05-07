@@ -56,8 +56,8 @@ import (
 	dnschain "github.com/golgoth31/sreportal/internal/controller/dns/chain"
 	dnsrecordsctrl "github.com/golgoth31/sreportal/internal/controller/dnsrecords"
 	emojictrl "github.com/golgoth31/sreportal/internal/controller/emoji"
-	imagectrl "github.com/golgoth31/sreportal/internal/controller/image"
 	imageinventoryctrl "github.com/golgoth31/sreportal/internal/controller/imageinventory"
+	imageregistryctrl "github.com/golgoth31/sreportal/internal/controller/imageregistry"
 	incidentctrl "github.com/golgoth31/sreportal/internal/controller/incident"
 	maintenancectrl "github.com/golgoth31/sreportal/internal/controller/maintenance"
 	nfdctrl "github.com/golgoth31/sreportal/internal/controller/networkflowdiscovery"
@@ -79,6 +79,7 @@ import (
 	netpolreadstore "github.com/golgoth31/sreportal/internal/readstore/netpol"
 	portalreadstore "github.com/golgoth31/sreportal/internal/readstore/portal"
 	releasereadstore "github.com/golgoth31/sreportal/internal/readstore/release"
+	"github.com/golgoth31/sreportal/internal/registry"
 	releaseservice "github.com/golgoth31/sreportal/internal/release"
 	"github.com/golgoth31/sreportal/internal/remoteclient"
 	"github.com/golgoth31/sreportal/internal/slackclient"
@@ -479,6 +480,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Derive a cancellable context from the signal handler so that fatal
+	// errors in background servers (web, MCP) can trigger a clean shutdown.
+	// We create it early so it can be wired into reconcilers that own
+	// shutdown-sensitive background goroutines (e.g. ImageRegistry async
+	// registry lookups).
+	signalCtx := ctrl.SetupSignalHandler()
+	ctx, cancel := context.WithCancel(signalCtx)
+	defer cancel()
+
 	// Create kubernetes clientset for external-dns sources
 	restConfig := ctrl.GetConfigOrDie()
 	kubeClient, err := kubernetes.NewForConfig(restConfig)
@@ -669,15 +679,26 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Incident")
 		os.Exit(1)
 	}
-	imageWorkloadHandler := imagectrl.NewWorkloadHandler(mgr.GetClient(), imageStore)
-	if err := imagectrl.SetupWorkloadReconcilersWithManager(mgr, imageWorkloadHandler); err != nil {
-		setupLog.Error(err, "unable to set up workload image reconcilers")
-		os.Exit(1)
-	}
 	imageInventoryReconciler := imageinventoryctrl.NewImageInventoryReconciler(mgr.GetClient(), imageStore, remoteCache)
 	if err := imageInventoryReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Failed to create controller", "controller", "ImageInventory")
 		os.Exit(1)
+	}
+	registryClient := registry.NewCraneClient()
+	hostLimiter := registry.NewHostLimiter()
+	imageRegistryReconciler := imageregistryctrl.NewImageRegistryReconciler(
+		mgr.GetClient(), imageStore, registryClient, hostLimiter, signalCtx,
+	)
+	if err := imageRegistryReconciler.SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "Failed to create controller", "controller", "ImageRegistry")
+		os.Exit(1)
+	}
+	// nolint:goconst
+	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
+		if err := webhookv1alpha1.SetupImageRegistryWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "Failed to create webhook", "webhook", "ImageRegistry")
+			os.Exit(1)
+		}
 	}
 	// +kubebuilder:scaffold:builder
 
@@ -689,12 +710,6 @@ func main() {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
-
-	// Derive a cancellable context from the signal handler so that fatal
-	// errors in background servers (web, MCP) can trigger a clean shutdown.
-	signalCtx := ctrl.SetupSignalHandler()
-	ctx, cancel := context.WithCancel(signalCtx)
-	defer cancel()
 
 	// Create Release service
 	releaseNamespace := operatorConfig.Release.Namespace

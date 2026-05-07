@@ -2,15 +2,17 @@
 // @generated from file sreportal/v1/image.proto (package sreportal.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file sreportal/v1/image.proto.
  */
 export const file_sreportal_v1_image: GenFile = /*@__PURE__*/
-  fileDesc("ChhzcmVwb3J0YWwvdjEvaW1hZ2UucHJvdG8SDHNyZXBvcnRhbC52MSJlChFMaXN0SW1hZ2VzUmVxdWVzdBIOCgZwb3J0YWwYASABKAkSDgoGc2VhcmNoGAIgASgJEhcKD3JlZ2lzdHJ5X2ZpbHRlchgDIAEoCRIXCg90YWdfdHlwZV9maWx0ZXIYBCABKAkiTgoSTGlzdEltYWdlc1Jlc3BvbnNlEiMKBmltYWdlcxgBIAMoCzITLnNyZXBvcnRhbC52MS5JbWFnZRITCgt0b3RhbF9jb3VudBgCIAEoBSJ6CgVJbWFnZRIQCghyZWdpc3RyeRgBIAEoCRISCgpyZXBvc2l0b3J5GAIgASgJEgsKA3RhZxgDIAEoCRIQCgh0YWdfdHlwZRgEIAEoCRIsCgl3b3JrbG9hZHMYBSADKAsyGS5zcmVwb3J0YWwudjEuV29ya2xvYWRSZWYiXwoLV29ya2xvYWRSZWYSDAoEa2luZBgBIAEoCRIRCgluYW1lc3BhY2UYAiABKAkSDAoEbmFtZRgDIAEoCRIRCgljb250YWluZXIYBCABKAkSDgoGc291cmNlGAUgASgJMl8KDEltYWdlU2VydmljZRJPCgpMaXN0SW1hZ2VzEh8uc3JlcG9ydGFsLnYxLkxpc3RJbWFnZXNSZXF1ZXN0GiAuc3JlcG9ydGFsLnYxLkxpc3RJbWFnZXNSZXNwb25zZUK6AQoQY29tLnNyZXBvcnRhbC52MUIKSW1hZ2VQcm90b1ABWklnaXRodWIuY29tL2dvbGdvdGgzMS9zcmVwb3J0YWwvaW50ZXJuYWwvZ3JwYy9nZW4vc3JlcG9ydGFsL3YxO3NyZXBvcnRhbHYxogIDU1hYqgIMU3JlcG9ydGFsLlYxygIMU3JlcG9ydGFsXFYx4gIYU3JlcG9ydGFsXFYxXEdQQk1ldGFkYXRh6gINU3JlcG9ydGFsOjpWMWIGcHJvdG8z");
+  fileDesc("ChhzcmVwb3J0YWwvdjEvaW1hZ2UucHJvdG8SDHNyZXBvcnRhbC52MSJlChFMaXN0SW1hZ2VzUmVxdWVzdBIOCgZwb3J0YWwYASABKAkSDgoGc2VhcmNoGAIgASgJEhcKD3JlZ2lzdHJ5X2ZpbHRlchgDIAEoCRIXCg90YWdfdHlwZV9maWx0ZXIYBCABKAkiTgoSTGlzdEltYWdlc1Jlc3BvbnNlEiMKBmltYWdlcxgBIAMoCzITLnNyZXBvcnRhbC52MS5JbWFnZRITCgt0b3RhbF9jb3VudBgCIAEoBSLYAgoFSW1hZ2USEAoIcmVnaXN0cnkYASABKAkSEgoKcmVwb3NpdG9yeRgCIAEoCRILCgN0YWcYAyABKAkSEAoIdGFnX3R5cGUYBCABKAkSLAoJd29ya2xvYWRzGAUgAygLMhkuc3JlcG9ydGFsLnYxLldvcmtsb2FkUmVmEhYKDmxhdGVzdF92ZXJzaW9uGAYgASgJEjUKEWxhdGVzdF9jaGVja2VkX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIUCgxsYXRlc3RfZXJyb3IYCCABKAkSGQoRdXBncmFkZV9hdmFpbGFibGUYCSABKAgSLQoLY2hhbmdlX3R5cGUYCiABKA4yGC5zcmVwb3J0YWwudjEuQ2hhbmdlVHlwZRIWCg5vcmlnaW5hbF9pbWFnZRgLIAEoCRIVCg1tdXRhdGVkX2ltYWdlGAwgASgJIl8KC1dvcmtsb2FkUmVmEgwKBGtpbmQYASABKAkSEQoJbmFtZXNwYWNlGAIgASgJEgwKBG5hbWUYAyABKAkSEQoJY29udGFpbmVyGAQgASgJEg4KBnNvdXJjZRgFIAEoCSpyCgpDaGFuZ2VUeXBlEhsKF0NIQU5HRV9UWVBFX1VOU1BFQ0lGSUVEEAASFAoQQ0hBTkdFX1RZUEVfTk9ORRABEhcKE0NIQU5HRV9UWVBFX01VVEFURUQQAhIYChRDSEFOR0VfVFlQRV9JTkpFQ1RFRBADMl8KDEltYWdlU2VydmljZRJPCgpMaXN0SW1hZ2VzEh8uc3JlcG9ydGFsLnYxLkxpc3RJbWFnZXNSZXF1ZXN0GiAuc3JlcG9ydGFsLnYxLkxpc3RJbWFnZXNSZXNwb25zZUK6AQoQY29tLnNyZXBvcnRhbC52MUIKSW1hZ2VQcm90b1ABWklnaXRodWIuY29tL2dvbGdvdGgzMS9zcmVwb3J0YWwvaW50ZXJuYWwvZ3JwYy9nZW4vc3JlcG9ydGFsL3YxO3NyZXBvcnRhbHYxogIDU1hYqgIMU3JlcG9ydGFsLlYxygIMU3JlcG9ydGFsXFYx4gIYU3JlcG9ydGFsXFYxXEdQQk1ldGFkYXRh6gINU3JlcG9ydGFsOjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message sreportal.v1.ListImagesRequest
@@ -94,6 +96,64 @@ export type Image = Message<"sreportal.v1.Image"> & {
    * @generated from field: repeated sreportal.v1.WorkloadRef workloads = 5;
    */
   workloads: WorkloadRef[];
+
+  /**
+   * latest_version is the highest semver tag found on the origin registry,
+   * empty when tag_type is not "semver" or when the lookup has not run yet.
+   *
+   * @generated from field: string latest_version = 6;
+   */
+  latestVersion: string;
+
+  /**
+   * latest_checked_at is the timestamp of the last registry lookup attempt
+   * for this image (set on every attempt — success or error). Unset when no
+   * lookup has run yet. Used by the controller to pace retries (isDue).
+   *
+   * @generated from field: google.protobuf.Timestamp latest_checked_at = 7;
+   */
+  latestCheckedAt?: Timestamp | undefined;
+
+  /**
+   * latest_error is the last registry lookup error message, empty on success.
+   *
+   * @generated from field: string latest_error = 8;
+   */
+  latestError: string;
+
+  /**
+   * upgrade_available is true when latest_version exists and is strictly greater
+   * than the current tag (semver comparison).
+   *
+   * @generated from field: bool upgrade_available = 9;
+   */
+  upgradeAvailable: boolean;
+
+  /**
+   * change_type indicates how the observed Pod image relates to the workload
+   * template image (none, mutated, injected).
+   *
+   * @generated from field: sreportal.v1.ChangeType change_type = 10;
+   */
+  changeType: ChangeType;
+
+  /**
+   * original_image is the image reference declared in the workload template
+   * (PodSpec). Empty when change_type is CHANGE_TYPE_INJECTED.
+   *
+   * @generated from field: string original_image = 11;
+   */
+  originalImage: string;
+
+  /**
+   * mutated_image is the image reference observed on the running Pod after
+   * any MutatingWebhook rewrite (e.g. mirror redirection). Equal to
+   * original_image when change_type is CHANGE_TYPE_NONE; the canonical image
+   * reference when change_type is CHANGE_TYPE_INJECTED.
+   *
+   * @generated from field: string mutated_image = 12;
+   */
+  mutatedImage: string;
 };
 
 /**
@@ -143,6 +203,46 @@ export type WorkloadRef = Message<"sreportal.v1.WorkloadRef"> & {
  */
 export const WorkloadRefSchema: GenMessage<WorkloadRef> = /*@__PURE__*/
   messageDesc(file_sreportal_v1_image, 3);
+
+/**
+ * ChangeType describes how an image observed in a Pod relates to the image
+ * declared in the workload template.
+ *
+ * @generated from enum sreportal.v1.ChangeType
+ */
+export enum ChangeType {
+  /**
+   * @generated from enum value: CHANGE_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * The Pod image matches the template image.
+   *
+   * @generated from enum value: CHANGE_TYPE_NONE = 1;
+   */
+  NONE = 1,
+
+  /**
+   * The Pod image was rewritten by a mutating webhook (e.g. mirror rewrite).
+   *
+   * @generated from enum value: CHANGE_TYPE_MUTATED = 2;
+   */
+  MUTATED = 2,
+
+  /**
+   * The container is not declared in the template (sidecar injected at admission).
+   *
+   * @generated from enum value: CHANGE_TYPE_INJECTED = 3;
+   */
+  INJECTED = 3,
+}
+
+/**
+ * Describes the enum sreportal.v1.ChangeType.
+ */
+export const ChangeTypeSchema: GenEnum<ChangeType> = /*@__PURE__*/
+  enumDesc(file_sreportal_v1_image, 0);
 
 /**
  * @generated from service sreportal.v1.ImageService
