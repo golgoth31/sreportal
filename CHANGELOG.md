@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.33.3](https://github.com/golgoth31/sreportal/compare/v1.33.2...v1.33.3) (2026-05-07)
+
+
+### Bug Fixes
+
+* **rbac:** unblock imageregistry reconciliation by granting status/finalizer access ([103ea67](https://github.com/golgoth31/sreportal/commit/103ea6758d91e4494196c7b25919d36a164338f6))
+* **webhook:** allow MutatedImage host to diverge from spec.host for changeType=mutated ([#246](https://github.com/golgoth31/sreportal/issues/246)) ([a3acfab](https://github.com/golgoth31/sreportal/commit/a3acfab7ccae2a5b1b69f9669af11f2abb81dab9))
+
 ## [1.33.2](https://github.com/golgoth31/sreportal/compare/v1.33.1...v1.33.2) (2026-05-07)
 
 
