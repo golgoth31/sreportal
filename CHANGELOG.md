@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.33.1](https://github.com/golgoth31/sreportal/compare/v1.33.0...v1.33.1) (2026-05-07)
+
+
+### Bug Fixes
+
+* **deps:** update web-misc ([#239](https://github.com/golgoth31/sreportal/issues/239)) ([01cb67a](https://github.com/golgoth31/sreportal/commit/01cb67a6a6dca6584caa1ef45966230f80db9a1e))
+
 ## [1.33.0](https://github.com/golgoth31/sreportal/compare/v1.32.2...v1.33.0) (2026-05-07)
 
 
