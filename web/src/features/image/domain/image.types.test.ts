@@ -134,184 +134,96 @@ describe("filterImages — webhook filters", () => {
 });
 
 describe("annotateImages", () => {
-  it("does nothing when there are only spec workloads", () => {
+  it("does nothing when changeType is none or unset", () => {
     const input: Image[] = [
       {
         registry: "ghcr.io",
         repository: "acme/api",
         tag: "1.0.0",
         tagType: "semver",
+        changeType: "none",
         workloads: [
           { kind: "Deployment", namespace: "default", name: "api", container: "web", source: "spec" },
+        ],
+      },
+      {
+        registry: "ghcr.io",
+        repository: "acme/web",
+        tag: "1.0.0",
+        tagType: "semver",
+        workloads: [
+          { kind: "Deployment", namespace: "default", name: "web", container: "main", source: "spec" },
         ],
       },
     ];
     const out = annotateImages(input);
-    expect(out[0]?.workloads[0]?.mutated).toBeUndefined();
-    expect(out[0]?.workloads[0]?.hidden).toBeUndefined();
     expect(out[0]?.hasMutation).toBeUndefined();
+    expect(out[0]?.hasInjection).toBeUndefined();
+    expect(out[0]?.workloads[0]?.mutated).toBeUndefined();
+    expect(out[1]?.hasMutation).toBeUndefined();
   });
 
-  it("marks a pod ref as mutated and hides the matching spec ref", () => {
+  it("flags hasMutation and tags every workload when changeType is mutated", () => {
     const input: Image[] = [
-      {
-        registry: "ghcr.io",
-        repository: "acme/api",
-        tag: "1.0.0",
-        tagType: "semver",
-        workloads: [
-          { kind: "Deployment", namespace: "default", name: "api", container: "web", source: "spec" },
-        ],
-      },
       {
         registry: "ghcr.io",
         repository: "acme/api",
         tag: "1.0.1-pinned",
         tagType: "semver",
-        workloads: [
-          { kind: "Deployment", namespace: "default", name: "api", container: "web", source: "pod" },
-        ],
-      },
-    ];
-    const out = annotateImages(input);
-    expect(out[0]?.workloads[0]?.hidden).toBe(true);
-    expect(out[1]?.workloads[0]?.mutated).toBe(true);
-    expect(out[1]?.hasMutation).toBe(true);
-    expect(out[0]?.hasMutation).toBeUndefined();
-  });
-
-  it("marks injected sidecars (pod-only) as injected, not mutated", () => {
-    const input: Image[] = [
-      {
-        registry: "ghcr.io",
-        repository: "acme/api",
-        tag: "1.0.0",
-        tagType: "semver",
+        changeType: "mutated",
         workloads: [
           { kind: "Deployment", namespace: "default", name: "api", container: "web", source: "spec" },
         ],
       },
+    ];
+    const out = annotateImages(input);
+    expect(out[0]?.hasMutation).toBe(true);
+    expect(out[0]?.hasInjection).toBeUndefined();
+    expect(out[0]?.workloads[0]?.mutated).toBe(true);
+    expect(out[0]?.workloads[0]?.injected).toBeUndefined();
+  });
+
+  it("flags hasInjection and tags every workload when changeType is injected", () => {
+    const input: Image[] = [
       {
         registry: "docker.io",
         repository: "istio/proxyv2",
         tag: "1.20.0",
         tagType: "semver",
+        changeType: "injected",
         workloads: [
           {
             kind: "Deployment",
             namespace: "default",
             name: "api",
             container: "istio-proxy",
-            source: "pod",
+            source: "spec",
           },
         ],
       },
     ];
     const out = annotateImages(input);
-    expect(out[1]?.workloads[0]?.mutated).toBeUndefined();
-    expect(out[1]?.workloads[0]?.injected).toBe(true);
-    expect(out[1]?.hasMutation).toBeUndefined();
-    expect(out[1]?.hasInjection).toBe(true);
+    expect(out[0]?.hasInjection).toBe(true);
+    expect(out[0]?.hasMutation).toBeUndefined();
+    expect(out[0]?.workloads[0]?.injected).toBe(true);
+    expect(out[0]?.workloads[0]?.mutated).toBeUndefined();
   });
 
-  it("does not mark spec refs as injected", () => {
+  it("hasVisibleWorkloads keeps images that have any non-hidden workload", () => {
     const input: Image[] = [
-      {
-        registry: "ghcr.io",
-        repository: "acme/api",
-        tag: "1.0.0",
-        tagType: "semver",
-        workloads: [
-          { kind: "Deployment", namespace: "default", name: "api", container: "web", source: "spec" },
-        ],
-      },
-    ];
-    const out = annotateImages(input);
-    expect(out[0]?.workloads[0]?.injected).toBeUndefined();
-    expect(out[0]?.hasInjection).toBeUndefined();
-  });
-
-  it("does not mark mutated pod refs as injected", () => {
-    const input: Image[] = [
-      {
-        registry: "ghcr.io",
-        repository: "acme/api",
-        tag: "1.0.0",
-        tagType: "semver",
-        workloads: [
-          { kind: "Deployment", namespace: "default", name: "api", container: "web", source: "spec" },
-        ],
-      },
       {
         registry: "ghcr.io",
         repository: "acme/api",
         tag: "1.0.1-pinned",
         tagType: "semver",
-        workloads: [
-          { kind: "Deployment", namespace: "default", name: "api", container: "web", source: "pod" },
-        ],
-      },
-    ];
-    const out = annotateImages(input);
-    expect(out[1]?.workloads[0]?.mutated).toBe(true);
-    expect(out[1]?.workloads[0]?.injected).toBeUndefined();
-    expect(out[1]?.hasInjection).toBeUndefined();
-  });
-
-  it("hasVisibleWorkloads drops images whose every ref is hidden", () => {
-    const input: Image[] = [
-      {
-        registry: "ghcr.io",
-        repository: "acme/api",
-        tag: "1.0.0",
-        tagType: "semver",
+        changeType: "mutated",
         workloads: [
           { kind: "Deployment", namespace: "default", name: "api", container: "web", source: "spec" },
-        ],
-      },
-      {
-        registry: "ghcr.io",
-        repository: "acme/api",
-        tag: "1.0.1-pinned",
-        tagType: "semver",
-        workloads: [
-          { kind: "Deployment", namespace: "default", name: "api", container: "web", source: "pod" },
         ],
       },
     ];
     const out = annotateImages(input).filter(hasVisibleWorkloads);
     expect(out).toHaveLength(1);
-    expect(out[0]?.tag).toBe("1.0.1-pinned");
-  });
-
-  it("preserves visible spec refs for unmutated containers on the same image", () => {
-    const input: Image[] = [
-      {
-        registry: "ghcr.io",
-        repository: "acme/api",
-        tag: "1.0.0",
-        tagType: "semver",
-        workloads: [
-          { kind: "Deployment", namespace: "default", name: "api", container: "web", source: "spec" },
-          { kind: "Deployment", namespace: "default", name: "api", container: "worker", source: "spec" },
-        ],
-      },
-      {
-        registry: "ghcr.io",
-        repository: "acme/api",
-        tag: "1.0.1-pinned",
-        tagType: "semver",
-        workloads: [
-          { kind: "Deployment", namespace: "default", name: "api", container: "web", source: "pod" },
-        ],
-      },
-    ];
-    const out = annotateImages(input).filter(hasVisibleWorkloads);
-    // Spec image still visible thanks to "worker" ref; "web" hidden.
-    expect(out).toHaveLength(2);
-    const spec = out.find((i) => i.tag === "1.0.0");
-    expect(spec?.workloads.find((w) => w.container === "web")?.hidden).toBe(true);
-    expect(spec?.workloads.find((w) => w.container === "worker")?.hidden).toBeUndefined();
   });
 });
 
