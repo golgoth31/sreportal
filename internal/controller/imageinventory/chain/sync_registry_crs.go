@@ -18,12 +18,13 @@ package chain
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 
+	"golang.org/x/sync/errgroup"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -34,6 +35,12 @@ import (
 	"github.com/golgoth31/sreportal/internal/metrics"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
+
+// syncRegistryCRsConcurrency caps in-flight upsert/delete operations during
+// SyncRegistryCRs. Each ImageInventory typically owns dozens of child
+// ImageRegistry CRs (one per host×namespace); running them sequentially
+// serialized API round-trips and could push the handler beyond 5s.
+const syncRegistryCRsConcurrency = 8
 
 // SyncRegistryCRsHandler aggregates ChainData.Observations by (host, namespace)
 // and reconciles the corresponding child ImageRegistry CRs (create/patch/delete)
@@ -60,8 +67,9 @@ func (h *SyncRegistryCRsHandler) Handle(ctx context.Context, rc *reconciler.Reco
 
 	groups := domainimageregistry.AggregateForCRs(inv.Spec.PortalRef, rc.Data.Observations)
 
-	desired := make(map[string]sreportalv1alpha1.ImageRegistryRef, len(groups))
-	// Stable iteration: sort group keys.
+	// Stable iteration: sort group keys. desired is computed up front from
+	// the deterministic (host, namespace) tuples so the parallel upsert loop
+	// below has nothing to write back into shared state.
 	gKeys := make([]domainimageregistry.Group, 0, len(groups))
 	for g := range groups {
 		gKeys = append(gKeys, g)
@@ -72,21 +80,38 @@ func (h *SyncRegistryCRsHandler) Handle(ctx context.Context, rc *reconciler.Reco
 		}
 		return gKeys[i].Namespace < gKeys[j].Namespace
 	})
-
+	desired := make(map[string]sreportalv1alpha1.ImageRegistryRef, len(gKeys))
 	for _, g := range gKeys {
-		entries := groups[g]
 		hash := domainimageregistry.CRName(inv.Spec.PortalRef, g.Host, g.Namespace)
-		if err := h.upsertCR(ctx, inv, hash, g, entries); err != nil {
-			metrics.ImageInventorySyncTotal.WithLabelValues(inv.Name, "error").Inc()
-			wrapped := fmt.Errorf("upsert ImageRegistry %s: %w", hash, err)
-			_ = statusutil.SetConditionAndPatch(ctx, h.client, inv, ReadyConditionType, metav1.ConditionFalse, ReasonProjectionFailed, wrapped.Error())
-			return wrapped
-		}
 		desired[hash] = sreportalv1alpha1.ImageRegistryRef{
 			Hash:      hash,
 			Host:      g.Host,
 			Namespace: g.Namespace,
 		}
+	}
+
+	eg, egCtx := errgroup.WithContext(ctx)
+	eg.SetLimit(syncRegistryCRsConcurrency)
+	for _, g := range gKeys {
+		entries := groups[g]
+		ref := desired[domainimageregistry.CRName(inv.Spec.PortalRef, g.Host, g.Namespace)]
+		eg.Go(func() error {
+			if err := h.upsertCR(egCtx, inv, ref.Hash, g, entries); err != nil {
+				// A peer goroutine already failed and canceled egCtx; let
+				// the original error propagate instead of masking it with
+				// our own context.Canceled.
+				if errors.Is(err, context.Canceled) && ctx.Err() == nil {
+					return nil
+				}
+				return fmt.Errorf("upsert ImageRegistry %s: %w", ref.Hash, err)
+			}
+			return nil
+		})
+	}
+	if err := eg.Wait(); err != nil {
+		metrics.ImageInventorySyncTotal.WithLabelValues(inv.Name, "error").Inc()
+		_ = statusutil.SetConditionAndPatch(ctx, h.client, inv, ReadyConditionType, metav1.ConditionFalse, ReasonProjectionFailed, err.Error())
+		return err
 	}
 
 	// Garbage-collect child ImageRegistry CRs that were previously owned by
@@ -160,30 +185,42 @@ func (h *SyncRegistryCRsHandler) upsertCR(
 // status (rather than listing children by ownerRef) so the controller works
 // without a field/label index — at the cost of needing the status to be in
 // sync, which it is, since we always update it on success.
+//
+// Deletes run concurrently and the pre-flight Get is skipped: Delete already
+// returns IsNotFound, which we treat as a no-op.
 func (h *SyncRegistryCRsHandler) deleteOrphans(
 	ctx context.Context,
 	inv *sreportalv1alpha1.ImageInventory,
 	desired map[string]sreportalv1alpha1.ImageRegistryRef,
 ) error {
 	logger := log.FromContext(ctx)
+	eg, egCtx := errgroup.WithContext(ctx)
+	eg.SetLimit(syncRegistryCRsConcurrency)
 	for _, prev := range inv.Status.Registries {
 		if _, keep := desired[prev.Hash]; keep {
 			continue
 		}
-		cr := &sreportalv1alpha1.ImageRegistry{}
-		key := types.NamespacedName{Namespace: inv.Namespace, Name: prev.Hash}
-		if err := h.client.Get(ctx, key, cr); err != nil {
-			if apierrors.IsNotFound(err) {
-				continue
+		eg.Go(func() error {
+			cr := &sreportalv1alpha1.ImageRegistry{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      prev.Hash,
+					Namespace: inv.Namespace,
+				},
 			}
-			return fmt.Errorf("get orphan ImageRegistry %s: %w", prev.Hash, err)
-		}
-		if err := h.client.Delete(ctx, cr); err != nil && !apierrors.IsNotFound(err) {
-			return fmt.Errorf("delete orphan ImageRegistry %s: %w", prev.Hash, err)
-		}
-		logger.V(1).Info("deleted orphan ImageRegistry", "name", prev.Hash)
+			if err := h.client.Delete(egCtx, cr); err != nil {
+				if apierrors.IsNotFound(err) {
+					return nil
+				}
+				if errors.Is(err, context.Canceled) && ctx.Err() == nil {
+					return nil
+				}
+				return fmt.Errorf("delete orphan ImageRegistry %s: %w", prev.Hash, err)
+			}
+			logger.V(1).Info("deleted orphan ImageRegistry", "name", prev.Hash)
+			return nil
+		})
 	}
-	return nil
+	return eg.Wait()
 }
 
 // entriesToSpecImages converts the domain Entry slice into the API
