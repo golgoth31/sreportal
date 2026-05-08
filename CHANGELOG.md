@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.34.0](https://github.com/golgoth31/sreportal/compare/v1.33.5...v1.34.0) (2026-05-08)
+
+
+### Features
+
+* **metrics:** per-handler reconcile duration + ImageInventory pod lookup optimization ([93399ac](https://github.com/golgoth31/sreportal/commit/93399ac96ad1b1426385f6d107daccccf4a7b186))
+
 ## [1.33.5](https://github.com/golgoth31/sreportal/compare/v1.33.4...v1.33.5) (2026-05-08)
 
 
