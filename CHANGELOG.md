@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.34.1](https://github.com/golgoth31/sreportal/compare/v1.34.0...v1.34.1) (2026-05-08)
+
+
+### Performance Improvements
+
+* **imageinventory:** cache stripped Pods instead of disabling Pod cache ([617da41](https://github.com/golgoth31/sreportal/commit/617da41d0e65908946382f013608872a21ca215b))
+
 ## [1.34.0](https://github.com/golgoth31/sreportal/compare/v1.33.5...v1.34.0) (2026-05-08)
 
 
