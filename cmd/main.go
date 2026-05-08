@@ -36,6 +36,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	ctrlmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
@@ -300,14 +301,15 @@ func main() {
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:  scheme,
 		Metrics: metricsServerOptions,
-		// Pods are listed by ImageInventory at most once per namespace per
-		// reconcile (see internal/controller/imageinventory/chain.podIndex).
-		// Caching every Pod in the cluster would waste a lot of memory for
-		// objects that are otherwise unused — skip the cache for Pods so
-		// these List calls hit the apiserver directly.
-		Client: client.Options{
-			Cache: &client.CacheOptions{
-				DisableFor: []client.Object{&corev1.Pod{}},
+		// Pods are read by ImageInventory only for {Labels, CreationTimestamp,
+		// Status.Phase, Spec.Containers[].Name+Image} — the rest of a Pod
+		// (containerStatuses, conditions, podIP, volumes, env, …) is the bulk
+		// of its RAM cost and we never read it. Strip Pods on the way into
+		// the cache (see cmd/pod_cache.go) so we keep fast cache-hit LISTs
+		// (controller-runtime/pkg/cache) without paying for full Pod objects.
+		Cache: cache.Options{
+			ByObject: map[client.Object]cache.ByObject{
+				&corev1.Pod{}: {Transform: stripPodForCache},
 			},
 		},
 		WebhookServer:          webhookServer,
