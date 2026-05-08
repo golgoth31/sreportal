@@ -80,12 +80,17 @@ export function WorkloadList({
     <div className={cn("flex flex-col gap-4", className)}>
       {groups.map((group) => (
         <section key={group.namespace} className="flex flex-col gap-2">
-          <header className="flex items-baseline justify-between gap-2 border-b pb-1">
-            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {group.namespace}
-            </h3>
-            <span className="text-[10px] text-muted-foreground/70">
-              {group.items.length}
+          <header className="flex items-center justify-between gap-2 border-b border-border pb-1.5">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="rounded bg-muted px-1 py-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+                ns
+              </span>
+              <h3 className="truncate font-mono text-sm font-semibold text-foreground">
+                {group.namespace}
+              </h3>
+            </div>
+            <span className="shrink-0 text-[11px] text-muted-foreground">
+              {group.items.length} workload{group.items.length > 1 ? "s" : ""}
             </span>
           </header>
           <ul className="flex flex-col gap-1.5">

@@ -252,7 +252,12 @@ export function ImagesPage() {
               </Button>
             </PopoverTrigger>
             <PopoverContent align="start" className="w-56 p-1">
-              <ul role="listbox" aria-multiselectable="true" aria-label="Namespace filter">
+              <ul
+                role="listbox"
+                aria-multiselectable="true"
+                aria-label="Namespace filter"
+                className="max-h-72 overflow-y-auto"
+              >
                 {namespaces.map((ns) => {
                   const selected = namespaceFilter.includes(ns);
                   return (
