@@ -67,6 +67,7 @@ import {
   ListImagesResponseSchema,
   ImageSchema,
   WorkloadRefSchema,
+  ChangeType,
 } from "../src/gen/sreportal/v1/image_pb.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -356,8 +357,53 @@ const imagesResponse = create(ListImagesResponseSchema, {
         }),
       ],
     }),
+    // Mutated: a MutatingWebhook rewrote the upstream image to an internal mirror.
+    create(ImageSchema, {
+      registry: "mirror.internal",
+      repository: "acme/payments",
+      tag: "3.2.1",
+      tagType: "semver",
+      changeType: ChangeType.MUTATED,
+      originalImage: "ghcr.io/acme/payments:3.2.1",
+      mutatedImage: "mirror.internal/acme/payments:3.2.1",
+      workloads: [
+        create(WorkloadRefSchema, {
+          kind: "Deployment",
+          namespace: "payments",
+          name: "payments-api",
+          container: "main",
+          source: "pod",
+        }),
+      ],
+    }),
+    // Injected: an Istio sidecar added by a MutatingWebhook (no spec counterpart).
+    create(ImageSchema, {
+      registry: "docker.io",
+      repository: "istio/proxyv2",
+      tag: "1.22.3",
+      tagType: "semver",
+      changeType: ChangeType.INJECTED,
+      originalImage: "",
+      mutatedImage: "docker.io/istio/proxyv2:1.22.3",
+      workloads: [
+        create(WorkloadRefSchema, {
+          kind: "Deployment",
+          namespace: "backend",
+          name: "api",
+          container: "istio-proxy",
+          source: "pod",
+        }),
+        create(WorkloadRefSchema, {
+          kind: "Deployment",
+          namespace: "payments",
+          name: "payments-api",
+          container: "istio-proxy",
+          source: "pod",
+        }),
+      ],
+    }),
   ],
-  totalCount: 4,
+  totalCount: 6,
 });
 
 // ── Route matching ─────────────────────────────────────────────────────
