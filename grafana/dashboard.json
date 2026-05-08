@@ -39,6 +39,312 @@
                 "type": "prometheus",
                 "uid": "${datasource}"
             },
+            "description": "Total number of FQDNs tracked per portal and source.",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green"
+                            },
+                            {
+                                "color": "yellow",
+                                "value": 100
+                            },
+                            {
+                                "color": "red",
+                                "value": 500
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 4,
+                "x": 0,
+                "y": 1
+            },
+            "id": 3,
+            "options": {
+                "colorMode": "background",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.0.0",
+            "targets": [
+                {
+                    "expr": "sum(sreportal_dns_fqdns_total{job=~\"$job\"}) by (portal)",
+                    "legendFormat": "{{portal}}",
+                    "refId": "A"
+                }
+            ],
+            "title": "FQDNs Total",
+            "type": "stat"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+            },
+            "description": "Active alerts per portal and alertmanager resource.",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green"
+                            },
+                            {
+                                "color": "orange",
+                                "value": 1
+                            },
+                            {
+                                "color": "red",
+                                "value": 10
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 4,
+                "x": 4,
+                "y": 1
+            },
+            "id": 5,
+            "options": {
+                "colorMode": "background",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.0.0",
+            "targets": [
+                {
+                    "expr": "sum(sreportal_alertmanager_alerts_active{job=~\"$job\"}) by (portal, alertmanager)",
+                    "legendFormat": "{{portal}} / {{alertmanager}}",
+                    "refId": "A"
+                }
+            ],
+            "title": "Active Alerts",
+            "type": "stat"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+            },
+            "description": "Number of DNS groups per portal.",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "blue"
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 4,
+                "x": 8,
+                "y": 1
+            },
+            "id": 4,
+            "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.0.0",
+            "targets": [
+                {
+                    "expr": "sum(sreportal_dns_groups_total{job=~\"$job\"}) by (portal)",
+                    "legendFormat": "{{portal}}",
+                    "refId": "A"
+                }
+            ],
+            "title": "DNS Groups",
+            "type": "stat"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+            },
+            "description": "Number of FQDNs synced from remote portals.",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "purple"
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 4,
+                "x": 12,
+                "y": 1
+            },
+            "id": 6,
+            "options": {
+                "colorMode": "background",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.0.0",
+            "targets": [
+                {
+                    "expr": "sum(sreportal_portal_remote_fqdns_synced{job=~\"$job\"}) by (portal)",
+                    "legendFormat": "{{portal}}",
+                    "refId": "A"
+                }
+            ],
+            "title": "Remote FQDNs Synced",
+            "type": "stat"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+            },
+            "description": "Total number of portals by type (local / remote).",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "max": 20,
+                    "min": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green"
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 8,
+                "x": 16,
+                "y": 1
+            },
+            "id": 13,
+            "options": {
+                "minVizHeight": 75,
+                "minVizWidth": 75,
+                "orientation": "auto",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showThresholdLabels": false,
+                "showThresholdMarkers": true,
+                "sizing": "auto"
+            },
+            "pluginVersion": "12.0.0",
+            "targets": [
+                {
+                    "expr": "sum(sreportal_portal_total{job=~\"$job\"}) by (type)",
+                    "legendFormat": "{{type}}",
+                    "refId": "A"
+                }
+            ],
+            "title": "Portals",
+            "type": "gauge"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+            },
             "description": "Rate of controller reconciliations per second by controller and result.",
             "fieldConfig": {
                 "defaults": {
@@ -113,9 +419,9 @@
             },
             "gridPos": {
                 "h": 8,
-                "w": 8,
+                "w": 12,
                 "x": 0,
-                "y": 1
+                "y": 5
             },
             "id": 1,
             "options": {
@@ -208,9 +514,9 @@
             },
             "gridPos": {
                 "h": 8,
-                "w": 8,
-                "x": 8,
-                "y": 1
+                "w": 12,
+                "x": 12,
+                "y": 5
             },
             "id": 2,
             "options": {
@@ -258,11 +564,44 @@
                 "type": "prometheus",
                 "uid": "${datasource}"
             },
-            "description": "Total number of FQDNs tracked per portal and source.",
+            "description": "Per-handler reconciliation latency p95 for the selected controller. Useful to pinpoint which chain step dominates total reconcile time.",
             "fieldConfig": {
                 "defaults": {
                     "color": {
-                        "mode": "thresholds"
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "barWidthFactor": 0.6,
+                        "drawStyle": "line",
+                        "fillOpacity": 10,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "insertNulls": false,
+                        "lineInterpolation": "smooth",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "auto",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
                     },
                     "mappings": [],
                     "thresholds": {
@@ -272,121 +611,94 @@
                                 "color": "green"
                             },
                             {
-                                "color": "yellow",
-                                "value": 100
-                            },
-                            {
                                 "color": "red",
-                                "value": 500
+                                "value": 80
                             }
                         ]
-                    }
-                },
-                "overrides": []
-            },
-            "gridPos": {
-                "h": 4,
-                "w": 4,
-                "x": 16,
-                "y": 1
-            },
-            "id": 3,
-            "options": {
-                "colorMode": "background",
-                "graphMode": "area",
-                "justifyMode": "auto",
-                "orientation": "auto",
-                "percentChangeColorMode": "standard",
-                "reduceOptions": {
-                    "calcs": [
-                        "lastNotNull"
-                    ],
-                    "fields": "",
-                    "values": false
-                },
-                "showPercentChange": false,
-                "textMode": "auto",
-                "wideLayout": true
-            },
-            "pluginVersion": "12.0.0",
-            "targets": [
-                {
-                    "expr": "sum(sreportal_dns_fqdns_total{job=~\"$job\"}) by (portal)",
-                    "legendFormat": "{{portal}}",
-                    "refId": "A"
-                }
-            ],
-            "title": "FQDNs Total",
-            "type": "stat"
-        },
-        {
-            "datasource": {
-                "type": "prometheus",
-                "uid": "${datasource}"
-            },
-            "description": "Number of DNS groups per portal.",
-            "fieldConfig": {
-                "defaults": {
-                    "color": {
-                        "mode": "thresholds"
                     },
-                    "mappings": [],
-                    "thresholds": {
-                        "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "blue"
-                            }
-                        ]
-                    }
+                    "unit": "s"
                 },
                 "overrides": []
             },
             "gridPos": {
-                "h": 4,
-                "w": 4,
-                "x": 20,
-                "y": 1
+                "h": 8,
+                "w": 12,
+                "x": 0,
+                "y": 13
             },
-            "id": 4,
+            "id": 28,
             "options": {
-                "colorMode": "background",
-                "graphMode": "none",
-                "justifyMode": "auto",
-                "orientation": "auto",
-                "percentChangeColorMode": "standard",
-                "reduceOptions": {
+                "legend": {
                     "calcs": [
-                        "lastNotNull"
+                        "lastNotNull",
+                        "max"
                     ],
-                    "fields": "",
-                    "values": false
+                    "displayMode": "table",
+                    "placement": "right",
+                    "showLegend": true
                 },
-                "showPercentChange": false,
-                "textMode": "auto",
-                "wideLayout": true
+                "tooltip": {
+                    "hideZeros": false,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
             },
             "pluginVersion": "12.0.0",
             "targets": [
                 {
-                    "expr": "sum(sreportal_dns_groups_total{job=~\"$job\"}) by (portal)",
-                    "legendFormat": "{{portal}}",
+                    "editorMode": "code",
+                    "expr": "histogram_quantile(0.95, sum(rate(sreportal_controller_reconcile_duration_seconds_bucket{job=~\"$job\", controller=\"$controller\", handler!=\"\"}[$__rate_interval])) by (handler, le))",
+                    "legendFormat": "{{handler}}",
+                    "range": true,
                     "refId": "A"
                 }
             ],
-            "title": "DNS Groups",
-            "type": "stat"
+            "title": "Reconcile Duration by Handler — p95 ($controller)",
+            "type": "timeseries"
         },
         {
             "datasource": {
                 "type": "prometheus",
                 "uid": "${datasource}"
             },
-            "description": "Active alerts per portal and alertmanager resource.",
+            "description": "Average per-handler reconciliation duration for the selected controller. Highlights handlers whose mean cost dominates the chain.",
             "fieldConfig": {
                 "defaults": {
                     "color": {
-                        "mode": "thresholds"
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "barWidthFactor": 0.6,
+                        "drawStyle": "line",
+                        "fillOpacity": 10,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "insertNulls": false,
+                        "lineInterpolation": "smooth",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "auto",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "normal"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
                     },
                     "mappings": [],
                     "thresholds": {
@@ -394,112 +706,48 @@
                         "steps": [
                             {
                                 "color": "green"
-                            },
-                            {
-                                "color": "orange",
-                                "value": 1
-                            },
-                            {
-                                "color": "red",
-                                "value": 10
                             }
                         ]
-                    }
-                },
-                "overrides": []
-            },
-            "gridPos": {
-                "h": 4,
-                "w": 4,
-                "x": 16,
-                "y": 5
-            },
-            "id": 5,
-            "options": {
-                "colorMode": "background",
-                "graphMode": "area",
-                "justifyMode": "auto",
-                "orientation": "auto",
-                "percentChangeColorMode": "standard",
-                "reduceOptions": {
-                    "calcs": [
-                        "lastNotNull"
-                    ],
-                    "fields": "",
-                    "values": false
-                },
-                "showPercentChange": false,
-                "textMode": "auto",
-                "wideLayout": true
-            },
-            "pluginVersion": "12.0.0",
-            "targets": [
-                {
-                    "expr": "sum(sreportal_alertmanager_alerts_active{job=~\"$job\"}) by (portal, alertmanager)",
-                    "legendFormat": "{{portal}} / {{alertmanager}}",
-                    "refId": "A"
-                }
-            ],
-            "title": "Active Alerts",
-            "type": "stat"
-        },
-        {
-            "datasource": {
-                "type": "prometheus",
-                "uid": "${datasource}"
-            },
-            "description": "Number of FQDNs synced from remote portals.",
-            "fieldConfig": {
-                "defaults": {
-                    "color": {
-                        "mode": "thresholds"
                     },
-                    "mappings": [],
-                    "thresholds": {
-                        "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "purple"
-                            }
-                        ]
-                    }
+                    "unit": "s"
                 },
                 "overrides": []
             },
             "gridPos": {
-                "h": 4,
-                "w": 4,
-                "x": 20,
-                "y": 5
+                "h": 8,
+                "w": 12,
+                "x": 12,
+                "y": 13
             },
-            "id": 6,
+            "id": 29,
             "options": {
-                "colorMode": "background",
-                "graphMode": "area",
-                "justifyMode": "auto",
-                "orientation": "auto",
-                "percentChangeColorMode": "standard",
-                "reduceOptions": {
+                "legend": {
                     "calcs": [
-                        "lastNotNull"
+                        "lastNotNull",
+                        "mean"
                     ],
-                    "fields": "",
-                    "values": false
+                    "displayMode": "table",
+                    "placement": "right",
+                    "showLegend": true
                 },
-                "showPercentChange": false,
-                "textMode": "auto",
-                "wideLayout": true
+                "tooltip": {
+                    "hideZeros": false,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
             },
             "pluginVersion": "12.0.0",
             "targets": [
                 {
-                    "expr": "sum(sreportal_portal_remote_fqdns_synced{job=~\"$job\"}) by (portal)",
-                    "legendFormat": "{{portal}}",
+                    "editorMode": "code",
+                    "expr": "sum(rate(sreportal_controller_reconcile_duration_seconds_sum{job=~\"$job\", controller=\"$controller\", handler!=\"\"}[$__rate_interval])) by (handler) / sum(rate(sreportal_controller_reconcile_duration_seconds_count{job=~\"$job\", controller=\"$controller\", handler!=\"\"}[$__rate_interval])) by (handler)",
+                    "legendFormat": "{{handler}}",
+                    "range": true,
                     "refId": "A"
                 }
             ],
-            "title": "Remote FQDNs Synced",
-            "type": "stat"
+            "title": "Reconcile Duration by Handler — avg ($controller)",
+            "type": "timeseries"
         },
         {
             "datasource": {
@@ -566,7 +814,7 @@
                 "h": 8,
                 "w": 8,
                 "x": 0,
-                "y": 9
+                "y": 21
             },
             "id": 7,
             "options": {
@@ -661,7 +909,7 @@
                 "h": 8,
                 "w": 8,
                 "x": 8,
-                "y": 9
+                "y": 21
             },
             "id": 8,
             "options": {
@@ -766,7 +1014,7 @@
                 "h": 8,
                 "w": 4,
                 "x": 16,
-                "y": 9
+                "y": 21
             },
             "id": 9,
             "options": {
@@ -863,7 +1111,7 @@
                 "h": 8,
                 "w": 4,
                 "x": 20,
-                "y": 9
+                "y": 21
             },
             "id": 10,
             "options": {
@@ -956,7 +1204,7 @@
                 "h": 8,
                 "w": 8,
                 "x": 0,
-                "y": 17
+                "y": 29
             },
             "id": 11,
             "options": {
@@ -1048,7 +1296,7 @@
                 "h": 8,
                 "w": 8,
                 "x": 8,
-                "y": 17
+                "y": 29
             },
             "id": 12,
             "options": {
@@ -1093,27 +1341,77 @@
             "type": "timeseries"
         },
         {
+            "collapsed": false,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 37
+            },
+            "id": 200,
+            "panels": [],
+            "title": "System Metrics (sreportal process)",
+            "type": "row"
+        },
+        {
             "datasource": {
                 "type": "prometheus",
                 "uid": "${datasource}"
             },
-            "description": "Total number of portals by type (local / remote).",
+            "description": "Controller-runtime workqueue depth per queue (controller).",
             "fieldConfig": {
                 "defaults": {
                     "color": {
-                        "mode": "thresholds"
+                        "mode": "palette-classic"
                     },
+                    "custom": {
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "barWidthFactor": 0.6,
+                        "drawStyle": "line",
+                        "fillOpacity": 20,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "insertNulls": false,
+                        "lineInterpolation": "stepAfter",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "auto",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "decimals": 0,
                     "mappings": [],
-                    "max": 20,
-                    "min": 0,
                     "thresholds": {
                         "mode": "absolute",
                         "steps": [
                             {
                                 "color": "green"
+                            },
+                            {
+                                "color": "red",
+                                "value": 80
                             }
                         ]
-                    }
+                    },
+                    "unit": "short"
                 },
                 "overrides": []
             },
@@ -1121,47 +1419,32 @@
                 "h": 8,
                 "w": 8,
                 "x": 16,
-                "y": 17
+                "y": 29
             },
-            "id": 13,
+            "id": 27,
             "options": {
-                "minVizHeight": 75,
-                "minVizWidth": 75,
-                "orientation": "auto",
-                "reduceOptions": {
-                    "calcs": [
-                        "lastNotNull"
-                    ],
-                    "fields": "",
-                    "values": false
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
                 },
-                "showThresholdLabels": false,
-                "showThresholdMarkers": true,
-                "sizing": "auto"
+                "tooltip": {
+                    "hideZeros": false,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
             },
             "pluginVersion": "12.0.0",
             "targets": [
                 {
-                    "expr": "sum(sreportal_portal_total{job=~\"$job\"}) by (type)",
-                    "legendFormat": "{{type}}",
+                    "expr": "workqueue_depth{job=~\"$job\"}",
+                    "legendFormat": "{{name}}",
                     "refId": "A"
                 }
             ],
-            "title": "Portals",
-            "type": "gauge"
-        },
-        {
-            "collapsed": false,
-            "gridPos": {
-                "h": 1,
-                "w": 24,
-                "x": 0,
-                "y": 25
-            },
-            "id": 200,
-            "panels": [],
-            "title": "System Metrics (sreportal process)",
-            "type": "row"
+            "title": "Workqueue Depth",
+            "type": "timeseries"
         },
         {
             "datasource": {
@@ -1226,9 +1509,9 @@
             },
             "gridPos": {
                 "h": 8,
-                "w": 8,
+                "w": 12,
                 "x": 0,
-                "y": 26
+                "y": 38
             },
             "id": 21,
             "options": {
@@ -1318,9 +1601,9 @@
             },
             "gridPos": {
                 "h": 8,
-                "w": 8,
-                "x": 8,
-                "y": 26
+                "w": 12,
+                "x": 12,
+                "y": 38
             },
             "id": 22,
             "options": {
@@ -1360,198 +1643,6 @@
                 }
             ],
             "title": "Memory Usage",
-            "type": "timeseries"
-        },
-        {
-            "datasource": {
-                "type": "prometheus",
-                "uid": "${datasource}"
-            },
-            "description": "Number of active goroutines in the sreportal process.",
-            "fieldConfig": {
-                "defaults": {
-                    "color": {
-                        "fixedColor": "semi-dark-orange",
-                        "mode": "fixed"
-                    },
-                    "custom": {
-                        "axisBorderShow": false,
-                        "axisCenteredZero": false,
-                        "axisColorMode": "text",
-                        "axisLabel": "",
-                        "axisPlacement": "auto",
-                        "barAlignment": 0,
-                        "barWidthFactor": 0.6,
-                        "drawStyle": "line",
-                        "fillOpacity": 20,
-                        "gradientMode": "none",
-                        "hideFrom": {
-                            "legend": false,
-                            "tooltip": false,
-                            "viz": false
-                        },
-                        "insertNulls": false,
-                        "lineInterpolation": "smooth",
-                        "lineWidth": 1,
-                        "pointSize": 5,
-                        "scaleDistribution": {
-                            "type": "linear"
-                        },
-                        "showPoints": "auto",
-                        "spanNulls": false,
-                        "stacking": {
-                            "group": "A",
-                            "mode": "none"
-                        },
-                        "thresholdsStyle": {
-                            "mode": "off"
-                        }
-                    },
-                    "decimals": 0,
-                    "mappings": [],
-                    "thresholds": {
-                        "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "green"
-                            },
-                            {
-                                "color": "red",
-                                "value": 80
-                            }
-                        ]
-                    },
-                    "unit": "short"
-                },
-                "overrides": []
-            },
-            "gridPos": {
-                "h": 8,
-                "w": 4,
-                "x": 16,
-                "y": 26
-            },
-            "id": 23,
-            "options": {
-                "legend": {
-                    "calcs": [],
-                    "displayMode": "list",
-                    "placement": "bottom",
-                    "showLegend": true
-                },
-                "tooltip": {
-                    "hideZeros": false,
-                    "mode": "single",
-                    "sort": "none"
-                }
-            },
-            "pluginVersion": "12.0.0",
-            "targets": [
-                {
-                    "expr": "go_goroutines{job=~\"$job\"}",
-                    "legendFormat": "goroutines",
-                    "refId": "A"
-                }
-            ],
-            "title": "Goroutines",
-            "type": "timeseries"
-        },
-        {
-            "datasource": {
-                "type": "prometheus",
-                "uid": "${datasource}"
-            },
-            "description": "Open vs max file descriptors for the process.",
-            "fieldConfig": {
-                "defaults": {
-                    "color": {
-                        "mode": "palette-classic"
-                    },
-                    "custom": {
-                        "axisBorderShow": false,
-                        "axisCenteredZero": false,
-                        "axisColorMode": "text",
-                        "axisLabel": "",
-                        "axisPlacement": "auto",
-                        "barAlignment": 0,
-                        "barWidthFactor": 0.6,
-                        "drawStyle": "line",
-                        "fillOpacity": 15,
-                        "gradientMode": "none",
-                        "hideFrom": {
-                            "legend": false,
-                            "tooltip": false,
-                            "viz": false
-                        },
-                        "insertNulls": false,
-                        "lineInterpolation": "smooth",
-                        "lineWidth": 1,
-                        "pointSize": 5,
-                        "scaleDistribution": {
-                            "type": "linear"
-                        },
-                        "showPoints": "auto",
-                        "spanNulls": false,
-                        "stacking": {
-                            "group": "A",
-                            "mode": "none"
-                        },
-                        "thresholdsStyle": {
-                            "mode": "off"
-                        }
-                    },
-                    "decimals": 0,
-                    "mappings": [],
-                    "thresholds": {
-                        "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "green"
-                            },
-                            {
-                                "color": "red",
-                                "value": 80
-                            }
-                        ]
-                    },
-                    "unit": "short"
-                },
-                "overrides": []
-            },
-            "gridPos": {
-                "h": 8,
-                "w": 4,
-                "x": 20,
-                "y": 26
-            },
-            "id": 24,
-            "options": {
-                "legend": {
-                    "calcs": [],
-                    "displayMode": "list",
-                    "placement": "bottom",
-                    "showLegend": true
-                },
-                "tooltip": {
-                    "hideZeros": false,
-                    "mode": "multi",
-                    "sort": "desc"
-                }
-            },
-            "pluginVersion": "12.0.0",
-            "targets": [
-                {
-                    "expr": "process_open_fds{job=~\"$job\"}",
-                    "legendFormat": "open",
-                    "refId": "A"
-                },
-                {
-                    "expr": "process_max_fds{job=~\"$job\"}",
-                    "legendFormat": "max",
-                    "refId": "B"
-                }
-            ],
-            "title": "Open File Descriptors",
             "type": "timeseries"
         },
         {
@@ -1619,7 +1710,7 @@
                 "h": 8,
                 "w": 8,
                 "x": 0,
-                "y": 34
+                "y": 46
             },
             "id": 25,
             "options": {
@@ -1721,7 +1812,7 @@
                 "h": 8,
                 "w": 8,
                 "x": 8,
-                "y": 34
+                "y": 46
             },
             "id": 26,
             "options": {
@@ -1755,11 +1846,12 @@
                 "type": "prometheus",
                 "uid": "${datasource}"
             },
-            "description": "Controller-runtime workqueue depth per queue (controller).",
+            "description": "Number of active goroutines in the sreportal process.",
             "fieldConfig": {
                 "defaults": {
                     "color": {
-                        "mode": "palette-classic"
+                        "fixedColor": "semi-dark-orange",
+                        "mode": "fixed"
                     },
                     "custom": {
                         "axisBorderShow": false,
@@ -1778,7 +1870,7 @@
                             "viz": false
                         },
                         "insertNulls": false,
-                        "lineInterpolation": "stepAfter",
+                        "lineInterpolation": "smooth",
                         "lineWidth": 1,
                         "pointSize": 5,
                         "scaleDistribution": {
@@ -1814,11 +1906,11 @@
             },
             "gridPos": {
                 "h": 8,
-                "w": 8,
+                "w": 4,
                 "x": 16,
-                "y": 34
+                "y": 46
             },
-            "id": 27,
+            "id": 23,
             "options": {
                 "legend": {
                     "calcs": [],
@@ -1828,19 +1920,19 @@
                 },
                 "tooltip": {
                     "hideZeros": false,
-                    "mode": "multi",
-                    "sort": "desc"
+                    "mode": "single",
+                    "sort": "none"
                 }
             },
             "pluginVersion": "12.0.0",
             "targets": [
                 {
-                    "expr": "workqueue_depth{job=~\"$job\"}",
-                    "legendFormat": "{{name}}",
+                    "expr": "go_goroutines{job=~\"$job\"}",
+                    "legendFormat": "goroutines",
                     "refId": "A"
                 }
             ],
-            "title": "Workqueue Depth",
+            "title": "Goroutines",
             "type": "timeseries"
         },
         {
@@ -1848,7 +1940,7 @@
                 "type": "prometheus",
                 "uid": "${datasource}"
             },
-            "description": "Per-handler reconciliation latency p95 for the selected controller. Useful to pinpoint which chain step dominates total reconcile time.",
+            "description": "Open vs max file descriptors for the process.",
             "fieldConfig": {
                 "defaults": {
                     "color": {
@@ -1863,7 +1955,7 @@
                         "barAlignment": 0,
                         "barWidthFactor": 0.6,
                         "drawStyle": "line",
-                        "fillOpacity": 10,
+                        "fillOpacity": 15,
                         "gradientMode": "none",
                         "hideFrom": {
                             "legend": false,
@@ -1887,6 +1979,7 @@
                             "mode": "off"
                         }
                     },
+                    "decimals": 0,
                     "mappings": [],
                     "thresholds": {
                         "mode": "absolute",
@@ -1900,25 +1993,22 @@
                             }
                         ]
                     },
-                    "unit": "s"
+                    "unit": "short"
                 },
                 "overrides": []
             },
             "gridPos": {
                 "h": 8,
-                "w": 12,
-                "x": 0,
-                "y": 42
+                "w": 4,
+                "x": 20,
+                "y": 46
             },
-            "id": 28,
+            "id": 24,
             "options": {
                 "legend": {
-                    "calcs": [
-                        "lastNotNull",
-                        "max"
-                    ],
-                    "displayMode": "table",
-                    "placement": "right",
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
                     "showLegend": true
                 },
                 "tooltip": {
@@ -1930,107 +2020,17 @@
             "pluginVersion": "12.0.0",
             "targets": [
                 {
-                    "editorMode": "code",
-                    "expr": "histogram_quantile(0.95, sum(rate(sreportal_controller_reconcile_duration_seconds_bucket{job=~\"$job\", controller=\"$controller\", handler!=\"\"}[$__rate_interval])) by (handler, le))",
-                    "legendFormat": "{{handler}}",
-                    "range": true,
+                    "expr": "process_open_fds{job=~\"$job\"}",
+                    "legendFormat": "open",
                     "refId": "A"
-                }
-            ],
-            "title": "Reconcile Duration by Handler — p95 ($controller)",
-            "type": "timeseries"
-        },
-        {
-            "datasource": {
-                "type": "prometheus",
-                "uid": "${datasource}"
-            },
-            "description": "Average per-handler reconciliation duration for the selected controller. Highlights handlers whose mean cost dominates the chain.",
-            "fieldConfig": {
-                "defaults": {
-                    "color": {
-                        "mode": "palette-classic"
-                    },
-                    "custom": {
-                        "axisBorderShow": false,
-                        "axisCenteredZero": false,
-                        "axisColorMode": "text",
-                        "axisLabel": "",
-                        "axisPlacement": "auto",
-                        "barAlignment": 0,
-                        "barWidthFactor": 0.6,
-                        "drawStyle": "line",
-                        "fillOpacity": 10,
-                        "gradientMode": "none",
-                        "hideFrom": {
-                            "legend": false,
-                            "tooltip": false,
-                            "viz": false
-                        },
-                        "insertNulls": false,
-                        "lineInterpolation": "smooth",
-                        "lineWidth": 1,
-                        "pointSize": 5,
-                        "scaleDistribution": {
-                            "type": "linear"
-                        },
-                        "showPoints": "auto",
-                        "spanNulls": false,
-                        "stacking": {
-                            "group": "A",
-                            "mode": "normal"
-                        },
-                        "thresholdsStyle": {
-                            "mode": "off"
-                        }
-                    },
-                    "mappings": [],
-                    "thresholds": {
-                        "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "green"
-                            }
-                        ]
-                    },
-                    "unit": "s"
                 },
-                "overrides": []
-            },
-            "gridPos": {
-                "h": 8,
-                "w": 12,
-                "x": 12,
-                "y": 42
-            },
-            "id": 29,
-            "options": {
-                "legend": {
-                    "calcs": [
-                        "lastNotNull",
-                        "mean"
-                    ],
-                    "displayMode": "table",
-                    "placement": "right",
-                    "showLegend": true
-                },
-                "tooltip": {
-                    "hideZeros": false,
-                    "mode": "multi",
-                    "sort": "desc"
-                }
-            },
-            "pluginVersion": "12.0.0",
-            "targets": [
                 {
-                    "editorMode": "code",
-                    "expr": "sum(rate(sreportal_controller_reconcile_duration_seconds_sum{job=~\"$job\", controller=\"$controller\", handler!=\"\"}[$__rate_interval])) by (handler) / sum(rate(sreportal_controller_reconcile_duration_seconds_count{job=~\"$job\", controller=\"$controller\", handler!=\"\"}[$__rate_interval])) by (handler)",
-                    "legendFormat": "{{handler}}",
-                    "range": true,
-                    "refId": "A"
+                    "expr": "process_max_fds{job=~\"$job\"}",
+                    "legendFormat": "max",
+                    "refId": "B"
                 }
             ],
-            "title": "Reconcile Duration by Handler — avg ($controller)",
+            "title": "Open File Descriptors",
             "type": "timeseries"
         }
     ],
@@ -2096,7 +2096,6 @@
                 "description": "Controller used for the per-handler breakdown panel.",
                 "includeAll": false,
                 "label": "Controller",
-                "multi": false,
                 "name": "controller",
                 "options": [],
                 "query": "label_values(sreportal_controller_reconcile_duration_seconds_count{job=~\"$job\"}, controller)",
@@ -2115,5 +2114,5 @@
     "timezone": "browser",
     "title": "SRE Portal",
     "uid": "sreportal-overview",
-    "version": 3
+    "version": 5
 }
