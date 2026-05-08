@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.33.5](https://github.com/golgoth31/sreportal/compare/v1.33.4...v1.33.5) (2026-05-08)
+
+
+### Bug Fixes
+
+* **web:** improve namespace visibility in image side panel and scroll long namespace filter ([e295b06](https://github.com/golgoth31/sreportal/commit/e295b062de4e00493a33120cc0eb49d8d311d9da))
+
 ## [1.33.4](https://github.com/golgoth31/sreportal/compare/v1.33.3...v1.33.4) (2026-05-07)
 
 
