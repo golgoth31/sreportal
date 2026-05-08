@@ -91,7 +91,7 @@ func NewImageRegistryReconciler(
 
 	return &ImageRegistryReconciler{
 		Client:     c,
-		chain:      reconciler.NewChain(handlers...),
+		chain:      reconciler.NewChain("imageregistry", handlers...),
 		imageStore: imageStore,
 	}
 }
@@ -140,7 +140,7 @@ func (r *ImageRegistryReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if err := r.chain.Execute(ctx, rc); err != nil {
 		logger.Error(err, "reconciliation chain failed")
 		metrics.ReconcileTotal.WithLabelValues("imageregistry", "error").Inc()
-		metrics.ReconcileDuration.WithLabelValues("imageregistry").Observe(time.Since(start).Seconds())
+		metrics.ReconcileDuration.WithLabelValues("imageregistry", "").Observe(time.Since(start).Seconds())
 		// Return the error so controller-runtime applies its native exponential
 		// backoff. The registry is protected by the running sync.Map (single-flight
 		// per CR), the per-host HostLimiter, and isDue()'s 24h pacing — fast retries
@@ -149,7 +149,7 @@ func (r *ImageRegistryReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	metrics.ReconcileTotal.WithLabelValues("imageregistry", "success").Inc()
-	metrics.ReconcileDuration.WithLabelValues("imageregistry").Observe(time.Since(start).Seconds())
+	metrics.ReconcileDuration.WithLabelValues("imageregistry", "").Observe(time.Since(start).Seconds())
 
 	// If a handler requested an early requeue (e.g. catch-up jitter), honour it.
 	if rc.Data.RequeueAfter > 0 {

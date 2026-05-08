@@ -84,9 +84,13 @@ func (h *ScanWorkloadsHandler) scanAll(ctx context.Context, inv *sreportalv1alph
 		opts = append(opts, client.InNamespace(inv.Spec.NamespaceFilter))
 	}
 
+	// One pod index per scan: workloads in the same namespace share a single
+	// List call. Without this, a 500-workload scan triggers 500 pod LISTs.
+	idx := newPodIndex(h.client)
+
 	var out []domainimageregistry.ContainerObservation
 	for _, kind := range inv.Spec.EffectiveWatchedKinds() {
-		obs, err := h.scanKind(ctx, kind, opts...)
+		obs, err := h.scanKind(ctx, idx, kind, opts...)
 		if err != nil {
 			return nil, err
 		}
@@ -95,7 +99,7 @@ func (h *ScanWorkloadsHandler) scanAll(ctx context.Context, inv *sreportalv1alph
 	return out, nil
 }
 
-func (h *ScanWorkloadsHandler) scanKind(ctx context.Context, kind sreportalv1alpha1.ImageInventoryKind, opts ...client.ListOption) ([]domainimageregistry.ContainerObservation, error) {
+func (h *ScanWorkloadsHandler) scanKind(ctx context.Context, idx *podIndex, kind sreportalv1alpha1.ImageInventoryKind, opts ...client.ListOption) ([]domainimageregistry.ContainerObservation, error) {
 	kindStr := string(kind)
 	logger := log.FromContext(ctx).WithValues("kind", kindStr)
 
@@ -106,7 +110,7 @@ func (h *ScanWorkloadsHandler) scanKind(ctx context.Context, kind sreportalv1alp
 		// template image as the runtime image (ChangeType=none).
 		var podImageByName map[string]string
 		if sel := selectorFromLabelSelector(podSelector); sel != nil {
-			pod, err := findRunningPodForWorkload(ctx, h.client, ns, sel)
+			pod, err := idx.findNewestRunning(ctx, ns, sel)
 			if err != nil {
 				logger.Error(err, "find running pod failed; falling back to spec", "namespace", ns, "name", name)
 			} else if pod != nil {

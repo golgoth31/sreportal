@@ -104,6 +104,7 @@ func NewSourceReconciler(
 	}
 
 	r.chain = reconciler.NewChain[struct{}, sourcechain.ChainData](
+		"source",
 		sourcechain.NewRebuildSourcesHandler(r),
 		sourcechain.NewBuildPortalIndexHandler(c),
 		sourcechain.NewCollectEndpointsHandler(r, r),

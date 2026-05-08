@@ -42,6 +42,7 @@ const (
 	labelHost       = "host"
 	labelNamespace  = "namespace"
 	labelResult     = "result"
+	labelHandler    = "handler"
 )
 
 // --- Controller metrics ---
@@ -58,16 +59,19 @@ var (
 		[]string{subsystemController, "result"},
 	)
 
-	// ReconcileDuration tracks reconciliation duration per controller.
+	// ReconcileDuration tracks reconciliation duration per controller and handler.
+	// The handler label is empty ("") for the overall reconcile duration; for
+	// chain-based controllers, it is set to the handler's Go type name (e.g.
+	// "ScanWorkloadsHandler") for each step inside reconciler.Chain.Execute.
 	ReconcileDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: subsystemController,
 			Name:      "reconcile_duration_seconds",
-			Help:      "Duration of reconciliation per controller.",
+			Help:      "Duration of reconciliation per controller and chain handler. handler=\"\" is the overall reconcile; handler=\"<TypeName>\" is a single chain step.",
 			Buckets:   prometheus.DefBuckets,
 		},
-		[]string{subsystemController},
+		[]string{subsystemController, labelHandler},
 	)
 
 	// DNSFQDNsTotal tracks the total number of FQDNs across all DNS resources.
@@ -302,7 +306,7 @@ var (
 			Name:      "requests_total",
 			Help:      "Total number of HTTP requests by method, handler, and status code.",
 		},
-		[]string{"method", "handler", "code"},
+		[]string{"method", labelHandler, "code"},
 	)
 
 	// HTTPRequestDuration tracks HTTP request latency by method and handler.
@@ -314,7 +318,7 @@ var (
 			Help:      "HTTP request latency in seconds by method and handler.",
 			Buckets:   []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5},
 		},
-		[]string{"method", "handler"},
+		[]string{"method", labelHandler},
 	)
 
 	// HTTPRequestsInFlight tracks the number of in-flight HTTP requests.

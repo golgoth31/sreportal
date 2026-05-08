@@ -39,7 +39,7 @@ func newPod(name, ns string, lbls map[string]string, phase corev1.PodPhase, crea
 	}
 }
 
-func TestFindRunningPodForWorkloadReturnsNewestRunning(t *testing.T) {
+func TestPodIndexFindNewestRunning(t *testing.T) {
 	t.Parallel()
 	sch := newChainScheme(t)
 
@@ -55,9 +55,10 @@ func TestFindRunningPodForWorkloadReturnsNewestRunning(t *testing.T) {
 		Build()
 
 	sel := labels.SelectorFromSet(labels.Set{tLabelApp: tNameAPI})
-	pod, err := findRunningPodForWorkload(context.Background(), c, tNsDefault, sel)
+	idx := newPodIndex(c)
+	pod, err := idx.findNewestRunning(context.Background(), tNsDefault, sel)
 	if err != nil {
-		t.Fatalf("findRunningPodForWorkload: %v", err)
+		t.Fatalf("findNewestRunning: %v", err)
 	}
 	if pod == nil {
 		t.Fatal("got nil pod, expected newest running")
@@ -67,36 +68,38 @@ func TestFindRunningPodForWorkloadReturnsNewestRunning(t *testing.T) {
 	}
 }
 
-func TestFindRunningPodForWorkloadNoMatch(t *testing.T) {
+func TestPodIndexNoMatch(t *testing.T) {
 	t.Parallel()
 	sch := newChainScheme(t)
 	c := fake.NewClientBuilder().WithScheme(sch).Build()
 
 	sel := labels.SelectorFromSet(labels.Set{tLabelApp: tNameAPI})
-	pod, err := findRunningPodForWorkload(context.Background(), c, tNsDefault, sel)
+	idx := newPodIndex(c)
+	pod, err := idx.findNewestRunning(context.Background(), tNsDefault, sel)
 	if err != nil {
-		t.Fatalf("findRunningPodForWorkload: %v", err)
+		t.Fatalf("findNewestRunning: %v", err)
 	}
 	if pod != nil {
 		t.Fatalf("expected nil pod, got %+v", pod)
 	}
 }
 
-func TestFindRunningPodForWorkloadNilSelector(t *testing.T) {
+func TestPodIndexNilSelector(t *testing.T) {
 	t.Parallel()
 	sch := newChainScheme(t)
 	c := fake.NewClientBuilder().WithScheme(sch).Build()
 
-	pod, err := findRunningPodForWorkload(context.Background(), c, tNsDefault, nil)
+	idx := newPodIndex(c)
+	pod, err := idx.findNewestRunning(context.Background(), tNsDefault, nil)
 	if err != nil {
-		t.Fatalf("findRunningPodForWorkload: %v", err)
+		t.Fatalf("findNewestRunning: %v", err)
 	}
 	if pod != nil {
 		t.Fatalf("expected nil pod, got %+v", pod)
 	}
 }
 
-func TestFindRunningPodForWorkloadOnlyNonRunning(t *testing.T) {
+func TestPodIndexOnlyNonRunning(t *testing.T) {
 	t.Parallel()
 	sch := newChainScheme(t)
 	now := time.Now()
@@ -104,11 +107,37 @@ func TestFindRunningPodForWorkloadOnlyNonRunning(t *testing.T) {
 	c := fake.NewClientBuilder().WithScheme(sch).WithObjects(pod).Build()
 
 	sel := labels.SelectorFromSet(labels.Set{tLabelApp: tNameAPI})
-	got, err := findRunningPodForWorkload(context.Background(), c, tNsDefault, sel)
+	idx := newPodIndex(c)
+	got, err := idx.findNewestRunning(context.Background(), tNsDefault, sel)
 	if err != nil {
-		t.Fatalf("findRunningPodForWorkload: %v", err)
+		t.Fatalf("findNewestRunning: %v", err)
 	}
 	if got != nil {
 		t.Fatalf("expected nil pod (only non-running), got %+v", got)
+	}
+}
+
+// TestPodIndexCachesPerNamespace verifies that repeated lookups in the same
+// namespace reuse the cached pod slice rather than issuing another List.
+func TestPodIndexCachesPerNamespace(t *testing.T) {
+	t.Parallel()
+	sch := newChainScheme(t)
+
+	now := time.Now()
+	p1 := newPod("p1", tNsDefault, map[string]string{tLabelApp: tNameAPI}, corev1.PodRunning, now)
+	c := fake.NewClientBuilder().WithScheme(sch).WithObjects(p1).Build()
+
+	idx := newPodIndex(c)
+	sel := labels.SelectorFromSet(labels.Set{tLabelApp: tNameAPI})
+
+	if _, err := idx.findNewestRunning(context.Background(), tNsDefault, sel); err != nil {
+		t.Fatalf("first call: %v", err)
+	}
+	cached, ok := idx.byNamespace[tNsDefault]
+	if !ok || len(cached) != 1 {
+		t.Fatalf("expected namespace cached with 1 pod, got %v ok=%v", cached, ok)
+	}
+	if _, err := idx.findNewestRunning(context.Background(), tNsDefault, sel); err != nil {
+		t.Fatalf("second call: %v", err)
 	}
 }

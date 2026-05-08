@@ -61,6 +61,7 @@ type ImageInventoryReconciler struct {
 // NewImageInventoryReconciler creates a new ImageInventoryReconciler with the handler chain.
 func NewImageInventoryReconciler(c client.Client, store domainimage.ImageWriter, remoteClientCache *remoteclient.Cache) *ImageInventoryReconciler {
 	chain := reconciler.NewChain(
+		"imageinventory",
 		imageinventorychain.NewValidateSpecHandler(c),
 		imageinventorychain.NewValidatePortalRefHandler(c),
 		imageinventorychain.NewFetchRemoteImagesHandler(c, remoteClientCache, store),
@@ -140,7 +141,7 @@ func (r *ImageInventoryReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	if err := r.chain.Execute(ctx, rc); err != nil {
 		logger.Error(err, "reconciliation chain failed")
 		metrics.ReconcileTotal.WithLabelValues("imageinventory", "error").Inc()
-		metrics.ReconcileDuration.WithLabelValues("imageinventory").Observe(time.Since(start).Seconds())
+		metrics.ReconcileDuration.WithLabelValues("imageinventory", "").Observe(time.Since(start).Seconds())
 		if errors.Is(err, imageinventorychain.ErrInvalidSpec) || errors.Is(err, imageinventorychain.ErrPortalNotFound) {
 			return ctrl.Result{}, nil
 		}
@@ -148,7 +149,7 @@ func (r *ImageInventoryReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	metrics.ReconcileTotal.WithLabelValues("imageinventory", "success").Inc()
-	metrics.ReconcileDuration.WithLabelValues("imageinventory").Observe(time.Since(start).Seconds())
+	metrics.ReconcileDuration.WithLabelValues("imageinventory", "").Observe(time.Since(start).Seconds())
 
 	return rc.Result, nil
 }

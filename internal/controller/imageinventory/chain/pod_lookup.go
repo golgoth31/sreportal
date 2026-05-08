@@ -25,36 +25,61 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// findRunningPodForWorkload lists pods matching `selector` in `namespace`,
-// filters them to PodRunning phase, and returns the most recently created one.
-// Returns (nil, nil) when no running pod is found — callers fall back to the
-// workload spec.
-func findRunningPodForWorkload(
-	ctx context.Context,
-	c client.Client,
-	namespace string,
-	selector labels.Selector,
-) (*corev1.Pod, error) {
+// podIndex caches running pods per namespace for the duration of a single
+// reconcile, so that all workloads in the same namespace share one List call
+// instead of doing one per workload. Without it, a 500-workload scan does 500
+// LISTs against the pods cache; with it, the same scan does at most one LIST
+// per touched namespace.
+//
+// Not safe for concurrent use — workloads are scanned sequentially.
+type podIndex struct {
+	c           client.Client
+	byNamespace map[string][]*corev1.Pod
+}
+
+func newPodIndex(c client.Client) *podIndex {
+	return &podIndex{c: c, byNamespace: map[string][]*corev1.Pod{}}
+}
+
+// findNewestRunning returns the most-recently-created Running pod in
+// `namespace` whose labels match `selector`. Returns (nil, nil) when no
+// match exists or selector is nil. The first call for a namespace lists
+// all pods; subsequent calls reuse the cached slice.
+func (p *podIndex) findNewestRunning(ctx context.Context, namespace string, selector labels.Selector) (*corev1.Pod, error) {
 	if selector == nil {
 		return nil, nil
 	}
-	var podList corev1.PodList
-	opts := []client.ListOption{
-		client.InNamespace(namespace),
-		client.MatchingLabelsSelector{Selector: selector},
-	}
-	if err := c.List(ctx, &podList, opts...); err != nil {
-		return nil, fmt.Errorf("list pods: %w", err)
+	pods, err := p.podsInNamespace(ctx, namespace)
+	if err != nil {
+		return nil, err
 	}
 	var newest *corev1.Pod
-	for i := range podList.Items {
-		p := &podList.Items[i]
-		if p.Status.Phase != corev1.PodRunning {
+	for _, pod := range pods {
+		if !selector.Matches(labels.Set(pod.Labels)) {
 			continue
 		}
-		if newest == nil || p.CreationTimestamp.After(newest.CreationTimestamp.Time) {
-			newest = p
+		if newest == nil || pod.CreationTimestamp.After(newest.CreationTimestamp.Time) {
+			newest = pod
 		}
 	}
 	return newest, nil
+}
+
+func (p *podIndex) podsInNamespace(ctx context.Context, namespace string) ([]*corev1.Pod, error) {
+	if pods, ok := p.byNamespace[namespace]; ok {
+		return pods, nil
+	}
+	var list corev1.PodList
+	if err := p.c.List(ctx, &list, client.InNamespace(namespace)); err != nil {
+		return nil, fmt.Errorf("list pods in %q: %w", namespace, err)
+	}
+	pods := make([]*corev1.Pod, 0, len(list.Items))
+	for i := range list.Items {
+		if list.Items[i].Status.Phase != corev1.PodRunning {
+			continue
+		}
+		pods = append(pods, &list.Items[i])
+	}
+	p.byNamespace[namespace] = pods
+	return pods, nil
 }

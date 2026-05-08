@@ -46,6 +46,7 @@ type MaintenanceReconciler struct {
 // NewMaintenanceReconciler creates a new MaintenanceReconciler with the handler chain.
 func NewMaintenanceReconciler(c client.Client, maintenanceWriter domainmaint.MaintenanceWriter) *MaintenanceReconciler {
 	chain := reconciler.NewChain(
+		"maintenance",
 		maintenancechain.NewComputePhaseHandler(),
 		maintenancechain.NewUpdateStatusHandler(c, maintenanceWriter),
 	)
@@ -87,12 +88,12 @@ func (r *MaintenanceReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	if err := r.chain.Execute(ctx, rc); err != nil {
 		logger.Error(err, "reconciliation chain failed")
 		metrics.ReconcileTotal.WithLabelValues("maintenance", "error").Inc()
-		metrics.ReconcileDuration.WithLabelValues("maintenance").Observe(time.Since(start).Seconds())
+		metrics.ReconcileDuration.WithLabelValues("maintenance", "").Observe(time.Since(start).Seconds())
 		return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
 	}
 
 	metrics.ReconcileTotal.WithLabelValues("maintenance", "success").Inc()
-	metrics.ReconcileDuration.WithLabelValues("maintenance").Observe(time.Since(start).Seconds())
+	metrics.ReconcileDuration.WithLabelValues("maintenance", "").Observe(time.Since(start).Seconds())
 
 	if rc.Result.RequeueAfter > 0 {
 		return rc.Result, nil

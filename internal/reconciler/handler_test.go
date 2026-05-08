@@ -35,6 +35,7 @@ type testData struct {
 func TestChain_Execute_StopsOnError(t *testing.T) {
 	var secondCalled bool
 	chain := reconciler.NewChain[*struct{}, testData](
+		"",
 		reconciler.HandlerFunc[*struct{}, testData](func(_ context.Context, _ *reconciler.ReconcileContext[*struct{}, testData]) error {
 			return errors.New("first handler failed")
 		}),
@@ -54,6 +55,7 @@ func TestChain_Execute_StopsOnError(t *testing.T) {
 func TestChain_Execute_StopsOnRequeueAfter(t *testing.T) {
 	var secondCalled bool
 	chain := reconciler.NewChain[*struct{}, testData](
+		"",
 		reconciler.HandlerFunc[*struct{}, testData](func(_ context.Context, rc *reconciler.ReconcileContext[*struct{}, testData]) error {
 			rc.Result.RequeueAfter = 5 * time.Second
 			return nil
@@ -74,6 +76,7 @@ func TestChain_Execute_StopsOnRequeueAfter(t *testing.T) {
 func TestChain_Execute_RunsAllHandlers_WhenNoShortCircuit(t *testing.T) {
 	var calls []int
 	chain := reconciler.NewChain[*struct{}, testData](
+		"",
 		reconciler.HandlerFunc[*struct{}, testData](func(_ context.Context, _ *reconciler.ReconcileContext[*struct{}, testData]) error {
 			calls = append(calls, 1)
 			return nil
@@ -93,6 +96,7 @@ func TestChain_Execute_RunsAllHandlers_WhenNoShortCircuit(t *testing.T) {
 
 func TestChain_Execute_SharesTypedData(t *testing.T) {
 	chain := reconciler.NewChain[*struct{}, testData](
+		"",
 		reconciler.HandlerFunc[*struct{}, testData](func(_ context.Context, rc *reconciler.ReconcileContext[*struct{}, testData]) error {
 			rc.Data.Value = "hello"
 			return nil

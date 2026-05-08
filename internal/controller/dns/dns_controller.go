@@ -76,7 +76,7 @@ func NewDNSReconciler(c client.Client, scheme *runtime.Scheme, disableDNSCheck b
 	return &DNSReconciler{
 		Client: c,
 		Scheme: scheme,
-		chain:  reconciler.NewChain(handlers...),
+		chain:  reconciler.NewChain("dns", handlers...),
 	}
 }
 
@@ -138,7 +138,7 @@ func (r *DNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	if err := r.chain.Execute(ctx, rc); err != nil {
 		logger.Error(err, "reconciliation failed")
 		metrics.ReconcileTotal.WithLabelValues("dns", "error").Inc()
-		metrics.ReconcileDuration.WithLabelValues("dns").Observe(time.Since(start).Seconds())
+		metrics.ReconcileDuration.WithLabelValues("dns", "").Observe(time.Since(start).Seconds())
 		return ctrl.Result{}, err
 	}
 
@@ -159,7 +159,7 @@ func (r *DNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	metrics.DNSGroupsTotal.WithLabelValues(portal).Set(float64(len(resource.Status.Groups)))
 
 	metrics.ReconcileTotal.WithLabelValues("dns", "success").Inc()
-	metrics.ReconcileDuration.WithLabelValues("dns").Observe(time.Since(start).Seconds())
+	metrics.ReconcileDuration.WithLabelValues("dns", "").Observe(time.Since(start).Seconds())
 
 	// Project aggregated groups into the FQDN read store
 	if r.fqdnWriter != nil {

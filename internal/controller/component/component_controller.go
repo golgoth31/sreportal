@@ -54,6 +54,7 @@ func NewComponentReconciler(
 ) *ComponentReconciler {
 	now := time.Now
 	chain := reconciler.NewChain(
+		"component",
 		componentchain.NewValidatePortalRefHandler(c),
 		componentchain.NewComputeStatusHandler(maintenanceReader, c),
 		componentchain.NewMergeDailyStatusHandler(now),
@@ -97,12 +98,12 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if err := r.chain.Execute(ctx, rc); err != nil {
 		logger.Error(err, "reconciliation chain failed")
 		metrics.ReconcileTotal.WithLabelValues("component", "error").Inc()
-		metrics.ReconcileDuration.WithLabelValues("component").Observe(time.Since(start).Seconds())
+		metrics.ReconcileDuration.WithLabelValues("component", "").Observe(time.Since(start).Seconds())
 		return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
 	}
 
 	metrics.ReconcileTotal.WithLabelValues("component", "success").Inc()
-	metrics.ReconcileDuration.WithLabelValues("component").Observe(time.Since(start).Seconds())
+	metrics.ReconcileDuration.WithLabelValues("component", "").Observe(time.Since(start).Seconds())
 
 	if rc.Result.RequeueAfter > 0 {
 		return rc.Result, nil

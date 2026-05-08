@@ -85,7 +85,7 @@ func NewPortalReconciler(c client.Client, scheme *runtime.Scheme, cache *remotec
 	return &PortalReconciler{
 		Client: c,
 		Scheme: scheme,
-		chain:  reconciler.NewChain(handlers...),
+		chain:  reconciler.NewChain("portal", handlers...),
 	}
 }
 
@@ -131,7 +131,7 @@ func (r *PortalReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if err := r.chain.Execute(ctx, rc); err != nil {
 		logger.Error(err, "reconciliation failed")
 		metrics.ReconcileTotal.WithLabelValues("portal", "error").Inc()
-		metrics.ReconcileDuration.WithLabelValues("portal").Observe(time.Since(start).Seconds())
+		metrics.ReconcileDuration.WithLabelValues("portal", "").Observe(time.Since(start).Seconds())
 		return ctrl.Result{}, err
 	}
 
@@ -159,7 +159,7 @@ func (r *PortalReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	metrics.ReconcileTotal.WithLabelValues("portal", "success").Inc()
-	metrics.ReconcileDuration.WithLabelValues("portal").Observe(time.Since(start).Seconds())
+	metrics.ReconcileDuration.WithLabelValues("portal", "").Observe(time.Since(start).Seconds())
 
 	return rc.Result, nil
 }

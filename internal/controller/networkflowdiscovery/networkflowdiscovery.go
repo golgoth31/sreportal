@@ -64,7 +64,7 @@ func NewNetworkFlowDiscoveryReconciler(c client.Client, scheme *runtime.Scheme, 
 	r := &NetworkFlowDiscoveryReconciler{
 		Client:       c,
 		Scheme:       scheme,
-		chain:        reconciler.NewChain(handlers...),
+		chain:        reconciler.NewChain("networkflowdiscovery", handlers...),
 		updateStatus: updateStatus,
 	}
 
@@ -132,13 +132,13 @@ func (r *NetworkFlowDiscoveryReconciler) Reconcile(ctx context.Context, req ctrl
 	if err := r.chain.Execute(ctx, rc); err != nil {
 		logger.Error(err, "reconciliation chain failed")
 		metrics.ReconcileTotal.WithLabelValues("networkflowdiscovery", "error").Inc()
-		metrics.ReconcileDuration.WithLabelValues("networkflowdiscovery").Observe(time.Since(start).Seconds())
+		metrics.ReconcileDuration.WithLabelValues("networkflowdiscovery", "").Observe(time.Since(start).Seconds())
 
 		return ctrl.Result{RequeueAfter: networkFlowDiscoveryRequeueAfter}, nil
 	}
 
 	metrics.ReconcileTotal.WithLabelValues("networkflowdiscovery", "success").Inc()
-	metrics.ReconcileDuration.WithLabelValues("networkflowdiscovery").Observe(time.Since(start).Seconds())
+	metrics.ReconcileDuration.WithLabelValues("networkflowdiscovery", "").Observe(time.Since(start).Seconds())
 
 	if rc.Result.RequeueAfter > 0 {
 		return rc.Result, nil

@@ -46,6 +46,7 @@ type IncidentReconciler struct {
 // NewIncidentReconciler creates a new IncidentReconciler with the handler chain.
 func NewIncidentReconciler(c client.Client, incidentWriter domainincident.IncidentWriter) *IncidentReconciler {
 	chain := reconciler.NewChain(
+		"incident",
 		incidentchain.NewComputeStatusHandler(),
 		incidentchain.NewUpdateStatusHandler(c, incidentWriter),
 	)
@@ -87,12 +88,12 @@ func (r *IncidentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if err := r.chain.Execute(ctx, rc); err != nil {
 		logger.Error(err, "reconciliation chain failed")
 		metrics.ReconcileTotal.WithLabelValues("incident", "error").Inc()
-		metrics.ReconcileDuration.WithLabelValues("incident").Observe(time.Since(start).Seconds())
+		metrics.ReconcileDuration.WithLabelValues("incident", "").Observe(time.Since(start).Seconds())
 		return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
 	}
 
 	metrics.ReconcileTotal.WithLabelValues("incident", "success").Inc()
-	metrics.ReconcileDuration.WithLabelValues("incident").Observe(time.Since(start).Seconds())
+	metrics.ReconcileDuration.WithLabelValues("incident", "").Observe(time.Since(start).Seconds())
 
 	return ctrl.Result{}, nil
 }

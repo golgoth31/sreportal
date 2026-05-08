@@ -143,7 +143,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	portal := record.Spec.PortalRef
 	metrics.DNSFQDNsTotal.WithLabelValues(portal, "external-dns").Set(float64(len(record.Status.Endpoints)))
 	metrics.ReconcileTotal.WithLabelValues("dnsrecord", "success").Inc()
-	metrics.ReconcileDuration.WithLabelValues("dnsrecord").Observe(time.Since(start).Seconds())
+	metrics.ReconcileDuration.WithLabelValues("dnsrecord", "").Observe(time.Since(start).Seconds())
 
 	return ctrl.Result{}, nil
 }

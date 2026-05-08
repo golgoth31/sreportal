@@ -18,8 +18,12 @@ package reconciler
 
 import (
 	"context"
+	"reflect"
+	"time"
 
 	ctrl "sigs.k8s.io/controller-runtime"
+
+	"github.com/golgoth31/sreportal/internal/metrics"
 )
 
 // ReconcileContext holds shared state between handlers during reconciliation.
@@ -45,18 +49,26 @@ type Handler[T any, D any] interface {
 
 // Chain executes handlers in sequence
 type Chain[T any, D any] struct {
-	handlers []Handler[T, D]
+	controller string
+	handlers   []Handler[T, D]
 }
 
-// NewChain creates a new handler chain with the given handlers
-func NewChain[T any, D any](handlers ...Handler[T, D]) *Chain[T, D] {
-	return &Chain[T, D]{handlers: handlers}
+// NewChain creates a new handler chain. controller is the controller name used
+// as the `controller` label in per-handler ReconcileDuration observations
+// (e.g. "imageinventory"). Use an empty string to skip per-handler timing.
+func NewChain[T any, D any](controller string, handlers ...Handler[T, D]) *Chain[T, D] {
+	return &Chain[T, D]{controller: controller, handlers: handlers}
 }
 
-// Execute runs all handlers in sequence until one errors or requests requeue
+// Execute runs all handlers in sequence until one errors or requests requeue.
+// When the chain has a controller name set, each handler's duration is observed
+// on metrics.ReconcileDuration with handler=<TypeName>.
 func (c *Chain[T, D]) Execute(ctx context.Context, rc *ReconcileContext[T, D]) error {
 	for _, h := range c.handlers {
-		if err := h.Handle(ctx, rc); err != nil {
+		start := time.Now()
+		err := h.Handle(ctx, rc)
+		c.observe(h, start)
+		if err != nil {
 			return err
 		}
 		// Short-circuit if a handler requested a delayed requeue
@@ -65,6 +77,35 @@ func (c *Chain[T, D]) Execute(ctx context.Context, rc *ReconcileContext[T, D]) e
 		}
 	}
 	return nil
+}
+
+// observe records the duration of a single handler step. Skipped when the
+// chain was built without a controller name (e.g. unit tests of Execute).
+func (c *Chain[T, D]) observe(h Handler[T, D], start time.Time) {
+	if c.controller == "" {
+		return
+	}
+	metrics.ReconcileDuration.
+		WithLabelValues(c.controller, handlerName(h)).
+		Observe(time.Since(start).Seconds())
+}
+
+// handlerName returns the Go type name of a handler (e.g. "*ScanWorkloadsHandler"
+// becomes "ScanWorkloadsHandler"). Anonymous types (HandlerFunc) fall back to
+// "anonymous" to keep label cardinality bounded.
+func handlerName(h any) string {
+	t := reflect.TypeOf(h)
+	if t == nil {
+		return "anonymous"
+	}
+	if t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+	name := t.Name()
+	if name == "" {
+		return "anonymous"
+	}
+	return name
 }
 
 // HandlerFunc is a function adapter for Handler interface
