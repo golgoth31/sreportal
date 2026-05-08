@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.34.2](https://github.com/golgoth31/sreportal/compare/v1.34.1...v1.34.2) (2026-05-08)
+
+
+### Bug Fixes
+
+* **imageinventory:** parallelize ImageRegistry CR upsert and orphan delete ([#252](https://github.com/golgoth31/sreportal/issues/252)) ([b691a73](https://github.com/golgoth31/sreportal/commit/b691a7366c06e46c0ca63c4eeb360ec68a3e4e39))
+
 ## [1.34.1](https://github.com/golgoth31/sreportal/compare/v1.34.0...v1.34.1) (2026-05-08)
 
 
