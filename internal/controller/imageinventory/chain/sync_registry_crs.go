@@ -18,6 +18,7 @@ package chain
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 
@@ -96,6 +97,12 @@ func (h *SyncRegistryCRsHandler) Handle(ctx context.Context, rc *reconciler.Reco
 		ref := desired[domainimageregistry.CRName(inv.Spec.PortalRef, g.Host, g.Namespace)]
 		eg.Go(func() error {
 			if err := h.upsertCR(egCtx, inv, ref.Hash, g, entries); err != nil {
+				// A peer goroutine already failed and canceled egCtx; let
+				// the original error propagate instead of masking it with
+				// our own context.Canceled.
+				if errors.Is(err, context.Canceled) && ctx.Err() == nil {
+					return nil
+				}
 				return fmt.Errorf("upsert ImageRegistry %s: %w", ref.Hash, err)
 			}
 			return nil
@@ -200,7 +207,13 @@ func (h *SyncRegistryCRsHandler) deleteOrphans(
 					Namespace: inv.Namespace,
 				},
 			}
-			if err := h.client.Delete(egCtx, cr); err != nil && !apierrors.IsNotFound(err) {
+			if err := h.client.Delete(egCtx, cr); err != nil {
+				if apierrors.IsNotFound(err) {
+					return nil
+				}
+				if errors.Is(err, context.Canceled) && ctx.Err() == nil {
+					return nil
+				}
 				return fmt.Errorf("delete orphan ImageRegistry %s: %w", prev.Hash, err)
 			}
 			logger.V(1).Info("deleted orphan ImageRegistry", "name", prev.Hash)
