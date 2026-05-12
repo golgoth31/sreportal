@@ -82,7 +82,7 @@ var _ = Describe("ReconcileManualComponentsHandler", func() {
 				adapter.ComponentStatusAnnotationKey:      "operational",
 			})
 			c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
-			handler := dnspkg.NewReconcileManualComponentsHandler(c)
+			handler := dnspkg.NewReconcileManualComponentsHandler(c, scheme)
 
 			rc := newRC(dns)
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
@@ -101,6 +101,29 @@ var _ = Describe("ReconcileManualComponentsHandler", func() {
 			Expect(comp.Spec.Status).To(Equal(sreportalv1alpha1.ComponentStatusOperational))
 			Expect(comp.Labels[adapter.ManagedByLabelKey]).To(Equal(adapter.ManagedByDNSController))
 			Expect(comp.Labels[adapter.PortalAnnotationKey]).To(Equal(tPortalMain))
+
+			Expect(comp.OwnerReferences).To(HaveLen(1), "component should have owner reference to DNS CR")
+			Expect(comp.OwnerReferences[0].Kind).To(Equal("DNS"))
+			Expect(comp.OwnerReferences[0].Name).To(Equal(tNameDNS))
+			Expect(comp.OwnerReferences[0].Controller).NotTo(BeNil())
+			Expect(*comp.OwnerReferences[0].Controller).To(BeTrue())
+		})
+	})
+
+	Context("when DNS CR has empty PortalRef and no component annotation", func() {
+		It("returns nil without listing managed components", func() {
+			c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
+			handler := dnspkg.NewReconcileManualComponentsHandler(c, scheme)
+
+			dns := &sreportalv1alpha1.DNS{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      tNameDNS,
+					Namespace: tNsDefault,
+				},
+				Spec: sreportalv1alpha1.DNSSpec{PortalRef: ""},
+			}
+			rc := newRC(dns)
+			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
 		})
 	})
 
@@ -108,7 +131,7 @@ var _ = Describe("ReconcileManualComponentsHandler", func() {
 		It("should not create any Component CR", func() {
 			dns := newDNS(nil)
 			c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
-			handler := dnspkg.NewReconcileManualComponentsHandler(c)
+			handler := dnspkg.NewReconcileManualComponentsHandler(c, scheme)
 
 			rc := newRC(dns)
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
@@ -139,7 +162,7 @@ var _ = Describe("ReconcileManualComponentsHandler", func() {
 				},
 			}
 			c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal, existing).Build()
-			handler := dnspkg.NewReconcileManualComponentsHandler(c)
+			handler := dnspkg.NewReconcileManualComponentsHandler(c, scheme)
 
 			dns := newDNS(nil) // no component annotation
 			rc := newRC(dns)
@@ -174,7 +197,7 @@ var _ = Describe("ReconcileManualComponentsHandler", func() {
 				},
 			}
 			c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal, existing).Build()
-			handler := dnspkg.NewReconcileManualComponentsHandler(c)
+			handler := dnspkg.NewReconcileManualComponentsHandler(c, scheme)
 
 			dns := newDNS(map[string]string{
 				adapter.ComponentAnnotationKey:            tDescDNS,
@@ -202,7 +225,7 @@ var _ = Describe("ReconcileManualComponentsHandler", func() {
 			disabled := false
 			portal.Spec.Features = &sreportalv1alpha1.PortalFeatures{StatusPage: &disabled}
 			c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
-			handler := dnspkg.NewReconcileManualComponentsHandler(c)
+			handler := dnspkg.NewReconcileManualComponentsHandler(c, scheme)
 
 			dns := newDNS(map[string]string{
 				adapter.ComponentAnnotationKey:      tDescDNS,
@@ -224,7 +247,7 @@ var _ = Describe("ReconcileManualComponentsHandler", func() {
 				adapter.ComponentGroupAnnotationKey: tGroupCore,
 			})
 			c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
-			handler := dnspkg.NewReconcileManualComponentsHandler(c)
+			handler := dnspkg.NewReconcileManualComponentsHandler(c, scheme)
 
 			rc := newRC(dns)
 			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
