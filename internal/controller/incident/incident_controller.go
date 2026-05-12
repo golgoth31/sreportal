@@ -72,7 +72,10 @@ func (r *IncidentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if err := r.Get(ctx, req.NamespacedName, &incident); err != nil {
 		if apierrors.IsNotFound(err) {
 			if r.incidentWriter != nil {
-				_ = r.incidentWriter.Delete(ctx, req.Namespace+"/"+req.Name)
+				if delErr := r.incidentWriter.Delete(ctx, req.Namespace+"/"+req.Name); delErr != nil {
+					logger.Error(delErr, "failed to delete incident view from read store")
+					metrics.ReadstoreWriterErrors.WithLabelValues("incident", "delete").Inc()
+				}
 			}
 			return ctrl.Result{}, nil
 		}

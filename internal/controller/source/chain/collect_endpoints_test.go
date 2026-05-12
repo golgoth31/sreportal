@@ -18,6 +18,7 @@ package chain
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -268,6 +269,106 @@ func TestCollectEndpointsHandler_ComponentRequests_DeduplicateByPortalAndName(t 
 
 	require.Len(t, rc.Data.ComponentRequests, 1, "duplicate (portal, displayName) should be deduped")
 	assert.Equal(t, "Infra", rc.Data.ComponentRequests[0].Group, "first-seen should win")
+}
+
+// failingSource always returns an error from Endpoints, to drive the
+// MarkDegraded code path in CollectEndpointsHandler.
+type failingSource struct {
+	err error
+}
+
+func (f *failingSource) Endpoints(_ context.Context) ([]*endpoint.Endpoint, error) {
+	return nil, f.err
+}
+
+func (f *failingSource) AddEventHandler(_ context.Context, _ func()) {}
+
+// recordingFailureTracker records MarkDegraded calls and lets tests drive the
+// failure count returned by RecordFailure, so we can deterministically hit the
+// `count >= maxSourceConsecutiveFailures` branch.
+type recordingFailureTracker struct {
+	failureCount     int
+	markDegradedCals int
+}
+
+func (r *recordingFailureTracker) RecordFailure(_ registry.SourceType) int {
+	return r.failureCount
+}
+
+func (r *recordingFailureTracker) RecordRecovery(_ registry.SourceType) int { return 0 }
+
+func (r *recordingFailureTracker) MarkDegraded(
+	_ context.Context,
+	_ *sreportalv1alpha1.Portal,
+	_ registry.SourceType,
+	_ error,
+	_ int,
+) {
+	r.markDegradedCals++
+}
+
+// When idx.Main is nil (e.g. local portals exist but none has spec.main=true)
+// and a source has been failing past the threshold, the handler must NOT call
+// MarkDegraded — otherwise the controller panics dereferencing portal.Namespace.
+func TestCollectEndpointsHandler_NilMain_SkipsMarkDegraded(t *testing.T) {
+	otherPortal := newPortal(tTeamA, false, nil, nil)
+	idx := &PortalIndex{
+		Main:   nil,
+		ByName: map[string]*sreportalv1alpha1.Portal{tTeamA: otherPortal},
+		Local:  []*sreportalv1alpha1.Portal{otherPortal},
+	}
+
+	tracker := &recordingFailureTracker{failureCount: maxSourceConsecutiveFailures}
+	handler := NewCollectEndpointsHandler(fakeEnricher{}, tracker)
+
+	rc := &reconciler.ReconcileContext[struct{}, ChainData]{
+		Data: ChainData{
+			Index: idx,
+			TypedSources: []registry.TypedSource{
+				{
+					Type:   tSrcService,
+					Source: &failingSource{err: errors.New("boom")},
+				},
+			},
+		},
+	}
+
+	require.NotPanics(t, func() {
+		err := handler.Handle(ctxWithLogger(), rc)
+		require.NoError(t, err)
+	})
+	assert.Equal(t, 0, tracker.markDegradedCals,
+		"MarkDegraded must not be called when idx.Main is nil")
+}
+
+// Sanity check: when idx.Main is set and the failure count crosses the
+// threshold, MarkDegraded is still invoked.
+func TestCollectEndpointsHandler_MainSet_CallsMarkDegradedAtThreshold(t *testing.T) {
+	mainPortal := newPortal(tPortalMain, true, nil, nil)
+	idx := &PortalIndex{
+		Main:   mainPortal,
+		ByName: map[string]*sreportalv1alpha1.Portal{tPortalMain: mainPortal},
+		Local:  []*sreportalv1alpha1.Portal{mainPortal},
+	}
+
+	tracker := &recordingFailureTracker{failureCount: maxSourceConsecutiveFailures}
+	handler := NewCollectEndpointsHandler(fakeEnricher{}, tracker)
+
+	rc := &reconciler.ReconcileContext[struct{}, ChainData]{
+		Data: ChainData{
+			Index: idx,
+			TypedSources: []registry.TypedSource{
+				{
+					Type:   tSrcService,
+					Source: &failingSource{err: errors.New("boom")},
+				},
+			},
+		},
+	}
+
+	err := handler.Handle(ctxWithLogger(), rc)
+	require.NoError(t, err)
+	assert.Equal(t, 1, tracker.markDegradedCals)
 }
 
 func TestCollectEndpointsHandler_ComponentRequests_NotPopulatedWithoutAnnotation(t *testing.T) {

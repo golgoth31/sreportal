@@ -39,6 +39,22 @@ var _ = Describe("DNS Controller", func() {
 		interval = time.Millisecond * 250
 	)
 
+	// Portals referenced by DNS CRs in this suite. They must exist for the
+	// feature-gate lookup to resolve (missing portal => feature disabled).
+	BeforeEach(func() {
+		ctx := context.Background()
+		for _, name := range []string{tPortalMain, "test-portal", tPortalActual} {
+			nn := types.NamespacedName{Name: name, Namespace: tNsDefault}
+			p := &sreportalv1alpha1.Portal{}
+			if err := k8sClient.Get(ctx, nn, p); err != nil && errors.IsNotFound(err) {
+				Expect(k8sClient.Create(ctx, &sreportalv1alpha1.Portal{
+					ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: tNsDefault},
+					Spec:       sreportalv1alpha1.PortalSpec{Title: name},
+				})).To(Succeed())
+			}
+		}
+	})
+
 	Context("When reconciling a resource with grouped entries", func() {
 		const resourceName = "test-dns-groups"
 		ctx := context.Background()
@@ -59,7 +75,7 @@ var _ = Describe("DNS Controller", func() {
 						Namespace: tNsDefault,
 					},
 					Spec: sreportalv1alpha1.DNSSpec{
-						PortalRef: "main",
+						PortalRef: tPortalMain,
 						Groups: []sreportalv1alpha1.DNSGroup{
 							{
 								Name:        "APIs",
@@ -160,7 +176,7 @@ var _ = Describe("DNS Controller", func() {
 						Namespace: tNsDefault,
 					},
 					Spec: sreportalv1alpha1.DNSSpec{
-						PortalRef: "main",
+						PortalRef: tPortalMain,
 					},
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
@@ -339,7 +355,7 @@ var _ = Describe("DNS Controller", func() {
 			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.DNS{
 				ObjectMeta: metav1.ObjectMeta{Name: dnsName, Namespace: tNsDefault},
 				Spec: sreportalv1alpha1.DNSSpec{
-					PortalRef: "actual-portal",
+					PortalRef: tPortalActual,
 					Groups: []sreportalv1alpha1.DNSGroup{
 						{
 							Name:    "Test",
@@ -354,10 +370,10 @@ var _ = Describe("DNS Controller", func() {
 				g.Expect(err).NotTo(HaveOccurred())
 
 				// Should be findable by the actual portal name, not the DNS CR name
-				views, err := store.List(ctx, domaindns.FQDNFilters{Portal: "actual-portal"})
+				views, err := store.List(ctx, domaindns.FQDNFilters{Portal: tPortalActual})
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(views).To(HaveLen(1))
-				g.Expect(views[0].PortalName).To(Equal("actual-portal"))
+				g.Expect(views[0].PortalName).To(Equal(tPortalActual))
 
 				// Should NOT appear under the DNS CR name
 				views, err = store.List(ctx, domaindns.FQDNFilters{Portal: dnsName})

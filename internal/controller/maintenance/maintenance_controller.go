@@ -18,10 +18,12 @@ package maintenance
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -30,6 +32,7 @@ import (
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	maintenancechain "github.com/golgoth31/sreportal/internal/controller/maintenance/chain"
 	portalfeatures "github.com/golgoth31/sreportal/internal/controller/portal/features"
+	"github.com/golgoth31/sreportal/internal/controller/statusutil"
 	domainmaint "github.com/golgoth31/sreportal/internal/domain/maintenance"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/metrics"
@@ -72,7 +75,10 @@ func (r *MaintenanceReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	if err := r.Get(ctx, req.NamespacedName, &maint); err != nil {
 		if apierrors.IsNotFound(err) {
 			if r.maintenanceWriter != nil {
-				_ = r.maintenanceWriter.Delete(ctx, req.Namespace+"/"+req.Name)
+				if delErr := r.maintenanceWriter.Delete(ctx, req.Namespace+"/"+req.Name); delErr != nil {
+					logger.Error(delErr, "failed to delete maintenance view from read store")
+					metrics.ReadstoreWriterErrors.WithLabelValues("maintenance", "delete").Inc()
+				}
 			}
 			return ctrl.Result{}, nil
 		}
@@ -89,16 +95,25 @@ func (r *MaintenanceReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		logger.Error(err, "reconciliation chain failed")
 		metrics.ReconcileTotal.WithLabelValues("maintenance", "error").Inc()
 		metrics.ReconcileDuration.WithLabelValues("maintenance", "").Observe(time.Since(start).Seconds())
+
+		if errors.Is(err, domainmaint.ErrInvalidSchedule) {
+			if cErr := statusutil.SetConditionAndPatch(ctx, r.Client, &maint, "Ready", metav1.ConditionFalse,
+				"InvalidSchedule", err.Error()); cErr != nil {
+				logger.Error(cErr, "failed to set InvalidSchedule condition")
+			}
+			return ctrl.Result{}, nil
+		}
 		return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
 	}
 
 	metrics.ReconcileTotal.WithLabelValues("maintenance", "success").Inc()
 	metrics.ReconcileDuration.WithLabelValues("maintenance", "").Observe(time.Since(start).Seconds())
 
-	if rc.Result.RequeueAfter > 0 {
-		return rc.Result, nil
+	now := metav1.Now().Time
+	requeueAfter := domainmaint.ComputeRequeue(now, maint.Spec.ScheduledStart.Time, maint.Spec.ScheduledEnd.Time)
+	if requeueAfter > 0 {
+		return ctrl.Result{RequeueAfter: requeueAfter}, nil
 	}
-
 	return ctrl.Result{}, nil
 }
 

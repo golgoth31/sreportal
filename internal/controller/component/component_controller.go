@@ -72,6 +72,7 @@ func NewComponentReconciler(
 // +kubebuilder:rbac:groups=sreportal.io,resources=components/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=components/finalizers,verbs=update
 // +kubebuilder:rbac:groups=sreportal.io,resources=portals,verbs=get;list;watch
+// +kubebuilder:rbac:groups=sreportal.io,resources=incidents,verbs=get;list;watch
 
 // Reconcile computes the component's effective status and projects to the ReadStore.
 func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -82,7 +83,10 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if err := r.Get(ctx, req.NamespacedName, &comp); err != nil {
 		if apierrors.IsNotFound(err) {
 			if r.componentWriter != nil {
-				_ = r.componentWriter.Delete(ctx, req.Namespace+"/"+req.Name)
+				if delErr := r.componentWriter.Delete(ctx, req.Namespace+"/"+req.Name); delErr != nil {
+					logger.Error(delErr, "failed to delete component view from read store")
+					metrics.ReadstoreWriterErrors.WithLabelValues("component", "delete").Inc()
+				}
 			}
 			return ctrl.Result{}, nil
 		}

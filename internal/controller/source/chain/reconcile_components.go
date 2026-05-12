@@ -22,7 +22,9 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
@@ -36,11 +38,12 @@ import (
 // Component CRs based on ComponentRequests collected from annotated endpoints.
 type ReconcileComponentsHandler struct {
 	client client.Client
+	scheme *runtime.Scheme
 }
 
 // NewReconcileComponentsHandler creates a new ReconcileComponentsHandler.
-func NewReconcileComponentsHandler(c client.Client) *ReconcileComponentsHandler {
-	return &ReconcileComponentsHandler{client: c}
+func NewReconcileComponentsHandler(c client.Client, scheme *runtime.Scheme) *ReconcileComponentsHandler {
+	return &ReconcileComponentsHandler{client: c, scheme: scheme}
 }
 
 // Handle implements reconciler.Handler.
@@ -117,6 +120,9 @@ func (h *ReconcileComponentsHandler) reconcileComponent(
 				PortalRef:   portal.Name,
 				Status:      status,
 			},
+		}
+		if err := ctrl.SetControllerReference(portal, comp, h.scheme); err != nil {
+			return fmt.Errorf("set owner reference on component %q: %w", name, err)
 		}
 		if err := h.client.Create(ctx, comp); err != nil {
 			return fmt.Errorf("create component %q: %w", name, err)

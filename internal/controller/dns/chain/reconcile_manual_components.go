@@ -22,7 +22,9 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
@@ -36,11 +38,12 @@ import (
 // Component CR based on the DNS CR-level sreportal.io/component annotation.
 type ReconcileManualComponentsHandler struct {
 	client client.Client
+	scheme *runtime.Scheme
 }
 
 // NewReconcileManualComponentsHandler creates a new ReconcileManualComponentsHandler.
-func NewReconcileManualComponentsHandler(c client.Client) *ReconcileManualComponentsHandler {
-	return &ReconcileManualComponentsHandler{client: c}
+func NewReconcileManualComponentsHandler(c client.Client, scheme *runtime.Scheme) *ReconcileManualComponentsHandler {
+	return &ReconcileManualComponentsHandler{client: c, scheme: scheme}
 }
 
 // Handle implements reconciler.Handler.
@@ -103,6 +106,9 @@ func (h *ReconcileManualComponentsHandler) Handle(ctx context.Context, rc *recon
 				Status:      status,
 			},
 		}
+		if err := ctrl.SetControllerReference(resource, comp, h.scheme); err != nil {
+			return fmt.Errorf("set owner reference on component %q: %w", name, err)
+		}
 		if err := h.client.Create(ctx, comp); err != nil {
 			return fmt.Errorf("create component %q: %w", name, err)
 		}
@@ -133,6 +139,9 @@ func (h *ReconcileManualComponentsHandler) Handle(ctx context.Context, rc *recon
 
 // deleteManaged removes any component managed by dns-controller for this DNS CR's portal.
 func (h *ReconcileManualComponentsHandler) deleteManaged(ctx context.Context, resource *sreportalv1alpha1.DNS) error {
+	if resource.Spec.PortalRef == "" {
+		return nil
+	}
 	var list sreportalv1alpha1.ComponentList
 	if err := h.client.List(ctx, &list,
 		client.InNamespace(resource.Namespace),

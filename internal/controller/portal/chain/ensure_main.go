@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -97,6 +98,11 @@ func (r *EnsureMainPortalRunnable) Start(ctx context.Context) error {
 	}
 
 	if err := r.client.Create(ctx, mainPortal); err != nil {
+		if apierrors.IsAlreadyExists(err) {
+			log.Info("main portal already exists (race with cache sync), skipping create",
+				"name", MainPortalName, "namespace", r.namespace)
+			return nil
+		}
 		log.Error(err, "failed to create main portal")
 		return err
 	}

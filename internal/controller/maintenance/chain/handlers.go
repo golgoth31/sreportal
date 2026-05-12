@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
@@ -60,20 +59,7 @@ func NewUpdateStatusHandler(c client.Client, w domainmaint.MaintenanceWriter) *U
 
 func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.Maintenance, ChainData]) error {
 	maint := rc.Resource
-	maint.Status.Phase = rc.Data.Phase
 
-	// Set Ready condition + patch status
-	if err := statusutil.SetConditionAndPatch(ctx, h.client, maint, "Ready", metav1.ConditionTrue, "Reconciled",
-		fmt.Sprintf("phase: %s", rc.Data.Phase)); err != nil {
-		return err
-	}
-
-	// Re-fetch to get fresh resourceVersion
-	if err := h.client.Get(ctx, types.NamespacedName{Namespace: maint.Namespace, Name: maint.Name}, maint); err != nil {
-		return fmt.Errorf("re-fetch maintenance: %w", err)
-	}
-
-	// Add portal label
 	if maint.Labels == nil {
 		maint.Labels = make(map[string]string)
 	}
@@ -84,36 +70,29 @@ func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 		}
 	}
 
-	// Project to ReadStore
+	maint.Status.Phase = rc.Data.Phase
+	if err := statusutil.SetConditionAndPatch(ctx, h.client, maint, "Ready", metav1.ConditionTrue, "Reconciled",
+		fmt.Sprintf("phase: %s", rc.Data.Phase)); err != nil {
+		return err
+	}
+
 	if h.maintenanceWriter != nil {
 		resourceKey := maint.Namespace + "/" + maint.Name
-		view := ToView(maint)
+		view := domainmaint.MaintenanceView{
+			Name:           maint.Name,
+			Title:          maint.Spec.Title,
+			Description:    maint.Spec.Description,
+			PortalRef:      maint.Spec.PortalRef,
+			Components:     maint.Spec.Components,
+			ScheduledStart: maint.Spec.ScheduledStart.Time,
+			ScheduledEnd:   maint.Spec.ScheduledEnd.Time,
+			AffectedStatus: string(maint.Spec.AffectedStatus),
+			Phase:          domainmaint.MaintenancePhase(rc.Data.Phase),
+		}
 		if err := h.maintenanceWriter.Replace(ctx, resourceKey, []domainmaint.MaintenanceView{view}); err != nil {
 			return fmt.Errorf("write maintenance store: %w", err)
 		}
 	}
 
-	// Set strategic requeue for next phase transition (set last so chain doesn't short-circuit)
-	now := metav1.Now().Time
-	requeueAfter := domainmaint.ComputeRequeue(now, maint.Spec.ScheduledStart.Time, maint.Spec.ScheduledEnd.Time)
-	if requeueAfter > 0 {
-		rc.Result.RequeueAfter = requeueAfter
-	}
-
 	return nil
-}
-
-// ToView converts a Maintenance CRD into a domain MaintenanceView.
-func ToView(maint *sreportalv1alpha1.Maintenance) domainmaint.MaintenanceView {
-	return domainmaint.MaintenanceView{
-		Name:           maint.Name,
-		Title:          maint.Spec.Title,
-		Description:    maint.Spec.Description,
-		PortalRef:      maint.Spec.PortalRef,
-		Components:     maint.Spec.Components,
-		ScheduledStart: maint.Spec.ScheduledStart.Time,
-		ScheduledEnd:   maint.Spec.ScheduledEnd.Time,
-		AffectedStatus: string(maint.Spec.AffectedStatus),
-		Phase:          domainmaint.MaintenancePhase(maint.Status.Phase),
-	}
 }

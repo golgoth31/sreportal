@@ -67,25 +67,40 @@ func (h *BuildGraphHandler) Handle(ctx context.Context, rc *reconciler.Reconcile
 		appToNs: make(map[string]string),
 	}
 
-	listOpts := h.buildListOpts(rc.Resource.Spec.Namespaces)
+	// listOptsPerNs returns one set of ListOptions per call site invocation. A nil
+	// entry means cluster-wide (no Namespaces filter declared). client.ListOption can
+	// only carry a single InNamespace filter, so multi-namespace specs require iterating.
+	scopes := h.listScopes(rc.Resource.Spec.Namespaces)
 
 	// Fetch standard NetworkPolicies
-	var npList networkingv1.NetworkPolicyList
-	if err := h.client.List(ctx, &npList, listOpts...); err != nil {
-		return fmt.Errorf("list NetworkPolicies: %w", err)
+	var npItems []networkingv1.NetworkPolicy
+	for _, opts := range scopes {
+		var l networkingv1.NetworkPolicyList
+		if err := h.client.List(ctx, &l, opts...); err != nil {
+			return fmt.Errorf("list NetworkPolicies: %w", err)
+		}
+		npItems = append(npItems, l.Items...)
 	}
 
-	gb.buildAppToNsMap(npList.Items)
-	gb.parseIngressPolicies(npList.Items)
+	gb.buildAppToNsMap(npItems)
+	gb.parseIngressPolicies(npItems)
 
 	// Fetch FQDNNetworkPolicies (GKE CRD — silently skipped if unavailable)
-	var fqdnList unstructured.UnstructuredList
-	fqdnList.SetGroupVersionKind(schema.GroupVersionKind{
+	fqdnGVK := schema.GroupVersionKind{
 		Group: "networking.gke.io", Version: "v1alpha3", Kind: "FQDNNetworkPolicyList",
-	})
-	if err := h.client.List(ctx, &fqdnList, listOpts...); err == nil {
-		gb.parseFQDNPolicies(fqdnList.Items)
 	}
+	var fqdnItems []unstructured.Unstructured
+	for _, opts := range scopes {
+		var l unstructured.UnstructuredList
+		l.SetGroupVersionKind(fqdnGVK)
+		if err := h.client.List(ctx, &l, opts...); err != nil {
+			// CRD not installed or any other error — preserve historical best-effort behavior.
+			fqdnItems = nil
+			break
+		}
+		fqdnItems = append(fqdnItems, l.Items...)
+	}
+	gb.parseFQDNPolicies(fqdnItems)
 
 	gb.deduplicateEdges()
 
@@ -97,11 +112,18 @@ func (h *BuildGraphHandler) Handle(ctx context.Context, rc *reconciler.Reconcile
 	return nil
 }
 
-func (h *BuildGraphHandler) buildListOpts(namespaces []string) []client.ListOption {
-	if len(namespaces) == 1 {
-		return []client.ListOption{client.InNamespace(namespaces[0])}
+// listScopes returns one ListOption set per namespace the handler must query. An
+// empty input means a single cluster-wide query; otherwise one query per declared
+// namespace, because client.ListOption can carry only a single InNamespace filter.
+func (h *BuildGraphHandler) listScopes(namespaces []string) [][]client.ListOption {
+	if len(namespaces) == 0 {
+		return [][]client.ListOption{nil}
 	}
-	return nil
+	scopes := make([][]client.ListOption, 0, len(namespaces))
+	for _, ns := range namespaces {
+		scopes = append(scopes, []client.ListOption{client.InNamespace(ns)})
+	}
+	return scopes
 }
 
 // graphBuilder accumulates nodes and edges during parsing.

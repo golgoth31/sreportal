@@ -82,6 +82,7 @@ func NewAlertmanagerReconciler(
 // +kubebuilder:rbac:groups=sreportal.io,resources=alertmanagers/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=alertmanagers/finalizers,verbs=update
 // +kubebuilder:rbac:groups=sreportal.io,resources=portals,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 
 // Reconcile fetches active alerts from Alertmanager and updates the resource status.
 func (r *AlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -91,7 +92,10 @@ func (r *AlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	var resource sreportalv1alpha1.Alertmanager
 	if err := r.Get(ctx, req.NamespacedName, &resource); err != nil {
 		if client.IgnoreNotFound(err) == nil && r.alertmanagerWriter != nil {
-			_ = r.alertmanagerWriter.Delete(ctx, req.Namespace+"/"+req.Name)
+			if delErr := r.alertmanagerWriter.Delete(ctx, req.Namespace+"/"+req.Name); delErr != nil {
+				logger.Error(delErr, "failed to delete alertmanager view from read store")
+				metrics.ReadstoreWriterErrors.WithLabelValues("alertmanager", "delete").Inc()
+			}
 		}
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
@@ -100,12 +104,14 @@ func (r *AlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	// Skip reconciliation when alerts feature is disabled on the referenced portal.
 	if resource.Spec.PortalRef != "" {
-		var portal sreportalv1alpha1.Portal
-		if err := r.Get(ctx, client.ObjectKey{Name: resource.Spec.PortalRef, Namespace: resource.Namespace}, &portal); err == nil {
-			if !portal.Spec.Features.IsAlertsEnabled() {
-				logger.V(1).Info("alerts feature disabled for portal, skipping", "portal", resource.Spec.PortalRef)
-				return ctrl.Result{}, nil
-			}
+		enabled, err := portalfeatures.LookupPortalFeature(ctx, r.Client, resource.Namespace, resource.Spec.PortalRef,
+			func(f *sreportalv1alpha1.PortalFeatures) bool { return f.IsAlertsEnabled() })
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		if !enabled {
+			logger.V(1).Info("alerts feature disabled for portal, skipping", "portal", resource.Spec.PortalRef)
+			return ctrl.Result{}, nil
 		}
 	}
 
@@ -124,7 +130,10 @@ func (r *AlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	// Push alertmanager view into the ReadStore
 	if r.alertmanagerWriter != nil {
 		resourceKey := resource.Namespace + "/" + resource.Name
-		_ = r.alertmanagerWriter.Replace(ctx, resourceKey, alertmanagerToView(&resource))
+		if wErr := r.alertmanagerWriter.Replace(ctx, resourceKey, alertmanagerToView(&resource)); wErr != nil {
+			logger.Error(wErr, "failed to replace alertmanager view in read store", "key", resourceKey)
+			metrics.ReadstoreWriterErrors.WithLabelValues("alertmanager", "replace").Inc()
+		}
 	}
 
 	// Update active alerts gauge

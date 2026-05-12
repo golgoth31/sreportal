@@ -36,7 +36,7 @@ func TestReconcileComponentsHandler_CreatesComponent(t *testing.T) {
 	portal := newPortal(tPortalMain, true, nil, nil)
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
 
-	handler := NewReconcileComponentsHandler(c)
+	handler := NewReconcileComponentsHandler(c, scheme)
 	idx := &PortalIndex{
 		Main:   portal,
 		ByName: map[string]*sreportalv1alpha1.Portal{tPortalMain: portal},
@@ -76,6 +76,12 @@ func TestReconcileComponentsHandler_CreatesComponent(t *testing.T) {
 	assert.Equal(t, sreportalv1alpha1.ComponentStatusOperational, comp.Spec.Status)
 	assert.Equal(t, adapter.ManagedBySourceController, comp.Labels[adapter.ManagedByLabelKey])
 	assert.Equal(t, tPortalMain, comp.Labels[adapter.PortalAnnotationKey])
+
+	require.Len(t, comp.OwnerReferences, 1, "component should have owner reference to Portal")
+	assert.Equal(t, "Portal", comp.OwnerReferences[0].Kind)
+	assert.Equal(t, tPortalMain, comp.OwnerReferences[0].Name)
+	require.NotNil(t, comp.OwnerReferences[0].Controller)
+	assert.True(t, *comp.OwnerReferences[0].Controller)
 }
 
 func TestReconcileComponentsHandler_DefaultsStatusToOperational(t *testing.T) {
@@ -83,7 +89,7 @@ func TestReconcileComponentsHandler_DefaultsStatusToOperational(t *testing.T) {
 	portal := newPortal(tPortalMain, true, nil, nil)
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
 
-	handler := NewReconcileComponentsHandler(c)
+	handler := NewReconcileComponentsHandler(c, scheme)
 	idx := &PortalIndex{
 		Main:   portal,
 		ByName: map[string]*sreportalv1alpha1.Portal{tPortalMain: portal},
@@ -134,7 +140,7 @@ func TestReconcileComponentsHandler_UpdatesMetadataButNotStatus(t *testing.T) {
 	}
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal, existing).Build()
-	handler := NewReconcileComponentsHandler(c)
+	handler := NewReconcileComponentsHandler(c, scheme)
 	idx := &PortalIndex{
 		Main:   portal,
 		ByName: map[string]*sreportalv1alpha1.Portal{tPortalMain: portal},
@@ -196,7 +202,7 @@ func TestReconcileComponentsHandler_DeletesOrphanedAutoManaged(t *testing.T) {
 	}
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal, orphan).Build()
-	handler := NewReconcileComponentsHandler(c)
+	handler := NewReconcileComponentsHandler(c, scheme)
 	idx := &PortalIndex{
 		Main:   portal,
 		ByName: map[string]*sreportalv1alpha1.Portal{tPortalMain: portal},
@@ -242,7 +248,7 @@ func TestReconcileComponentsHandler_DoesNotDeleteManuallyCreatedComponents(t *te
 	}
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal, manual).Build()
-	handler := NewReconcileComponentsHandler(c)
+	handler := NewReconcileComponentsHandler(c, scheme)
 	idx := &PortalIndex{
 		Main:   portal,
 		ByName: map[string]*sreportalv1alpha1.Portal{tPortalMain: portal},
@@ -271,7 +277,7 @@ func TestReconcileComponentsHandler_SkipsWhenStatusPageDisabled(t *testing.T) {
 	portal := newPortal(tPortalMain, true, nil, &sreportalv1alpha1.PortalFeatures{StatusPage: &disabled})
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
 
-	handler := NewReconcileComponentsHandler(c)
+	handler := NewReconcileComponentsHandler(c, scheme)
 	idx := &PortalIndex{
 		Main:   portal,
 		ByName: map[string]*sreportalv1alpha1.Portal{tPortalMain: portal},
@@ -302,7 +308,7 @@ func TestReconcileComponentsHandler_EmptyRequests(t *testing.T) {
 	portal := newPortal(tPortalMain, true, nil, nil)
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
 
-	handler := NewReconcileComponentsHandler(c)
+	handler := NewReconcileComponentsHandler(c, scheme)
 
 	rc := &reconciler.ReconcileContext[struct{}, ChainData]{
 		Data: ChainData{

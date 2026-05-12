@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -102,10 +103,14 @@ func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 	}
 	meta.SetStatusCondition(&ir.Status.Conditions, readyCondition)
 
-	logger.V(1).Info("patching status", "images", imageCount, "upgrades", upgradeCount, "mutated", mutatedCount, "injected", injectedCount)
+	if equality.Semantic.DeepEqual(base.Status, ir.Status) {
+		logger.V(1).Info("status unchanged, skipping patch")
+	} else {
+		logger.V(1).Info("patching status", "images", imageCount, "upgrades", upgradeCount, "mutated", mutatedCount, "injected", injectedCount)
 
-	if err := h.client.Status().Patch(ctx, ir, client.MergeFrom(base)); err != nil {
-		return fmt.Errorf("patch ImageRegistry status: %w", err)
+		if err := h.client.Status().Patch(ctx, ir, client.MergeFrom(base)); err != nil {
+			return fmt.Errorf("patch ImageRegistry status: %w", err)
+		}
 	}
 
 	portal := spec.PortalRef

@@ -1,5 +1,7 @@
 package dns
 
 const (
-	tNsDefault = "default"
+	tNsDefault    = "default"
+	tPortalMain   = "main"
+	tPortalActual = "actual-portal"
 )

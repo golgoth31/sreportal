@@ -90,7 +90,10 @@ func (r *ReleaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		if apierrors.IsNotFound(err) {
 			logger.V(1).Info("release CR deleted, removing from store", "day", day, "key", resourceKey)
 			if r.releaseWriter != nil {
-				_ = r.releaseWriter.Delete(ctx, resourceKey)
+				if delErr := r.releaseWriter.Delete(ctx, resourceKey); delErr != nil {
+					logger.Error(delErr, "failed to delete release entry from read store", "key", resourceKey)
+					metrics.ReadstoreWriterErrors.WithLabelValues("release", "delete").Inc()
+				}
 			}
 			return ctrl.Result{}, nil
 		}
