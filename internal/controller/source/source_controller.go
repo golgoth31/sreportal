@@ -110,7 +110,7 @@ func NewSourceReconciler(
 		sourcechain.NewCollectEndpointsHandler(r, r),
 		sourcechain.NewDeduplicateHandler(sourcePriority),
 		sourcechain.NewReconcileDNSRecordsHandler(c),
-		sourcechain.NewReconcileComponentsHandler(c),
+		sourcechain.NewReconcileComponentsHandler(c, c.Scheme()),
 		sourcechain.NewDeleteOrphanedHandler(c, r),
 	)
 
