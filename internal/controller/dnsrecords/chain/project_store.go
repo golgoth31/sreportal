@@ -14,21 +14,49 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package dnsrecords
+package chain
 
 import (
+	"context"
 	"slices"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/adapter"
 	"github.com/golgoth31/sreportal/internal/config"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
+	"github.com/golgoth31/sreportal/internal/log"
+	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
-// dnsRecordToFQDNViews converts a DNSRecord resource's status endpoints into a
+// ProjectStoreHandler converts a DNSRecord's endpoints into FQDN views and pushes
+// them into the FQDN read store. A nil writer is a no-op.
+type ProjectStoreHandler struct {
+	fqdnWriter   domaindns.FQDNWriter
+	groupMapping *config.GroupMappingConfig
+}
+
+// NewProjectStoreHandler creates a new ProjectStoreHandler.
+func NewProjectStoreHandler(w domaindns.FQDNWriter, groupMapping *config.GroupMappingConfig) *ProjectStoreHandler {
+	return &ProjectStoreHandler{fqdnWriter: w, groupMapping: groupMapping}
+}
+
+// Handle implements reconciler.Handler.
+func (h *ProjectStoreHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.DNSRecord, ChainData]) error {
+	if h.fqdnWriter == nil {
+		return nil
+	}
+
+	views := DNSRecordToFQDNViews(rc.Resource, h.groupMapping)
+	if err := h.fqdnWriter.Replace(ctx, rc.Data.ResourceKey, views); err != nil {
+		log.FromContext(ctx).Error(err, "failed to update FQDN read store")
+	}
+	return nil
+}
+
+// DNSRecordToFQDNViews converts a DNSRecord resource's status endpoints into a
 // deduplicated slice of FQDNViews suitable for the read store. It reuses the
 // adapter layer for group mapping and sets PortalName from spec.PortalRef.
-func dnsRecordToFQDNViews(
+func DNSRecordToFQDNViews(
 	record *sreportalv1alpha1.DNSRecord,
 	groupMapping *config.GroupMappingConfig,
 ) []domaindns.FQDNView {
