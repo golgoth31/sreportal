@@ -82,6 +82,7 @@ func NewAlertmanagerReconciler(
 // +kubebuilder:rbac:groups=sreportal.io,resources=alertmanagers/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=alertmanagers/finalizers,verbs=update
 // +kubebuilder:rbac:groups=sreportal.io,resources=portals,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 
 // Reconcile fetches active alerts from Alertmanager and updates the resource status.
 func (r *AlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
