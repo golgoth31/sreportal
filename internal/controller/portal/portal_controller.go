@@ -105,11 +105,17 @@ func (r *PortalReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if err := r.Get(ctx, req.NamespacedName, &portal); err != nil {
 		if client.IgnoreNotFound(err) == nil {
 			if r.portalWriter != nil {
-				_ = r.portalWriter.Delete(ctx, req.Namespace+"/"+req.Name)
+				if delErr := r.portalWriter.Delete(ctx, req.Namespace+"/"+req.Name); delErr != nil {
+					logger.Error(delErr, "failed to delete portal view from read store")
+					metrics.ReadstoreWriterErrors.WithLabelValues("portal", "delete").Inc()
+				}
 			}
 			if r.fqdnWriter != nil {
 				remoteDNSKey := req.Namespace + "/" + portalchain.RemoteDNSName(req.Name)
-				_ = r.fqdnWriter.Delete(ctx, remoteDNSKey)
+				if delErr := r.fqdnWriter.Delete(ctx, remoteDNSKey); delErr != nil {
+					logger.Error(delErr, "failed to delete remote FQDN view from read store", "key", remoteDNSKey)
+					metrics.ReadstoreWriterErrors.WithLabelValues("portal", "delete").Inc()
+				}
 			}
 		}
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -138,7 +144,10 @@ func (r *PortalReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	// Push portal view into the ReadStore
 	if r.portalWriter != nil {
 		resourceKey := portal.Namespace + "/" + portal.Name
-		_ = r.portalWriter.Replace(ctx, resourceKey, portalToView(&portal))
+		if wErr := r.portalWriter.Replace(ctx, resourceKey, portalToView(&portal)); wErr != nil {
+			logger.Error(wErr, "failed to replace portal view in read store", "key", resourceKey)
+			metrics.ReadstoreWriterErrors.WithLabelValues("portal", "replace").Inc()
+		}
 	}
 
 	// Recount all portals by type only from the main portal reconciliation

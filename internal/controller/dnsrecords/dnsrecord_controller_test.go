@@ -57,6 +57,22 @@ var _ = Describe("DNSRecord Controller", func() {
 		interval = time.Millisecond * 250
 	)
 
+	// Portals referenced by DNSRecord CRs in this suite. They must exist for
+	// the feature-gate lookup to resolve (missing portal => feature disabled).
+	BeforeEach(func() {
+		ctx := context.Background()
+		for _, name := range []string{tPortalMain, tPortalMy} {
+			nn := types.NamespacedName{Name: name, Namespace: tNsDefault}
+			p := &sreportalv1alpha1.Portal{}
+			if err := k8sClient.Get(ctx, nn, p); err != nil && errors.IsNotFound(err) {
+				Expect(k8sClient.Create(ctx, &sreportalv1alpha1.Portal{
+					ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: tNsDefault},
+					Spec:       sreportalv1alpha1.PortalSpec{Title: name},
+				})).To(Succeed())
+			}
+		}
+	})
+
 	Context("When reconciling a DNSRecord with endpoints", func() {
 		const recordName = "test-dnsrecord-projection"
 		ctx := context.Background()

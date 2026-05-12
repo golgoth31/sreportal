@@ -32,6 +32,7 @@ import (
 	portalfeatures "github.com/golgoth31/sreportal/internal/controller/portal/features"
 	domainrelease "github.com/golgoth31/sreportal/internal/domain/release"
 	"github.com/golgoth31/sreportal/internal/log"
+	"github.com/golgoth31/sreportal/internal/metrics"
 )
 
 const releaseRequeueInterval = 12 * time.Hour
@@ -82,9 +83,9 @@ func (r *ReleaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		if apierrors.IsNotFound(err) {
 			logger.V(1).Info("release CR deleted, removing from store", "day", day, "key", resourceKey)
 			if r.releaseWriter != nil {
-				if err := r.releaseWriter.Delete(ctx, resourceKey); err != nil {
-					logger.Error(err, "delete release from readstore", "key", resourceKey)
-					return ctrl.Result{}, fmt.Errorf("delete release from readstore: %w", err)
+				if delErr := r.releaseWriter.Delete(ctx, resourceKey); delErr != nil {
+					logger.Error(delErr, "failed to delete release entry from read store", "key", resourceKey)
+					metrics.ReadstoreWriterErrors.WithLabelValues("release", "delete").Inc()
 				}
 			}
 			return ctrl.Result{}, nil
