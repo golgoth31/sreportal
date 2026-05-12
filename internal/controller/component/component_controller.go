@@ -82,7 +82,10 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if err := r.Get(ctx, req.NamespacedName, &comp); err != nil {
 		if apierrors.IsNotFound(err) {
 			if r.componentWriter != nil {
-				_ = r.componentWriter.Delete(ctx, req.Namespace+"/"+req.Name)
+				if delErr := r.componentWriter.Delete(ctx, req.Namespace+"/"+req.Name); delErr != nil {
+					logger.Error(delErr, "failed to delete component view from read store")
+					metrics.ReadstoreWriterErrors.WithLabelValues("component", "delete").Inc()
+				}
 			}
 			return ctrl.Result{}, nil
 		}

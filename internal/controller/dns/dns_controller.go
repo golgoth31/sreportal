@@ -118,12 +118,14 @@ func (r *DNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	// Cleanup of read store entries and DNSRecord resources is handled by the
 	// portal controller when the toggle changes.
 	if resource.Spec.PortalRef != "" {
-		var portal sreportalv1alpha1.Portal
-		if err := r.Get(ctx, client.ObjectKey{Name: resource.Spec.PortalRef, Namespace: resource.Namespace}, &portal); err == nil {
-			if !portal.Spec.Features.IsDNSEnabled() {
-				logger.V(1).Info("DNS feature disabled for portal, skipping", "portal", resource.Spec.PortalRef)
-				return ctrl.Result{}, nil
-			}
+		enabled, err := portalfeatures.LookupPortalFeature(ctx, r.Client, resource.Namespace, resource.Spec.PortalRef,
+			func(f *sreportalv1alpha1.PortalFeatures) bool { return f.IsDNSEnabled() })
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		if !enabled {
+			logger.V(1).Info("DNS feature disabled for portal, skipping", "portal", resource.Spec.PortalRef)
+			return ctrl.Result{}, nil
 		}
 	}
 

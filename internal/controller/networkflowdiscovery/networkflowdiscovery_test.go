@@ -44,7 +44,18 @@ var _ = Describe("NetworkFlowDiscovery Controller", func() {
 			Namespace: tNsDefault,
 		}
 
+		mainPortalNN := types.NamespacedName{Name: "main", Namespace: tNsDefault}
+
 		BeforeEach(func() {
+			By("creating the referenced Portal CR")
+			portal := &sreportalv1alpha1.Portal{}
+			if err := k8sClient.Get(ctx, mainPortalNN, portal); err != nil && errors.IsNotFound(err) {
+				Expect(k8sClient.Create(ctx, &sreportalv1alpha1.Portal{
+					ObjectMeta: metav1.ObjectMeta{Name: mainPortalNN.Name, Namespace: mainPortalNN.Namespace},
+					Spec:       sreportalv1alpha1.PortalSpec{Title: "Main"},
+				})).To(Succeed())
+			}
+
 			By("creating the custom resource for the Kind NetworkFlowDiscovery")
 			nfd := &sreportalv1alpha1.NetworkFlowDiscovery{}
 			err := k8sClient.Get(ctx, typeNamespacedName, nfd)
@@ -70,6 +81,13 @@ var _ = Describe("NetworkFlowDiscovery Controller", func() {
 				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
 				Eventually(func() bool {
 					return errors.IsNotFound(k8sClient.Get(ctx, typeNamespacedName, resource))
+				}, 5*time.Second, 100*time.Millisecond).Should(BeTrue())
+			}
+			portal := &sreportalv1alpha1.Portal{}
+			if err := k8sClient.Get(ctx, mainPortalNN, portal); err == nil {
+				Expect(k8sClient.Delete(ctx, portal)).To(Succeed())
+				Eventually(func() bool {
+					return errors.IsNotFound(k8sClient.Get(ctx, mainPortalNN, portal))
 				}, 5*time.Second, 100*time.Millisecond).Should(BeTrue())
 			}
 		})

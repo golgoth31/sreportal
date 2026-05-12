@@ -72,7 +72,10 @@ func (r *MaintenanceReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	if err := r.Get(ctx, req.NamespacedName, &maint); err != nil {
 		if apierrors.IsNotFound(err) {
 			if r.maintenanceWriter != nil {
-				_ = r.maintenanceWriter.Delete(ctx, req.Namespace+"/"+req.Name)
+				if delErr := r.maintenanceWriter.Delete(ctx, req.Namespace+"/"+req.Name); delErr != nil {
+					logger.Error(delErr, "failed to delete maintenance view from read store")
+					metrics.ReadstoreWriterErrors.WithLabelValues("maintenance", "delete").Inc()
+				}
 			}
 			return ctrl.Result{}, nil
 		}

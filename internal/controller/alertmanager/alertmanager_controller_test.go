@@ -52,7 +52,7 @@ var _ = Describe("Alertmanager Controller", func() {
 
 		typeNamespacedName := types.NamespacedName{
 			Name:      resourceName,
-			Namespace: "default",
+			Namespace: tNsDefault,
 		}
 		alertmanager := &sreportalv1alpha1.Alertmanager{}
 
@@ -61,10 +61,21 @@ var _ = Describe("Alertmanager Controller", func() {
 		// so Create/Get/Patch would be inconsistent. Use directClient for all operations.
 		var directClient client.Client
 
+		portalNN := types.NamespacedName{Name: "main", Namespace: tNsDefault}
+
 		BeforeEach(func() {
 			var err error
 			directClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
 			Expect(err).NotTo(HaveOccurred())
+
+			By("creating the referenced Portal CR")
+			portal := &sreportalv1alpha1.Portal{}
+			if err := directClient.Get(ctx, portalNN, portal); err != nil && errors.IsNotFound(err) {
+				Expect(directClient.Create(ctx, &sreportalv1alpha1.Portal{
+					ObjectMeta: metav1.ObjectMeta{Name: portalNN.Name, Namespace: portalNN.Namespace},
+					Spec:       sreportalv1alpha1.PortalSpec{Title: "Main"},
+				})).To(Succeed())
+			}
 
 			By("creating the custom resource for the Kind Alertmanager")
 			err = directClient.Get(ctx, typeNamespacedName, alertmanager)
@@ -72,7 +83,7 @@ var _ = Describe("Alertmanager Controller", func() {
 				resource := &sreportalv1alpha1.Alertmanager{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
-						Namespace: "default",
+						Namespace: tNsDefault,
 					},
 					Spec: sreportalv1alpha1.AlertmanagerSpec{
 						PortalRef: "main",
@@ -91,6 +102,12 @@ var _ = Describe("Alertmanager Controller", func() {
 
 			By("Cleanup the specific resource instance Alertmanager")
 			Expect(directClient.Delete(ctx, resource)).To(Succeed())
+
+			By("Cleanup the referenced Portal CR")
+			portal := &sreportalv1alpha1.Portal{}
+			if err := directClient.Get(ctx, portalNN, portal); err == nil {
+				Expect(directClient.Delete(ctx, portal)).To(Succeed())
+			}
 		})
 
 		It("should successfully reconcile and populate status with alerts", func() {

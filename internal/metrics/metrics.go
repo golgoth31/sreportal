@@ -74,6 +74,20 @@ var (
 		[]string{subsystemController, labelHandler},
 	)
 
+	// ReadstoreWriterErrors counts errors when projecting reconciled state into
+	// in-memory read stores. These errors do not fail the reconcile, but are
+	// recorded so operators can spot drift between CRD state and the read path
+	// served to gRPC/MCP.
+	ReadstoreWriterErrors = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: subsystemController,
+			Name:      "readstore_writer_errors_total",
+			Help:      "Total number of read-store writer errors per controller and operation (replace, delete).",
+		},
+		[]string{subsystemController, "operation"},
+	)
+
 	// DNSFQDNsTotal tracks the total number of FQDNs across all DNS resources.
 	DNSFQDNsTotal = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -468,6 +482,7 @@ func init() {
 		// Controller
 		ReconcileTotal,
 		ReconcileDuration,
+		ReadstoreWriterErrors,
 		// DNS
 		DNSFQDNsTotal,
 		DNSGroupsTotal,
