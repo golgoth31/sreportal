@@ -80,7 +80,7 @@ var _ = Describe("BuildGraphHandler", func() {
 				},
 			}
 			webIngressPolicy := &networkingv1.NetworkPolicy{
-				ObjectMeta: metav1.ObjectMeta{Name: "web-ingress-policy", Namespace: tCore},
+				ObjectMeta: metav1.ObjectMeta{Name: tWebIngressPolicy, Namespace: tCore},
 				Spec: networkingv1.NetworkPolicySpec{
 					PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
 					Ingress: []networkingv1.NetworkPolicyIngressRule{
@@ -90,7 +90,7 @@ var _ = Describe("BuildGraphHandler", func() {
 									PodSelector: &metav1.LabelSelector{
 										MatchExpressions: []metav1.LabelSelectorRequirement{
 											{
-												Key:      "app.kubernetes.io/name",
+												Key:      tLabelAppKey,
 												Operator: metav1.LabelSelectorOpIn,
 												Values:   []string{tNameAPI},
 											},
@@ -130,7 +130,7 @@ var _ = Describe("BuildGraphHandler", func() {
 				},
 			}
 			webIngressPolicy := &networkingv1.NetworkPolicy{
-				ObjectMeta: metav1.ObjectMeta{Name: "web-ingress-policy", Namespace: "frontend"},
+				ObjectMeta: metav1.ObjectMeta{Name: tWebIngressPolicy, Namespace: "frontend"},
 				Spec: networkingv1.NetworkPolicySpec{
 					PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
 					Ingress: []networkingv1.NetworkPolicyIngressRule{
@@ -140,7 +140,7 @@ var _ = Describe("BuildGraphHandler", func() {
 									PodSelector: &metav1.LabelSelector{
 										MatchExpressions: []metav1.LabelSelectorRequirement{
 											{
-												Key:      "app.kubernetes.io/name",
+												Key:      tLabelAppKey,
 												Operator: metav1.LabelSelectorOpIn,
 												Values:   []string{tNameAPI},
 											},
@@ -164,6 +164,49 @@ var _ = Describe("BuildGraphHandler", func() {
 
 			Expect(rc.Data.Edges).To(HaveLen(1))
 			Expect(rc.Data.Edges[0].EdgeType).To(Equal("cross-ns"))
+		})
+
+		It("should restrict list to declared namespaces when multiple are set", func() {
+			// Three namespaces: ns-a, ns-b, ns-c. Spec restricts to [ns-a, ns-b].
+			// Each namespace has its own web-ingress-policy allowing ingress from api.
+			policyIn := func(ns string) *networkingv1.NetworkPolicy {
+				return &networkingv1.NetworkPolicy{
+					ObjectMeta: metav1.ObjectMeta{Name: tWebIngressPolicy, Namespace: ns},
+					Spec: networkingv1.NetworkPolicySpec{
+						PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
+						Ingress: []networkingv1.NetworkPolicyIngressRule{
+							{
+								From: []networkingv1.NetworkPolicyPeer{
+									{
+										PodSelector: &metav1.LabelSelector{
+											MatchExpressions: []metav1.LabelSelectorRequirement{
+												{
+													Key:      tLabelAppKey,
+													Operator: metav1.LabelSelectorOpIn,
+													Values:   []string{tNameAPI},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+			}
+
+			k8sClient := fake.NewClientBuilder().
+				WithScheme(newScheme()).
+				WithObjects(policyIn("ns-a"), policyIn("ns-b"), policyIn("ns-c")).
+				Build()
+			handler := nfdchain.NewBuildGraphHandler(k8sClient)
+			rc := newRC(false, "ns-a", "ns-b")
+
+			Expect(handler.Handle(context.Background(), rc)).To(Succeed())
+
+			for _, n := range rc.Data.Nodes {
+				Expect(n.Namespace).NotTo(Equal("ns-c"), "ns-c must not leak into the graph")
+			}
 		})
 
 		It("should detect cron edges from basename selector", func() {
