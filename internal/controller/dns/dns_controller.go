@@ -70,7 +70,7 @@ func NewDNSReconciler(c client.Client, scheme *runtime.Scheme, disableDNSCheck b
 	}
 	handlers = append(handlers,
 		dnschain.NewUpdateStatusHandler(c),
-		dnschain.NewReconcileManualComponentsHandler(c),
+		dnschain.NewReconcileManualComponentsHandler(c, scheme),
 	)
 
 	return &DNSReconciler{

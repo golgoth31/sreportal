@@ -71,6 +71,8 @@ func (r *DNSRecordReconciler) SetFQDNWriter(w domaindns.FQDNWriter) {
 	r.fqdnWriter = w
 }
 
+// +kubebuilder:rbac:groups=sreportal.io,resources=dnsrecords,verbs=get;list;watch
+// +kubebuilder:rbac:groups=sreportal.io,resources=dnsrecords/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=portals,verbs=get;list;watch
 
 // Reconcile resolves DNS for each endpoint, persists SyncStatus in the CR,

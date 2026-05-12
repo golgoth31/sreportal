@@ -136,12 +136,10 @@ func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 	inv := rc.Resource
 
 	if inv.Status.ObservedGeneration != inv.GetGeneration() {
+		prev := inv.DeepCopy()
 		inv.Status.ObservedGeneration = inv.GetGeneration()
-		if err := h.client.Status().Update(ctx, inv); err != nil {
-			return fmt.Errorf("update observedGeneration: %w", err)
-		}
-		if err := h.client.Get(ctx, types.NamespacedName{Namespace: inv.Namespace, Name: inv.Name}, inv); err != nil {
-			return fmt.Errorf("re-fetch image inventory: %w", err)
+		if err := h.client.Status().Patch(ctx, inv, client.MergeFrom(prev)); err != nil {
+			return fmt.Errorf("patch observedGeneration: %w", err)
 		}
 	}
 

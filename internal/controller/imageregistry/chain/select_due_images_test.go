@@ -180,6 +180,81 @@ var _ = Describe("SelectDueImagesHandler", func() {
 		})
 	})
 
+	Context("post-restart with deterministic jitter (all deferred)", func() {
+		It("leaves DueImages empty and requeues at the minimum positive delay", func() {
+			old := time.Now().Add(-25 * time.Hour)
+			// 3 due out of 4 total = 75% → catch-up jitter applies.
+			ir := &sreportalv1alpha1.ImageRegistry{
+				Spec: sreportalv1alpha1.ImageRegistrySpec{
+					Host: tRegistryGhcr, PortalRef: tPortalMain, Namespace: tNsDefault,
+					Images: makeSpec("a", "b", "c", "d"),
+				},
+				Status: sreportalv1alpha1.ImageRegistryStatus{
+					Images: []sreportalv1alpha1.ImageRegistryStatusEntry{
+						makeStatus("a", old),
+						makeStatus("b", old),
+						makeStatus("c", old),
+						makeStatus("d", time.Now().Add(-1*time.Hour)),
+					},
+				},
+			}
+
+			// Strictly positive, strictly increasing delays. None equals zero,
+			// so every due image should be deferred and DueImages must be empty.
+			delays := []time.Duration{30 * time.Second, 10 * time.Second, 20 * time.Second}
+			var i int
+			jitter := func(_ time.Duration) time.Duration {
+				d := delays[i]
+				i++
+				return d
+			}
+			h := chain.NewSelectDueImagesHandlerWithJitter(jitter)
+
+			rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageRegistry, chain.ChainData]{Resource: ir}
+			Expect(h.Handle(ctx, rc)).To(Succeed())
+			Expect(rc.Data.DueImages).To(BeEmpty())
+			// RequeueAfter must be the minimum of the three deferred delays,
+			// not just the first one observed nor the last one.
+			Expect(rc.Data.RequeueAfter).To(Equal(10 * time.Second))
+		})
+	})
+
+	Context("post-restart with deterministic jitter (mixed zero and non-zero)", func() {
+		It("processes zero-delay images and requeues at the minimum positive delay among the rest", func() {
+			old := time.Now().Add(-25 * time.Hour)
+			ir := &sreportalv1alpha1.ImageRegistry{
+				Spec: sreportalv1alpha1.ImageRegistrySpec{
+					Host: tRegistryGhcr, PortalRef: tPortalMain, Namespace: tNsDefault,
+					Images: makeSpec("a", "b", "c", "d"),
+				},
+				Status: sreportalv1alpha1.ImageRegistryStatus{
+					Images: []sreportalv1alpha1.ImageRegistryStatusEntry{
+						makeStatus("a", old),
+						makeStatus("b", old),
+						makeStatus("c", old),
+						makeStatus("d", time.Now().Add(-1*time.Hour)),
+					},
+				},
+			}
+
+			// 3 due images: 1st → 0 (process), 2nd → 45s (defer), 3rd → 15s (defer).
+			// Minimum deferred delay = 15s.
+			delays := []time.Duration{0, 45 * time.Second, 15 * time.Second}
+			var i int
+			jitter := func(_ time.Duration) time.Duration {
+				d := delays[i]
+				i++
+				return d
+			}
+			h := chain.NewSelectDueImagesHandlerWithJitter(jitter)
+
+			rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageRegistry, chain.ChainData]{Resource: ir}
+			Expect(h.Handle(ctx, rc)).To(Succeed())
+			Expect(rc.Data.DueImages).To(HaveLen(1))
+			Expect(rc.Data.RequeueAfter).To(Equal(15 * time.Second))
+		})
+	})
+
 	Context("empty spec", func() {
 		It("returns without error and no due images", func() {
 			ir := &sreportalv1alpha1.ImageRegistry{

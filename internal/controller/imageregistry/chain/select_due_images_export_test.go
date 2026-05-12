@@ -14,18 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package chain_test
+package chain
 
-const (
-	tNsDefault       = "default"
-	tCore            = "core"
-	tNameAPI         = "api"
-	tNameTestNFD     = "test-nfd"
-	tNameNFDNodes    = "test-nfd-nodes"
-	tNameNFDEdges    = "test-nfd-edges"
-	tOldVal          = "old"
-	tNodeTypeService = "service"
+import "time"
 
-	tWebIngressPolicy = "web-ingress-policy"
-	tLabelAppKey      = "app.kubernetes.io/name"
-)
+// NewSelectDueImagesHandlerWithJitter constructs a handler with a custom jitter
+// function. Defined in a _test.go file so it is not part of the public API;
+// intended for tests that need deterministic delays.
+func NewSelectDueImagesHandlerWithJitter(jitter func(max time.Duration) time.Duration) *SelectDueImagesHandler {
+	return &SelectDueImagesHandler{jitter: jitter}
+}

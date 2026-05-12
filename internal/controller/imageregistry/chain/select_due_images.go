@@ -17,8 +17,10 @@ limitations under the License.
 package chain
 
 import (
+	"cmp"
 	"context"
 	"math/rand/v2"
+	"slices"
 	"time"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
@@ -42,11 +44,20 @@ const (
 // assigned a random delay in [0, 24h]. Images with delay > 0 are skipped this
 // cycle; the handler sets ChainData.RequeueAfter to the minimum remaining delay
 // so the controller wakes up early enough to handle the next batch.
-type SelectDueImagesHandler struct{}
+type SelectDueImagesHandler struct {
+	// jitter returns the per-image delay during catch-up. Injected for tests; the
+	// production default samples uniformly from [0, max).
+	jitter func(max time.Duration) time.Duration
+}
 
 // NewSelectDueImagesHandler constructs a SelectDueImagesHandler.
 func NewSelectDueImagesHandler() *SelectDueImagesHandler {
-	return &SelectDueImagesHandler{}
+	return &SelectDueImagesHandler{
+		jitter: func(max time.Duration) time.Duration {
+			// rand.N is available in math/rand/v2 (Go 1.22+).
+			return rand.N(max)
+		},
+	}
 }
 
 // Handle implements reconciler.Handler.
@@ -108,29 +119,40 @@ func (h *SelectDueImagesHandler) Handle(ctx context.Context, rc *reconciler.Reco
 	// Catch-up jitter: assign random delay to each candidate.
 	logger.V(1).Info("applying catch-up jitter", "dueCount", dueCount, "total", total)
 
-	var minDelay *time.Duration
+	type deferredImage struct {
+		delay time.Duration
+		due   DueImage
+	}
+
 	rc.Data.DueImages = make([]DueImage, 0, dueCount)
+	deferredList := make([]deferredImage, 0, dueCount)
 
 	for _, c := range candidates {
-		// rand.N is available in math/rand/v2 (Go 1.22+).
-		delay := rand.N(checkInterval)
+		delay := h.jitter(checkInterval)
 		if delay == 0 {
 			// Process immediately.
 			rc.Data.DueImages = append(rc.Data.DueImages, c.due)
-		} else if minDelay == nil || delay < *minDelay {
-			// Skip this cycle; track the earliest wake-up among deferred images.
-			minDelay = &delay
+			continue
 		}
+		// Skip this cycle; track this image and its delay so we can pick the
+		// earliest wake-up across the whole deferred set (rather than only
+		// remembering the minimum delay and dropping the rest of the data).
+		deferredList = append(deferredList, deferredImage{delay: delay, due: c.due})
 	}
 
-	// If some images were deferred, ensure we requeue before their delay expires.
-	deferred := dueCount - len(rc.Data.DueImages)
-	if deferred > 0 && minDelay != nil {
-		rc.Data.RequeueAfter = *minDelay
-		logger.V(1).Info("deferred images due to catch-up jitter", "deferred", deferred, "requeueAfter", *minDelay)
+	// If some images were deferred, ensure we requeue before the earliest
+	// deferred delay expires. The deferred images themselves are not stored in
+	// DueImages this cycle — they will be re-selected on the next reconcile
+	// because their Status.LastCheckedAt was not updated.
+	if len(deferredList) > 0 {
+		slices.SortFunc(deferredList, func(a, b deferredImage) int {
+			return cmp.Compare(a.delay, b.delay)
+		})
+		rc.Data.RequeueAfter = deferredList[0].delay
+		logger.V(1).Info("deferred images due to catch-up jitter", "deferred", len(deferredList), "requeueAfter", deferredList[0].delay)
 	}
 
-	logger.V(1).Info("images selected after jitter", "processing", len(rc.Data.DueImages), "deferred", deferred)
+	logger.V(1).Info("images selected after jitter", "processing", len(rc.Data.DueImages), "deferred", len(deferredList))
 	return nil
 }
 
