@@ -18,6 +18,7 @@ package release_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -27,12 +28,34 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	releasectrl "github.com/golgoth31/sreportal/internal/controller/release"
+	domainrelease "github.com/golgoth31/sreportal/internal/domain/release"
 	releasereadstore "github.com/golgoth31/sreportal/internal/readstore/release"
 )
+
+// errReleaseWriter is a test double for domainrelease.ReleaseWriter that
+// returns a configured error from Delete. Replace delegates to an inner store
+// so the rest of the controller logic keeps working when needed.
+type errReleaseWriter struct {
+	inner     domainrelease.ReleaseWriter
+	deleteErr error
+}
+
+func (e *errReleaseWriter) Replace(ctx context.Context, key string, entries []domainrelease.EntryView) error {
+	if e.inner == nil {
+		return nil
+	}
+	return e.inner.Replace(ctx, key, entries)
+}
+
+func (e *errReleaseWriter) Delete(ctx context.Context, key string) error {
+	return e.deleteErr
+}
 
 const (
 	defaultTTL = 30 * 24 * time.Hour
@@ -216,6 +239,48 @@ func TestReleaseReconciler_Reconcile_PreservesNonExpiredCR(t *testing.T) {
 	var rel sreportalv1alpha1.Release
 	err = c.Get(ctx, types.NamespacedName{Name: crName, Namespace: tNsDefault}, &rel)
 	require.NoError(t, err)
+}
+
+func TestReleaseReconciler_Reconcile_DeleteExpiredCR_PropagatesError(t *testing.T) {
+	existing := &sreportalv1alpha1.Release{
+		ObjectMeta: metav1.ObjectMeta{Name: tNameRelease, Namespace: tNsDefault},
+		Spec:       sreportalv1alpha1.ReleaseSpec{PortalRef: testPortal},
+	}
+	deleteErr := errors.New("transient delete failure")
+	c := fake.NewClientBuilder().
+		WithScheme(newReleaseScheme()).
+		WithObjects(testPortalCR(), existing).
+		WithInterceptorFuncs(interceptor.Funcs{
+			Delete: func(ctx context.Context, _ client.WithWatch, _ client.Object, _ ...client.DeleteOption) error {
+				return deleteErr
+			},
+		}).
+		Build()
+	store := releasereadstore.NewReleaseStore()
+	r := releasectrl.NewReleaseReconciler(c, defaultTTL)
+	r.SetReleaseWriter(store)
+
+	_, err := r.Reconcile(context.Background(), ctrl.Request{
+		NamespacedName: types.NamespacedName{Name: tNameRelease, Namespace: tNsDefault},
+	})
+	require.Error(t, err)
+	assert.ErrorIs(t, err, deleteErr)
+}
+
+func TestReleaseReconciler_Reconcile_DeletedCR_StoreDeleteError_Propagated(t *testing.T) {
+	c := fake.NewClientBuilder().WithScheme(newReleaseScheme()).Build()
+	deleteErr := errors.New("store delete failure")
+	writer := &errReleaseWriter{inner: releasereadstore.NewReleaseStore(), deleteErr: deleteErr}
+
+	r := releasectrl.NewReleaseReconciler(c, defaultTTL)
+	r.SetReleaseWriter(writer)
+	day := time.Now().UTC().Add(-24 * time.Hour).Format("2006-01-02")
+
+	_, err := r.Reconcile(context.Background(), ctrl.Request{
+		NamespacedName: types.NamespacedName{Name: "release-" + day, Namespace: tNsDefault},
+	})
+	require.Error(t, err)
+	assert.ErrorIs(t, err, deleteErr)
 }
 
 func TestReleaseReconciler_Reconcile_PortalNotFound_ReturnsError(t *testing.T) {

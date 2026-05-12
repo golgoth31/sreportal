@@ -48,6 +48,9 @@ func (h *HealthCheckRemoteHandler) Handle(ctx context.Context, rc *reconciler.Re
 	if portal.Spec.Remote == nil {
 		return nil
 	}
+	if rc.Data.RemoteClient == nil {
+		return nil
+	}
 
 	remoteLog := log.Default().WithName("portal").WithName("remote")
 	remote := portal.Spec.Remote

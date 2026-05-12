@@ -73,7 +73,11 @@ func (h *CollectEndpointsHandler) Handle(ctx context.Context, rc *reconciler.Rec
 			logger.Error(err, "failed to get endpoints from source",
 				"sourceType", ts.Type, "consecutiveFailures", count)
 			metrics.SourceErrorsTotal.WithLabelValues(string(ts.Type)).Inc()
-			if count >= maxSourceConsecutiveFailures {
+			// idx.Main can be nil when local portals exist but none has spec.main=true
+			// (see BuildPortalIndexHandler). Skip the degraded-mark in that case —
+			// there is no main DNSRecord to anchor the NotReady condition on, and
+			// MarkDegraded dereferences portal.Namespace/Name unconditionally.
+			if count >= maxSourceConsecutiveFailures && idx.Main != nil {
 				h.failureTracker.MarkDegraded(ctx, idx.Main, ts.Type, err, count)
 			}
 			continue
