@@ -82,7 +82,10 @@ func (r *ReleaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		if apierrors.IsNotFound(err) {
 			logger.V(1).Info("release CR deleted, removing from store", "day", day, "key", resourceKey)
 			if r.releaseWriter != nil {
-				_ = r.releaseWriter.Delete(ctx, resourceKey)
+				if err := r.releaseWriter.Delete(ctx, resourceKey); err != nil {
+					logger.Error(err, "delete release from readstore", "key", resourceKey)
+					return ctrl.Result{}, fmt.Errorf("delete release from readstore: %w", err)
+				}
 			}
 			return ctrl.Result{}, nil
 		}
@@ -100,7 +103,7 @@ func (r *ReleaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		logger.Info("deleting expired release CR", "name", req.Name, "day", day)
 		if err := r.Delete(ctx, &rel); err != nil && !apierrors.IsNotFound(err) {
 			logger.Error(err, "failed to delete expired release CR", "name", req.Name, "day", day)
-			return ctrl.Result{}, nil
+			return ctrl.Result{}, fmt.Errorf("delete expired release CR: %w", err)
 		}
 		// Store cleanup will happen when the delete triggers a new reconcile
 		return ctrl.Result{}, nil
