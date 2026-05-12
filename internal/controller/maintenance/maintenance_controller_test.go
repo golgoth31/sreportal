@@ -124,6 +124,22 @@ var _ = Describe("Maintenance Controller", func() {
 				NamespacedName: badNN,
 			})
 			Expect(err).NotTo(HaveOccurred())
+
+			By("setting Ready=False with reason=InvalidSchedule")
+			Eventually(func(g Gomega) {
+				var got sreportalv1alpha1.Maintenance
+				g.Expect(k8sClient.Get(ctx, badNN, &got)).To(Succeed())
+				var ready *metav1.Condition
+				for i := range got.Status.Conditions {
+					if got.Status.Conditions[i].Type == "Ready" {
+						ready = &got.Status.Conditions[i]
+						break
+					}
+				}
+				g.Expect(ready).NotTo(BeNil())
+				g.Expect(ready.Status).To(Equal(metav1.ConditionFalse))
+				g.Expect(ready.Reason).To(Equal("InvalidSchedule"))
+			}, 10*time.Second, 250*time.Millisecond).Should(Succeed())
 		})
 	})
 })

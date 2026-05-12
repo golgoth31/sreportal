@@ -211,8 +211,9 @@ func (h *SyncRemoteAlertmanagerHandler) cleanupOrphanedAlertmanagers(
 		}
 
 		logger.Info("deleting orphaned Alertmanager CR", "alertmanager", am.Name)
-		if err := h.client.Delete(ctx, am); err != nil {
-			return fmt.Errorf("delete orphaned Alertmanager %s: %w", am.Name, err)
+		if err := h.client.Delete(ctx, am); err != nil && !errors.IsNotFound(err) {
+			logger.Error(err, "failed to delete orphaned Alertmanager, continuing", "alertmanager", am.Name)
+			continue
 		}
 	}
 
