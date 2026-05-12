@@ -136,8 +136,8 @@ export function ReleasesPage() {
                   onSelect={handleDateSelect}
                   defaultMonth={selectedDate}
                   disabled={isDayDisabled}
-                  fromDate={fromDate}
-                  toDate={today}
+                  startMonth={fromDate}
+                  endMonth={today}
                 />
               </PopoverContent>
             </Popover>
