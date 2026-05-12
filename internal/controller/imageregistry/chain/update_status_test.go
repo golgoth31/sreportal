@@ -131,6 +131,38 @@ var _ = Describe("UpdateStatusHandler", func() {
 		Expect(got.Status.InjectedCount).To(Equal(int32(1)))
 	})
 
+	It("is idempotent — second reconcile does not bump resourceVersion", func() {
+		ir := &sreportalv1alpha1.ImageRegistry{
+			ObjectMeta: metav1.ObjectMeta{Name: tTestName, Namespace: tNsDefault},
+			Spec: sreportalv1alpha1.ImageRegistrySpec{
+				Host:      tRegistryGhcr,
+				PortalRef: tPortalMain,
+				Namespace: tNsDefault,
+				Images:    []sreportalv1alpha1.ImageRegistrySpecEntry{},
+			},
+		}
+
+		c := newFakeClient(ir)
+		handler := chain.NewUpdateStatusHandler(c)
+
+		// First reconcile: writes counters + Ready condition.
+		rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageRegistry, chain.ChainData]{Resource: ir.DeepCopy()}
+		Expect(handler.Handle(ctx, rc)).To(Succeed())
+
+		var afterFirst sreportalv1alpha1.ImageRegistry
+		Expect(c.Get(ctx, types.NamespacedName{Namespace: tNsDefault, Name: tTestName}, &afterFirst)).To(Succeed())
+
+		// Second reconcile from the latest server state: nothing should change.
+		rc2 := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageRegistry, chain.ChainData]{Resource: afterFirst.DeepCopy()}
+		Expect(handler.Handle(ctx, rc2)).To(Succeed())
+
+		var afterSecond sreportalv1alpha1.ImageRegistry
+		Expect(c.Get(ctx, types.NamespacedName{Namespace: tNsDefault, Name: tTestName}, &afterSecond)).To(Succeed())
+
+		Expect(afterSecond.ResourceVersion).To(Equal(afterFirst.ResourceVersion),
+			"no-op reconcile must skip the status patch and not bump resourceVersion")
+	})
+
 	It("sets the Ready condition", func() {
 		ir := &sreportalv1alpha1.ImageRegistry{
 			ObjectMeta: metav1.ObjectMeta{Name: tTestName, Namespace: tNsDefault},
