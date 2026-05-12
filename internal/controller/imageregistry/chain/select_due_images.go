@@ -17,9 +17,10 @@ limitations under the License.
 package chain
 
 import (
+	"cmp"
 	"context"
 	"math/rand/v2"
-	"sort"
+	"slices"
 	"time"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
@@ -57,12 +58,6 @@ func NewSelectDueImagesHandler() *SelectDueImagesHandler {
 			return rand.N(max)
 		},
 	}
-}
-
-// NewSelectDueImagesHandlerWithJitter constructs a handler with a custom jitter
-// function. Intended for tests that need deterministic delays.
-func NewSelectDueImagesHandlerWithJitter(jitter func(max time.Duration) time.Duration) *SelectDueImagesHandler {
-	return &SelectDueImagesHandler{jitter: jitter}
 }
 
 // Handle implements reconciler.Handler.
@@ -150,8 +145,8 @@ func (h *SelectDueImagesHandler) Handle(ctx context.Context, rc *reconciler.Reco
 	// DueImages this cycle — they will be re-selected on the next reconcile
 	// because their Status.LastCheckedAt was not updated.
 	if len(deferredList) > 0 {
-		sort.Slice(deferredList, func(i, j int) bool {
-			return deferredList[i].delay < deferredList[j].delay
+		slices.SortFunc(deferredList, func(a, b deferredImage) int {
+			return cmp.Compare(a.delay, b.delay)
 		})
 		rc.Data.RequeueAfter = deferredList[0].delay
 		logger.V(1).Info("deferred images due to catch-up jitter", "deferred", len(deferredList), "requeueAfter", deferredList[0].delay)
