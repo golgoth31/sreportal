@@ -14,9 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package dnsrecords
+package chain
 
 import (
+	"testing"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,7 +28,20 @@ import (
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 )
 
-var _ = Describe("dnsRecordToFQDNViews", func() {
+const (
+	tPortalMain = "main"
+	tNsDefault  = "default"
+	tSrcService = "service"
+	tPortalMy   = "my-portal"
+	tIP1234     = "1.2.3.4"
+)
+
+func TestChain(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "DNSRecord Chain Suite")
+}
+
+var _ = Describe("DNSRecordToFQDNViews", func() {
 	Context("with endpoints", func() {
 		It("should convert endpoints to FQDNViews with PortalRef and SourceType", func() {
 			record := &sreportalv1alpha1.DNSRecord{
@@ -56,7 +71,7 @@ var _ = Describe("dnsRecordToFQDNViews", func() {
 				},
 			}
 
-			views := dnsRecordToFQDNViews(record, nil)
+			views := DNSRecordToFQDNViews(record, nil)
 
 			Expect(views).To(HaveLen(2))
 			for _, v := range views {
@@ -81,7 +96,7 @@ var _ = Describe("dnsRecordToFQDNViews", func() {
 				},
 			}
 
-			views := dnsRecordToFQDNViews(record, nil)
+			views := DNSRecordToFQDNViews(record, nil)
 			Expect(views).To(BeNil())
 		})
 	})
@@ -114,11 +129,9 @@ var _ = Describe("dnsRecordToFQDNViews", func() {
 				},
 			}
 
-			views := dnsRecordToFQDNViews(record, nil)
+			views := DNSRecordToFQDNViews(record, nil)
 
 			Expect(views).To(HaveLen(1))
-			// OriginRef is set by adapter.EndpointStatusToGroups from labels
-			// The adapter populates FQDNStatus.OriginRef from endpoint labels
 		})
 	})
 
@@ -149,7 +162,7 @@ var _ = Describe("dnsRecordToFQDNViews", func() {
 				DefaultGroup: "Custom Group",
 			}
 
-			views := dnsRecordToFQDNViews(record, mapping)
+			views := DNSRecordToFQDNViews(record, mapping)
 
 			Expect(views).To(HaveLen(1))
 			Expect(views[0].Groups).To(ContainElement("Custom Group"))
@@ -182,7 +195,7 @@ var _ = Describe("dnsRecordToFQDNViews", func() {
 				},
 			}
 
-			views := dnsRecordToFQDNViews(record, nil)
+			views := DNSRecordToFQDNViews(record, nil)
 
 			Expect(views).To(HaveLen(1))
 			Expect(views[0].Groups).To(ContainElements("group-a", "group-b"))

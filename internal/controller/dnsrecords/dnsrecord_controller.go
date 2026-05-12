@@ -18,8 +18,6 @@ package dnsrecords
 
 import (
 	"context"
-	"fmt"
-	"sync"
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -29,16 +27,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
-	"github.com/golgoth31/sreportal/internal/adapter"
 	"github.com/golgoth31/sreportal/internal/config"
+	dnsrecordchain "github.com/golgoth31/sreportal/internal/controller/dnsrecords/chain"
 	portalfeatures "github.com/golgoth31/sreportal/internal/controller/portal/features"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/metrics"
+	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
 // DNSRecordReconciler reconciles a DNSRecord object and projects its endpoints
-// directly into the FQDN read store.
+// directly into the FQDN read store via a Chain-of-Responsibility pipeline.
 type DNSRecordReconciler struct {
 	client.Client
 	Scheme          *runtime.Scheme
@@ -46,6 +45,7 @@ type DNSRecordReconciler struct {
 	groupMapping    *config.GroupMappingConfig
 	resolver        domaindns.Resolver
 	disableDNSCheck bool
+	chain           *reconciler.Chain[*sreportalv1alpha1.DNSRecord, dnsrecordchain.ChainData]
 }
 
 // NewDNSRecordReconciler creates a new DNSRecordReconciler.
@@ -57,26 +57,40 @@ func NewDNSRecordReconciler(
 	resolver domaindns.Resolver,
 	disableDNSCheck bool,
 ) *DNSRecordReconciler {
-	return &DNSRecordReconciler{
+	r := &DNSRecordReconciler{
 		Client:          c,
 		Scheme:          scheme,
 		groupMapping:    groupMapping,
 		resolver:        resolver,
 		disableDNSCheck: disableDNSCheck,
 	}
+	r.rebuildChain()
+	return r
 }
 
-// SetFQDNWriter sets the FQDN read-store writer.
+// SetFQDNWriter sets the FQDN read-store writer and rebuilds the chain so the
+// ProjectStoreHandler picks up the new writer.
 func (r *DNSRecordReconciler) SetFQDNWriter(w domaindns.FQDNWriter) {
 	r.fqdnWriter = w
+	r.rebuildChain()
+}
+
+func (r *DNSRecordReconciler) rebuildChain() {
+	r.chain = reconciler.NewChain(
+		"dnsrecord",
+		dnsrecordchain.NewSyncEndpointsHashHandler(r.Client),
+		dnsrecordchain.NewResolveDNSHandler(r.Client, r.resolver, r.disableDNSCheck),
+		dnsrecordchain.NewProjectStoreHandler(r.fqdnWriter, r.groupMapping),
+	)
 }
 
 // +kubebuilder:rbac:groups=sreportal.io,resources=dnsrecords,verbs=get;list;watch
 // +kubebuilder:rbac:groups=sreportal.io,resources=dnsrecords/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=portals,verbs=get;list;watch
 
-// Reconcile resolves DNS for each endpoint, persists SyncStatus in the CR,
-// and projects endpoints into the FQDN read store.
+// Reconcile loads the DNSRecord, handles the not-found / feature-disabled
+// short-circuits inline, then runs the chain to sync the hash, resolve DNS,
+// and project entries into the FQDN read store.
 func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	start := time.Now()
 	logger := log.FromContext(ctx)
@@ -110,76 +124,23 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 	}
 
-	// Recompute and resync the endpoints hash if it diverged (e.g. manual edit).
-	// This ensures the SourceReconciler's skip-if-unchanged logic stays correct.
-	if len(record.Status.Endpoints) > 0 {
-		computedHash := adapter.EndpointStatusHash(record.Status.Endpoints)
-		if record.Status.EndpointsHash != computedHash {
-			logger.Info("endpoints hash out of sync, resyncing",
-				"stored", record.Status.EndpointsHash, "computed", computedHash)
-			base := record.DeepCopy()
-			record.Status.EndpointsHash = computedHash
-			if err := r.Status().Patch(ctx, &record, client.MergeFrom(base)); err != nil {
-				return ctrl.Result{}, fmt.Errorf("patch EndpointsHash: %w", err)
-			}
-		}
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.DNSRecord, dnsrecordchain.ChainData]{
+		Resource: &record,
+		Data: dnsrecordchain.ChainData{
+			ResourceKey: record.Namespace + "/" + record.Name,
+		},
+	}
+	if err := r.chain.Execute(ctx, rc); err != nil {
+		metrics.ReconcileTotal.WithLabelValues("dnsrecord", "error").Inc()
+		metrics.ReconcileDuration.WithLabelValues("dnsrecord", "").Observe(time.Since(start).Seconds())
+		return ctrl.Result{}, err
 	}
 
-	// Resolve DNS and persist SyncStatus in the CR status
-	if !r.disableDNSCheck && r.resolver != nil && len(record.Status.Endpoints) > 0 {
-		base := record.DeepCopy()
-		r.resolveEndpoints(ctx, record.Status.Endpoints)
-		if err := r.Status().Patch(ctx, &record, client.MergeFrom(base)); err != nil {
-			return ctrl.Result{}, fmt.Errorf("patch DNSRecord status: %w", err)
-		}
-	}
-
-	// Project into read store
-	if r.fqdnWriter != nil {
-		resourceKey := record.Namespace + "/" + record.Name
-		views := dnsRecordToFQDNViews(&record, r.groupMapping)
-		if err := r.fqdnWriter.Replace(ctx, resourceKey, views); err != nil {
-			logger.Error(err, "failed to update FQDN read store")
-		}
-	}
-
-	// Update metrics
-	portal := record.Spec.PortalRef
-	metrics.DNSFQDNsTotal.WithLabelValues(portal, "external-dns").Set(float64(len(record.Status.Endpoints)))
+	metrics.DNSFQDNsTotal.WithLabelValues(record.Spec.PortalRef, "external-dns").Set(float64(len(record.Status.Endpoints)))
 	metrics.ReconcileTotal.WithLabelValues("dnsrecord", "success").Inc()
 	metrics.ReconcileDuration.WithLabelValues("dnsrecord", "").Observe(time.Since(start).Seconds())
 
-	return ctrl.Result{}, nil
-}
-
-const (
-	maxDNSRecordLookups    = 10
-	dnsRecordLookupTimeout = 5 * time.Second
-)
-
-// resolveEndpoints resolves DNS for each endpoint in-place, setting SyncStatus.
-func (r *DNSRecordReconciler) resolveEndpoints(ctx context.Context, endpoints []sreportalv1alpha1.EndpointStatus) {
-	workers := min(maxDNSRecordLookups, len(endpoints))
-	ch := make(chan int, len(endpoints))
-	for i := range endpoints {
-		ch <- i
-	}
-	close(ch)
-
-	var wg sync.WaitGroup
-	for range workers {
-		wg.Go(func() {
-			for idx := range ch {
-				ep := &endpoints[idx]
-				lookupCtx, cancel := context.WithTimeout(ctx, dnsRecordLookupTimeout)
-				result := domaindns.CheckFQDN(lookupCtx, r.resolver, ep.DNSName, ep.RecordType, ep.Targets)
-				ep.SyncStatus = string(result.Status)
-				cancel()
-			}
-		})
-	}
-
-	wg.Wait()
+	return rc.Result, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
