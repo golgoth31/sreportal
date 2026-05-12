@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
@@ -68,7 +67,16 @@ func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 	inc := rc.Resource
 	computed := rc.Data.Computed
 
-	// Apply computed status
+	if inc.Labels == nil {
+		inc.Labels = make(map[string]string)
+	}
+	if inc.Labels["sreportal.io/portal"] != inc.Spec.PortalRef {
+		inc.Labels["sreportal.io/portal"] = inc.Spec.PortalRef
+		if err := h.client.Update(ctx, inc); err != nil {
+			return fmt.Errorf("update incident labels: %w", err)
+		}
+	}
+
 	inc.Status.CurrentPhase = sreportalv1alpha1.IncidentPhase(computed.CurrentPhase)
 	startedAt := metav1.NewTime(computed.StartedAt)
 	inc.Status.StartedAt = &startedAt
@@ -81,32 +89,14 @@ func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 		inc.Status.ResolvedAt = nil
 	}
 
-	// Set Ready condition + patch status
 	if err := statusutil.SetConditionAndPatch(ctx, h.client, inc, "Ready", metav1.ConditionTrue, "Reconciled",
 		fmt.Sprintf("phase: %s", computed.CurrentPhase)); err != nil {
 		return err
 	}
 
-	// Re-fetch to get fresh resourceVersion
-	if err := h.client.Get(ctx, types.NamespacedName{Namespace: inc.Namespace, Name: inc.Name}, inc); err != nil {
-		return fmt.Errorf("re-fetch incident: %w", err)
-	}
-
-	// Add portal label
-	if inc.Labels == nil {
-		inc.Labels = make(map[string]string)
-	}
-	if inc.Labels["sreportal.io/portal"] != inc.Spec.PortalRef {
-		inc.Labels["sreportal.io/portal"] = inc.Spec.PortalRef
-		if err := h.client.Update(ctx, inc); err != nil {
-			return fmt.Errorf("update incident labels: %w", err)
-		}
-	}
-
-	// Project to ReadStore
 	if h.incidentWriter != nil {
 		resourceKey := inc.Namespace + "/" + inc.Name
-		view := ToView(inc)
+		view := buildView(inc, computed)
 		if err := h.incidentWriter.Replace(ctx, resourceKey, []domainincident.IncidentView{view}); err != nil {
 			return fmt.Errorf("write incident store: %w", err)
 		}
@@ -115,22 +105,19 @@ func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 	return nil
 }
 
-// ToView converts an Incident CRD into a domain IncidentView.
-func ToView(inc *sreportalv1alpha1.Incident) domainincident.IncidentView {
+// buildView constructs an IncidentView from spec data + the freshly computed status,
+// without depending on inc.Status read-back after the patch.
+func buildView(inc *sreportalv1alpha1.Incident, computed domainincident.ComputedStatus) domainincident.IncidentView {
 	view := domainincident.IncidentView{
 		Name:            inc.Name,
 		Title:           inc.Spec.Title,
 		PortalRef:       inc.Spec.PortalRef,
 		Components:      inc.Spec.Components,
 		Severity:        domainincident.IncidentSeverity(inc.Spec.Severity),
-		CurrentPhase:    domainincident.IncidentPhase(inc.Status.CurrentPhase),
-		DurationMinutes: inc.Status.DurationMinutes,
-	}
-	if inc.Status.StartedAt != nil {
-		view.StartedAt = inc.Status.StartedAt.Time
-	}
-	if inc.Status.ResolvedAt != nil {
-		view.ResolvedAt = inc.Status.ResolvedAt.Time
+		CurrentPhase:    computed.CurrentPhase,
+		DurationMinutes: computed.DurationMinutes,
+		StartedAt:       computed.StartedAt,
+		ResolvedAt:      computed.ResolvedAt,
 	}
 
 	updates := make([]domainincident.UpdateView, 0, len(inc.Spec.Updates))
