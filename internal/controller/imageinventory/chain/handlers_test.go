@@ -105,4 +105,3 @@ func TestUpdateStatusHandlerPreservesForeignCondition(t *testing.T) {
 	}
 	require.True(t, hasForeign, "foreign condition must be preserved — a full Status().Update with a stale snapshot would clobber it")
 }
-

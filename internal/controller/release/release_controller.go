@@ -32,6 +32,7 @@ import (
 	releasechain "github.com/golgoth31/sreportal/internal/controller/release/chain"
 	domainrelease "github.com/golgoth31/sreportal/internal/domain/release"
 	"github.com/golgoth31/sreportal/internal/log"
+	"github.com/golgoth31/sreportal/internal/metrics"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
@@ -93,6 +94,7 @@ func (r *ReleaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				if delErr := r.releaseWriter.Delete(ctx, resourceKey); delErr != nil {
 					logger.Error(delErr, "failed to delete release entry from read store", "key", resourceKey)
 					metrics.ReadstoreWriterErrors.WithLabelValues("release", "delete").Inc()
+					return ctrl.Result{}, delErr
 				}
 			}
 			return ctrl.Result{}, nil
@@ -108,6 +110,7 @@ func (r *ReleaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		logger.Info("deleting expired release CR", "name", req.Name, "day", day)
 		if err := r.Delete(ctx, &rel); err != nil && !apierrors.IsNotFound(err) {
 			logger.Error(err, "failed to delete expired release CR", "name", req.Name, "day", day)
+			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
 	}
