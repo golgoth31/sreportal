@@ -22,7 +22,6 @@ import (
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -30,8 +29,10 @@ import (
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	portalfeatures "github.com/golgoth31/sreportal/internal/controller/portal/features"
+	releasechain "github.com/golgoth31/sreportal/internal/controller/release/chain"
 	domainrelease "github.com/golgoth31/sreportal/internal/domain/release"
 	"github.com/golgoth31/sreportal/internal/log"
+	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
 const releaseRequeueInterval = 12 * time.Hour
@@ -41,6 +42,7 @@ const releaseRequeueInterval = 12 * time.Hour
 type ReleaseReconciler struct {
 	client.Client
 	releaseWriter domainrelease.ReleaseWriter
+	chain         *reconciler.Chain[*sreportalv1alpha1.Release, releasechain.ChainData]
 	ttl           time.Duration
 	now           func() time.Time // injectable for testing
 }
@@ -54,9 +56,15 @@ func NewReleaseReconciler(c client.Client, ttl time.Duration) *ReleaseReconciler
 	}
 }
 
-// SetReleaseWriter sets the writer used to push release projections.
+// SetReleaseWriter sets the writer used to push release projections and rebuilds
+// the handler chain so the ProjectStoreHandler picks up the new writer.
 func (r *ReleaseReconciler) SetReleaseWriter(w domainrelease.ReleaseWriter) {
 	r.releaseWriter = w
+	r.chain = reconciler.NewChain(
+		"release",
+		releasechain.NewResolvePortalHandler(r.Client, releaseRequeueInterval),
+		releasechain.NewProjectStoreHandler(w),
+	)
 }
 
 // +kubebuilder:rbac:groups=sreportal.io,resources=releases,verbs=get;list;watch;delete;create;update;patch
@@ -64,7 +72,8 @@ func (r *ReleaseReconciler) SetReleaseWriter(w domainrelease.ReleaseWriter) {
 // +kubebuilder:rbac:groups=sreportal.io,resources=releases/finalizers,verbs=update
 // +kubebuilder:rbac:groups=sreportal.io,resources=portals,verbs=get;list;watch
 
-// Reconcile pushes release entries into the read store and deletes expired CRs.
+// Reconcile orchestrates the release reconciliation: parses the date from the CR name,
+// fetches the resource, deletes expired CRs, and otherwise executes the handler chain.
 func (r *ReleaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
@@ -76,7 +85,6 @@ func (r *ReleaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	resourceKey := req.Namespace + "/" + req.Name
 
-	// Check if the CR still exists (may have been deleted)
 	var rel sreportalv1alpha1.Release
 	if err := r.Get(ctx, req.NamespacedName, &rel); err != nil {
 		if apierrors.IsNotFound(err) {
@@ -89,64 +97,39 @@ func (r *ReleaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, fmt.Errorf("get release CR: %w", err)
 	}
 
-	// Check TTL: delete if expired
 	crDate, err := time.Parse("2006-01-02", day)
 	if err != nil {
 		return ctrl.Result{}, nil
 	}
-
-	cutoff := r.now().UTC().Add(-r.ttl)
-	if crDate.Before(cutoff) {
+	if crDate.Before(r.now().UTC().Add(-r.ttl)) {
 		logger.Info("deleting expired release CR", "name", req.Name, "day", day)
 		if err := r.Delete(ctx, &rel); err != nil && !apierrors.IsNotFound(err) {
 			logger.Error(err, "failed to delete expired release CR", "name", req.Name, "day", day)
-			return ctrl.Result{}, nil
 		}
-		// Store cleanup will happen when the delete triggers a new reconcile
 		return ctrl.Result{}, nil
 	}
 
-	if r.releaseWriter == nil {
+	// Without a writer there's no store projection to do — preserve the historical
+	// requeue cadence so the controller still revisits the CR.
+	if r.chain == nil {
 		return ctrl.Result{RequeueAfter: releaseRequeueInterval}, nil
 	}
 
-	var portal sreportalv1alpha1.Portal
-	if err := r.Get(ctx, types.NamespacedName{
-		Name: rel.Spec.PortalRef, Namespace: rel.Namespace,
-	}, &portal); err != nil {
-		return ctrl.Result{}, fmt.Errorf("get portal %q: %w", rel.Spec.PortalRef, err)
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.Release, releasechain.ChainData]{
+		Resource: &rel,
+		Data: releasechain.ChainData{
+			Day:         day,
+			ResourceKey: resourceKey,
+		},
 	}
-	if !portal.Spec.Features.IsReleasesEnabled() {
-		logger.V(1).Info("releases feature disabled, skipping store projection",
-			"day", day, "portal", rel.Spec.PortalRef)
-		return ctrl.Result{RequeueAfter: releaseRequeueInterval}, nil
-	}
-
-	views := releaseEntriesToViews(rel.Spec.Entries, rel.Spec.PortalRef, day)
-	if err := r.releaseWriter.Replace(ctx, resourceKey, views); err != nil {
-		return ctrl.Result{}, fmt.Errorf("write release store: %w", err)
+	if err := r.chain.Execute(ctx, rc); err != nil {
+		return ctrl.Result{}, err
 	}
 
-	return ctrl.Result{RequeueAfter: releaseRequeueInterval}, nil
-}
-
-// releaseEntriesToViews converts CRD entries to domain read model views.
-func releaseEntriesToViews(entries []sreportalv1alpha1.ReleaseEntry, portalRef, day string) []domainrelease.EntryView {
-	views := make([]domainrelease.EntryView, 0, len(entries))
-	for _, e := range entries {
-		views = append(views, domainrelease.EntryView{
-			PortalRef: portalRef,
-			Day:       day,
-			Type:      e.Type,
-			Version:   e.Version,
-			Origin:    e.Origin,
-			Date:      e.Date.Time,
-			Author:    e.Author,
-			Message:   e.Message,
-			Link:      e.Link,
-		})
+	if rc.Result.RequeueAfter == 0 {
+		rc.Result.RequeueAfter = releaseRequeueInterval
 	}
-	return views
+	return rc.Result, nil
 }
 
 // SetupWithManager registers the controller with the manager.
