@@ -72,6 +72,7 @@ func NewComponentReconciler(
 // +kubebuilder:rbac:groups=sreportal.io,resources=components/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=components/finalizers,verbs=update
 // +kubebuilder:rbac:groups=sreportal.io,resources=portals,verbs=get;list;watch
+// +kubebuilder:rbac:groups=sreportal.io,resources=incidents,verbs=get;list;watch
 
 // Reconcile computes the component's effective status and projects to the ReadStore.
 func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
