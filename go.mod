@@ -22,7 +22,7 @@ require (
 	go.elastic.co/ecszap v1.0.3
 	go.uber.org/zap v1.28.0
 	go.uber.org/zap/exp v0.3.0
-	golang.org/x/mod v0.35.0
+	golang.org/x/mod v0.36.0
 	golang.org/x/sync v0.20.0
 	golang.org/x/time v0.15.0
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
