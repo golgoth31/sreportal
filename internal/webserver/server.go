@@ -30,8 +30,6 @@ import (
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
 	"github.com/prometheus/client_golang/prometheus"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/golgoth31/sreportal/internal/auth"
@@ -304,13 +302,14 @@ func (s *Server) healthHandler(c *echo.Context) error {
 
 // Start starts the web server
 func (s *Server) Start() error {
-	// Create h2c handler to support HTTP/2 without TLS (for Connect protocol)
-	h2s := &http2.Server{}
-	handler := h2c.NewHandler(s.echo, h2s)
+	protos := new(http.Protocols)
+	protos.SetHTTP1(true)
+	protos.SetUnencryptedHTTP2(true)
 
 	s.httpServer = &http.Server{
-		Addr:    s.config.Address,
-		Handler: handler,
+		Addr:      s.config.Address,
+		Handler:   s.echo,
+		Protocols: protos,
 	}
 
 	return s.httpServer.ListenAndServe()
@@ -460,6 +459,5 @@ func routeHandler(c *echo.Context) string {
 
 // Handler returns the HTTP handler for the server
 func (s *Server) Handler() http.Handler {
-	h2s := &http2.Server{}
-	return h2c.NewHandler(s.echo, h2s)
+	return s.echo
 }
