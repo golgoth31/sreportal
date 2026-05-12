@@ -270,7 +270,7 @@ func TestObservationsFromWorkloadInjectedContainersAreSorted(t *testing.T) {
 	require.True(t, sort.StringsAreSorted(expectedInjected), "test data should already be sorted")
 
 	// Run many times to defeat Go's randomized map iteration.
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		got := observationsFromWorkload(tKindDeploy, tNsDefault, tNameAPI, spec, podImageByName)
 
 		// First observation is the spec container; the rest are injected ones in order.
