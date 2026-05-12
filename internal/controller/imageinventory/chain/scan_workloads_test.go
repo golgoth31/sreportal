@@ -18,8 +18,10 @@ package chain
 
 import (
 	"context"
+	"sort"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -242,6 +244,44 @@ func TestScanWorkloadsPropagatesScanError(t *testing.T) {
 	}
 	if cond.Reason != ReasonScanFailed {
 		t.Fatalf("Ready reason=%q want %q", cond.Reason, ReasonScanFailed)
+	}
+}
+
+// TestObservationsFromWorkloadInjectedContainersAreSorted verifies that
+// injected containers (present in the pod but not in the workload spec) are
+// emitted in a deterministic, alphabetically-sorted order. Map iteration is
+// randomized in Go, so without an explicit sort the produced slice ordering
+// varies across reconciles and produces spurious ImageRegistry CR diffs.
+func TestObservationsFromWorkloadInjectedContainersAreSorted(t *testing.T) {
+	t.Parallel()
+
+	spec := corev1.PodSpec{
+		Containers: []corev1.Container{{Name: tNameWeb, Image: tImgGhcrAPIv1}},
+	}
+	// At least two injected containers — order across map iteration matters.
+	podImageByName := map[string]string{
+		tNameWeb:        tImgGhcrAPIv1,
+		"istio-proxy":   "docker.io/istio/proxyv2:1.20.0",
+		"linkerd-proxy": "cr.l5d.io/linkerd/proxy:2.14.0",
+		"vault-agent":   "hashicorp/vault:1.15.0",
+	}
+
+	expectedInjected := []string{"istio-proxy", "linkerd-proxy", "vault-agent"}
+	require.True(t, sort.StringsAreSorted(expectedInjected), "test data should already be sorted")
+
+	// Run many times to defeat Go's randomized map iteration.
+	for i := 0; i < 100; i++ {
+		got := observationsFromWorkload(tKindDeploy, tNsDefault, tNameAPI, spec, podImageByName)
+
+		// First observation is the spec container; the rest are injected ones in order.
+		require.Len(t, got, 1+len(expectedInjected), "iteration %d", i)
+		require.Equal(t, tNameWeb, got[0].ContainerName, "iteration %d: spec container first", i)
+
+		injected := make([]string, 0, len(expectedInjected))
+		for _, o := range got[1:] {
+			injected = append(injected, o.ContainerName)
+		}
+		require.Equal(t, expectedInjected, injected, "iteration %d: injected containers must be alphabetically sorted", i)
 	}
 }
 

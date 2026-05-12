@@ -19,6 +19,7 @@ package chain
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -218,7 +219,12 @@ func observationsFromWorkload(
 
 	// Injected containers — present in pod but not in spec.
 	// Stable order: iterate over a sorted list for determinism in tests.
-	for cname, img := range podImageByName {
+	names := make([]string, 0, len(podImageByName))
+	for k := range podImageByName {
+		names = append(names, k)
+	}
+	slices.Sort(names)
+	for _, cname := range names {
 		if _, ok := declared[cname]; ok {
 			continue
 		}
@@ -228,7 +234,7 @@ func observationsFromWorkload(
 			WorkloadNamespace: namespace,
 			ContainerName:     cname,
 			TemplateImage:     "",
-			PodImage:          img,
+			PodImage:          podImageByName[cname],
 		})
 	}
 	return out
