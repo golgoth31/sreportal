@@ -26,6 +26,7 @@ import (
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/controller/statusutil"
 	domainimageregistry "github.com/golgoth31/sreportal/internal/domain/imageregistry"
+	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
@@ -56,6 +57,8 @@ func (h *ValidateSpecHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 		return nil
 	}
 
-	_ = statusutil.SetConditionAndPatch(ctx, h.client, rc.Resource, ConditionTypeReady, metav1.ConditionFalse, ReasonInvalidSpec, reason)
+	if patchErr := statusutil.SetConditionAndPatch(ctx, h.client, rc.Resource, ConditionTypeReady, metav1.ConditionFalse, ReasonInvalidSpec, reason); patchErr != nil {
+		log.FromContext(ctx).WithName("validate-spec").Error(patchErr, "failed to patch Ready=False condition")
+	}
 	return fmt.Errorf("%w: %s", domainimageregistry.ErrInvalidSpec, reason)
 }
