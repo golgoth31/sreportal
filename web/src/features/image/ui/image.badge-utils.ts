@@ -34,6 +34,21 @@ export function tagTypeBadgeMutedClass(tagType: TagType): string {
   return classes[tagType];
 }
 
+export function tagTypeHint(t: TagType): string {
+  switch (t) {
+    case "latest":
+      return "rolling tag — not tracked";
+    case "other":
+      return "rolling tag — not tracked";
+    case "digest":
+      return "digest-pinned";
+    case "commit":
+      return "commit-pinned";
+    default:
+      return "";
+  }
+}
+
 export function formatRelativeTime(isoString: string | undefined): string | null {
   if (!isoString) return null;
   try {

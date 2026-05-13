@@ -75,20 +75,20 @@ func TestPickLatestSemver(t *testing.T) {
 		},
 		{
 			name:      "ignore latest tag does not count as rejected",
-			tags:      []string{"latest", tVersion123},
+			tags:      []string{tTagLatest, tVersion123},
 			wantTag:   tVersion123,
 			wantFound: true,
 		},
 		{
 			name:         "ignore non-semver counts as rejected",
-			tags:         []string{tPortalMain, "abcdef1", tVersion100},
+			tags:         []string{tPortalMain, tTagCommit, tVersion100},
 			wantTag:      tVersion100,
 			wantFound:    true,
 			wantRejected: 2,
 		},
 		{
 			name:         "no semver counts every non-latest tag as rejected",
-			tags:         []string{tPortalMain, "latest", "abcdef1"},
+			tags:         []string{tPortalMain, tTagLatest, tTagCommit},
 			wantTag:      "",
 			wantFound:    false,
 			wantRejected: 2,
@@ -121,6 +121,115 @@ func TestPickLatestSemver(t *testing.T) {
 			if found != tc.wantFound || got != tc.wantTag || rejected != tc.wantRejected {
 				t.Fatalf("PickLatestSemver(%v) = (%q, %d, %v), want (%q, %d, %v)",
 					tc.tags, got, rejected, found, tc.wantTag, tc.wantRejected, tc.wantFound)
+			}
+		})
+	}
+}
+
+func TestPickLatestMatching(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		tags         []string
+		originalTag  string
+		wantTag      string
+		wantFound    bool
+		wantRejected int
+	}{
+		{
+			name:        "picks variant-correct alpine",
+			tags:        []string{tTag1253, tTag1253Alpine, "1.27.0"},
+			originalTag: tTag1250Alpine,
+			wantTag:     tTag1253Alpine,
+			wantFound:   true,
+		},
+		{
+			name:        "two-segment alpine variant",
+			tags:        []string{"15.1", "15.1-alpine", "16-alpine"},
+			originalTag: tTag15Alpine,
+			wantTag:     "16-alpine",
+			wantFound:   true,
+		},
+		{
+			name:        "v-prefix preserved",
+			tags:        []string{"7.2.4", tTagV724},
+			originalTag: tTagV720,
+			wantTag:     tTagV724,
+			wantFound:   true,
+		},
+		{
+			name:        "two-segment loose upgrade to three-segment",
+			tags:        []string{tTag183, tTag184, "18.3.0", "18.3-alpine", "17.5"},
+			originalTag: tTag183,
+			wantTag:     tTag184,
+			wantFound:   true,
+		},
+		{
+			name:        "pre-release track upgrade",
+			tags:        []string{tVersion123, tTag124RC2},
+			originalTag: tTag123RC1,
+			wantTag:     tTag124RC2,
+			wantFound:   true,
+		},
+		{
+			name:        "unparseable original returns not found",
+			tags:        []string{tVersion123},
+			originalTag: tTagAlpine,
+			wantTag:     "",
+			wantFound:   false,
+		},
+		{
+			name:        "no matching variant returns not found",
+			tags:        []string{tTag1253, "1.27.0"},
+			originalTag: tTag1250Alpine,
+			wantTag:     "",
+			wantFound:   false,
+		},
+		{
+			name:        "empty tag list",
+			tags:        nil,
+			originalTag: tVersion123,
+			wantTag:     "",
+			wantFound:   false,
+		},
+		{
+			// Regression: grafana/grafana publishes build-number tags like
+			// "9799770991" alongside semver tTagGrafana1221. The mono-numeric tag must
+			// not be considered a candidate for 12.2.1 — previously it was
+			// padded to v9799770991.0.0 and beat v12.2.1.
+			name:        "rejects mono-numeric build-number candidates",
+			tags:        []string{"9799770991", tTagGrafana1221, "12.2.0", "11.5.0"},
+			originalTag: tTagGrafana1221,
+			wantTag:     tTagGrafana1221,
+			wantFound:   true,
+		},
+		{
+			name:        "mono-numeric original is unparseable",
+			tags:        []string{tTagGrafana1221, "12.2.2"},
+			originalTag: "9799770991",
+			wantTag:     "",
+			wantFound:   false,
+		},
+		{
+			// Regression: longhorn publishes dev nightlies alongside stable
+			// releases. A stable user on v1.11.1 must get v1.12.0, not the
+			// nightly v1.12.0-dev-20260503.
+			name:        "stable user ignores dev nightlies",
+			tags:        []string{tTagLonghornV111, tTagLonghornV120, tTagLonghornDev, "v1.13.0-dev-20260601"},
+			originalTag: tTagLonghornV111,
+			wantTag:     tTagLonghornV120,
+			wantFound:   true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got, rejected, found := PickLatestMatching(tc.tags, tc.originalTag)
+			if found != tc.wantFound || got != tc.wantTag || rejected != tc.wantRejected {
+				t.Fatalf("PickLatestMatching(%v, %q) = (%q, %d, %v), want (%q, %d, %v)",
+					tc.tags, tc.originalTag, got, rejected, found, tc.wantTag, tc.wantRejected, tc.wantFound)
 			}
 		})
 	}

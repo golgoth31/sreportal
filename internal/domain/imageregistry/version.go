@@ -37,11 +37,9 @@ func IsUpgradable(tt domainimage.TagType) bool {
 //   - comparison uses golang.org/x/mod/semver, so stable releases win over
 //     pre-releases of the same major.minor.patch.
 //
-// LIMITATION: golang.org/x/mod/semver only accepts strict 3-segment versions
-// (major.minor.patch). Tags such as "1.2" or "1.2.3.4" will be rejected even
-// though some registries publish them. This trades a few false negatives for
-// a deterministic comparator and is intentional. The rejected counter exposes
-// how often the limitation is hit per host.
+// 2-segment tags such as "18.3" or "v1.2" are accepted and padded to three
+// segments for internal comparison (the original tag string is returned).
+// 4-segment tags ("1.2.3.4") are still rejected.
 func PickLatestSemver(tags []string) (latest string, rejected int, found bool) {
 	var best string
 	var bestCanon string
@@ -83,18 +81,41 @@ func IsUpgrade(current, latest string) bool {
 	return semver.Compare(l, c) > 0
 }
 
-// canonicalSemver returns a `v`-prefixed canonical form of the input tag if
-// it is a valid semver per golang.org/x/mod/semver, or "" if not.
+// PickLatestMatching scans tags keeping only candidates that share the same
+// TagPattern as originalTag, then returns the highest SemVer among them.
 //
-// The package requires the leading `v`, so we add one if missing.
+// When originalTag cannot be parsed as a TagPattern (e.g. "alpine", "latest"),
+// the function returns ("", 0, false) — no fallback to cross-variant comparison.
+func PickLatestMatching(tags []string, originalTag string) (latest string, rejected int, found bool) {
+	pattern, ok := ExtractPattern(originalTag)
+	if !ok {
+		return "", 0, false
+	}
+
+	var filtered []string
+	for _, t := range tags {
+		if pattern.Matches(t) {
+			filtered = append(filtered, t)
+		}
+	}
+	return PickLatestSemver(filtered)
+}
+
+// canonicalSemver returns a `v`-prefixed 3-segment canonical form of the
+// input tag suitable for golang.org/x/mod/semver comparison, or "" if the
+// tag cannot be normalised.
+//
+// 2-segment tags ("18.3", "v1.2") are padded to 3 segments ("v18.3.0",
+// "v1.2.0") for comparison; the original tag string is preserved as the
+// return value of the Pick* functions.
 func canonicalSemver(tag string) string {
 	if tag == "" {
 		return ""
 	}
-	candidate := tag
-	if !strings.HasPrefix(candidate, "v") {
-		candidate = "v" + candidate
-	}
+	core := strings.TrimPrefix(tag, "v")
+	main, mod := splitMainAndModifier(core)
+	padded := padToThreeSegments(main)
+	candidate := "v" + padded + mod
 	if !semver.IsValid(candidate) {
 		return ""
 	}

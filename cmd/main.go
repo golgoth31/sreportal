@@ -31,6 +31,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -851,4 +852,56 @@ func main() {
 	if err := webServer.Shutdown(context.Background()); err != nil {
 		setupLog.Error(err, "error shutting down web server")
 	}
+}
+
+// stripPodForCache strips a Pod down to the fields the operator actually
+// reads, so the controller-runtime cache holds minimal Pod objects instead
+// of full ones.
+//
+// The only consumers are
+// internal/controller/imageinventory/chain/{pod_lookup,scan_workloads}.go
+// which read:
+//   - ObjectMeta: Name, Namespace, Labels, CreationTimestamp, UID, ResourceVersion
+//   - Status.Phase
+//   - Spec.Containers / Spec.InitContainers — Name + Image only
+//
+// Everything else (containerStatuses, conditions, hostIP/podIP, volumes,
+// env, securityContext, tolerations, nodeSelector, annotations,
+// managedFields, …) is dropped — those are the bulk of a typical Pod's
+// in-memory footprint.
+//
+// If a future consumer needs more Pod fields, extend this function rather
+// than reading them at the call site — a missing field here will silently
+// look like a zero value.
+func stripPodForCache(obj any) (any, error) {
+	p, ok := obj.(*corev1.Pod)
+	if !ok {
+		return obj, nil
+	}
+	return &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              p.Name,
+			Namespace:         p.Namespace,
+			Labels:            p.Labels,
+			CreationTimestamp: p.CreationTimestamp,
+			UID:               p.UID,
+			ResourceVersion:   p.ResourceVersion,
+		},
+		Status: corev1.PodStatus{Phase: p.Status.Phase},
+		Spec: corev1.PodSpec{
+			Containers:     stripContainers(p.Spec.Containers),
+			InitContainers: stripContainers(p.Spec.InitContainers),
+		},
+	}, nil
+}
+
+func stripContainers(in []corev1.Container) []corev1.Container {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]corev1.Container, len(in))
+	for i, c := range in {
+		out[i] = corev1.Container{Name: c.Name, Image: c.Image}
+	}
+	return out
 }

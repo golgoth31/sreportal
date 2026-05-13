@@ -19,6 +19,12 @@ func TestClassifyTag(t *testing.T) {
 		{name: "other branch", tag: "main", want: TagTypeOther},
 		{name: "other custom", tag: "nightly-2024-01-15", want: TagTypeOther},
 		{name: "other uppercase hex", tag: "ABCDEF1", want: TagTypeOther},
+		// 2-segment semver (regression: was TagTypeOther before widening semverRE)
+		{name: "semver two-segment", tag: "18.3", want: TagTypeSemver},
+		{name: "semver two-segment v-prefix", tag: "v18.3", want: TagTypeSemver},
+		{name: "semver two-segment with variant", tag: "1.2-alpine", want: TagTypeSemver},
+		// Pure label still resolves as other
+		{name: "other pure label alpine", tag: "alpine", want: TagTypeOther},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
