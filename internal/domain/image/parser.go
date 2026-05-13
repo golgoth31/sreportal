@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	semverRE = regexp.MustCompile(`^v?\d+\.\d+\.\d+(?:[-+][0-9A-Za-z\.-]+)?$`)
+	semverRE = regexp.MustCompile(`^v?\d+(?:\.\d+){1,2}(?:[-+][0-9A-Za-z\.-]+)?$`)
 	commitRE = regexp.MustCompile(`^[a-f0-9]{7,40}$`)
 )
 

@@ -30,6 +30,7 @@ import type { Image } from "../domain/image.types";
 import {
   formatRelativeTime,
   tagTypeBadgeClass,
+  tagTypeHint,
 } from "./image.badge-utils";
 import { WorkloadList } from "./WorkloadList";
 
@@ -159,7 +160,7 @@ export function ImageCard({ image }: ImageCardProps) {
 
         {/* Registry version lookup row */}
         <div className="flex items-center gap-2 flex-wrap">
-          {image.tagType === "semver" && (
+          {image.tagType === "semver" ? (
             <span className="font-mono text-[11px] text-muted-foreground">
               {image.latestVersion ? (
                 <>
@@ -178,6 +179,10 @@ export function ImageCard({ image }: ImageCardProps) {
               ) : (
                 <span className="opacity-40">latest: —</span>
               )}
+            </span>
+          ) : (
+            <span className="text-[11px] text-muted-foreground opacity-60">
+              {tagTypeHint(image.tagType)}
             </span>
           )}
         </div>

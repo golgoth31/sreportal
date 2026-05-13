@@ -261,7 +261,7 @@ func (h *ResolveLatestVersionsHandler) resolveOne(
 
 	metrics.RegistryLookupTotal.WithLabelValues(host, "success").Inc()
 
-	latest, rejected, found := domainimageregistry.PickLatestSemver(tags)
+	latest, rejected, found := domainimageregistry.PickLatestMatching(tags, img.Spec.OriginalTag)
 	if rejected > 0 {
 		metrics.RegistryLookupTotal.WithLabelValues(host, "unparsable").Add(float64(rejected))
 	}
