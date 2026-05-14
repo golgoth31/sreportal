@@ -11,7 +11,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/go-containerregistry v0.21.5
 	github.com/labstack/echo/v5 v5.1.1
-	github.com/mark3labs/mcp-go v0.53.0
+	github.com/mark3labs/mcp-go v0.54.0
 	github.com/onsi/ginkgo/v2 v2.28.3
 	github.com/onsi/gomega v1.40.0
 	github.com/openshift/client-go v0.0.0-20260320040014-4b5fc2cdad98
