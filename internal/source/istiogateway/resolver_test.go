@@ -27,12 +27,18 @@ import (
 	igw "github.com/golgoth31/sreportal/internal/source/istiogateway"
 )
 
+const (
+	tNSIstio     = "istio-system"
+	tAnnotTarget = "external-dns.alpha.kubernetes.io/target"
+	tTarget5555  = "5.5.5.5"
+)
+
 func TestIstioGatewayResolver_HostsFromServers(t *testing.T) {
 	r := igw.NewResolver()
 	gw := &istionetworkingv1.Gateway{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "edge", Namespace: "istio-system",
-			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/target": "1.2.3.4"},
+			Name: "edge", Namespace: tNSIstio,
+			Annotations: map[string]string{tAnnotTarget: "1.2.3.4"},
 		},
 		Spec: istionetworking.Gateway{Servers: []*istionetworking.Server{
 			{Hosts: []string{"namespace/foo.example.com", "*", "bar.example.com"}},
@@ -53,8 +59,8 @@ func TestIstioGatewayResolver_MultiServerMultiHost(t *testing.T) {
 	r := igw.NewResolver()
 	gw := &istionetworkingv1.Gateway{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "gw", Namespace: "istio-system",
-			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/target": "5.5.5.5"},
+			Name: "gw", Namespace: tNSIstio,
+			Annotations: map[string]string{tAnnotTarget: tTarget5555},
 		},
 		Spec: istionetworking.Gateway{Servers: []*istionetworking.Server{
 			{Hosts: []string{"ns/a.example.com", "ns/b.example.com"}},
@@ -76,8 +82,8 @@ func TestIstioGatewayResolver_WildcardSkipped(t *testing.T) {
 	r := igw.NewResolver()
 	gw := &istionetworkingv1.Gateway{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "gw", Namespace: "istio-system",
-			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/target": "5.5.5.5"},
+			Name: "gw", Namespace: tNSIstio,
+			Annotations: map[string]string{tAnnotTarget: tTarget5555},
 		},
 		Spec: istionetworking.Gateway{Servers: []*istionetworking.Server{
 			{Hosts: []string{"ns/*", "*"}},
@@ -98,8 +104,8 @@ func TestIstioGatewayResolver_TrailingDot(t *testing.T) {
 	r := igw.NewResolver()
 	gw := &istionetworkingv1.Gateway{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "gw", Namespace: "istio-system",
-			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/target": "5.5.5.5"},
+			Name: "gw", Namespace: tNSIstio,
+			Annotations: map[string]string{tAnnotTarget: tTarget5555},
 		},
 		Spec: istionetworking.Gateway{Servers: []*istionetworking.Server{
 			{Hosts: []string{"ns/dot.example.com."}},

@@ -27,15 +27,30 @@ import (
 	"github.com/golgoth31/sreportal/internal/source/registry"
 )
 
+const (
+	tNSDefault    = "default"
+	tForProvider  = "forProvider"
+	tKeyType      = "type"
+	tKeyDNSZone   = "dnsZone"
+	tKeyData      = "data"
+	tKeyMetadata  = "metadata"
+	tKeySpec      = "spec"
+	tZoneExample  = "example.com"
+	tTargetIP1234 = "1.2.3.4"
+	tKeyName      = "name"
+	tKeyNamespace = "namespace"
+	tNameRec      = "rec"
+)
+
 func TestCrossplaneScalewayRecordResolver_SubdomainRecord(t *testing.T) {
 	r := cprec.NewResolver()
 	u := &unstructured.Unstructured{Object: map[string]any{
-		"metadata": map[string]any{"namespace": "default", "name": "rec"},
-		"spec": map[string]any{"forProvider": map[string]any{
-			"type":    "A",
-			"data":    "1.2.3.4",
-			"dnsZone": "example.com",
-			"name":    "api",
+		tKeyMetadata: map[string]any{tKeyNamespace: tNSDefault, tKeyName: tNameRec},
+		tKeySpec: map[string]any{tForProvider: map[string]any{
+			tKeyType:    "A",
+			tKeyData:    tTargetIP1234,
+			tKeyDNSZone: tZoneExample,
+			tKeyName:    "api",
 		}},
 	}}
 	eps, err := r.ResolveObject(context.Background(), u)
@@ -51,26 +66,26 @@ func TestCrossplaneScalewayRecordResolver_SubdomainRecord(t *testing.T) {
 	if eps[0].RecordType != "A" {
 		t.Errorf("RecordType = %q, want %q", eps[0].RecordType, "A")
 	}
-	if eps[0].Targets[0] != "1.2.3.4" {
-		t.Errorf("Targets[0] = %q, want %q", eps[0].Targets[0], "1.2.3.4")
+	if eps[0].Targets[0] != tTargetIP1234 {
+		t.Errorf("Targets[0] = %q, want %q", eps[0].Targets[0], tTargetIP1234)
 	}
 }
 
 func TestCrossplaneScalewayRecordResolver_ApexRecord(t *testing.T) {
 	r := cprec.NewResolver()
 	u := &unstructured.Unstructured{Object: map[string]any{
-		"metadata": map[string]any{"namespace": "default", "name": "rec"},
-		"spec": map[string]any{"forProvider": map[string]any{
-			"type":    "A",
-			"data":    "1.2.3.4",
-			"dnsZone": "example.com",
+		tKeyMetadata: map[string]any{tKeyNamespace: tNSDefault, tKeyName: tNameRec},
+		tKeySpec: map[string]any{tForProvider: map[string]any{
+			tKeyType:    "A",
+			tKeyData:    tTargetIP1234,
+			tKeyDNSZone: tZoneExample,
 		}},
 	}}
 	eps, err := r.ResolveObject(context.Background(), u)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(eps) != 1 || eps[0].DNSName != "example.com" {
+	if len(eps) != 1 || eps[0].DNSName != tZoneExample {
 		t.Fatalf("unexpected: %+v", eps)
 	}
 }
@@ -78,13 +93,13 @@ func TestCrossplaneScalewayRecordResolver_ApexRecord(t *testing.T) {
 func TestCrossplaneScalewayRecordResolver_MissingRequiredFields(t *testing.T) {
 	r := cprec.NewResolver()
 	cases := []map[string]any{
-		{"type": "A", "data": "1.2.3.4"},              // missing dnsZone
-		{"type": "A", "dnsZone": "example.com"},       // missing data
-		{"data": "1.2.3.4", "dnsZone": "example.com"}, // missing type
+		{tKeyType: "A", tKeyData: tTargetIP1234},             // missing dnsZone
+		{tKeyType: "A", tKeyDNSZone: tZoneExample},           // missing data
+		{tKeyData: tTargetIP1234, tKeyDNSZone: tZoneExample}, // missing type
 	}
 	for i, fp := range cases {
 		u := &unstructured.Unstructured{Object: map[string]any{
-			"spec": map[string]any{"forProvider": fp},
+			tKeySpec: map[string]any{tForProvider: fp},
 		}}
 		eps, err := r.ResolveObject(context.Background(), u)
 		if err != nil {
@@ -102,12 +117,12 @@ func TestCrossplaneScalewayRecordResolver_MissingRequiredFields(t *testing.T) {
 func TestCrossplaneScalewayRecordResolver_TrailingDot(t *testing.T) {
 	r := cprec.NewResolver()
 	u := &unstructured.Unstructured{Object: map[string]any{
-		"metadata": map[string]any{"namespace": "default", "name": "rec"},
-		"spec": map[string]any{"forProvider": map[string]any{
-			"type":    "A",
-			"data":    "1.2.3.4",
-			"dnsZone": "example.com.",
-			"name":    "api",
+		tKeyMetadata: map[string]any{tKeyNamespace: tNSDefault, tKeyName: tNameRec},
+		tKeySpec: map[string]any{tForProvider: map[string]any{
+			tKeyType:    "A",
+			tKeyData:    tTargetIP1234,
+			tKeyDNSZone: "example.com.",
+			tKeyName:    "api",
 		}},
 	}}
 	eps, err := r.ResolveObject(context.Background(), u)

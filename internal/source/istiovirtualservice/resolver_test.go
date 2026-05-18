@@ -27,20 +27,26 @@ import (
 	ivs "github.com/golgoth31/sreportal/internal/source/istiovirtualservice"
 )
 
+const (
+	tTarget9999  = "9.9.9.9"
+	tFQDNA       = "a.example.com"
+	tAnnotTarget = "external-dns.alpha.kubernetes.io/target"
+)
+
 func TestIstioVirtualServiceResolver_Hosts(t *testing.T) {
 	r := ivs.NewResolver()
 	vs := &istionetworkingv1.VirtualService{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "vs", Namespace: "x",
-			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/target": "9.9.9.9"},
+			Annotations: map[string]string{tAnnotTarget: tTarget9999},
 		},
-		Spec: istionetworking.VirtualService{Hosts: []string{"a.example.com", "*"}},
+		Spec: istionetworking.VirtualService{Hosts: []string{tFQDNA, "*"}},
 	}
 	eps, err := r.ResolveObject(context.Background(), vs)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(eps) != 1 || eps[0].DNSName != "a.example.com" {
+	if len(eps) != 1 || eps[0].DNSName != tFQDNA {
 		t.Fatalf("unexpected: %+v", eps)
 	}
 }
@@ -52,9 +58,9 @@ func TestIstioVirtualServiceResolver_MultiHost(t *testing.T) {
 	vs := &istionetworkingv1.VirtualService{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "vs", Namespace: "x",
-			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/target": "9.9.9.9"},
+			Annotations: map[string]string{tAnnotTarget: tTarget9999},
 		},
-		Spec: istionetworking.VirtualService{Hosts: []string{"a.example.com", "b.example.com", "c.example.com"}},
+		Spec: istionetworking.VirtualService{Hosts: []string{tFQDNA, "b.example.com", "c.example.com"}},
 	}
 	eps, err := r.ResolveObject(context.Background(), vs)
 	if err != nil {
@@ -73,7 +79,7 @@ func TestIstioVirtualServiceResolver_WildcardSkipped(t *testing.T) {
 	vs := &istionetworkingv1.VirtualService{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "vs", Namespace: "x",
-			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/target": "9.9.9.9"},
+			Annotations: map[string]string{tAnnotTarget: tTarget9999},
 		},
 		Spec: istionetworking.VirtualService{Hosts: []string{"*", ""}},
 	}
@@ -93,7 +99,7 @@ func TestIstioVirtualServiceResolver_TrailingDot(t *testing.T) {
 	vs := &istionetworkingv1.VirtualService{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "vs", Namespace: "x",
-			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/target": "9.9.9.9"},
+			Annotations: map[string]string{tAnnotTarget: tTarget9999},
 		},
 		Spec: istionetworking.VirtualService{Hosts: []string{"api.example.com."}},
 	}

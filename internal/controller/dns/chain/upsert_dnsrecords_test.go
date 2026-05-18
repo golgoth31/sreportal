@@ -39,23 +39,25 @@ import (
 	"github.com/golgoth31/sreportal/internal/source/service"
 )
 
+const upsertTestNS1 = "ns1"
+
 func TestUpsertDNSRecords_CreatesAndDeletes(t *testing.T) {
 	scheme := runtime.NewScheme()
 	require.NoError(t, sreportalv1alpha2.AddToScheme(scheme))
 
 	dns := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "ns1", UID: "u1"},
+		ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: upsertTestNS1, UID: "u1"},
 		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: "p"},
 	}
 	existing := &sreportalv1alpha2.DNSRecord{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "d-ingress", Namespace: "ns1",
+			Name: "d-ingress", Namespace: upsertTestNS1,
 			OwnerReferences: []metav1.OwnerReference{{
 				APIVersion: sreportalv1alpha2.GroupVersion.String(),
 				Kind:       "DNS",
 				Name:       dns.Name,
 				UID:        dns.UID,
-				Controller: ptr.To(true),
+				Controller: ptr.To(true), //nolint:modernize // new(bool) yields false, not true
 			}},
 		},
 		Spec: sreportalv1alpha2.DNSRecordSpec{
@@ -82,7 +84,7 @@ func TestUpsertDNSRecords_CreatesAndDeletes(t *testing.T) {
 	require.NoError(t, h.Handle(context.Background(), rc))
 
 	var created sreportalv1alpha2.DNSRecord
-	require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns1", Name: "d-service"}, &created))
+	require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: upsertTestNS1, Name: "d-service"}, &created))
 	require.Equal(t, sreportalv1alpha2.DNSRecordOriginAuto, created.Spec.Origin)
 	require.Equal(t, string(service.SourceTypeService), string(created.Spec.SourceType))
 	require.Equal(t, "p", created.Spec.PortalRef)
@@ -92,7 +94,7 @@ func TestUpsertDNSRecords_CreatesAndDeletes(t *testing.T) {
 	require.Equal(t, []string{"1.1.1.1"}, created.Status.Endpoints[0].Targets)
 
 	var gone sreportalv1alpha2.DNSRecord
-	err := c.Get(context.Background(), types.NamespacedName{Namespace: "ns1", Name: "d-ingress"}, &gone)
+	err := c.Get(context.Background(), types.NamespacedName{Namespace: upsertTestNS1, Name: "d-ingress"}, &gone)
 	require.True(t, apierrors.IsNotFound(err), "expected d-ingress to be deleted, got err=%v", err)
 }
 
@@ -105,7 +107,7 @@ func TestUpsertDNSRecordsHandler_MultipleKinds(t *testing.T) {
 	require.NoError(t, sreportalv1alpha2.AddToScheme(scheme))
 
 	dns := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "ns1", UID: "uid-multi"},
+		ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: upsertTestNS1, UID: "uid-multi"},
 		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: "portal-a"},
 	}
 	c := fake.NewClientBuilder().

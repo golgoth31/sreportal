@@ -11,12 +11,21 @@ import (
 	dnsstore "github.com/golgoth31/sreportal/internal/readstore/dns"
 )
 
+const (
+	tIP1     = "1.1.1.1"
+	tIP1234  = "1.2.3.4"
+	tIP2222  = "2.2.2.2"
+	tFQDNX   = "x.example.com"
+	tPortalX = "portal-x"
+	tPortalY = "portal-y"
+)
+
 func TestFQDNStore_ListReturnsIsolatedSlices(t *testing.T) {
 	ctx := context.Background()
 	s := dnsstore.NewFQDNStore()
 
 	require.NoError(t, s.Replace(ctx, "ns/a", "p1", []domaindns.FQDNView{
-		{Name: "iso.example.com", RecordType: "A", Targets: []string{"1.1.1.1"}, Groups: []string{"g1"}},
+		{Name: "iso.example.com", RecordType: "A", Targets: []string{tIP1}, Groups: []string{"g1"}},
 	}))
 
 	out, err := s.List(ctx, domaindns.FQDNFilters{})
@@ -25,7 +34,7 @@ func TestFQDNStore_ListReturnsIsolatedSlices(t *testing.T) {
 	snapshotPortals := append([]string(nil), out[0].Portals...)
 
 	require.NoError(t, s.Replace(ctx, "ns/b", "p2", []domaindns.FQDNView{
-		{Name: "iso.example.com", RecordType: "A", Targets: []string{"1.1.1.1"}, Groups: []string{"g2"}},
+		{Name: "iso.example.com", RecordType: "A", Targets: []string{tIP1}, Groups: []string{"g2"}},
 	}))
 
 	assert.Equal(t, snapshotPortals, out[0].Portals, "caller's slice must not observe in-place mutation by a subsequent Replace")
@@ -44,62 +53,62 @@ func TestFQDNStore_InsertsSingleFQDN(t *testing.T) {
 	s := dnsstore.NewFQDNStore()
 
 	fqdns := []domaindns.FQDNView{
-		{Name: "foo.example.com", RecordType: "A", Targets: []string{"1.2.3.4"}, Portals: []string{"portal-x"}},
+		{Name: "foo.example.com", RecordType: "A", Targets: []string{tIP1234}, Portals: []string{tPortalX}},
 	}
-	err := s.Replace(ctx, "ns/rec-a", "portal-x", fqdns)
+	err := s.Replace(ctx, "ns/rec-a", tPortalX, fqdns)
 	require.NoError(t, err)
 
-	out, err := s.List(ctx, domaindns.FQDNFilters{Portal: "portal-x"})
+	out, err := s.List(ctx, domaindns.FQDNFilters{Portal: tPortalX})
 	require.NoError(t, err)
 	assert.Len(t, out, 1)
 	assert.Equal(t, "foo.example.com", out[0].Name)
-	assert.Contains(t, out[0].Portals, "portal-x")
+	assert.Contains(t, out[0].Portals, tPortalX)
 }
 
 func TestFQDNStore_DedupSamePortal(t *testing.T) {
 	ctx := context.Background()
 	s := dnsstore.NewFQDNStore()
 
-	view := domaindns.FQDNView{Name: "shared.example.com", RecordType: "A", Targets: []string{"1.2.3.4"}, Portals: []string{"portal-x"}}
+	view := domaindns.FQDNView{Name: "shared.example.com", RecordType: "A", Targets: []string{tIP1234}, Portals: []string{tPortalX}}
 
-	err := s.Replace(ctx, "ns/rec-a", "portal-x", []domaindns.FQDNView{view})
+	err := s.Replace(ctx, "ns/rec-a", tPortalX, []domaindns.FQDNView{view})
 	require.NoError(t, err)
-	err = s.Replace(ctx, "ns/rec-b", "portal-x", []domaindns.FQDNView{view})
+	err = s.Replace(ctx, "ns/rec-b", tPortalX, []domaindns.FQDNView{view})
 	require.NoError(t, err)
 
-	out, err := s.List(ctx, domaindns.FQDNFilters{Portal: "portal-x"})
+	out, err := s.List(ctx, domaindns.FQDNFilters{Portal: tPortalX})
 	require.NoError(t, err)
 	assert.Len(t, out, 1)
-	assert.Equal(t, []string{"portal-x"}, out[0].Portals)
+	assert.Equal(t, []string{tPortalX}, out[0].Portals)
 }
 
 func TestFQDNStore_DedupAcrossPortals(t *testing.T) {
 	ctx := context.Background()
 	s := dnsstore.NewFQDNStore()
 
-	view := domaindns.FQDNView{Name: "multi.example.com", RecordType: "A", Targets: []string{"1.2.3.4"}}
+	view := domaindns.FQDNView{Name: "multi.example.com", RecordType: "A", Targets: []string{tIP1234}}
 
-	err := s.Replace(ctx, "ns/rec-a", "portal-x", []domaindns.FQDNView{view})
+	err := s.Replace(ctx, "ns/rec-a", tPortalX, []domaindns.FQDNView{view})
 	require.NoError(t, err)
-	err = s.Replace(ctx, "ns/rec-b", "portal-y", []domaindns.FQDNView{view})
+	err = s.Replace(ctx, "ns/rec-b", tPortalY, []domaindns.FQDNView{view})
 	require.NoError(t, err)
 
 	out, err := s.List(ctx, domaindns.FQDNFilters{})
 	require.NoError(t, err)
 	assert.Len(t, out, 1)
-	assert.ElementsMatch(t, []string{"portal-x", "portal-y"}, out[0].Portals)
+	assert.ElementsMatch(t, []string{tPortalX, tPortalY}, out[0].Portals)
 }
 
 func TestFQDNStore_MergesGroups(t *testing.T) {
 	ctx := context.Background()
 	s := dnsstore.NewFQDNStore()
 
-	err := s.Replace(ctx, "ns/rec-a", "portal-x", []domaindns.FQDNView{
-		{Name: "g.example.com", RecordType: "A", Targets: []string{"1.2.3.4"}, Groups: []string{"team-a"}},
+	err := s.Replace(ctx, "ns/rec-a", tPortalX, []domaindns.FQDNView{
+		{Name: "g.example.com", RecordType: "A", Targets: []string{tIP1234}, Groups: []string{"team-a"}},
 	})
 	require.NoError(t, err)
-	err = s.Replace(ctx, "ns/rec-b", "portal-y", []domaindns.FQDNView{
-		{Name: "g.example.com", RecordType: "A", Targets: []string{"1.2.3.4"}, Groups: []string{"team-b"}},
+	err = s.Replace(ctx, "ns/rec-b", tPortalY, []domaindns.FQDNView{
+		{Name: "g.example.com", RecordType: "A", Targets: []string{tIP1234}, Groups: []string{"team-b"}},
 	})
 	require.NoError(t, err)
 
@@ -112,37 +121,37 @@ func TestFQDNStore_PortalChangeRemovesOldIndex(t *testing.T) {
 	ctx := context.Background()
 	s := dnsstore.NewFQDNStore()
 
-	view := domaindns.FQDNView{Name: "moves.example.com", RecordType: "A", Targets: []string{"1.2.3.4"}}
+	view := domaindns.FQDNView{Name: "moves.example.com", RecordType: "A", Targets: []string{tIP1234}}
 
-	require.NoError(t, s.Replace(ctx, "ns/rec-a", "portal-x", []domaindns.FQDNView{view}))
-	require.NoError(t, s.Replace(ctx, "ns/rec-a", "portal-y", []domaindns.FQDNView{view}))
+	require.NoError(t, s.Replace(ctx, "ns/rec-a", tPortalX, []domaindns.FQDNView{view}))
+	require.NoError(t, s.Replace(ctx, "ns/rec-a", tPortalY, []domaindns.FQDNView{view}))
 
-	oldPortal, err := s.List(ctx, domaindns.FQDNFilters{Portal: "portal-x"})
+	oldPortal, err := s.List(ctx, domaindns.FQDNFilters{Portal: tPortalX})
 	require.NoError(t, err)
 	assert.Empty(t, oldPortal, "old portal index should be cleared after portalRef change")
 
-	newPortal, err := s.List(ctx, domaindns.FQDNFilters{Portal: "portal-y"})
+	newPortal, err := s.List(ctx, domaindns.FQDNFilters{Portal: tPortalY})
 	require.NoError(t, err)
 	assert.Len(t, newPortal, 1)
-	assert.Equal(t, []string{"portal-y"}, newPortal[0].Portals)
+	assert.Equal(t, []string{tPortalY}, newPortal[0].Portals)
 }
 
 func TestFQDNStore_ConflictKeepsFirstWriter(t *testing.T) {
 	ctx := context.Background()
 	s := dnsstore.NewFQDNStore()
 
-	err := s.Replace(ctx, "ns/rec-a", "portal-x", []domaindns.FQDNView{
-		{Name: "c.example.com", RecordType: "A", Targets: []string{"1.1.1.1"}},
+	err := s.Replace(ctx, "ns/rec-a", tPortalX, []domaindns.FQDNView{
+		{Name: "c.example.com", RecordType: "A", Targets: []string{tIP1}},
 	})
 	require.NoError(t, err)
-	err = s.Replace(ctx, "ns/rec-b", "portal-y", []domaindns.FQDNView{
-		{Name: "c.example.com", RecordType: "A", Targets: []string{"2.2.2.2"}},
+	err = s.Replace(ctx, "ns/rec-b", tPortalY, []domaindns.FQDNView{
+		{Name: "c.example.com", RecordType: "A", Targets: []string{tIP2222}},
 	})
 	require.NoError(t, err)
 
 	got, err := s.Get(ctx, "c.example.com", "A")
 	require.NoError(t, err)
-	assert.Equal(t, []string{"1.1.1.1"}, got.Targets)
+	assert.Equal(t, []string{tIP1}, got.Targets)
 
 	s.AnnotateOwner("ns/rec-b", "ns", "dns-b")
 	conflicts := s.Conflicts("ns", "dns-b")
@@ -156,13 +165,13 @@ func TestFQDNStore_ReplacePreservesOwnerAnnotation(t *testing.T) {
 
 	// 1. rec-b writes first (becomes winner).
 	require.NoError(t, s.Replace(ctx, "ns/rec-b", "p", []domaindns.FQDNView{
-		{Name: "x.example.com", RecordType: "A", Targets: []string{"2.2.2.2"}},
+		{Name: tFQDNX, RecordType: "A", Targets: []string{tIP2222}},
 	}))
 
 	// 2. rec-a writes mismatching targets — generates the only conflict event,
 	//    with rec-a as loser.
 	require.NoError(t, s.Replace(ctx, "ns/rec-a", "p", []domaindns.FQDNView{
-		{Name: "x.example.com", RecordType: "A", Targets: []string{"1.1.1.1"}},
+		{Name: tFQDNX, RecordType: "A", Targets: []string{tIP1}},
 	}))
 
 	// 3. Annotate rec-a's DNS owner.
@@ -173,7 +182,7 @@ func TestFQDNStore_ReplacePreservesOwnerAnnotation(t *testing.T) {
 	//    rec-a's targets still mismatch). We expect the second conflict event
 	//    here too, but the key invariant is that the owner annotation survives.
 	require.NoError(t, s.Replace(ctx, "ns/rec-a", "p", []domaindns.FQDNView{
-		{Name: "x.example.com", RecordType: "A", Targets: []string{"1.1.1.1"}},
+		{Name: tFQDNX, RecordType: "A", Targets: []string{tIP1}},
 	}))
 
 	// 5. Conflicts scoped to dns-a (the loser owner) must surface events.
@@ -190,12 +199,12 @@ func TestFQDNStore_ConflictsScopedToDNSOwner(t *testing.T) {
 	s := dnsstore.NewFQDNStore()
 
 	require.NoError(t, s.Replace(ctx, "ns/a", "p", []domaindns.FQDNView{
-		{Name: "x.example.com", RecordType: "A", Targets: []string{"1.1.1.1"}},
+		{Name: tFQDNX, RecordType: "A", Targets: []string{tIP1}},
 	}))
 	s.AnnotateOwner("ns/a", "ns", "dns-a")
 
 	require.NoError(t, s.Replace(ctx, "ns/b", "p", []domaindns.FQDNView{
-		{Name: "x.example.com", RecordType: "A", Targets: []string{"2.2.2.2"}},
+		{Name: tFQDNX, RecordType: "A", Targets: []string{tIP2222}},
 	}))
 	s.AnnotateOwner("ns/b", "ns", "dns-b")
 
@@ -208,7 +217,7 @@ func TestFQDNStore_DeleteRemovesLastContributor(t *testing.T) {
 	s := dnsstore.NewFQDNStore()
 
 	require.NoError(t, s.Replace(ctx, "ns/a", "p", []domaindns.FQDNView{
-		{Name: "x.example.com", RecordType: "A", Targets: []string{"1.1.1.1"}},
+		{Name: tFQDNX, RecordType: "A", Targets: []string{tIP1}},
 	}))
 
 	require.NoError(t, s.Delete(ctx, "ns/a"))
@@ -222,7 +231,7 @@ func TestFQDNStore_DeleteKeepsFQDNIfAnotherContributor(t *testing.T) {
 	ctx := context.Background()
 	s := dnsstore.NewFQDNStore()
 
-	view := domaindns.FQDNView{Name: "x.example.com", RecordType: "A", Targets: []string{"1.1.1.1"}}
+	view := domaindns.FQDNView{Name: tFQDNX, RecordType: "A", Targets: []string{tIP1}}
 
 	require.NoError(t, s.Replace(ctx, "ns/a", "p", []domaindns.FQDNView{view}))
 	require.NoError(t, s.Replace(ctx, "ns/b", "p", []domaindns.FQDNView{view}))
@@ -238,14 +247,14 @@ func TestFQDNStore_DeleteRemovesPortalWhenLastContributorDrops(t *testing.T) {
 	ctx := context.Background()
 	s := dnsstore.NewFQDNStore()
 
-	view := domaindns.FQDNView{Name: "x.example.com", RecordType: "A", Targets: []string{"1.1.1.1"}}
+	view := domaindns.FQDNView{Name: tFQDNX, RecordType: "A", Targets: []string{tIP1}}
 
 	require.NoError(t, s.Replace(ctx, "ns/a", "p1", []domaindns.FQDNView{view}))
 	require.NoError(t, s.Replace(ctx, "ns/b", "p2", []domaindns.FQDNView{view}))
 
 	require.NoError(t, s.Delete(ctx, "ns/a"))
 
-	got, err := s.Get(ctx, "x.example.com", "A")
+	got, err := s.Get(ctx, tFQDNX, "A")
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"p2"}, got.Portals)
 }
@@ -255,12 +264,12 @@ func TestFQDNStore_ShrinkingReplaceRemovesOrphanedKeys(t *testing.T) {
 	s := dnsstore.NewFQDNStore()
 
 	require.NoError(t, s.Replace(ctx, "ns/a", "p", []domaindns.FQDNView{
-		{Name: "a.example.com", RecordType: "A", Targets: []string{"1.1.1.1"}},
-		{Name: "b.example.com", RecordType: "A", Targets: []string{"2.2.2.2"}},
+		{Name: "a.example.com", RecordType: "A", Targets: []string{tIP1}},
+		{Name: "b.example.com", RecordType: "A", Targets: []string{tIP2222}},
 	}))
 
 	require.NoError(t, s.Replace(ctx, "ns/a", "p", []domaindns.FQDNView{
-		{Name: "a.example.com", RecordType: "A", Targets: []string{"1.1.1.1"}},
+		{Name: "a.example.com", RecordType: "A", Targets: []string{tIP1}},
 	}))
 
 	out, err := s.List(ctx, domaindns.FQDNFilters{Portal: "p"})

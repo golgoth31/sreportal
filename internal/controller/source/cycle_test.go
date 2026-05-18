@@ -25,15 +25,17 @@ import (
 	svcsrc "github.com/golgoth31/sreportal/internal/source/service"
 )
 
+const tTeamA = "team-a"
+
 func TestCycle_ProducesServiceEndpoints(t *testing.T) {
 	scheme := runtime.NewScheme()
 	require.NoError(t, sreportalv1alpha2.AddToScheme(scheme))
 	require.NoError(t, corev1.AddToScheme(scheme))
 
 	dns := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "team-a"},
+		ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: tTeamA},
 		Spec: sreportalv1alpha2.DNSSpec{
-			PortalRef: "team-a",
+			PortalRef: tTeamA,
 			Sources: sreportalv1alpha2.SourcesSpec{
 				Service: &sreportalv1alpha2.ServiceSourceSpec{
 					CommonSourceSpec: sreportalv1alpha2.CommonSourceSpec{Enabled: true},
@@ -43,7 +45,7 @@ func TestCycle_ProducesServiceEndpoints(t *testing.T) {
 	}
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "echo", Namespace: "team-a",
+			Name: "echo", Namespace: tTeamA,
 			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/hostname": "echo.example.com"},
 		},
 		Status: corev1.ServiceStatus{LoadBalancer: corev1.LoadBalancerStatus{
@@ -56,7 +58,7 @@ func TestCycle_ProducesServiceEndpoints(t *testing.T) {
 
 	prev := srccontrol.Cycle(context.Background(), c, reg, store, nil)
 	require.NotEmpty(t, prev)
-	got, err := store.Lookup(svcsrc.SourceTypeService, "team-a", "")
+	got, err := store.Lookup(svcsrc.SourceTypeService, tTeamA, "")
 	require.NoError(t, err)
 	require.Len(t, got, 1)
 	require.Equal(t, "echo.example.com", got[0].Endpoint.DNSName)
@@ -88,9 +90,9 @@ func TestCycle_RemoteDNSSkipped(t *testing.T) {
 
 	// local DNS: service enabled
 	localDNS := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: "local", Namespace: "team-a"},
+		ObjectMeta: metav1.ObjectMeta{Name: "local", Namespace: tTeamA},
 		Spec: sreportalv1alpha2.DNSSpec{
-			PortalRef: "team-a",
+			PortalRef: tTeamA,
 			Sources: sreportalv1alpha2.SourcesSpec{
 				Service: &sreportalv1alpha2.ServiceSourceSpec{
 					CommonSourceSpec: sreportalv1alpha2.CommonSourceSpec{Enabled: true},

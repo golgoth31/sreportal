@@ -33,6 +33,7 @@ const (
 	subsystemPortal        = "portal"
 	subsystemSource        = "source"
 	subsystemImageRegistry = "imageregistry"
+	subsystemDNS           = "dns"
 
 	labelPortal     = "portal"
 	labelServer     = "server"
@@ -92,7 +93,7 @@ var (
 	DNSFQDNsTotal = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: namespace,
-			Subsystem: "dns",
+			Subsystem: subsystemDNS,
 			Name:      "fqdns_total",
 			Help:      "Total number of FQDNs per portal and source.",
 		},
@@ -103,7 +104,7 @@ var (
 	DNSGroupsTotal = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: namespace,
-			Subsystem: "dns",
+			Subsystem: subsystemDNS,
 			Name:      "groups_total",
 			Help:      "Total number of DNS groups per portal.",
 		},
@@ -176,7 +177,7 @@ var (
 	DNSTargetsConflictTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: namespace,
-			Subsystem: "dns",
+			Subsystem: subsystemDNS,
 			Name:      "targets_conflict_total",
 			Help:      "Total number of target conflicts in the FQDN store (loser writes), per portal.",
 		},
