@@ -3,10 +3,22 @@ kind: CustomResourceDefinition
 metadata:
   name: dns.sreportal.io
   annotations:
+    cert-manager.io/inject-ca-from: '{{ .Release.Namespace }}/{{ include "helm.fullname"
+      . }}-serving-cert'
     controller-gen.kubebuilder.io/version: v0.20.0
   labels:
   {{- include "helm.labels" . | nindent 4 }}
 spec:
+  conversion:
+    strategy: Webhook
+    webhook:
+      clientConfig:
+        service:
+          name: '{{ include "helm.fullname" . }}-webhook-service'
+          namespace: '{{ .Release.Namespace }}'
+          path: /convert
+      conversionReviewVersions:
+      - v1
   group: sreportal.io
   names:
     kind: DNS
