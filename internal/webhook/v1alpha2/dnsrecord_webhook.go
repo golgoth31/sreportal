@@ -20,9 +20,6 @@ import (
 	"context"
 	"fmt"
 
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -84,12 +81,16 @@ func (v *DNSRecordCustomValidator) validate(ctx context.Context, r *sreportalv1a
 		if len(r.Spec.Entries) > 0 {
 			return fmt.Errorf("spec.entries must be empty when spec.origin=auto")
 		}
-		// origin=auto reserved to controller SA (only enforced when running as webhook with admission context).
+		// origin=auto reserved to controller SA. Fail closed if we cannot
+		// determine the caller (no admission context): refusing is safer than
+		// letting an unauthenticated path through.
 		if v.controllerSA != "" {
-			if req, err := admission.RequestFromContext(ctx); err == nil {
-				if req.UserInfo.Username != v.controllerSA {
-					return fmt.Errorf("spec.origin=auto is reserved for the operator controller (caller: %q)", req.UserInfo.Username)
-				}
+			req, err := admission.RequestFromContext(ctx)
+			if err != nil {
+				return fmt.Errorf("cannot determine caller identity for origin=auto: %w", err)
+			}
+			if req.UserInfo.Username != v.controllerSA {
+				return fmt.Errorf("spec.origin=auto is reserved for the operator controller (caller: %q)", req.UserInfo.Username)
 			}
 		}
 	case sreportalv1alpha2.DNSRecordOriginManual:
@@ -108,57 +109,5 @@ func (v *DNSRecordCustomValidator) validate(ctx context.Context, r *sreportalv1a
 		return fmt.Errorf("spec.portalRef is immutable: cannot change from %q to %q", old.Spec.PortalRef, r.Spec.PortalRef)
 	}
 
-	// On update: controller ownerRef is immutable (checked first so we can skip the live Get for rejected mutations).
-	if old != nil {
-		if oldRef, newRef := controllerRef(old.OwnerReferences), controllerRef(r.OwnerReferences); oldRef != newRef {
-			return fmt.Errorf("controller ownerReference is immutable")
-		}
-	}
-
-	// Exactly one controller ownerReference, and it must be a DNS.
-	ctrlRefs := 0
-	var ownerName string
-	for _, or := range r.OwnerReferences {
-		if or.Controller == nil || !*or.Controller {
-			continue
-		}
-		ctrlRefs++
-		ownerName = or.Name
-	}
-	if ctrlRefs != 1 {
-		return fmt.Errorf("DNSRecord requires exactly one controller ownerReference to a DNS (got %d)", ctrlRefs)
-	}
-	// Now we know there is exactly one — re-locate it to validate Kind/APIVersion.
-	for _, or := range r.OwnerReferences {
-		if or.Controller == nil || !*or.Controller {
-			continue
-		}
-		if or.Kind != "DNS" || or.APIVersion != sreportalv1alpha2.GroupVersion.String() {
-			return fmt.Errorf("controller ownerReference must be a DNS (got %s/%s)", or.APIVersion, or.Kind)
-		}
-	}
-
-	// Fetch owner DNS and compare portalRef.
-	var owner sreportalv1alpha2.DNS
-	if err := v.client.Get(ctx, types.NamespacedName{Namespace: r.Namespace, Name: ownerName}, &owner); err != nil {
-		if apierrors.IsNotFound(err) {
-			return fmt.Errorf("owner DNS %q not found in namespace %q", ownerName, r.Namespace)
-		}
-		return fmt.Errorf("failed to fetch owner DNS %q in namespace %q: %w", ownerName, r.Namespace, err)
-	}
-	if owner.Spec.PortalRef != r.Spec.PortalRef {
-		return fmt.Errorf("spec.portalRef=%q does not match owner DNS.spec.portalRef=%q", r.Spec.PortalRef, owner.Spec.PortalRef)
-	}
-
 	return nil
-}
-
-// controllerRef returns the UID (as string) of the controller ownerReference, or "" if none.
-func controllerRef(refs []metav1.OwnerReference) string {
-	for _, or := range refs {
-		if or.Controller != nil && *or.Controller {
-			return string(or.UID)
-		}
-	}
-	return ""
 }
