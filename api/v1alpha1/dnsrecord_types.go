@@ -153,7 +153,9 @@ func init() {
 // their Origin/Entries restored from it.
 func (src *DNSRecord) ConvertTo(dstRaw conversion.Hub) error {
 	dst := dstRaw.(*v1alpha2.DNSRecord)
-	dst.ObjectMeta = src.ObjectMeta
+	// Deep copy ObjectMeta so subsequent mutations (annotation strip) do not
+	// affect the source — the apiserver may pass cached objects in.
+	dst.ObjectMeta = *src.ObjectMeta.DeepCopy()
 	dst.Spec.Origin = v1alpha2.DNSRecordOriginAuto
 	dst.Spec.PortalRef = src.Spec.PortalRef
 	dst.Spec.SourceType = v1alpha2.SourceType(src.Spec.SourceType)
@@ -193,7 +195,9 @@ func (src *DNSRecord) ConvertTo(dstRaw conversion.Hub) error {
 // so they are stashed in annotationV1Alpha2DNSRecordSpec for lossless round-trip.
 func (dst *DNSRecord) ConvertFrom(srcRaw conversion.Hub) error {
 	src := srcRaw.(*v1alpha2.DNSRecord)
-	dst.ObjectMeta = src.ObjectMeta
+	// Deep copy ObjectMeta so subsequent mutations (annotation insert) do not
+	// affect the source — the apiserver may pass cached objects in.
+	dst.ObjectMeta = *src.ObjectMeta.DeepCopy()
 	dst.Spec.PortalRef = src.Spec.PortalRef
 	dst.Spec.SourceType = string(src.Spec.SourceType)
 
