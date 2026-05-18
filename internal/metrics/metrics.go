@@ -143,6 +143,46 @@ var (
 		[]string{labelSourceType},
 	)
 
+	// SourceNotifyDropped counts config-change notifications dropped because the
+	// notify channel was full. A non-zero rate suggests reconcile work is not
+	// keeping up with DNS CR changes; the periodic tick will still catch up.
+	SourceNotifyDropped = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: subsystemSource,
+			Name:      "notify_dropped_total",
+			Help:      "Total number of DNS config-change notifications dropped because the notify channel was full, per portal.",
+		},
+		[]string{labelPortal},
+	)
+
+	// SourceKindActive is 1 when at least one DNS CR currently enables the
+	// source kind, 0 otherwise. Drives the SourceReconciler's per-kind List
+	// loop and tells operators which kinds the global producer is watching.
+	SourceKindActive = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: subsystemSource,
+			Name:      "kind_active",
+			Help:      "1 when at least one DNS CR enables this source kind, 0 otherwise.",
+		},
+		[]string{"kind"},
+	)
+
+	// DNSTargetsConflictTotal counts target conflicts observed by the FQDN
+	// store when two DNSRecords contribute mismatching targets for the same
+	// (name, recordType, portal). First-writer wins; this counter increments
+	// once per losing replay.
+	DNSTargetsConflictTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: "dns",
+			Name:      "targets_conflict_total",
+			Help:      "Total number of target conflicts in the FQDN store (loser writes), per portal.",
+		},
+		[]string{labelPortal},
+	)
+
 	// AlertsActive tracks the number of active alerts per portal and alertmanager.
 	AlertsActive = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -490,6 +530,10 @@ func init() {
 		SourceEndpointsCollected,
 		SourceErrorsTotal,
 		SourceSkippedUpdates,
+		SourceNotifyDropped,
+		SourceKindActive,
+		// DNS conflicts
+		DNSTargetsConflictTotal,
 		// Alertmanager
 		AlertsActive,
 		AlertsFetchErrorsTotal,
