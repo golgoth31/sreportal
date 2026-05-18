@@ -30,18 +30,27 @@ import (
 // higher-priority kind earlier in the iteration order.
 type IntraDNSDedupHandler struct{}
 
+// dedupKey matches the FQDNStore identity ({Name, RecordType}) so endpoints
+// for the same FQDN but different record types (e.g. A vs AAAA) don't shadow
+// each other at this stage.
+type dedupKey struct {
+	name       string
+	recordType string
+}
+
 // Handle implements reconciler.Handler.
 func (*IntraDNSDedupHandler) Handle(_ context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha2.DNS, ChainData]) error {
-	seen := map[string]struct{}{}
+	seen := map[dedupKey]struct{}{}
 	kept := make(map[registry.SourceType][]*endpoint.Endpoint, len(rc.Data.EndpointsByKind))
 	for _, kind := range rc.Data.PriorityOrder {
 		eps := rc.Data.EndpointsByKind[kind]
 		out := make([]*endpoint.Endpoint, 0, len(eps))
 		for _, e := range eps {
-			if _, dup := seen[e.DNSName]; dup {
+			k := dedupKey{name: e.DNSName, recordType: e.RecordType}
+			if _, dup := seen[k]; dup {
 				continue
 			}
-			seen[e.DNSName] = struct{}{}
+			seen[k] = struct{}{}
 			out = append(out, e)
 		}
 		kept[kind] = out
