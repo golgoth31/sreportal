@@ -18,6 +18,7 @@ package dns_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -32,6 +33,7 @@ import (
 	sreportalv1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 	dnschain "github.com/golgoth31/sreportal/internal/controller/dns/chain"
 	"github.com/golgoth31/sreportal/internal/reconciler"
+	"github.com/golgoth31/sreportal/internal/source/gatewayhttproute"
 	"github.com/golgoth31/sreportal/internal/source/ingress"
 	"github.com/golgoth31/sreportal/internal/source/registry"
 	"github.com/golgoth31/sreportal/internal/source/service"
@@ -92,4 +94,91 @@ func TestUpsertDNSRecords_CreatesAndDeletes(t *testing.T) {
 	var gone sreportalv1alpha2.DNSRecord
 	err := c.Get(context.Background(), types.NamespacedName{Namespace: "ns1", Name: "d-ingress"}, &gone)
 	require.True(t, apierrors.IsNotFound(err), "expected d-ingress to be deleted, got err=%v", err)
+}
+
+// TestUpsertDNSRecordsHandler_MultipleKinds verifies that when ChainData
+// carries endpoints for multiple source kinds, the handler creates one DNSRecord
+// per kind (named {dnsName}-{kind}), each with the correct endpoints and
+// an ownerReference pointing back to the DNS CR.
+func TestUpsertDNSRecordsHandler_MultipleKinds(t *testing.T) {
+	scheme := runtime.NewScheme()
+	require.NoError(t, sreportalv1alpha2.AddToScheme(scheme))
+
+	dns := &sreportalv1alpha2.DNS{
+		ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "ns1", UID: "uid-multi"},
+		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: "portal-a"},
+	}
+	c := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithStatusSubresource(&sreportalv1alpha2.DNSRecord{}).
+		WithObjects(dns).
+		Build()
+
+	h := &dnschain.UpsertDNSRecordsHandler{Client: c}
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{
+		Resource: dns,
+		Data: dnschain.ChainData{
+			KeptEndpointsByKind: map[registry.SourceType][]*endpoint.Endpoint{
+				service.SourceTypeService: {
+					endpoint.NewEndpoint("svc.example.com", "A", "1.1.1.1"),
+				},
+				ingress.SourceTypeIngress: {
+					endpoint.NewEndpoint("ing.example.com", "A", "2.2.2.2"),
+				},
+				gatewayhttproute.SourceTypeGatewayHTTPRoute: {
+					endpoint.NewEndpoint("gw.example.com", "A", "3.3.3.3"),
+				},
+			},
+		},
+	}
+
+	require.NoError(t, h.Handle(context.Background(), rc))
+
+	// Verify that exactly 3 DNSRecord CRs were created.
+	var list sreportalv1alpha2.DNSRecordList
+	require.NoError(t, c.List(context.Background(), &list))
+	require.Len(t, list.Items, 3, "expected one DNSRecord per source kind")
+
+	// Build a name→record map for deterministic assertions.
+	byName := make(map[string]*sreportalv1alpha2.DNSRecord, 3)
+	for i := range list.Items {
+		byName[list.Items[i].Name] = &list.Items[i]
+	}
+
+	type kindExpect struct {
+		kind    registry.SourceType
+		dnsName string
+		target  string
+	}
+	cases := []kindExpect{
+		{service.SourceTypeService, "svc.example.com", "1.1.1.1"},
+		{ingress.SourceTypeIngress, "ing.example.com", "2.2.2.2"},
+		{gatewayhttproute.SourceTypeGatewayHTTPRoute, "gw.example.com", "3.3.3.3"},
+	}
+
+	for _, tc := range cases {
+		name := fmt.Sprintf("d-%s", string(tc.kind))
+		dr, ok := byName[name]
+		require.True(t, ok, "expected DNSRecord %q to exist", name)
+
+		// Correct source type annotation.
+		require.Equal(t, sreportalv1alpha2.SourceType(tc.kind), dr.Spec.SourceType,
+			"DNSRecord %q: wrong SourceType", name)
+
+		// Status.Endpoints contains the expected FQDN+target.
+		require.Len(t, dr.Status.Endpoints, 1, "DNSRecord %q: expected 1 endpoint", name)
+		require.Equal(t, tc.dnsName, dr.Status.Endpoints[0].DNSName,
+			"DNSRecord %q: wrong DNSName", name)
+		require.Equal(t, []string{tc.target}, dr.Status.Endpoints[0].Targets,
+			"DNSRecord %q: wrong Targets", name)
+
+		// OwnerReference points back to the DNS CR.
+		require.Len(t, dr.OwnerReferences, 1, "DNSRecord %q: expected 1 ownerReference", name)
+		ref := dr.OwnerReferences[0]
+		require.Equal(t, "DNS", ref.Kind, "DNSRecord %q: ownerRef.Kind", name)
+		require.Equal(t, dns.UID, ref.UID, "DNSRecord %q: ownerRef.UID", name)
+		require.Equal(t, dns.Name, ref.Name, "DNSRecord %q: ownerRef.Name", name)
+		require.NotNil(t, ref.Controller, "DNSRecord %q: ownerRef.Controller must be set", name)
+		require.True(t, *ref.Controller, "DNSRecord %q: ownerRef.Controller must be true", name)
+	}
 }
