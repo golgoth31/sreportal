@@ -88,6 +88,10 @@ func Migrate(ctx context.Context, c client.Client, dryRun bool) (Summary, error)
 			if err := c.Create(ctx, record, opts...); err != nil {
 				if apierrors.IsAlreadyExists(err) {
 					sum.AlreadyExist++
+					// Count toward perDNSCreated so the annotation-strip gate
+					// (perDNSCreated == groupCount) succeeds on idempotent re-runs
+					// after a partial failure.
+					perDNSCreated++
 					fmt.Printf("DNSRecord %s/%s already exists, leaving in place\n", dns.Namespace, recordName)
 					continue
 				}
