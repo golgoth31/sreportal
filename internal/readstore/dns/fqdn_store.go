@@ -108,6 +108,12 @@ func (s *FQDNStore) Replace(ctx context.Context, recordKey, portalRef string, fq
 		s.recomputeFQDN(k)
 	}
 
+	s.observeRefCounts(affected)
+	s.updateDedupRatio(portalRef)
+	if prev.portalRef != "" && prev.portalRef != portalRef {
+		s.updateDedupRatio(prev.portalRef)
+	}
+
 	// Conflict detection: a contribution loses iff its targets disagree with
 	// the recomputed primary. Lowest-seq contributor is primary; any
 	// later-seq contributor with different targets is a loser.
@@ -179,12 +185,61 @@ func (s *FQDNStore) Delete(ctx context.Context, recordKey string) error {
 		return nil
 	}
 	delete(s.byRecord, recordKey)
+	affected := make(map[FQDNKey]struct{}, len(contrib.contributions))
 	for k := range contrib.contributions {
+		affected[k] = struct{}{}
 		s.recomputeFQDN(k)
 	}
 
+	s.observeRefCounts(affected)
+	s.updateDedupRatio(contrib.portalRef)
+
 	go s.broadcast()
 	return nil
+}
+
+// observeRefCounts samples the contributor count of each surviving key into
+// the refcount histogram. Keys that no longer have contributors after
+// recompute are skipped (they were purged from s.fqdns).
+func (s *FQDNStore) observeRefCounts(keys map[FQDNKey]struct{}) {
+	if len(keys) == 0 {
+		return
+	}
+	counts := make(map[FQDNKey]int, len(keys))
+	for _, rec := range s.byRecord {
+		for k := range rec.contributions {
+			if _, ok := keys[k]; ok {
+				counts[k]++
+			}
+		}
+	}
+	for _, n := range counts {
+		metrics.DNSFQDNRefCount.Observe(float64(n))
+	}
+}
+
+// updateDedupRatio refreshes the per-portal dedup gauge:
+// (raw_writes - unique_keys) / raw_writes, where raw_writes is the total
+// number of contributions from DNSRecords with portalRef==p and unique_keys
+// is the number of distinct (name, recordType) entries exposed for p.
+// The gauge is removed when the portal no longer has contributions.
+func (s *FQDNStore) updateDedupRatio(portalRef string) {
+	if portalRef == "" {
+		return
+	}
+	raw := 0
+	for _, rec := range s.byRecord {
+		if rec.portalRef != portalRef {
+			continue
+		}
+		raw += len(rec.contributions)
+	}
+	if raw == 0 {
+		metrics.DNSFQDNDedupRatio.DeleteLabelValues(portalRef)
+		return
+	}
+	unique := len(s.byPortal[portalRef])
+	metrics.DNSFQDNDedupRatio.WithLabelValues(portalRef).Set(float64(raw-unique) / float64(raw))
 }
 
 // List returns FQDNs matching the given filters, sorted by (Name, RecordType).

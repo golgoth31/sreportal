@@ -184,6 +184,35 @@ var (
 		[]string{labelPortal},
 	)
 
+	// DNSFQDNDedupRatio measures the dedup gain of the FQDN store, per portal:
+	// (raw_writes - unique_keys) / raw_writes, where raw_writes is the total
+	// number of contributions from DNSRecords assigned to that portal and
+	// unique_keys is the number of distinct (name, recordType) entries
+	// exposed for it. Range [0, 1); 0 means every contribution is unique.
+	DNSFQDNDedupRatio = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: subsystemDNS,
+			Name:      "fqdn_dedup_ratio",
+			Help:      "FQDN store dedup ratio per portal: (raw_writes - unique_keys) / raw_writes.",
+		},
+		[]string{labelPortal},
+	)
+
+	// DNSFQDNRefCount observes the number of contributing DNSRecords backing
+	// each FQDN key, sampled on every store write that affects the key.
+	// Buckets favour the small-N regime expected in normal operation while
+	// still surfacing pathological fan-in.
+	DNSFQDNRefCount = prometheus.NewHistogram(
+		prometheus.HistogramOpts{
+			Namespace: namespace,
+			Subsystem: subsystemDNS,
+			Name:      "fqdn_refcount",
+			Help:      "Distribution of the number of DNSRecord contributors per FQDN key, sampled on each affecting write.",
+			Buckets:   []float64{1, 2, 3, 5, 8, 13, 21, 34, 55, 89},
+		},
+	)
+
 	// AlertsActive tracks the number of active alerts per portal and alertmanager.
 	AlertsActive = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -535,6 +564,9 @@ func init() {
 		SourceKindActive,
 		// DNS conflicts
 		DNSTargetsConflictTotal,
+		// DNS readstore
+		DNSFQDNDedupRatio,
+		DNSFQDNRefCount,
 		// Alertmanager
 		AlertsActive,
 		AlertsFetchErrorsTotal,
