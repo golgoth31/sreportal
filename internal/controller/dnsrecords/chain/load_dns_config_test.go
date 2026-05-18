@@ -95,3 +95,57 @@ func TestLoadDNSConfigHandler_MissingDNS_ShortCircuits(t *testing.T) {
 	g.Expect(errors.Is(err, reconciler.ErrShortCircuit)).To(BeTrue())
 	g.Expect(rc.Data.GroupMapping).To(BeNil())
 }
+
+// TestLoadDNSConfigHandler_DNSNameMismatchesPortalRef is an implicit-contract
+// test that locks in the current lookup behaviour.
+//
+// The handler resolves the DNS CR via:
+//
+//	client.Get(ctx, ObjectKey{Name: record.Spec.PortalRef, Namespace: …}, &dns)
+//
+// This means DNS.Name MUST equal record.Spec.PortalRef. A DNS whose
+// Spec.PortalRef matches the record's PortalRef but whose Name differs is
+// invisible to the handler — the Get-by-name call returns NotFound, which
+// causes a short-circuit.
+//
+// If this contract is ever relaxed (e.g. via a Spec.PortalRef field-indexer
+// lookup), this test will need to be updated to reflect the new behaviour.
+func TestLoadDNSConfigHandler_DNSNameMismatchesPortalRef(t *testing.T) {
+	g := NewWithT(t)
+
+	scheme := runtime.NewScheme()
+	g.Expect(v1alpha2.AddToScheme(scheme)).To(Succeed())
+
+	// DNS CR where Name != PortalRef value used by the record.
+	// The handler looks up by Name == record.Spec.PortalRef == "main",
+	// but this DNS object's Name is "dns-platform", so the lookup will miss.
+	dns := &v1alpha2.DNS{
+		ObjectMeta: metav1.ObjectMeta{Name: "dns-platform", Namespace: tNsDefault},
+		Spec: v1alpha2.DNSSpec{
+			PortalRef: tPortalMain, // == "main", matches the record's PortalRef
+			GroupMapping: v1alpha2.GroupMappingSpec{
+				DefaultGroup: "Platform",
+			},
+		},
+	}
+
+	c := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(dns).
+		Build()
+
+	rc := &reconciler.ReconcileContext[*v1alpha2.DNSRecord, chain.ChainData]{
+		Resource: &v1alpha2.DNSRecord{
+			ObjectMeta: metav1.ObjectMeta{Name: "svc-ingress", Namespace: tNsDefault},
+			Spec: v1alpha2.DNSRecordSpec{
+				Origin:    v1alpha2.DNSRecordOriginAuto,
+				PortalRef: tPortalMain, // handler will look up DNS by Name == "main" — not found
+			},
+		},
+	}
+
+	// Current behaviour: Get-by-name misses; handler short-circuits.
+	err := chain.NewLoadDNSConfigHandler(c).Handle(context.Background(), rc)
+	g.Expect(errors.Is(err, reconciler.ErrShortCircuit)).To(BeTrue())
+	g.Expect(rc.Data.GroupMapping).To(BeNil())
+}
