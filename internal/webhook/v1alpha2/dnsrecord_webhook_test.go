@@ -65,15 +65,18 @@ func newDNS() *sreportalv1alpha2.DNS {
 	}
 }
 
-// validOwnerRef returns a controller ownerReference pointing to a DNS CR.
+// validOwnerRef returns a controller ownerReference pointing to a DNS CR,
+// matching the shape produced by controllerutil.SetControllerReference.
 func validOwnerRef() metav1.OwnerReference {
 	isController := true
+	blockOwnerDeletion := true
 	return metav1.OwnerReference{
-		APIVersion: sreportalv1alpha2.GroupVersion.String(),
-		Kind:       "DNS",
-		Name:       tDNSName,
-		UID:        tDNSUID,
-		Controller: &isController,
+		APIVersion:         sreportalv1alpha2.GroupVersion.String(),
+		Kind:               "DNS",
+		Name:               tDNSName,
+		UID:                tDNSUID,
+		Controller:         &isController,
+		BlockOwnerDeletion: &blockOwnerDeletion,
 	}
 }
 
@@ -317,6 +320,239 @@ func TestDNSRecordWebhook_AutoAllowedForControllerSA(t *testing.T) {
 	}
 	_, err := v.ValidateCreate(ctxWithUser(controllerSA), r)
 	g.Expect(err).NotTo(HaveOccurred())
+}
+
+// --- New tests: ownerRef validation (§8.2) ---
+
+func TestDNSRecordWebhook_AutoRejectsMissingOwnerRef(t *testing.T) {
+	g := NewWithT(t)
+	dns := newDNS()
+	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), "")
+	r := &sreportalv1alpha2.DNSRecord{
+		ObjectMeta: metav1.ObjectMeta{Name: tRecordIngress, Namespace: tNamespace},
+		Spec: sreportalv1alpha2.DNSRecordSpec{
+			Origin:     sreportalv1alpha2.DNSRecordOriginAuto,
+			PortalRef:  tPortalMain,
+			SourceType: tSourceIngress,
+		},
+	}
+	_, err := v.ValidateCreate(context.Background(), r)
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(err.Error()).To(ContainSubstring("required when spec.origin=auto"))
+}
+
+func TestDNSRecordWebhook_RejectsMultipleDNSControllerOwnerRefs(t *testing.T) {
+	g := NewWithT(t)
+	dns := newDNS()
+	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), "")
+	ref2 := validOwnerRef()
+	ref2.Name = "second-dns"
+	ref2.UID = "dns-uid-second"
+	r := &sreportalv1alpha2.DNSRecord{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            tRecordIngress,
+			Namespace:       tNamespace,
+			OwnerReferences: []metav1.OwnerReference{validOwnerRef(), ref2},
+		},
+		Spec: sreportalv1alpha2.DNSRecordSpec{
+			Origin:     sreportalv1alpha2.DNSRecordOriginAuto,
+			PortalRef:  tPortalMain,
+			SourceType: tSourceIngress,
+		},
+	}
+	_, err := v.ValidateCreate(context.Background(), r)
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(err.Error()).To(ContainSubstring("at most one ownerReference"))
+}
+
+func TestDNSRecordWebhook_RejectsOwnerRefWithoutBlockOwnerDeletion(t *testing.T) {
+	g := NewWithT(t)
+	dns := newDNS()
+	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), "")
+	ref := validOwnerRef()
+	ref.BlockOwnerDeletion = nil
+	r := &sreportalv1alpha2.DNSRecord{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            tRecordIngress,
+			Namespace:       tNamespace,
+			OwnerReferences: []metav1.OwnerReference{ref},
+		},
+		Spec: sreportalv1alpha2.DNSRecordSpec{
+			Origin:     sreportalv1alpha2.DNSRecordOriginAuto,
+			PortalRef:  tPortalMain,
+			SourceType: tSourceIngress,
+		},
+	}
+	_, err := v.ValidateCreate(context.Background(), r)
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(err.Error()).To(ContainSubstring("blockOwnerDeletion=true"))
+}
+
+func TestDNSRecordWebhook_RejectsDanglingOwnerDNS(t *testing.T) {
+	g := NewWithT(t)
+	// fake client has no DNS objects → owner lookup returns NotFound.
+	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t), "")
+	r := &sreportalv1alpha2.DNSRecord{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            tRecordIngress,
+			Namespace:       tNamespace,
+			OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
+		},
+		Spec: sreportalv1alpha2.DNSRecordSpec{
+			Origin:     sreportalv1alpha2.DNSRecordOriginAuto,
+			PortalRef:  tPortalMain,
+			SourceType: tSourceIngress,
+		},
+	}
+	_, err := v.ValidateCreate(context.Background(), r)
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(err.Error()).To(ContainSubstring("not found in namespace"))
+}
+
+func TestDNSRecordWebhook_RejectsPortalRefMismatch(t *testing.T) {
+	g := NewWithT(t)
+	dns := newDNS() // owner DNS has spec.portalRef=tPortalMain.
+	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), "")
+	r := &sreportalv1alpha2.DNSRecord{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            tRecordIngress,
+			Namespace:       tNamespace,
+			OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
+		},
+		Spec: sreportalv1alpha2.DNSRecordSpec{
+			Origin:     sreportalv1alpha2.DNSRecordOriginAuto,
+			PortalRef:  tPortalOther,
+			SourceType: tSourceIngress,
+		},
+	}
+	_, err := v.ValidateCreate(context.Background(), r)
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(err.Error()).To(ContainSubstring("must match owner DNS spec.portalRef"))
+}
+
+func TestDNSRecordWebhook_ManualWithoutOwnerRefAccepted(t *testing.T) {
+	g := NewWithT(t)
+	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t), "")
+	r := &sreportalv1alpha2.DNSRecord{
+		ObjectMeta: metav1.ObjectMeta{Name: tRecordManual, Namespace: tNamespace},
+		Spec: sreportalv1alpha2.DNSRecordSpec{
+			Origin:    sreportalv1alpha2.DNSRecordOriginManual,
+			PortalRef: tPortalMain,
+			Entries:   []sreportalv1alpha2.DNSRecordEntry{{FQDN: tFQDNAPIExamp}},
+		},
+	}
+	_, err := v.ValidateCreate(context.Background(), r)
+	g.Expect(err).NotTo(HaveOccurred())
+}
+
+func TestDNSRecordWebhook_ManualWithDanglingOwnerRefRejected(t *testing.T) {
+	g := NewWithT(t)
+	// Manual record carries an ownerRef but the DNS does not exist.
+	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t), "")
+	r := &sreportalv1alpha2.DNSRecord{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            tRecordManual,
+			Namespace:       tNamespace,
+			OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
+		},
+		Spec: sreportalv1alpha2.DNSRecordSpec{
+			Origin:    sreportalv1alpha2.DNSRecordOriginManual,
+			PortalRef: tPortalMain,
+			Entries:   []sreportalv1alpha2.DNSRecordEntry{{FQDN: tFQDNAPIExamp}},
+		},
+	}
+	_, err := v.ValidateCreate(context.Background(), r)
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(err.Error()).To(ContainSubstring("not found in namespace"))
+}
+
+func TestDNSRecordWebhook_UpdateAdoptionOneWayAccepted(t *testing.T) {
+	g := NewWithT(t)
+	dns := newDNS()
+	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), "")
+	old := &sreportalv1alpha2.DNSRecord{
+		ObjectMeta: metav1.ObjectMeta{Namespace: tNamespace},
+		Spec: sreportalv1alpha2.DNSRecordSpec{
+			Origin:    sreportalv1alpha2.DNSRecordOriginManual,
+			PortalRef: tPortalMain,
+			Entries:   []sreportalv1alpha2.DNSRecordEntry{{FQDN: tFQDNAPIExamp}},
+		},
+	}
+	newR := &sreportalv1alpha2.DNSRecord{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:       tNamespace,
+			OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
+		},
+		Spec: sreportalv1alpha2.DNSRecordSpec{
+			Origin:    sreportalv1alpha2.DNSRecordOriginManual,
+			PortalRef: tPortalMain,
+			Entries:   []sreportalv1alpha2.DNSRecordEntry{{FQDN: tFQDNAPIExamp}},
+		},
+	}
+	_, err := v.ValidateUpdate(context.Background(), old, newR)
+	g.Expect(err).NotTo(HaveOccurred())
+}
+
+func TestDNSRecordWebhook_UpdateOwnerRefRemovalRejected(t *testing.T) {
+	g := NewWithT(t)
+	dns := newDNS()
+	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), "")
+	old := &sreportalv1alpha2.DNSRecord{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:       tNamespace,
+			OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
+		},
+		Spec: sreportalv1alpha2.DNSRecordSpec{
+			Origin:    sreportalv1alpha2.DNSRecordOriginManual,
+			PortalRef: tPortalMain,
+			Entries:   []sreportalv1alpha2.DNSRecordEntry{{FQDN: tFQDNAPIExamp}},
+		},
+	}
+	newR := &sreportalv1alpha2.DNSRecord{
+		ObjectMeta: metav1.ObjectMeta{Namespace: tNamespace},
+		Spec: sreportalv1alpha2.DNSRecordSpec{
+			Origin:    sreportalv1alpha2.DNSRecordOriginManual,
+			PortalRef: tPortalMain,
+			Entries:   []sreportalv1alpha2.DNSRecordEntry{{FQDN: tFQDNAPIExamp}},
+		},
+	}
+	_, err := v.ValidateUpdate(context.Background(), old, newR)
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(err.Error()).To(ContainSubstring("cannot be removed"))
+}
+
+func TestDNSRecordWebhook_UpdateReparentingRejected(t *testing.T) {
+	g := NewWithT(t)
+	dns := newDNS()
+	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), "")
+	other := validOwnerRef()
+	other.Name = "team-b-dns"
+	other.UID = "dns-uid-team-b"
+	old := &sreportalv1alpha2.DNSRecord{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:       tNamespace,
+			OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
+		},
+		Spec: sreportalv1alpha2.DNSRecordSpec{
+			Origin:    sreportalv1alpha2.DNSRecordOriginManual,
+			PortalRef: tPortalMain,
+			Entries:   []sreportalv1alpha2.DNSRecordEntry{{FQDN: tFQDNAPIExamp}},
+		},
+	}
+	newR := &sreportalv1alpha2.DNSRecord{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:       tNamespace,
+			OwnerReferences: []metav1.OwnerReference{other},
+		},
+		Spec: sreportalv1alpha2.DNSRecordSpec{
+			Origin:    sreportalv1alpha2.DNSRecordOriginManual,
+			PortalRef: tPortalMain,
+			Entries:   []sreportalv1alpha2.DNSRecordEntry{{FQDN: tFQDNAPIExamp}},
+		},
+	}
+	_, err := v.ValidateUpdate(context.Background(), old, newR)
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(err.Error()).To(ContainSubstring("cannot re-parent"))
 }
 
 func TestDNSRecordWebhook_AutoAllowedWhenNoSAConfigured(t *testing.T) {
