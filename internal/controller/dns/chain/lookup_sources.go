@@ -18,6 +18,7 @@ package dns
 
 import (
 	"context"
+	"errors"
 	"sort"
 
 	"sigs.k8s.io/external-dns/endpoint"
@@ -49,16 +50,22 @@ type LookupSourcesHandler struct {
 	Source domainsource.SourceEndpointReader
 }
 
+// ErrNilSourceReader is returned when the handler is invoked without a wired
+// SourceEndpointReader. Treated as a hard wiring error: returning nil silently
+// would clear all auto FQDNs downstream (desiredKinds becomes empty), which is
+// indistinguishable from an intentional empty config.
+var ErrNilSourceReader = errors.New("LookupSourcesHandler: Source reader is nil (wiring bug)")
+
 // Handle implements reconciler.Handler.
 func (h *LookupSourcesHandler) Handle(_ context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha2.DNS, ChainData]) error {
+	if h.Source == nil {
+		return ErrNilSourceReader
+	}
+
 	dns := rc.Resource
 	enabled := sourcepkg.EnabledKindsFromSpec(&dns.Spec.Sources)
 	rc.Data.EndpointsByKind = make(map[registry.SourceType][]*endpoint.Endpoint, len(enabled))
 	rc.Data.PriorityOrder = orderedKinds(dns, enabled)
-
-	if h.Source == nil {
-		return nil
-	}
 
 	for _, kind := range rc.Data.PriorityOrder {
 		ns, lbl := effectiveFilter(dns, kind)
