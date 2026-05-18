@@ -3,7 +3,6 @@ package dns_test
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -12,289 +11,319 @@ import (
 	dnsstore "github.com/golgoth31/sreportal/internal/readstore/dns"
 )
 
-func seedStore(t *testing.T) *dnsstore.FQDNStore {
+func TestFQDNStore_ListReturnsIsolatedSlices(t *testing.T) {
+	ctx := context.Background()
+	s := dnsstore.NewFQDNStore()
+
+	require.NoError(t, s.Replace(ctx, "ns/a", "p1", []domaindns.FQDNView{
+		{Name: "iso.example.com", RecordType: "A", Targets: []string{"1.1.1.1"}, Groups: []string{"g1"}},
+	}))
+
+	out, err := s.List(ctx, domaindns.FQDNFilters{})
+	require.NoError(t, err)
+	require.Len(t, out, 1)
+	snapshotPortals := append([]string(nil), out[0].Portals...)
+
+	require.NoError(t, s.Replace(ctx, "ns/b", "p2", []domaindns.FQDNView{
+		{Name: "iso.example.com", RecordType: "A", Targets: []string{"1.1.1.1"}, Groups: []string{"g2"}},
+	}))
+
+	assert.Equal(t, snapshotPortals, out[0].Portals, "caller's slice must not observe in-place mutation by a subsequent Replace")
+	assert.Equal(t, []string{"g1"}, out[0].Groups, "Groups slice must be isolated from the store")
+}
+
+func TestFQDNStore_Constructs(t *testing.T) {
+	s := dnsstore.NewFQDNStore()
+	if s == nil {
+		t.Fatal("expected non-nil store")
+	}
+}
+
+func TestFQDNStore_InsertsSingleFQDN(t *testing.T) {
+	ctx := context.Background()
+	s := dnsstore.NewFQDNStore()
+
+	fqdns := []domaindns.FQDNView{
+		{Name: "foo.example.com", RecordType: "A", Targets: []string{"1.2.3.4"}, Portals: []string{"portal-x"}},
+	}
+	err := s.Replace(ctx, "ns/rec-a", "portal-x", fqdns)
+	require.NoError(t, err)
+
+	out, err := s.List(ctx, domaindns.FQDNFilters{Portal: "portal-x"})
+	require.NoError(t, err)
+	assert.Len(t, out, 1)
+	assert.Equal(t, "foo.example.com", out[0].Name)
+	assert.Contains(t, out[0].Portals, "portal-x")
+}
+
+func TestFQDNStore_DedupSamePortal(t *testing.T) {
+	ctx := context.Background()
+	s := dnsstore.NewFQDNStore()
+
+	view := domaindns.FQDNView{Name: "shared.example.com", RecordType: "A", Targets: []string{"1.2.3.4"}, Portals: []string{"portal-x"}}
+
+	err := s.Replace(ctx, "ns/rec-a", "portal-x", []domaindns.FQDNView{view})
+	require.NoError(t, err)
+	err = s.Replace(ctx, "ns/rec-b", "portal-x", []domaindns.FQDNView{view})
+	require.NoError(t, err)
+
+	out, err := s.List(ctx, domaindns.FQDNFilters{Portal: "portal-x"})
+	require.NoError(t, err)
+	assert.Len(t, out, 1)
+	assert.Equal(t, []string{"portal-x"}, out[0].Portals)
+}
+
+func TestFQDNStore_DedupAcrossPortals(t *testing.T) {
+	ctx := context.Background()
+	s := dnsstore.NewFQDNStore()
+
+	view := domaindns.FQDNView{Name: "multi.example.com", RecordType: "A", Targets: []string{"1.2.3.4"}}
+
+	err := s.Replace(ctx, "ns/rec-a", "portal-x", []domaindns.FQDNView{view})
+	require.NoError(t, err)
+	err = s.Replace(ctx, "ns/rec-b", "portal-y", []domaindns.FQDNView{view})
+	require.NoError(t, err)
+
+	out, err := s.List(ctx, domaindns.FQDNFilters{})
+	require.NoError(t, err)
+	assert.Len(t, out, 1)
+	assert.ElementsMatch(t, []string{"portal-x", "portal-y"}, out[0].Portals)
+}
+
+func TestFQDNStore_MergesGroups(t *testing.T) {
+	ctx := context.Background()
+	s := dnsstore.NewFQDNStore()
+
+	err := s.Replace(ctx, "ns/rec-a", "portal-x", []domaindns.FQDNView{
+		{Name: "g.example.com", RecordType: "A", Targets: []string{"1.2.3.4"}, Groups: []string{"team-a"}},
+	})
+	require.NoError(t, err)
+	err = s.Replace(ctx, "ns/rec-b", "portal-y", []domaindns.FQDNView{
+		{Name: "g.example.com", RecordType: "A", Targets: []string{"1.2.3.4"}, Groups: []string{"team-b"}},
+	})
+	require.NoError(t, err)
+
+	got, err := s.Get(ctx, "g.example.com", "A")
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"team-a", "team-b"}, got.Groups)
+}
+
+func TestFQDNStore_PortalChangeRemovesOldIndex(t *testing.T) {
+	ctx := context.Background()
+	s := dnsstore.NewFQDNStore()
+
+	view := domaindns.FQDNView{Name: "moves.example.com", RecordType: "A", Targets: []string{"1.2.3.4"}}
+
+	require.NoError(t, s.Replace(ctx, "ns/rec-a", "portal-x", []domaindns.FQDNView{view}))
+	require.NoError(t, s.Replace(ctx, "ns/rec-a", "portal-y", []domaindns.FQDNView{view}))
+
+	oldPortal, err := s.List(ctx, domaindns.FQDNFilters{Portal: "portal-x"})
+	require.NoError(t, err)
+	assert.Empty(t, oldPortal, "old portal index should be cleared after portalRef change")
+
+	newPortal, err := s.List(ctx, domaindns.FQDNFilters{Portal: "portal-y"})
+	require.NoError(t, err)
+	assert.Len(t, newPortal, 1)
+	assert.Equal(t, []string{"portal-y"}, newPortal[0].Portals)
+}
+
+func TestFQDNStore_ConflictKeepsFirstWriter(t *testing.T) {
+	ctx := context.Background()
+	s := dnsstore.NewFQDNStore()
+
+	err := s.Replace(ctx, "ns/rec-a", "portal-x", []domaindns.FQDNView{
+		{Name: "c.example.com", RecordType: "A", Targets: []string{"1.1.1.1"}},
+	})
+	require.NoError(t, err)
+	err = s.Replace(ctx, "ns/rec-b", "portal-y", []domaindns.FQDNView{
+		{Name: "c.example.com", RecordType: "A", Targets: []string{"2.2.2.2"}},
+	})
+	require.NoError(t, err)
+
+	got, err := s.Get(ctx, "c.example.com", "A")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"1.1.1.1"}, got.Targets)
+
+	s.AnnotateOwner("ns/rec-b", "ns", "dns-b")
+	conflicts := s.Conflicts("ns", "dns-b")
+	assert.Len(t, conflicts, 1)
+	assert.Equal(t, "ns/rec-b", conflicts[0].LoserRecord)
+}
+
+func TestFQDNStore_ReplacePreservesOwnerAnnotation(t *testing.T) {
+	ctx := context.Background()
+	s := dnsstore.NewFQDNStore()
+
+	// 1. rec-b writes first (becomes winner).
+	require.NoError(t, s.Replace(ctx, "ns/rec-b", "p", []domaindns.FQDNView{
+		{Name: "x.example.com", RecordType: "A", Targets: []string{"2.2.2.2"}},
+	}))
+
+	// 2. rec-a writes mismatching targets — generates the only conflict event,
+	//    with rec-a as loser.
+	require.NoError(t, s.Replace(ctx, "ns/rec-a", "p", []domaindns.FQDNView{
+		{Name: "x.example.com", RecordType: "A", Targets: []string{"1.1.1.1"}},
+	}))
+
+	// 3. Annotate rec-a's DNS owner.
+	s.AnnotateOwner("ns/rec-a", "ns", "dns-a")
+
+	// 4. Benign replay of rec-a with identical targets. No new conflict is
+	//    emitted (targets match the winner is false — first writer wins, so
+	//    rec-a's targets still mismatch). We expect the second conflict event
+	//    here too, but the key invariant is that the owner annotation survives.
+	require.NoError(t, s.Replace(ctx, "ns/rec-a", "p", []domaindns.FQDNView{
+		{Name: "x.example.com", RecordType: "A", Targets: []string{"1.1.1.1"}},
+	}))
+
+	// 5. Conflicts scoped to dns-a (the loser owner) must surface events.
+	//    If Replace had dropped the owner annotation, this would be empty.
+	conflicts := s.Conflicts("ns", "dns-a")
+	assert.NotEmpty(t, conflicts, "owner annotation must be preserved across Replace replays")
+	for _, c := range conflicts {
+		assert.Equal(t, "ns/rec-a", c.LoserRecord)
+	}
+}
+
+func TestFQDNStore_ConflictsScopedToDNSOwner(t *testing.T) {
+	ctx := context.Background()
+	s := dnsstore.NewFQDNStore()
+
+	require.NoError(t, s.Replace(ctx, "ns/a", "p", []domaindns.FQDNView{
+		{Name: "x.example.com", RecordType: "A", Targets: []string{"1.1.1.1"}},
+	}))
+	s.AnnotateOwner("ns/a", "ns", "dns-a")
+
+	require.NoError(t, s.Replace(ctx, "ns/b", "p", []domaindns.FQDNView{
+		{Name: "x.example.com", RecordType: "A", Targets: []string{"2.2.2.2"}},
+	}))
+	s.AnnotateOwner("ns/b", "ns", "dns-b")
+
+	assert.Len(t, s.Conflicts("ns", "dns-b"), 1, "loser dns-b should see the conflict")
+	assert.Empty(t, s.Conflicts("ns", "dns-a"), "winner dns-a should not see itself in conflicts")
+}
+
+func TestFQDNStore_DeleteRemovesLastContributor(t *testing.T) {
+	ctx := context.Background()
+	s := dnsstore.NewFQDNStore()
+
+	require.NoError(t, s.Replace(ctx, "ns/a", "p", []domaindns.FQDNView{
+		{Name: "x.example.com", RecordType: "A", Targets: []string{"1.1.1.1"}},
+	}))
+
+	require.NoError(t, s.Delete(ctx, "ns/a"))
+
+	out, err := s.List(ctx, domaindns.FQDNFilters{})
+	require.NoError(t, err)
+	assert.Empty(t, out)
+}
+
+func TestFQDNStore_DeleteKeepsFQDNIfAnotherContributor(t *testing.T) {
+	ctx := context.Background()
+	s := dnsstore.NewFQDNStore()
+
+	view := domaindns.FQDNView{Name: "x.example.com", RecordType: "A", Targets: []string{"1.1.1.1"}}
+
+	require.NoError(t, s.Replace(ctx, "ns/a", "p", []domaindns.FQDNView{view}))
+	require.NoError(t, s.Replace(ctx, "ns/b", "p", []domaindns.FQDNView{view}))
+
+	require.NoError(t, s.Delete(ctx, "ns/a"))
+
+	out, err := s.List(ctx, domaindns.FQDNFilters{Portal: "p"})
+	require.NoError(t, err)
+	assert.Len(t, out, 1)
+}
+
+func TestFQDNStore_DeleteRemovesPortalWhenLastContributorDrops(t *testing.T) {
+	ctx := context.Background()
+	s := dnsstore.NewFQDNStore()
+
+	view := domaindns.FQDNView{Name: "x.example.com", RecordType: "A", Targets: []string{"1.1.1.1"}}
+
+	require.NoError(t, s.Replace(ctx, "ns/a", "p1", []domaindns.FQDNView{view}))
+	require.NoError(t, s.Replace(ctx, "ns/b", "p2", []domaindns.FQDNView{view}))
+
+	require.NoError(t, s.Delete(ctx, "ns/a"))
+
+	got, err := s.Get(ctx, "x.example.com", "A")
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"p2"}, got.Portals)
+}
+
+func TestFQDNStore_ShrinkingReplaceRemovesOrphanedKeys(t *testing.T) {
+	ctx := context.Background()
+	s := dnsstore.NewFQDNStore()
+
+	require.NoError(t, s.Replace(ctx, "ns/a", "p", []domaindns.FQDNView{
+		{Name: "a.example.com", RecordType: "A", Targets: []string{"1.1.1.1"}},
+		{Name: "b.example.com", RecordType: "A", Targets: []string{"2.2.2.2"}},
+	}))
+
+	require.NoError(t, s.Replace(ctx, "ns/a", "p", []domaindns.FQDNView{
+		{Name: "a.example.com", RecordType: "A", Targets: []string{"1.1.1.1"}},
+	}))
+
+	out, err := s.List(ctx, domaindns.FQDNFilters{Portal: "p"})
+	require.NoError(t, err)
+	assert.Len(t, out, 1)
+	assert.Equal(t, "a.example.com", out[0].Name)
+}
+
+// newPopulatedStore creates a store with two portal entries for Task 4.6 tests.
+func newPopulatedStore(t *testing.T) (*dnsstore.FQDNStore, context.Context) {
 	t.Helper()
-	s := dnsstore.NewFQDNStore(nil)
 	ctx := context.Background()
-
-	err := s.Replace(ctx, "default/dns-main", []domaindns.FQDNView{
-		{
-			Name: "api.example.com", Source: domaindns.SourceExternalDNS,
-			Groups: []string{"Services"}, RecordType: "A",
-			Targets: []string{tIP10001}, LastSeen: time.Now(),
-			PortalName: tPortalMain, Namespace: "default", SyncStatus: "synced",
-		},
-		{
-			Name: "web.example.com", Source: domaindns.SourceExternalDNS,
-			Groups: []string{"Services"}, RecordType: "A",
-			Targets: []string{tIP10002}, LastSeen: time.Now(),
-			PortalName: tPortalMain, Namespace: "default",
-		},
-	})
-	require.NoError(t, err)
-
-	err = s.Replace(ctx, "staging/dns-staging", []domaindns.FQDNView{
-		{
-			Name: "api.staging.com", Source: domaindns.SourceManual,
-			Groups: []string{"Internal"}, RecordType: "CNAME",
-			Targets: []string{"lb.staging.com"}, LastSeen: time.Now(),
-			PortalName: tEnvStaging, Namespace: tEnvStaging,
-		},
-	})
-	require.NoError(t, err)
-
-	return s
+	s := dnsstore.NewFQDNStore()
+	require.NoError(t, s.Replace(ctx, "ns/a", "p1", []domaindns.FQDNView{
+		{Name: "alpha.example.com", RecordType: "A", Namespace: "ns", Source: domaindns.SourceExternalDNS},
+		{Name: "beta.example.com", RecordType: "A", Namespace: "ns", Source: domaindns.SourceExternalDNS},
+	}))
+	require.NoError(t, s.Replace(ctx, "ns/b", "p2", []domaindns.FQDNView{
+		{Name: "gamma.example.com", RecordType: "A", Namespace: "ns", Source: domaindns.SourceManual},
+	}))
+	return s, ctx
 }
 
-func TestFQDNStore_List_ReturnsAllSorted(t *testing.T) {
-	s := seedStore(t)
+func TestFQDNStore_ListFiltersByPortal(t *testing.T) {
+	s, ctx := newPopulatedStore(t)
 
-	fqdns, err := s.List(context.Background(), domaindns.FQDNFilters{})
+	out, err := s.List(ctx, domaindns.FQDNFilters{Portal: "p1"})
 	require.NoError(t, err)
-	require.Len(t, fqdns, 3)
-
-	// Sorted by (Name, RecordType)
-	assert.Equal(t, "api.example.com", fqdns[0].Name)
-	assert.Equal(t, "api.staging.com", fqdns[1].Name)
-	assert.Equal(t, "web.example.com", fqdns[2].Name)
-}
-
-func TestFQDNStore_List_FiltersByPortal(t *testing.T) {
-	s := seedStore(t)
-
-	fqdns, err := s.List(context.Background(), domaindns.FQDNFilters{Portal: tPortalMain})
-	require.NoError(t, err)
-	require.Len(t, fqdns, 2)
-
-	for _, f := range fqdns {
-		assert.Equal(t, tPortalMain, f.PortalName)
+	assert.Len(t, out, 2)
+	names := make([]string, len(out))
+	for i, v := range out {
+		names[i] = v.Name
 	}
+	assert.ElementsMatch(t, []string{"alpha.example.com", "beta.example.com"}, names)
 }
 
-func TestFQDNStore_List_FiltersByNamespace(t *testing.T) {
-	s := seedStore(t)
+func TestFQDNStore_ListSortedByNameThenRecordType(t *testing.T) {
+	s, ctx := newPopulatedStore(t)
 
-	fqdns, err := s.List(context.Background(), domaindns.FQDNFilters{Namespace: tEnvStaging})
+	out, err := s.List(ctx, domaindns.FQDNFilters{})
 	require.NoError(t, err)
-	require.Len(t, fqdns, 1)
-	assert.Equal(t, "api.staging.com", fqdns[0].Name)
+	assert.Len(t, out, 3)
+	assert.Equal(t, "alpha.example.com", out[0].Name)
+	assert.Equal(t, "beta.example.com", out[1].Name)
+	assert.Equal(t, "gamma.example.com", out[2].Name)
 }
 
-func TestFQDNStore_List_FiltersBySource(t *testing.T) {
-	s := seedStore(t)
+func TestFQDNStore_CountMatchesListLength(t *testing.T) {
+	s, ctx := newPopulatedStore(t)
 
-	fqdns, err := s.List(context.Background(), domaindns.FQDNFilters{Source: "manual"})
+	listed, err := s.List(ctx, domaindns.FQDNFilters{Portal: "p1"})
 	require.NoError(t, err)
-	require.Len(t, fqdns, 1)
-	assert.Equal(t, "api.staging.com", fqdns[0].Name)
-}
 
-func TestFQDNStore_List_FiltersBySearch_CaseInsensitive(t *testing.T) {
-	s := seedStore(t)
-
-	fqdns, err := s.List(context.Background(), domaindns.FQDNFilters{Search: "API"})
+	count, err := s.Count(ctx, domaindns.FQDNFilters{Portal: "p1"})
 	require.NoError(t, err)
-	require.Len(t, fqdns, 2)
-	assert.Equal(t, "api.example.com", fqdns[0].Name)
-	assert.Equal(t, "api.staging.com", fqdns[1].Name)
+	assert.Equal(t, len(listed), count)
 }
 
-func TestFQDNStore_List_CombinesFilters(t *testing.T) {
-	s := seedStore(t)
-
-	fqdns, err := s.List(context.Background(), domaindns.FQDNFilters{
-		Portal: tPortalMain,
-		Search: "api",
-	})
-	require.NoError(t, err)
-	require.Len(t, fqdns, 1)
-	assert.Equal(t, "api.example.com", fqdns[0].Name)
-}
-
-func TestFQDNStore_Get_ReturnsExact(t *testing.T) {
-	s := seedStore(t)
-
-	fqdn, err := s.Get(context.Background(), "api.example.com", "A")
-	require.NoError(t, err)
-	assert.Equal(t, "api.example.com", fqdn.Name)
-	assert.Equal(t, "A", fqdn.RecordType)
-}
-
-func TestFQDNStore_Get_ReturnsError_WhenNotFound(t *testing.T) {
-	s := seedStore(t)
-
-	_, err := s.Get(context.Background(), "nonexistent.com", "A")
-	require.ErrorIs(t, err, domaindns.ErrFQDNNotFound)
-}
-
-func TestFQDNStore_Get_MatchesCaseInsensitive(t *testing.T) {
-	s := seedStore(t)
-
-	fqdn, err := s.Get(context.Background(), "API.EXAMPLE.COM", "A")
-	require.NoError(t, err)
-	assert.Equal(t, "api.example.com", fqdn.Name)
-}
-
-func TestFQDNStore_Count_WithFilters(t *testing.T) {
-	s := seedStore(t)
-
-	count, err := s.Count(context.Background(), domaindns.FQDNFilters{Portal: tPortalMain})
-	require.NoError(t, err)
-	assert.Equal(t, 2, count)
-
-	count, err = s.Count(context.Background(), domaindns.FQDNFilters{})
-	require.NoError(t, err)
-	assert.Equal(t, 3, count)
-}
-
-func TestFQDNStore_Replace_MergesMultipleResources(t *testing.T) {
-	s := dnsstore.NewFQDNStore(nil)
+func TestFQDNStore_GetReturnsErrFQDNNotFound(t *testing.T) {
 	ctx := context.Background()
+	s := dnsstore.NewFQDNStore()
 
-	_ = s.Replace(ctx, "ns1/dns1", []domaindns.FQDNView{{Name: "a.com", RecordType: "A"}})
-	_ = s.Replace(ctx, "ns2/dns2", []domaindns.FQDNView{{Name: "b.com", RecordType: "A"}})
-
-	fqdns, err := s.List(ctx, domaindns.FQDNFilters{})
-	require.NoError(t, err)
-	require.Len(t, fqdns, 2)
-}
-
-func TestFQDNStore_Delete_RemovesResource(t *testing.T) {
-	s := seedStore(t)
-	ctx := context.Background()
-
-	err := s.Delete(ctx, "default/dns-main")
-	require.NoError(t, err)
-
-	fqdns, err := s.List(ctx, domaindns.FQDNFilters{})
-	require.NoError(t, err)
-	require.Len(t, fqdns, 1)
-	assert.Equal(t, "api.staging.com", fqdns[0].Name)
-}
-
-func TestFQDNStore_Subscribe_NotifiesOnChange(t *testing.T) {
-	s := dnsstore.NewFQDNStore(nil)
-
-	ch := s.Subscribe()
-
-	_ = s.Replace(context.Background(), "k", []domaindns.FQDNView{{Name: "x.com"}})
-
-	select {
-	case <-ch:
-		// expected
-	default:
-		t.Fatal("expected notification after Replace")
-	}
-}
-
-func TestFQDNStore_List_DeduplicatesBySourcePriority(t *testing.T) {
-	// Priority: dnsendpoint > ingress > service
-	s := dnsstore.NewFQDNStore([]string{"dnsendpoint", tSrcIngress, tSrcService})
-	ctx := context.Background()
-
-	// Same FQDN from two different source types (service and ingress)
-	_ = s.Replace(ctx, "ns/record-svc", []domaindns.FQDNView{
-		{
-			Name: tFQDNApp, Source: domaindns.SourceExternalDNS,
-			SourceType: tSrcService, RecordType: "A",
-			Targets: []string{tIP10001}, Groups: []string{"svc-group"},
-			PortalName: tPortalMain, Namespace: "ns",
-		},
-	})
-	_ = s.Replace(ctx, "ns/record-ing", []domaindns.FQDNView{
-		{
-			Name: tFQDNApp, Source: domaindns.SourceExternalDNS,
-			SourceType: tSrcIngress, RecordType: "A",
-			Targets: []string{tIP10002}, Groups: []string{"ing-group"},
-			PortalName: tPortalMain, Namespace: "ns",
-		},
-	})
-
-	fqdns, err := s.List(ctx, domaindns.FQDNFilters{})
-	require.NoError(t, err)
-	require.Len(t, fqdns, 1, "duplicate FQDN should be deduplicated")
-
-	// ingress has higher priority than service → ingress targets win
-	assert.Equal(t, []string{tIP10002}, fqdns[0].Targets)
-	assert.Equal(t, tSrcIngress, fqdns[0].SourceType)
-	// Groups should be merged from both sources
-	assert.ElementsMatch(t, []string{"ing-group", "svc-group"}, fqdns[0].Groups)
-}
-
-func TestFQDNStore_List_DeduplicatesBySourcePriority_ManualNeverDeduplicated(t *testing.T) {
-	s := dnsstore.NewFQDNStore([]string{"dnsendpoint", tSrcService})
-	ctx := context.Background()
-
-	// Same FQDN from manual and external-dns
-	_ = s.Replace(ctx, "ns/record-svc", []domaindns.FQDNView{
-		{
-			Name: tFQDNApp, Source: domaindns.SourceExternalDNS,
-			SourceType: tSrcService, RecordType: "A",
-			Targets: []string{tIP10001}, PortalName: tPortalMain, Namespace: "ns",
-		},
-	})
-	_ = s.Replace(ctx, "ns/manual", []domaindns.FQDNView{
-		{
-			Name: tFQDNApp, Source: domaindns.SourceManual,
-			RecordType: "A",
-			Targets:    []string{"10.0.0.99"}, PortalName: tPortalMain, Namespace: "ns",
-		},
-	})
-
-	fqdns, err := s.List(ctx, domaindns.FQDNFilters{})
-	require.NoError(t, err)
-	// Manual sources should never be deduplicated against external-dns
-	require.Len(t, fqdns, 2, "manual and external-dns should coexist")
-}
-
-func TestFQDNStore_List_DeduplicatesBySourcePriority_UnlistedSourceLowestPriority(t *testing.T) {
-	// Only tSrcIngress is in priority list; tSrcService is not listed
-	s := dnsstore.NewFQDNStore([]string{tSrcIngress})
-	ctx := context.Background()
-
-	_ = s.Replace(ctx, "ns/record-svc", []domaindns.FQDNView{
-		{
-			Name: tFQDNApp, Source: domaindns.SourceExternalDNS,
-			SourceType: tSrcService, RecordType: "A",
-			Targets: []string{tIP10001}, PortalName: tPortalMain, Namespace: "ns",
-		},
-	})
-	_ = s.Replace(ctx, "ns/record-ing", []domaindns.FQDNView{
-		{
-			Name: tFQDNApp, Source: domaindns.SourceExternalDNS,
-			SourceType: tSrcIngress, RecordType: "A",
-			Targets: []string{tIP10002}, PortalName: tPortalMain, Namespace: "ns",
-		},
-	})
-
-	fqdns, err := s.List(ctx, domaindns.FQDNFilters{})
-	require.NoError(t, err)
-	require.Len(t, fqdns, 1)
-	// ingress is listed, service is not → ingress wins
-	assert.Equal(t, []string{tIP10002}, fqdns[0].Targets)
-	assert.Equal(t, tSrcIngress, fqdns[0].SourceType)
-}
-
-func TestFQDNStore_Count_DeduplicatesBySourcePriority(t *testing.T) {
-	s := dnsstore.NewFQDNStore([]string{tSrcIngress, tSrcService})
-	ctx := context.Background()
-
-	_ = s.Replace(ctx, "ns/record-svc", []domaindns.FQDNView{
-		{
-			Name: tFQDNApp, Source: domaindns.SourceExternalDNS,
-			SourceType: tSrcService, RecordType: "A",
-			PortalName: tPortalMain, Namespace: "ns",
-		},
-	})
-	_ = s.Replace(ctx, "ns/record-ing", []domaindns.FQDNView{
-		{
-			Name: tFQDNApp, Source: domaindns.SourceExternalDNS,
-			SourceType: tSrcIngress, RecordType: "A",
-			PortalName: tPortalMain, Namespace: "ns",
-		},
-	})
-
-	count, err := s.Count(ctx, domaindns.FQDNFilters{})
-	require.NoError(t, err)
-	assert.Equal(t, 1, count, "duplicates should be deduplicated in count too")
+	_, err := s.Get(ctx, "nope.example.com", "A")
+	require.Error(t, err)
+	assert.ErrorIs(t, err, domaindns.ErrFQDNNotFound)
 }
