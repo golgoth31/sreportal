@@ -1345,7 +1345,7 @@ _Appears in:_
 
 #### sreportal.io/v1alpha2.DNSSpec
 
-DNSSpec defines the desired state of DNS (v1alpha2). DNS.metadata.name MUST equal spec.portalRef (enforced by webhook).
+DNSSpec defines the desired state of DNS (v1alpha2). Multiple DNS CRs may reference the same Portal via spec.portalRef (1 portal → N DNS CRs, e.g. per-team split).
 
 _Appears in:_
 - [sreportal.io/v1alpha2.DNS](#sreportaliov1alpha2dns)

@@ -93,7 +93,8 @@ type ReconciliationSpec struct {
 }
 
 // DNSSpec defines the desired state of DNS (v1alpha2).
-// DNS.metadata.name MUST equal spec.portalRef (enforced by webhook).
+// Multiple DNS CRs may reference the same Portal via spec.portalRef
+// (1 portal → N DNS CRs, e.g. per-team split).
 type DNSSpec struct {
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinLength=1
