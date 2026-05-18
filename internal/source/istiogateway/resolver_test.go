@@ -46,3 +46,70 @@ func TestIstioGatewayResolver_HostsFromServers(t *testing.T) {
 		t.Fatalf("want 2 endpoints, got %d", len(eps))
 	}
 }
+
+// TestIstioGatewayResolver_MultiServerMultiHost verifies that hosts across
+// multiple servers are all emitted (scenario 1: multi-host inputs).
+func TestIstioGatewayResolver_MultiServerMultiHost(t *testing.T) {
+	r := igw.NewResolver()
+	gw := &istionetworkingv1.Gateway{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "gw", Namespace: "istio-system",
+			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/target": "5.5.5.5"},
+		},
+		Spec: istionetworking.Gateway{Servers: []*istionetworking.Server{
+			{Hosts: []string{"ns/a.example.com", "ns/b.example.com"}},
+			{Hosts: []string{"ns/c.example.com"}},
+		}},
+	}
+	eps, err := r.ResolveObject(context.Background(), gw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(eps) != 3 {
+		t.Fatalf("want 3 endpoints, got %d", len(eps))
+	}
+}
+
+// TestIstioGatewayResolver_WildcardSkipped verifies that bare "*" and
+// "namespace/*" hosts are dropped (scenario 4: wildcard hostnames).
+func TestIstioGatewayResolver_WildcardSkipped(t *testing.T) {
+	r := igw.NewResolver()
+	gw := &istionetworkingv1.Gateway{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "gw", Namespace: "istio-system",
+			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/target": "5.5.5.5"},
+		},
+		Spec: istionetworking.Gateway{Servers: []*istionetworking.Server{
+			{Hosts: []string{"ns/*", "*"}},
+		}},
+	}
+	eps, err := r.ResolveObject(context.Background(), gw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(eps) != 0 {
+		t.Fatalf("want 0 endpoints (wildcards skipped), got %d: %+v", len(eps), eps)
+	}
+}
+
+// TestIstioGatewayResolver_TrailingDot verifies that trailing dots in host
+// entries are stripped (scenario 3).
+func TestIstioGatewayResolver_TrailingDot(t *testing.T) {
+	r := igw.NewResolver()
+	gw := &istionetworkingv1.Gateway{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "gw", Namespace: "istio-system",
+			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/target": "5.5.5.5"},
+		},
+		Spec: istionetworking.Gateway{Servers: []*istionetworking.Server{
+			{Hosts: []string{"ns/dot.example.com."}},
+		}},
+	}
+	eps, err := r.ResolveObject(context.Background(), gw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(eps) != 1 || eps[0].DNSName != "dot.example.com" {
+		t.Fatalf("expected trailing dot stripped, got %+v", eps)
+	}
+}
