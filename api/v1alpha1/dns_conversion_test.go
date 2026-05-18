@@ -147,6 +147,46 @@ func TestDNSRoundTrip_PreservesV1Alpha2OnlySpec(t *testing.T) {
 	g.Expect(hub.Annotations).NotTo(HaveKey("sreportal.io/v1alpha2-spec"))
 }
 
+// TestDNSConvertTo_CorruptedAnnotation verifies that ConvertTo surfaces an
+// error when the annotationV1Alpha2DNSSpec annotation holds invalid JSON
+// instead of silently producing a zero-value preserved spec.
+func TestDNSConvertTo_CorruptedAnnotation(t *testing.T) {
+	g := NewWithT(t)
+
+	src := &v1alpha1.DNS{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				"sreportal.io/v1alpha2-spec": `{not-valid-json`,
+			},
+		},
+		Spec: v1alpha1.DNSSpec{PortalRef: tPortalMain},
+	}
+
+	dst := &v1alpha2.DNS{}
+	err := src.ConvertTo(dst)
+	g.Expect(err).To(HaveOccurred(), "ConvertTo must return an error for corrupted annotation JSON")
+}
+
+// TestDNSConvertFrom_CorruptedAnnotation verifies that ConvertFrom surfaces an
+// error when the annotationV1Alpha1Groups annotation holds invalid JSON
+// instead of silently producing empty groups.
+func TestDNSConvertFrom_CorruptedAnnotation(t *testing.T) {
+	g := NewWithT(t)
+
+	src := &v1alpha2.DNS{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				"sreportal.io/v1alpha1-groups": `{not-valid-json`,
+			},
+		},
+		Spec: v1alpha2.DNSSpec{PortalRef: tPortalMain},
+	}
+
+	dst := &v1alpha1.DNS{}
+	err := dst.ConvertFrom(src)
+	g.Expect(err).To(HaveOccurred(), "ConvertFrom must return an error for corrupted annotation JSON")
+}
+
 func TestDNSConvertTo_DoesNotMutateSource(t *testing.T) {
 	g := NewWithT(t)
 	src := &v1alpha1.DNS{
