@@ -43,7 +43,7 @@ func (*Resolver) ObjectList() client.ObjectList { return &gwapiv1alpha2.UDPRoute
 func (*Resolver) ResolveObject(_ context.Context, obj client.Object) ([]*endpoint.Endpoint, error) {
 	rt, ok := obj.(*gwapiv1alpha2.UDPRoute)
 	if !ok {
-		return nil, nil
+		return nil, registry.UnexpectedObjectType(SourceTypeGatewayUDPRoute, obj)
 	}
 	target := rt.Annotations["external-dns.alpha.kubernetes.io/target"]
 	host := rt.Annotations["external-dns.alpha.kubernetes.io/hostname"]

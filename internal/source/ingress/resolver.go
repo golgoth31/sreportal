@@ -43,7 +43,7 @@ func (*Resolver) ObjectList() client.ObjectList { return &networkingv1.IngressLi
 func (*Resolver) ResolveObject(_ context.Context, obj client.Object) ([]*endpoint.Endpoint, error) {
 	ing, ok := obj.(*networkingv1.Ingress)
 	if !ok {
-		return nil, nil
+		return nil, registry.UnexpectedObjectType(SourceTypeIngress, obj)
 	}
 	host := ing.Annotations["external-dns.alpha.kubernetes.io/hostname"]
 	if host == "" {

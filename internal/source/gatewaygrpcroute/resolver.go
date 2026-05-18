@@ -43,7 +43,7 @@ func (*Resolver) ObjectList() client.ObjectList { return &gwapiv1.GRPCRouteList{
 func (*Resolver) ResolveObject(_ context.Context, obj client.Object) ([]*endpoint.Endpoint, error) {
 	rt, ok := obj.(*gwapiv1.GRPCRoute)
 	if !ok {
-		return nil, nil
+		return nil, registry.UnexpectedObjectType(SourceTypeGatewayGRPCRoute, obj)
 	}
 	target := rt.Annotations["external-dns.alpha.kubernetes.io/target"]
 	if target == "" || len(rt.Spec.Hostnames) == 0 {

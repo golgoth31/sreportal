@@ -53,7 +53,7 @@ func (*Resolver) ObjectList() client.ObjectList { return &corev1.ServiceList{} }
 func (*Resolver) ResolveObject(_ context.Context, obj client.Object) ([]*endpoint.Endpoint, error) {
 	svc, ok := obj.(*corev1.Service)
 	if !ok {
-		return nil, nil
+		return nil, registry.UnexpectedObjectType(SourceTypeService, obj)
 	}
 	host := svc.Annotations["external-dns.alpha.kubernetes.io/hostname"]
 	if host == "" {

@@ -43,7 +43,7 @@ func (*Resolver) ObjectList() client.ObjectList { return &istionetworkingv1.Gate
 func (*Resolver) ResolveObject(_ context.Context, obj client.Object) ([]*endpoint.Endpoint, error) {
 	gw, ok := obj.(*istionetworkingv1.Gateway)
 	if !ok {
-		return nil, nil
+		return nil, registry.UnexpectedObjectType(SourceTypeIstioGateway, obj)
 	}
 	target := gw.Annotations["external-dns.alpha.kubernetes.io/target"]
 	if target == "" {

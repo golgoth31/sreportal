@@ -43,7 +43,7 @@ func (*Resolver) ObjectList() client.ObjectList { return &istionetworkingv1.Virt
 func (*Resolver) ResolveObject(_ context.Context, obj client.Object) ([]*endpoint.Endpoint, error) {
 	vs, ok := obj.(*istionetworkingv1.VirtualService)
 	if !ok {
-		return nil, nil
+		return nil, registry.UnexpectedObjectType(SourceTypeIstioVirtualService, obj)
 	}
 	target := vs.Annotations["external-dns.alpha.kubernetes.io/target"]
 	if target == "" {
