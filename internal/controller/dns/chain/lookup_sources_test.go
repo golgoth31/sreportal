@@ -29,6 +29,8 @@ import (
 	domainsource "github.com/golgoth31/sreportal/internal/domain/source"
 	rsource "github.com/golgoth31/sreportal/internal/readstore/source"
 	"github.com/golgoth31/sreportal/internal/reconciler"
+	"github.com/golgoth31/sreportal/internal/source/crossplanescalewayrecord"
+	"github.com/golgoth31/sreportal/internal/source/dnsendpoint"
 	gwhttp "github.com/golgoth31/sreportal/internal/source/gatewayhttproute"
 	"github.com/golgoth31/sreportal/internal/source/ingress"
 	"github.com/golgoth31/sreportal/internal/source/registry"
@@ -134,6 +136,92 @@ func TestLookupSourcesHandler_PriorityOrder(t *testing.T) {
 		},
 		rc.Data.PriorityOrder,
 	)
+}
+
+// TestLookupSourcesHandler_DNSEndpoint verifies that when DNSEndpoint is
+// enabled in DNSSpec.Sources, the handler looks up endpoints from the store
+// and places them in EndpointsByKind under the dnsendpoint.SourceTypeDNSEndpoint key.
+func TestLookupSourcesHandler_DNSEndpoint(t *testing.T) {
+	store := rsource.NewStore()
+	store.ReplaceKind(dnsendpoint.SourceTypeDNSEndpoint, []domainsource.EnrichedEndpoint{
+		{
+			Endpoint:  endpoint.NewEndpoint("a.example.com", endpoint.RecordTypeA, "1.2.3.4"),
+			Kind:      dnsendpoint.SourceTypeDNSEndpoint,
+			Namespace: "ns",
+		},
+		{
+			Endpoint:  endpoint.NewEndpoint("b.example.com", endpoint.RecordTypeCNAME, "lb.example.com"),
+			Kind:      dnsendpoint.SourceTypeDNSEndpoint,
+			Namespace: "ns",
+		},
+	})
+
+	h := &dnschain.LookupSourcesHandler{Source: store}
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{
+		Resource: &sreportalv1alpha2.DNS{
+			ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "ns"},
+			Spec: sreportalv1alpha2.DNSSpec{
+				Defaults: sreportalv1alpha2.SourceFilterDefaults{Namespace: "ns"},
+				Sources: sreportalv1alpha2.SourcesSpec{
+					DNSEndpoint: &sreportalv1alpha2.DNSEndpointSourceSpec{
+						Enabled:   true,
+						Namespace: "ns",
+					},
+				},
+			},
+		},
+		Data: dnschain.ChainData{},
+	}
+	require.NoError(t, h.Handle(context.Background(), rc))
+	got := rc.Data.EndpointsByKind[dnsendpoint.SourceTypeDNSEndpoint]
+	require.Len(t, got, 2)
+	names := map[string]bool{}
+	for _, ep := range got {
+		names[ep.DNSName] = true
+	}
+	require.True(t, names["a.example.com"], "expected a.example.com")
+	require.True(t, names["b.example.com"], "expected b.example.com")
+	require.Contains(t, rc.Data.PriorityOrder, registry.SourceType(dnsendpoint.SourceTypeDNSEndpoint))
+}
+
+// TestLookupSourcesHandler_CrossplaneScalewayRecord verifies that when
+// CrossplaneScalewayRecord is enabled, endpoints are looked up and stored
+// under crossplanescalewayrecord.SourceTypeCrossplaneScalewayRecord.
+func TestLookupSourcesHandler_CrossplaneScalewayRecord(t *testing.T) {
+	store := rsource.NewStore()
+	store.ReplaceKind(crossplanescalewayrecord.SourceTypeCrossplaneScalewayRecord, []domainsource.EnrichedEndpoint{
+		{
+			Endpoint: &endpoint.Endpoint{
+				DNSName:    "api.example.com",
+				RecordType: endpoint.RecordTypeA,
+				Targets:    endpoint.Targets{"1.2.3.4"},
+			},
+			Kind:      crossplanescalewayrecord.SourceTypeCrossplaneScalewayRecord,
+			Namespace: "infra",
+		},
+	})
+
+	h := &dnschain.LookupSourcesHandler{Source: store}
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{
+		Resource: &sreportalv1alpha2.DNS{
+			ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "infra"},
+			Spec: sreportalv1alpha2.DNSSpec{
+				Defaults: sreportalv1alpha2.SourceFilterDefaults{Namespace: "infra"},
+				Sources: sreportalv1alpha2.SourcesSpec{
+					CrossplaneScalewayRecord: &sreportalv1alpha2.CrossplaneScalewayRecordSourceSpec{
+						Enabled:   true,
+						Namespace: "infra",
+					},
+				},
+			},
+		},
+		Data: dnschain.ChainData{},
+	}
+	require.NoError(t, h.Handle(context.Background(), rc))
+	got := rc.Data.EndpointsByKind[crossplanescalewayrecord.SourceTypeCrossplaneScalewayRecord]
+	require.Len(t, got, 1)
+	require.Equal(t, "api.example.com", got[0].DNSName)
+	require.Contains(t, rc.Data.PriorityOrder, registry.SourceType(crossplanescalewayrecord.SourceTypeCrossplaneScalewayRecord))
 }
 
 func TestLookupSourcesHandler_InvalidLabelSelectorReturnsError(t *testing.T) {

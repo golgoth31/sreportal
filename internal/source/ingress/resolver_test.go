@@ -54,3 +54,53 @@ func TestIngressResolver_NoHostname(t *testing.T) {
 		t.Fatalf("want 0, got %d", len(eps))
 	}
 }
+
+// TestIngressResolver_TrailingDotHostname verifies that a trailing dot in the
+// hostname annotation is stripped (scenario 3).
+func TestIngressResolver_TrailingDotHostname(t *testing.T) {
+	r := ingsrc.NewResolver()
+	ing := &networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "dot", Namespace: "default",
+			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/hostname": "dot.example.com."},
+		},
+		Status: networkingv1.IngressStatus{LoadBalancer: networkingv1.IngressLoadBalancerStatus{
+			Ingress: []networkingv1.IngressLoadBalancerIngress{{IP: "10.0.0.1"}},
+		}},
+	}
+	eps, err := r.ResolveObject(context.Background(), ing)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(eps) != 1 || eps[0].DNSName != "dot.example.com" {
+		t.Fatalf("expected trailing dot stripped, got %+v", eps)
+	}
+}
+
+// TestIngressResolver_MultipleIPs verifies that multiple LoadBalancer IPs are
+// all emitted as targets on a single endpoint (scenario 5).
+func TestIngressResolver_MultipleIPs(t *testing.T) {
+	r := ingsrc.NewResolver()
+	ing := &networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "multi", Namespace: "default",
+			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/hostname": "multi.example.com"},
+		},
+		Status: networkingv1.IngressStatus{LoadBalancer: networkingv1.IngressLoadBalancerStatus{
+			Ingress: []networkingv1.IngressLoadBalancerIngress{
+				{IP: "10.0.0.1"},
+				{IP: "10.0.0.2"},
+			},
+		}},
+	}
+	eps, err := r.ResolveObject(context.Background(), ing)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(eps) != 1 {
+		t.Fatalf("want 1 endpoint, got %d", len(eps))
+	}
+	if len(eps[0].Targets) != 2 {
+		t.Fatalf("want 2 targets, got %d: %v", len(eps[0].Targets), eps[0].Targets)
+	}
+}

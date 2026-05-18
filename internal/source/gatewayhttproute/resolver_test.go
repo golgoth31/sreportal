@@ -43,3 +43,66 @@ func TestHTTPRouteResolver_Hostnames(t *testing.T) {
 		t.Fatalf("want 2, got %d", len(eps))
 	}
 }
+
+// TestHTTPRouteResolver_TrailingDot verifies that trailing dots in Spec.Hostnames
+// are stripped (scenario 3).
+func TestHTTPRouteResolver_TrailingDot(t *testing.T) {
+	r := ghr.NewResolver()
+	rt := &gwapiv1.HTTPRoute{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "rt", Namespace: "ns",
+			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/target": "5.5.5.5"},
+		},
+		Spec: gwapiv1.HTTPRouteSpec{Hostnames: []gwapiv1.Hostname{"api.example.com."}},
+	}
+	eps, err := r.ResolveObject(context.Background(), rt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(eps) != 1 || eps[0].DNSName != "api.example.com" {
+		t.Fatalf("expected trailing dot stripped, got %+v", eps)
+	}
+}
+
+// TestHTTPRouteResolver_MultiHost verifies all hostnames emit separate
+// endpoints (scenario 1: multi-host inputs).
+func TestHTTPRouteResolver_MultiHost(t *testing.T) {
+	r := ghr.NewResolver()
+	rt := &gwapiv1.HTTPRoute{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "rt", Namespace: "ns",
+			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/target": "5.5.5.5"},
+		},
+		Spec: gwapiv1.HTTPRouteSpec{Hostnames: []gwapiv1.Hostname{
+			"a.example.com", "b.example.com", "c.example.com",
+		}},
+	}
+	eps, err := r.ResolveObject(context.Background(), rt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(eps) != 3 {
+		t.Fatalf("want 3 endpoints, got %d", len(eps))
+	}
+}
+
+// TestHTTPRouteResolver_WildcardSubdomain verifies that "*.example.com"
+// hostnames are passed through as-is (scenario 4): the HTTPRoute resolver
+// does not filter sub-wildcard entries, only empty strings.
+func TestHTTPRouteResolver_WildcardSubdomain(t *testing.T) {
+	r := ghr.NewResolver()
+	rt := &gwapiv1.HTTPRoute{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "rt", Namespace: "ns",
+			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/target": "5.5.5.5"},
+		},
+		Spec: gwapiv1.HTTPRouteSpec{Hostnames: []gwapiv1.Hostname{"*.example.com"}},
+	}
+	eps, err := r.ResolveObject(context.Background(), rt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(eps) != 1 || eps[0].DNSName != "*.example.com" {
+		t.Fatalf("expected wildcard subdomain to be emitted as-is, got %+v", eps)
+	}
+}

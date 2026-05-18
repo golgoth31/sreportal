@@ -44,3 +44,64 @@ func TestIstioVirtualServiceResolver_Hosts(t *testing.T) {
 		t.Fatalf("unexpected: %+v", eps)
 	}
 }
+
+// TestIstioVirtualServiceResolver_MultiHost verifies that all non-wildcard
+// entries in Spec.Hosts are emitted as separate endpoints (scenario 1).
+func TestIstioVirtualServiceResolver_MultiHost(t *testing.T) {
+	r := ivs.NewResolver()
+	vs := &istionetworkingv1.VirtualService{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "vs", Namespace: "x",
+			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/target": "9.9.9.9"},
+		},
+		Spec: istionetworking.VirtualService{Hosts: []string{"a.example.com", "b.example.com", "c.example.com"}},
+	}
+	eps, err := r.ResolveObject(context.Background(), vs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(eps) != 3 {
+		t.Fatalf("want 3 endpoints, got %d: %+v", len(eps), eps)
+	}
+}
+
+// TestIstioVirtualServiceResolver_WildcardSkipped confirms that bare "*" is
+// dropped and "*.example.com" is passed through (scenario 4).
+// The resolver explicitly drops only "" and "*"; "*.example.com" is kept.
+func TestIstioVirtualServiceResolver_WildcardSkipped(t *testing.T) {
+	r := ivs.NewResolver()
+	vs := &istionetworkingv1.VirtualService{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "vs", Namespace: "x",
+			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/target": "9.9.9.9"},
+		},
+		Spec: istionetworking.VirtualService{Hosts: []string{"*", ""}},
+	}
+	eps, err := r.ResolveObject(context.Background(), vs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(eps) != 0 {
+		t.Fatalf("want 0 endpoints (bare wildcard/empty skipped), got %d: %+v", len(eps), eps)
+	}
+}
+
+// TestIstioVirtualServiceResolver_TrailingDot verifies trailing dots are
+// stripped from Spec.Hosts entries (scenario 3).
+func TestIstioVirtualServiceResolver_TrailingDot(t *testing.T) {
+	r := ivs.NewResolver()
+	vs := &istionetworkingv1.VirtualService{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "vs", Namespace: "x",
+			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/target": "9.9.9.9"},
+		},
+		Spec: istionetworking.VirtualService{Hosts: []string{"api.example.com."}},
+	}
+	eps, err := r.ResolveObject(context.Background(), vs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(eps) != 1 || eps[0].DNSName != "api.example.com" {
+		t.Fatalf("expected trailing dot stripped, got %+v", eps)
+	}
+}

@@ -68,3 +68,88 @@ func TestServiceResolver_ResolveObject_NoLBIngress(t *testing.T) {
 		t.Fatalf("want no endpoints, got %d", len(eps))
 	}
 }
+
+// TestServiceResolver_MultipleIPs verifies that when a Service has multiple
+// LoadBalancer ingress IPs, all are collected into a single endpoint's Targets
+// (scenario 5: multi-IP / multi-target).
+func TestServiceResolver_MultipleIPs(t *testing.T) {
+	r := svcsrc.NewResolver()
+	svc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "multi", Namespace: "default",
+			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/hostname": "multi.example.com"},
+		},
+		Status: corev1.ServiceStatus{LoadBalancer: corev1.LoadBalancerStatus{
+			Ingress: []corev1.LoadBalancerIngress{
+				{IP: "1.2.3.4"},
+				{IP: "5.6.7.8"},
+				{IP: "9.10.11.12"},
+			},
+		}},
+	}
+	eps, err := r.ResolveObject(context.Background(), svc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(eps) != 1 {
+		t.Fatalf("want 1 endpoint, got %d", len(eps))
+	}
+	if len(eps[0].Targets) != 3 {
+		t.Fatalf("want 3 targets, got %d: %v", len(eps[0].Targets), eps[0].Targets)
+	}
+}
+
+// TestServiceResolver_TrailingDotHostname verifies that a hostname annotation
+// with a trailing dot has the dot stripped before emitting (scenario 3).
+func TestServiceResolver_TrailingDotHostname(t *testing.T) {
+	r := svcsrc.NewResolver()
+	svc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "dot", Namespace: "default",
+			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/hostname": "dot.example.com."},
+		},
+		Status: corev1.ServiceStatus{LoadBalancer: corev1.LoadBalancerStatus{
+			Ingress: []corev1.LoadBalancerIngress{{IP: "1.2.3.4"}},
+		}},
+	}
+	eps, err := r.ResolveObject(context.Background(), svc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(eps) != 1 || eps[0].DNSName != "dot.example.com" {
+		t.Fatalf("expected trailing dot stripped, got DNSName=%q", eps[0].DNSName)
+	}
+}
+
+// TestServiceResolver_LBHostname_NotEmittedAsCNAME documents that when a
+// Service LoadBalancer has a hostname (instead of an IP), the current resolver
+// does NOT emit it — only IPs are collected. This is a known gap: a CNAME
+// should ideally be emitted for LB hostnames.
+// TODO: The resolver ignores lb.Hostname; extend loadBalancerIPs (or add a
+// separate CNAME path) to emit a CNAME record when lb.Hostname is set.
+func TestServiceResolver_LBHostname_NotEmittedAsCNAME(t *testing.T) {
+	t.Skip("TODO: resolver does not emit CNAME for LB hostname targets (scenario 2)")
+	r := svcsrc.NewResolver()
+	svc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "nlb", Namespace: "default",
+			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/hostname": "api.example.com"},
+		},
+		Status: corev1.ServiceStatus{LoadBalancer: corev1.LoadBalancerStatus{
+			Ingress: []corev1.LoadBalancerIngress{{Hostname: "nlb.aws.example.com"}},
+		}},
+	}
+	eps, err := r.ResolveObject(context.Background(), svc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(eps) != 1 {
+		t.Fatalf("want 1 CNAME endpoint, got %d", len(eps))
+	}
+	if eps[0].RecordType != "CNAME" {
+		t.Errorf("want CNAME, got %s", eps[0].RecordType)
+	}
+	if eps[0].Targets[0] != "nlb.aws.example.com" {
+		t.Errorf("want target nlb.aws.example.com, got %v", eps[0].Targets)
+	}
+}
