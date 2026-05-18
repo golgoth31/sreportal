@@ -21,6 +21,7 @@ function fqdn(overrides: Partial<Fqdn> & Pick<Fqdn, "name">): Fqdn {
     dnsResourceNamespace: overrides.dnsResourceNamespace ?? "default",
     originRef: overrides.originRef,
     syncStatus: overrides.syncStatus ?? "",
+    portals: overrides.portals ?? [],
   };
 }
 

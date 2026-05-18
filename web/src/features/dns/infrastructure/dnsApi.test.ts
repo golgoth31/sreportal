@@ -25,6 +25,7 @@ describe("listFqdns", () => {
               dnsResourceName: "dns-1",
               dnsResourceNamespace: "kube-system",
               syncStatus: "sync",
+              portals: ["main", "staging"],
             }),
           ]),
         ),
@@ -44,6 +45,7 @@ describe("listFqdns", () => {
       dnsResourceName: "dns-1",
       dnsResourceNamespace: "kube-system",
       syncStatus: "sync",
+      portals: ["main", "staging"],
     });
   });
 

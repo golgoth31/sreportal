@@ -29,6 +29,7 @@ function toDomainFqdn(f: FQDN): Fqdn {
     dnsResourceNamespace: f.dnsResourceNamespace,
     originRef: f.originRef ? toDomainOriginRef(f.originRef) : undefined,
     syncStatus: f.syncStatus as SyncStatus,
+    portals: [...f.portals],
   };
 }
 

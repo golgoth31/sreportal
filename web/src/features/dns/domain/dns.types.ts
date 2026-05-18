@@ -17,6 +17,7 @@ export interface Fqdn {
   readonly dnsResourceNamespace: string;
   readonly originRef?: OriginRef;
   readonly syncStatus: SyncStatus;
+  readonly portals: readonly string[];
 }
 
 /** Returns true only when DNS resolution is confirmed in sync. */
