@@ -17,12 +17,38 @@ limitations under the License.
 package dns
 
 import (
-	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	"sigs.k8s.io/external-dns/endpoint"
+
+	"github.com/golgoth31/sreportal/internal/source/registry"
 )
 
-// ChainData holds typed shared state between DNS reconciliation handlers,
-// replacing the former map[string]any to eliminate boxing allocations.
+const (
+	// SourceManual indicates a manually configured FQDN.
+	SourceManual = "manual"
+	// SourceExternalDNS indicates an FQDN discovered from external-dns.
+	SourceExternalDNS = "external-dns"
+	// SourceRemote indicates an FQDN fetched from a remote portal.
+	SourceRemote = "remote"
+)
+
+// ChainData carries per-reconcile state through the DNS chain handlers.
 type ChainData struct {
-	ManualGroups     []sreportalv1alpha1.DNSGroup
-	AggregatedGroups []sreportalv1alpha1.FQDNGroupStatus
+	// EndpointsByKind is populated by LookupSourcesHandler. Each entry is the
+	// post-filter (namespace, labelFilter) slice of enriched endpoints for
+	// that kind. Iteration order follows spec.sources.priority.
+	EndpointsByKind map[registry.SourceType][]*endpoint.Endpoint
+
+	// KeptEndpointsByKind is populated by IntraDNSDedupHandler — the
+	// priority-deduped subset that UpsertDNSRecordsHandler will project.
+	KeptEndpointsByKind map[registry.SourceType][]*endpoint.Endpoint
+
+	// PriorityOrder is the iteration order across kinds (from
+	// spec.sources.priority + spec.sources.* enabled fallback). Provided to
+	// downstream handlers so they don't recompute it.
+	PriorityOrder []registry.SourceType
+
+	// PortalDisabled is set to true when the Portal exists but has DNS
+	// feature disabled — controllers use this to choose between cleanup and
+	// production paths.
+	PortalDisabled bool
 }
