@@ -211,6 +211,249 @@ spec:
         - spec
         type: object
     served: true
+    storage: false
+    subresources:
+      status: {}
+  - additionalPrinterColumns:
+    - jsonPath: .spec.portalRef
+      name: Portal
+      type: string
+    - jsonPath: .spec.origin
+      name: Origin
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    - jsonPath: .status.endpoints
+      name: Endpoints
+      type: integer
+    name: v1alpha2
+    schema:
+      openAPIV3Schema:
+        description: DNSRecord is the Schema for the dnsrecords API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: spec defines the desired state of DNSRecord
+            properties:
+              entries:
+                description: Required when origin=manual. Must be empty when origin=auto.
+                items:
+                  description: DNSRecordEntry is a single manual DNS entry.
+                  properties:
+                    description:
+                      type: string
+                    fqdn:
+                      minLength: 1
+                      pattern: ^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$
+                      type: string
+                    group:
+                      type: string
+                    recordType:
+                      default: A
+                      enum:
+                      - A
+                      - AAAA
+                      - CNAME
+                      - TXT
+                      type: string
+                    targets:
+                      items:
+                        type: string
+                      type: array
+                  required:
+                  - fqdn
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - fqdn
+                x-kubernetes-list-type: map
+              origin:
+                allOf:
+                - enum:
+                  - auto
+                  - manual
+                - enum:
+                  - auto
+                  - manual
+                description: DNSRecordOrigin discriminates auto-discovered vs manually
+                  created DNSRecord.
+                type: string
+                x-kubernetes-validations:
+                - message: spec.origin is immutable
+                  rule: self == oldSelf
+              portalRef:
+                minLength: 1
+                type: string
+                x-kubernetes-validations:
+                - message: spec.portalRef is immutable
+                  rule: self == oldSelf
+              sourceType:
+                description: Required when origin=auto. Must be empty when origin=manual.
+                enum:
+                - service
+                - ingress
+                - dnsendpoint
+                - istio-gateway
+                - istio-virtualservice
+                - gateway-httproute
+                - gateway-grpcroute
+                - gateway-tlsroute
+                - gateway-tcproute
+                - gateway-udproute
+                - crossplane-scaleway-record
+                type: string
+            required:
+            - origin
+            - portalRef
+            type: object
+            x-kubernetes-validations:
+            - message: auto records require sourceType and no entries; manual records
+                require entries and no sourceType
+              rule: 'self.origin == ''auto'' ? has(self.sourceType) && (!has(self.entries)
+                || size(self.entries) == 0) : !has(self.sourceType) && has(self.entries)
+                && size(self.entries) > 0'
+          status:
+            description: status defines the observed state of DNSRecord
+            properties:
+              conditions:
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              endpoints:
+                items:
+                  description: EndpointStatus represents a single DNS endpoint discovered
+                    from external-dns
+                  properties:
+                    dnsName:
+                      description: dnsName is the fully qualified domain name
+                      type: string
+                    labels:
+                      additionalProperties:
+                        type: string
+                      description: labels contains the endpoint labels from external-dns
+                      type: object
+                    lastSeen:
+                      description: lastSeen is the timestamp when this endpoint was
+                        last observed
+                      format: date-time
+                      type: string
+                    recordType:
+                      description: recordType is the DNS record type (A, AAAA, CNAME,
+                        TXT, etc.)
+                      type: string
+                    syncStatus:
+                      description: |-
+                        syncStatus indicates whether the endpoint is correctly resolved in DNS.
+                        sync: the FQDN resolves to the expected type and targets.
+                        notavailable: the FQDN does not exist in DNS.
+                        notsync: the FQDN exists but resolves to different targets or type.
+                      enum:
+                      - sync
+                      - notavailable
+                      - notsync
+                      - ""
+                      type: string
+                    targets:
+                      description: targets is the list of target addresses for this
+                        endpoint
+                      items:
+                        type: string
+                      type: array
+                    ttl:
+                      description: ttl is the DNS record TTL in seconds
+                      format: int64
+                      type: integer
+                  required:
+                  - dnsName
+                  - lastSeen
+                  type: object
+                type: array
+              endpointsHash:
+                type: string
+              lastReconcileTime:
+                format: date-time
+                type: string
+              observedGeneration:
+                format: int64
+                type: integer
+            type: object
+        required:
+        - metadata
+        - spec
+        type: object
+    served: true
     storage: true
     subresources:
       status: {}
