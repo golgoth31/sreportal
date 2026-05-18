@@ -138,7 +138,10 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.5.2 // indirect
+<<<<<<< HEAD
 	istio.io/api v1.30.1-0.20260529120535-23c54ad84d6e // indirect
+=======
+>>>>>>> 462e156 (chore(wiring): wire v1alpha2 stack in main and helpers)
 	k8s.io/apiextensions-apiserver v0.36.0 // indirect
 	k8s.io/apiserver v0.36.0 // indirect
 	k8s.io/component-base v0.36.0 // indirect

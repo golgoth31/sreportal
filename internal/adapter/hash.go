@@ -25,6 +25,7 @@ import (
 	"sigs.k8s.io/external-dns/endpoint"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	v1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 )
 
 // hashExcludedLabels lists label keys that are excluded from hash computation
@@ -57,6 +58,19 @@ func EndpointsHash(endpoints []*endpoint.Endpoint) string {
 // equivalent data, allowing comparison between source-collected endpoints
 // and persisted status.
 func EndpointStatusHash(statuses []sreportalv1alpha1.EndpointStatus) string {
+	lines := make([]string, 0, len(statuses))
+
+	for _, s := range statuses {
+		lines = append(lines, endpointLine(s.DNSName, s.RecordType, s.Targets, s.Labels))
+	}
+
+	return hashLines(lines)
+}
+
+// EndpointStatusHashV2 computes the same stable SHA-256 hex digest from
+// v1alpha2.EndpointStatus objects. It mirrors EndpointStatusHash for the
+// v1alpha2 type so callers on the new API can reuse the hashing logic.
+func EndpointStatusHashV2(statuses []v1alpha2.EndpointStatus) string {
 	lines := make([]string, 0, len(statuses))
 
 	for _, s := range statuses {

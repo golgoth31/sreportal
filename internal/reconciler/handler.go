@@ -18,6 +18,7 @@ package reconciler
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"time"
 
@@ -25,6 +26,12 @@ import (
 
 	"github.com/golgoth31/sreportal/internal/metrics"
 )
+
+// ErrShortCircuit signals that the chain should stop without propagating an
+// error. Handlers return this when no further work is possible but the
+// reconcile itself succeeded (e.g. a referenced resource is absent and the
+// caller has set rc.Result for any requeue policy).
+var ErrShortCircuit = errors.New("reconciler: short circuit")
 
 // ReconcileContext holds shared state between handlers during reconciliation.
 // T is the Kubernetes resource type, D is the typed chain data shared between handlers.
@@ -63,12 +70,20 @@ func NewChain[T any, D any](controller string, handlers ...Handler[T, D]) *Chain
 // Execute runs all handlers in sequence until one errors or requests requeue.
 // When the chain has a controller name set, each handler's duration is observed
 // on metrics.ReconcileDuration with handler=<TypeName>.
+// A context.Canceled or context.DeadlineExceeded error is silently dropped:
+// it signals a shutdown or re-queue race, not a real reconciliation failure.
 func (c *Chain[T, D]) Execute(ctx context.Context, rc *ReconcileContext[T, D]) error {
 	for _, h := range c.handlers {
 		start := time.Now()
 		err := h.Handle(ctx, rc)
 		c.observe(h, start)
 		if err != nil {
+			if errors.Is(err, ErrShortCircuit) {
+				return nil
+			}
+			if ctx.Err() != nil {
+				return nil
+			}
 			return err
 		}
 		// Short-circuit if a handler requested a delayed requeue
