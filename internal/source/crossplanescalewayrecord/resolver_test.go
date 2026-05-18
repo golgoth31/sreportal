@@ -18,11 +18,13 @@ package crossplanescalewayrecord_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	cprec "github.com/golgoth31/sreportal/internal/source/crossplanescalewayrecord"
+	"github.com/golgoth31/sreportal/internal/source/registry"
 )
 
 func TestCrossplaneScalewayRecordResolver_SubdomainRecord(t *testing.T) {
@@ -97,10 +99,14 @@ func TestCrossplaneScalewayRecordResolver_MissingRequiredFields(t *testing.T) {
 func TestCrossplaneScalewayRecordResolver_WrongType(t *testing.T) {
 	r := cprec.NewResolver()
 	eps, err := r.ResolveObject(context.Background(), nil)
-	if err != nil {
-		t.Fatal(err)
+	if err == nil {
+		t.Fatal("expected UnexpectedObjectTypeError, got nil")
+	}
+	var typed *registry.UnexpectedObjectTypeError
+	if !errors.As(err, &typed) {
+		t.Fatalf("expected *registry.UnexpectedObjectTypeError, got %T (%v)", err, err)
 	}
 	if eps != nil {
-		t.Errorf("expected nil, got %+v", eps)
+		t.Errorf("expected nil endpoints, got %+v", eps)
 	}
 }

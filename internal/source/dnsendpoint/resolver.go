@@ -41,10 +41,10 @@ func (*Resolver) ObjectList() client.ObjectList { return &v1alpha1.DNSEndpointLi
 
 func (*Resolver) ResolveObject(_ context.Context, obj client.Object) ([]*endpoint.Endpoint, error) {
 	de, ok := obj.(*v1alpha1.DNSEndpoint)
-	if !ok || de == nil {
-		return nil, nil
+	if !ok {
+		return nil, registry.UnexpectedObjectType(SourceTypeDNSEndpoint, obj)
 	}
-	if len(de.Spec.Endpoints) == 0 {
+	if de == nil || len(de.Spec.Endpoints) == 0 {
 		return nil, nil
 	}
 	out := make([]*endpoint.Endpoint, 0, len(de.Spec.Endpoints))

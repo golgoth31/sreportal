@@ -52,7 +52,7 @@ func (*Resolver) ObjectList() client.ObjectList {
 func (*Resolver) ResolveObject(_ context.Context, obj client.Object) ([]*endpoint.Endpoint, error) {
 	u, ok := obj.(*unstructured.Unstructured)
 	if !ok {
-		return nil, nil
+		return nil, registry.UnexpectedObjectType(SourceTypeCrossplaneScalewayRecord, obj)
 	}
 	ep, ok := recordToEndpoint(u)
 	if !ok {
