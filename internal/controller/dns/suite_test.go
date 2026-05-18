@@ -35,6 +35,7 @@ import (
 	"sigs.k8s.io/external-dns/source/annotations"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	sreportalv1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 	portalfeatures "github.com/golgoth31/sreportal/internal/controller/portal/features"
 	"github.com/golgoth31/sreportal/internal/log"
 	// +kubebuilder:scaffold:imports
@@ -71,6 +72,8 @@ var _ = BeforeSuite(func() {
 	var err error
 	err = sreportalv1alpha1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
+	err = sreportalv1alpha2.AddToScheme(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
 
 	// +kubebuilder:scaffold:scheme
 
@@ -97,122 +100,17 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).NotTo(HaveOccurred())
 
-	// Add field indexer for DNSRecord.spec.portalRef
+	// Add field indexer for v1alpha2.DNSRecord.spec.portalRef
 	err = mgr.GetFieldIndexer().IndexField(
 		context.Background(),
-		&sreportalv1alpha1.DNSRecord{},
+		&sreportalv1alpha2.DNSRecord{},
 		portalfeatures.FieldIndexPortalRef,
 		func(o client.Object) []string {
-			dnsRecord := o.(*sreportalv1alpha1.DNSRecord)
-			if dnsRecord.Spec.PortalRef == "" {
+			rec, ok := o.(*sreportalv1alpha2.DNSRecord)
+			if !ok || rec.Spec.PortalRef == "" {
 				return nil
 			}
-			return []string{dnsRecord.Spec.PortalRef}
-		},
-	)
-	Expect(err).NotTo(HaveOccurred())
-
-	// Add field indexer for DNS.spec.portalRef
-	err = mgr.GetFieldIndexer().IndexField(
-		context.Background(),
-		&sreportalv1alpha1.DNS{},
-		portalfeatures.FieldIndexPortalRef,
-		func(o client.Object) []string {
-			dns := o.(*sreportalv1alpha1.DNS)
-			if dns.Spec.PortalRef == "" {
-				return nil
-			}
-			return []string{dns.Spec.PortalRef}
-		},
-	)
-	Expect(err).NotTo(HaveOccurred())
-
-	// Add field indexer for Release.spec.portalRef
-	err = mgr.GetFieldIndexer().IndexField(
-		context.Background(),
-		&sreportalv1alpha1.Release{},
-		portalfeatures.FieldIndexPortalRef,
-		func(o client.Object) []string {
-			rel := o.(*sreportalv1alpha1.Release)
-			if rel.Spec.PortalRef == "" {
-				return nil
-			}
-			return []string{rel.Spec.PortalRef}
-		},
-	)
-	Expect(err).NotTo(HaveOccurred())
-
-	// Add field indexer for NetworkFlowDiscovery.spec.portalRef
-	err = mgr.GetFieldIndexer().IndexField(
-		context.Background(),
-		&sreportalv1alpha1.NetworkFlowDiscovery{},
-		portalfeatures.FieldIndexPortalRef,
-		func(o client.Object) []string {
-			nfd := o.(*sreportalv1alpha1.NetworkFlowDiscovery)
-			if nfd.Spec.PortalRef == "" {
-				return nil
-			}
-			return []string{nfd.Spec.PortalRef}
-		},
-	)
-	Expect(err).NotTo(HaveOccurred())
-
-	// Add field indexer for Alertmanager.spec.portalRef
-	err = mgr.GetFieldIndexer().IndexField(
-		context.Background(),
-		&sreportalv1alpha1.Alertmanager{},
-		portalfeatures.FieldIndexPortalRef,
-		func(o client.Object) []string {
-			am := o.(*sreportalv1alpha1.Alertmanager)
-			if am.Spec.PortalRef == "" {
-				return nil
-			}
-			return []string{am.Spec.PortalRef}
-		},
-	)
-	Expect(err).NotTo(HaveOccurred())
-
-	// Add field indexer for Component.spec.portalRef
-	err = mgr.GetFieldIndexer().IndexField(
-		context.Background(),
-		&sreportalv1alpha1.Component{},
-		portalfeatures.FieldIndexPortalRef,
-		func(o client.Object) []string {
-			comp := o.(*sreportalv1alpha1.Component)
-			if comp.Spec.PortalRef == "" {
-				return nil
-			}
-			return []string{comp.Spec.PortalRef}
-		},
-	)
-	Expect(err).NotTo(HaveOccurred())
-
-	// Add field indexer for Incident.spec.portalRef
-	err = mgr.GetFieldIndexer().IndexField(
-		context.Background(),
-		&sreportalv1alpha1.Incident{},
-		portalfeatures.FieldIndexPortalRef,
-		func(o client.Object) []string {
-			inc := o.(*sreportalv1alpha1.Incident)
-			if inc.Spec.PortalRef == "" {
-				return nil
-			}
-			return []string{inc.Spec.PortalRef}
-		},
-	)
-	Expect(err).NotTo(HaveOccurred())
-
-	// Add field indexer for Maintenance.spec.portalRef
-	err = mgr.GetFieldIndexer().IndexField(
-		context.Background(),
-		&sreportalv1alpha1.Maintenance{},
-		portalfeatures.FieldIndexPortalRef,
-		func(o client.Object) []string {
-			maint := o.(*sreportalv1alpha1.Maintenance)
-			if maint.Spec.PortalRef == "" {
-				return nil
-			}
-			return []string{maint.Spec.PortalRef}
+			return []string{rec.Spec.PortalRef}
 		},
 	)
 	Expect(err).NotTo(HaveOccurred())
