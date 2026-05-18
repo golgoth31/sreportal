@@ -24,7 +24,7 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	v1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
@@ -36,35 +36,56 @@ const (
 
 // ResolveDNSHandler resolves each endpoint against DNS and persists the resulting
 // SyncStatus values on the DNSRecord status. No-op when the resolver is nil,
-// resolution is disabled, or the record has no endpoints.
+// resolution is disabled (via ChainData.DisableDNSCheck), or the record has no
+// endpoints.
 type ResolveDNSHandler struct {
-	client          client.Client
-	resolver        domaindns.Resolver
-	disableDNSCheck bool
+	client   client.Client
+	resolver domaindns.Resolver
 }
 
-// NewResolveDNSHandler creates a new ResolveDNSHandler.
-func NewResolveDNSHandler(c client.Client, resolver domaindns.Resolver, disableDNSCheck bool) *ResolveDNSHandler {
-	return &ResolveDNSHandler{client: c, resolver: resolver, disableDNSCheck: disableDNSCheck}
+// NewResolveDNSHandler creates a new ResolveDNSHandler. The disableDNSCheck
+// toggle is read per-reconciliation from rc.Data.DisableDNSCheck (populated by
+// LoadDNSConfigHandler from the referenced DNS CR).
+func NewResolveDNSHandler(c client.Client, resolver domaindns.Resolver) *ResolveDNSHandler {
+	return &ResolveDNSHandler{client: c, resolver: resolver}
 }
 
 // Handle implements reconciler.Handler.
-func (h *ResolveDNSHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.DNSRecord, ChainData]) error {
+func (h *ResolveDNSHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*v1alpha2.DNSRecord, ChainData]) error {
 	record := rc.Resource
-	if h.disableDNSCheck || h.resolver == nil || len(record.Status.Endpoints) == 0 {
+	if rc.Data.DisableDNSCheck || h.resolver == nil || len(record.Status.Endpoints) == 0 {
 		return nil
 	}
 
 	base := record.DeepCopy()
 	h.resolveEndpoints(ctx, record.Status.Endpoints)
+
+	if !syncStatusChanged(base.Status.Endpoints, record.Status.Endpoints) {
+		return nil
+	}
 	if err := h.client.Status().Patch(ctx, record, client.MergeFrom(base)); err != nil {
 		return fmt.Errorf("patch DNSRecord status: %w", err)
 	}
 	return nil
 }
 
+// syncStatusChanged reports whether any endpoint's SyncStatus differs between
+// before and after slices. Used to avoid spurious status patches that would
+// re-trigger the DNSRecord watch and cause a reconciliation loop.
+func syncStatusChanged(before, after []v1alpha2.EndpointStatus) bool {
+	if len(before) != len(after) {
+		return true
+	}
+	for i := range after {
+		if before[i].SyncStatus != after[i].SyncStatus {
+			return true
+		}
+	}
+	return false
+}
+
 // resolveEndpoints resolves DNS for each endpoint in-place, setting SyncStatus.
-func (h *ResolveDNSHandler) resolveEndpoints(ctx context.Context, endpoints []sreportalv1alpha1.EndpointStatus) {
+func (h *ResolveDNSHandler) resolveEndpoints(ctx context.Context, endpoints []v1alpha2.EndpointStatus) {
 	workers := min(maxDNSRecordLookups, len(endpoints))
 	ch := make(chan int, len(endpoints))
 	for i := range endpoints {
@@ -79,7 +100,7 @@ func (h *ResolveDNSHandler) resolveEndpoints(ctx context.Context, endpoints []sr
 				ep := &endpoints[idx]
 				lookupCtx, cancel := context.WithTimeout(ctx, dnsRecordLookupTimeout)
 				result := domaindns.CheckFQDN(lookupCtx, h.resolver, ep.DNSName, ep.RecordType, ep.Targets)
-				ep.SyncStatus = string(result.Status)
+				ep.SyncStatus = v1alpha2.SyncStatus(result.Status)
 				cancel()
 			}
 		})

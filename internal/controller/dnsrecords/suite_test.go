@@ -35,6 +35,7 @@ import (
 	"sigs.k8s.io/external-dns/source/annotations"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	v1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 	portalfeatures "github.com/golgoth31/sreportal/internal/controller/portal/features"
 	"github.com/golgoth31/sreportal/internal/log"
 	// +kubebuilder:scaffold:imports
@@ -71,6 +72,8 @@ var _ = BeforeSuite(func() {
 	var err error
 	err = sreportalv1alpha1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
+	err = v1alpha2.AddToScheme(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
 
 	// +kubebuilder:scaffold:scheme
 
@@ -97,13 +100,28 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).NotTo(HaveOccurred())
 
-	// Add field indexer for DNSRecord.spec.portalRef
+	// Add field indexer for v1alpha1 DNSRecord.spec.portalRef
 	err = mgr.GetFieldIndexer().IndexField(
 		context.Background(),
 		&sreportalv1alpha1.DNSRecord{},
 		portalfeatures.FieldIndexPortalRef,
 		func(o client.Object) []string {
 			dnsRecord := o.(*sreportalv1alpha1.DNSRecord)
+			if dnsRecord.Spec.PortalRef == "" {
+				return nil
+			}
+			return []string{dnsRecord.Spec.PortalRef}
+		},
+	)
+	Expect(err).NotTo(HaveOccurred())
+
+	// Add field indexer for v1alpha2 DNSRecord.spec.portalRef
+	err = mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&v1alpha2.DNSRecord{},
+		portalfeatures.FieldIndexPortalRef,
+		func(o client.Object) []string {
+			dnsRecord := o.(*v1alpha2.DNSRecord)
 			if dnsRecord.Spec.PortalRef == "" {
 				return nil
 			}

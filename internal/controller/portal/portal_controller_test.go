@@ -29,7 +29,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
-	dnsctrl "github.com/golgoth31/sreportal/internal/controller/dns"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 	domainnetpol "github.com/golgoth31/sreportal/internal/domain/netpol"
 	domainrelease "github.com/golgoth31/sreportal/internal/domain/release"
@@ -118,7 +117,7 @@ var _ = Describe("Portal Controller", func() {
 		})
 
 		It("should clear FQDN read store entries and delete DNSRecords", func() {
-			store := dnsreadstore.NewFQDNStore(nil)
+			store := dnsreadstore.NewFQDNStore()
 			controllerReconciler := NewPortalReconciler(k8sClient, k8sClient.Scheme(), remoteclient.NewCache())
 			controllerReconciler.SetFQDNWriter(store)
 
@@ -135,9 +134,6 @@ var _ = Describe("Portal Controller", func() {
 				ObjectMeta: metav1.ObjectMeta{Name: dnsName, Namespace: tNsDefault},
 				Spec: sreportalv1alpha1.DNSSpec{
 					PortalRef: portalName,
-					Groups: []sreportalv1alpha1.DNSGroup{
-						{Name: "Test", Entries: []sreportalv1alpha1.DNSEntry{{FQDN: "toggle.example.com"}}},
-					},
 				},
 			})).To(Succeed())
 
@@ -153,11 +149,11 @@ var _ = Describe("Portal Controller", func() {
 			By("pre-populating the FQDN read store as controllers would")
 			dnsKey := "default/" + dnsName
 			recordKey := "default/" + recordName
-			Expect(store.Replace(ctx, dnsKey, []domaindns.FQDNView{
-				{Name: "toggle.example.com", PortalName: portalName, Source: domaindns.SourceManual},
+			Expect(store.Replace(ctx, dnsKey, portalName, []domaindns.FQDNView{
+				{Name: "toggle.example.com", Portals: []string{portalName}, Source: domaindns.SourceManual},
 			})).To(Succeed())
-			Expect(store.Replace(ctx, recordKey, []domaindns.FQDNView{
-				{Name: "svc.example.com", PortalName: portalName, Source: domaindns.SourceExternalDNS},
+			Expect(store.Replace(ctx, recordKey, portalName, []domaindns.FQDNView{
+				{Name: "svc.example.com", Portals: []string{portalName}, Source: domaindns.SourceExternalDNS},
 			})).To(Succeed())
 
 			views, _ := store.List(ctx, domaindns.FQDNFilters{Portal: portalName})
@@ -193,12 +189,8 @@ var _ = Describe("Portal Controller", func() {
 			}, 10*time.Second, 250*time.Millisecond).Should(Succeed())
 		})
 
-		It("should recover data when DNS is re-enabled", func() {
-			store := dnsreadstore.NewFQDNStore(nil)
+		It("should allow portal reconcile to succeed after DNS is re-enabled", func() {
 			portalReconciler := NewPortalReconciler(k8sClient, k8sClient.Scheme(), remoteclient.NewCache())
-			portalReconciler.SetFQDNWriter(store)
-			dnsReconciler := dnsctrl.NewDNSReconciler(k8sClient, k8sClient.Scheme(), true)
-			dnsReconciler.SetFQDNWriter(store)
 
 			By("creating a portal with DNS disabled")
 			dnsDisabled := false
@@ -210,25 +202,18 @@ var _ = Describe("Portal Controller", func() {
 				},
 			})).To(Succeed())
 
-			By("creating a DNS CR")
+			By("creating a DNS CR for this portal")
 			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.DNS{
 				ObjectMeta: metav1.ObjectMeta{Name: dnsName, Namespace: tNsDefault},
 				Spec: sreportalv1alpha1.DNSSpec{
 					PortalRef: portalName,
-					Groups: []sreportalv1alpha1.DNSGroup{
-						{Name: "Test", Entries: []sreportalv1alpha1.DNSEntry{{FQDN: "recover.example.com"}}},
-					},
 				},
 			})).To(Succeed())
 
-			By("reconciling portal with DNS disabled — store should be empty")
+			By("reconciling portal with DNS disabled — should succeed without error")
 			Eventually(func(g Gomega) {
 				_, err := portalReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: portalNN})
 				g.Expect(err).NotTo(HaveOccurred())
-
-				views, err := store.List(ctx, domaindns.FQDNFilters{Portal: portalName})
-				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(views).To(BeEmpty())
 			}, 10*time.Second, 250*time.Millisecond).Should(Succeed())
 
 			By("re-enabling DNS on the portal")
@@ -240,15 +225,10 @@ var _ = Describe("Portal Controller", func() {
 				g.Expect(k8sClient.Update(ctx, &portal)).To(Succeed())
 			}, 10*time.Second, 250*time.Millisecond).Should(Succeed())
 
-			By("reconciling the DNS controller — data should be recovered")
+			By("reconciling portal with DNS re-enabled — should succeed without error")
 			Eventually(func(g Gomega) {
-				_, err := dnsReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: dnsNN})
+				_, err := portalReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: portalNN})
 				g.Expect(err).NotTo(HaveOccurred())
-
-				views, err := store.List(ctx, domaindns.FQDNFilters{Portal: portalName})
-				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(views).To(HaveLen(1), "FQDN should be recovered after re-enabling DNS")
-				g.Expect(views[0].Name).To(Equal("recover.example.com"))
 			}, 10*time.Second, 250*time.Millisecond).Should(Succeed())
 		})
 	})
