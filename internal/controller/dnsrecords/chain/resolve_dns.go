@@ -26,6 +26,7 @@ import (
 
 	v1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
+	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
@@ -85,7 +86,11 @@ func syncStatusChanged(before, after []v1alpha2.EndpointStatus) bool {
 }
 
 // resolveEndpoints resolves DNS for each endpoint in-place, setting SyncStatus.
+// Resolution errors (timeout, NXDOMAIN, network, ctx cancellation) collapse to
+// NotAvailable in the status — but the underlying error is logged at V(1) so
+// operators can distinguish a missing record from a DNS outage.
 func (h *ResolveDNSHandler) resolveEndpoints(ctx context.Context, endpoints []v1alpha2.EndpointStatus) {
+	logger := log.FromContext(ctx)
 	workers := min(maxDNSRecordLookups, len(endpoints))
 	ch := make(chan int, len(endpoints))
 	for i := range endpoints {
@@ -101,6 +106,14 @@ func (h *ResolveDNSHandler) resolveEndpoints(ctx context.Context, endpoints []v1
 				lookupCtx, cancel := context.WithTimeout(ctx, dnsRecordLookupTimeout)
 				result := domaindns.CheckFQDN(lookupCtx, h.resolver, ep.DNSName, ep.RecordType, ep.Targets)
 				ep.SyncStatus = v1alpha2.SyncStatus(result.Status)
+				if result.Err != nil {
+					logger.V(1).Info("DNS resolution failed",
+						"fqdn", ep.DNSName,
+						"recordType", ep.RecordType,
+						"status", string(result.Status),
+						"err", result.Err.Error(),
+					)
+				}
 				cancel()
 			}
 		})
