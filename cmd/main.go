@@ -401,6 +401,24 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Add field indexer for v1alpha2 DNS.spec.portalRef
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&sreportalv1alpha2.DNS{},
+		portalfeatures.FieldIndexPortalRef,
+		func(o client.Object) []string {
+			dns := o.(*sreportalv1alpha2.DNS)
+			if dns.Spec.PortalRef == "" {
+				return nil
+			}
+			return []string{dns.Spec.PortalRef}
+		},
+	); err != nil {
+		setupLog.Error(err, "unable to create field indexer",
+			"field", portalfeatures.FieldIndexPortalRef, "kind", "v1alpha2.DNS")
+		os.Exit(1)
+	}
+
 	// Add field indexer for Release.spec.portalRef
 	if err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),

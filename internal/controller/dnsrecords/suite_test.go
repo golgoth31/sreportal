@@ -145,6 +145,21 @@ var _ = BeforeSuite(func() {
 	)
 	Expect(err).NotTo(HaveOccurred())
 
+	// Add field indexer for v1alpha2 DNS.spec.portalRef
+	err = mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&v1alpha2.DNS{},
+		portalfeatures.FieldIndexPortalRef,
+		func(o client.Object) []string {
+			dns := o.(*v1alpha2.DNS)
+			if dns.Spec.PortalRef == "" {
+				return nil
+			}
+			return []string{dns.Spec.PortalRef}
+		},
+	)
+	Expect(err).NotTo(HaveOccurred())
+
 	// Add field indexer for Release.spec.portalRef
 	err = mgr.GetFieldIndexer().IndexField(
 		context.Background(),

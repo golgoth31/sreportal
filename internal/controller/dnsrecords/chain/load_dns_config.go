@@ -23,6 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	v1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
+	portalfeatures "github.com/golgoth31/sreportal/internal/controller/portal/features"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
@@ -38,23 +39,26 @@ func NewLoadDNSConfigHandler(c client.Client) *LoadDNSConfigHandler {
 	return &LoadDNSConfigHandler{client: c}
 }
 
-// Handle fetches the DNS CR referenced by the record's spec.portalRef and
-// copies the relevant configuration into rc.Data.
+// Handle finds the DNS CR whose spec.portalRef matches the record's portalRef
+// (within the same namespace) and copies its config into rc.Data. Uses the
+// spec.portalRef field indexer rather than Get-by-name so DNS.Name need not
+// equal PortalRef.
 func (h *LoadDNSConfigHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*v1alpha2.DNSRecord, ChainData]) error {
 	record := rc.Resource
-	var dns v1alpha2.DNS
-	if err := h.client.Get(ctx, client.ObjectKey{
-		Name:      record.Spec.PortalRef,
-		Namespace: record.Namespace,
-	}, &dns); err != nil {
-		if client.IgnoreNotFound(err) == nil {
-			// DNS CR absent — short-circuit so downstream handlers don't run
-			// with default config. The DNS watch in SetupWithManager will
-			// re-enqueue this DNSRecord when the DNS CR appears.
-			return reconciler.ErrShortCircuit
-		}
-		return fmt.Errorf("load DNS config for portal %q: %w", record.Spec.PortalRef, err)
+	var list v1alpha2.DNSList
+	if err := h.client.List(ctx, &list,
+		client.InNamespace(record.Namespace),
+		client.MatchingFields{portalfeatures.FieldIndexPortalRef: record.Spec.PortalRef},
+	); err != nil {
+		return fmt.Errorf("list DNS for portal %q: %w", record.Spec.PortalRef, err)
 	}
+	if len(list.Items) == 0 {
+		// No DNS CR for this portal — short-circuit so downstream handlers
+		// don't run with default config. The DNS watch in SetupWithManager
+		// will re-enqueue this DNSRecord when a matching DNS appears.
+		return reconciler.ErrShortCircuit
+	}
+	dns := &list.Items[0]
 	rc.Data.GroupMapping = &dns.Spec.GroupMapping
 	rc.Data.DisableDNSCheck = dns.Spec.Reconciliation.DisableDNSCheck
 	return nil
