@@ -1,0 +1,134 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package source
+
+import (
+	"context"
+	"reflect"
+
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	sreportalv1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
+	domainsource "github.com/golgoth31/sreportal/internal/domain/source"
+	"github.com/golgoth31/sreportal/internal/metrics"
+	sourcepkg "github.com/golgoth31/sreportal/internal/source"
+	"github.com/golgoth31/sreportal/internal/source/registry"
+)
+
+// Cycle is the global producer loop body, exported for testability.
+// Caller (Start) is responsible for the time.Ticker. Cycle is idempotent and
+// safe to call sequentially from a single goroutine; concurrent invocations
+// against the same store are NOT supported.
+func Cycle(
+	ctx context.Context,
+	c client.Client,
+	reg *registry.Registry,
+	store domainsource.SourceEndpointWriter,
+	prev map[registry.SourceType]bool,
+) map[registry.SourceType]bool {
+	logger := log.FromContext(ctx).WithName("source.cycle")
+
+	enabled, err := computeEnabledKinds(ctx, c)
+	if err != nil {
+		logger.Error(err, "failed to compute enabled kinds; skipping cycle")
+		return prev
+	}
+
+	for kind := range enabled {
+		resolver, ok := reg.Get(kind)
+		if !ok {
+			logger.Info("no resolver registered", "kind", kind)
+			continue
+		}
+		list := resolver.ObjectList()
+		if err := c.List(ctx, list); err != nil {
+			if apierrors.IsNotFound(err) {
+				logger.Info("CRD not installed; skipping kind", "kind", kind)
+				continue
+			}
+			logger.Error(err, "list failed", "kind", kind)
+			continue
+		}
+		items := extractItems(list)
+		entries := make([]domainsource.EnrichedEndpoint, 0, len(items))
+		for _, obj := range items {
+			eps, rerr := resolver.ResolveObject(ctx, obj)
+			if rerr != nil {
+				logger.Error(rerr, "resolve failed", "kind", kind, "name", obj.GetName(), "ns", obj.GetNamespace())
+				continue
+			}
+			for _, ep := range eps {
+				entries = append(entries, domainsource.EnrichedEndpoint{
+					Endpoint:          ep,
+					Kind:              kind,
+					Namespace:         obj.GetNamespace(),
+					Name:              obj.GetName(),
+					SourceLabels:      obj.GetLabels(),
+					SourceAnnotations: obj.GetAnnotations(),
+				})
+			}
+		}
+		store.ReplaceKind(kind, entries)
+		metrics.SourceEndpointsCollected.WithLabelValues(string(kind)).Set(float64(len(entries)))
+		metrics.SourceKindActive.WithLabelValues(string(kind)).Set(1)
+	}
+
+	for k := range prev {
+		if !enabled[k] {
+			store.DeleteKind(k)
+			metrics.SourceEndpointsCollected.DeleteLabelValues(string(k))
+			metrics.SourceKindActive.WithLabelValues(string(k)).Set(0)
+		}
+	}
+	return enabled
+}
+
+func computeEnabledKinds(ctx context.Context, c client.Client) (map[registry.SourceType]bool, error) {
+	var dnsList sreportalv1alpha2.DNSList
+	if err := c.List(ctx, &dnsList); err != nil {
+		return nil, err
+	}
+	out := map[registry.SourceType]bool{}
+	for i := range dnsList.Items {
+		d := &dnsList.Items[i]
+		if d.Spec.IsRemote {
+			continue
+		}
+		for kind, enabled := range sourcepkg.EnabledKindsFromSpec(&d.Spec.Sources) {
+			if enabled {
+				out[kind] = true
+			}
+		}
+	}
+	return out, nil
+}
+
+// extractItems extracts client.Object slice from any *List via reflection.
+func extractItems(list client.ObjectList) []client.Object {
+	v := reflect.ValueOf(list).Elem().FieldByName("Items")
+	if !v.IsValid() || v.Kind() != reflect.Slice {
+		return nil
+	}
+	out := make([]client.Object, 0, v.Len())
+	for i := 0; i < v.Len(); i++ {
+		item := v.Index(i).Addr().Interface().(client.Object)
+		out = append(out, item)
+	}
+	return out
+}
