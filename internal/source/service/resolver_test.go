@@ -121,14 +121,10 @@ func TestServiceResolver_TrailingDotHostname(t *testing.T) {
 	}
 }
 
-// TestServiceResolver_LBHostname_NotEmittedAsCNAME documents that when a
-// Service LoadBalancer has a hostname (instead of an IP), the current resolver
-// does NOT emit it — only IPs are collected. This is a known gap: a CNAME
-// should ideally be emitted for LB hostnames.
-// TODO: The resolver ignores lb.Hostname; extend loadBalancerIPs (or add a
-// separate CNAME path) to emit a CNAME record when lb.Hostname is set.
-func TestServiceResolver_LBHostname_NotEmittedAsCNAME(t *testing.T) {
-	t.Skip("TODO: resolver does not emit CNAME for LB hostname targets (scenario 2)")
+// TestServiceResolver_LBHostname_EmittedAsCNAME verifies that when a Service
+// LoadBalancer has a hostname target (instead of an IP), the resolver emits a
+// CNAME endpoint pointing at that hostname (scenario 2).
+func TestServiceResolver_LBHostname_EmittedAsCNAME(t *testing.T) {
 	r := svcsrc.NewResolver()
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{

@@ -24,12 +24,30 @@ import (
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	v1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 	"github.com/golgoth31/sreportal/internal/controller/dnsrecords/chain"
+	portalfeatures "github.com/golgoth31/sreportal/internal/controller/portal/features"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
+
+// newFakeClientWithDNSIndex builds a fake client with the same
+// spec.portalRef field indexer that main.go wires for v1alpha2.DNS.
+func newFakeClientWithDNSIndex(scheme *runtime.Scheme, objs ...client.Object) client.Client {
+	return fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(objs...).
+		WithIndex(&v1alpha2.DNS{}, portalfeatures.FieldIndexPortalRef, func(o client.Object) []string {
+			dns := o.(*v1alpha2.DNS)
+			if dns.Spec.PortalRef == "" {
+				return nil
+			}
+			return []string{dns.Spec.PortalRef}
+		}).
+		Build()
+}
 
 func TestLoadDNSConfigHandler_PopulatesChainData(t *testing.T) {
 	g := NewWithT(t)
@@ -50,10 +68,7 @@ func TestLoadDNSConfigHandler_PopulatesChainData(t *testing.T) {
 		},
 	}
 
-	c := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithObjects(dns).
-		Build()
+	c := newFakeClientWithDNSIndex(scheme, dns)
 
 	record := &v1alpha2.DNSRecord{
 		ObjectMeta: metav1.ObjectMeta{Name: "main-ingress", Namespace: tNsDefault},
@@ -82,7 +97,7 @@ func TestLoadDNSConfigHandler_MissingDNS_ShortCircuits(t *testing.T) {
 
 	scheme := runtime.NewScheme()
 	g.Expect(v1alpha2.AddToScheme(scheme)).To(Succeed())
-	c := fake.NewClientBuilder().WithScheme(scheme).Build()
+	c := newFakeClientWithDNSIndex(scheme)
 
 	rc := &reconciler.ReconcileContext[*v1alpha2.DNSRecord, chain.ChainData]{
 		Resource: &v1alpha2.DNSRecord{
@@ -96,20 +111,9 @@ func TestLoadDNSConfigHandler_MissingDNS_ShortCircuits(t *testing.T) {
 	g.Expect(rc.Data.GroupMapping).To(BeNil())
 }
 
-// TestLoadDNSConfigHandler_DNSNameMismatchesPortalRef is an implicit-contract
-// test that locks in the current lookup behaviour.
-//
-// The handler resolves the DNS CR via:
-//
-//	client.Get(ctx, ObjectKey{Name: record.Spec.PortalRef, Namespace: …}, &dns)
-//
-// This means DNS.Name MUST equal record.Spec.PortalRef. A DNS whose
-// Spec.PortalRef matches the record's PortalRef but whose Name differs is
-// invisible to the handler — the Get-by-name call returns NotFound, which
-// causes a short-circuit.
-//
-// If this contract is ever relaxed (e.g. via a Spec.PortalRef field-indexer
-// lookup), this test will need to be updated to reflect the new behaviour.
+// TestLoadDNSConfigHandler_DNSNameMismatchesPortalRef verifies that the
+// handler resolves the DNS CR by Spec.PortalRef via the field index, not by
+// Name. A DNS whose Name differs from PortalRef must still be discovered.
 func TestLoadDNSConfigHandler_DNSNameMismatchesPortalRef(t *testing.T) {
 	g := NewWithT(t)
 
@@ -117,35 +121,30 @@ func TestLoadDNSConfigHandler_DNSNameMismatchesPortalRef(t *testing.T) {
 	g.Expect(v1alpha2.AddToScheme(scheme)).To(Succeed())
 
 	// DNS CR where Name != PortalRef value used by the record.
-	// The handler looks up by Name == record.Spec.PortalRef == "main",
-	// but this DNS object's Name is "dns-platform", so the lookup will miss.
 	dns := &v1alpha2.DNS{
 		ObjectMeta: metav1.ObjectMeta{Name: "dns-platform", Namespace: tNsDefault},
 		Spec: v1alpha2.DNSSpec{
-			PortalRef: tPortalMain, // == "main", matches the record's PortalRef
+			PortalRef: tPortalMain,
 			GroupMapping: v1alpha2.GroupMappingSpec{
 				DefaultGroup: "Platform",
 			},
 		},
 	}
 
-	c := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithObjects(dns).
-		Build()
+	c := newFakeClientWithDNSIndex(scheme, dns)
 
 	rc := &reconciler.ReconcileContext[*v1alpha2.DNSRecord, chain.ChainData]{
 		Resource: &v1alpha2.DNSRecord{
 			ObjectMeta: metav1.ObjectMeta{Name: "svc-ingress", Namespace: tNsDefault},
 			Spec: v1alpha2.DNSRecordSpec{
 				Origin:    v1alpha2.DNSRecordOriginAuto,
-				PortalRef: tPortalMain, // handler will look up DNS by Name == "main" — not found
+				PortalRef: tPortalMain,
 			},
 		},
 	}
 
-	// Current behaviour: Get-by-name misses; handler short-circuits.
 	err := chain.NewLoadDNSConfigHandler(c).Handle(context.Background(), rc)
-	g.Expect(errors.Is(err, reconciler.ErrShortCircuit)).To(BeTrue())
-	g.Expect(rc.Data.GroupMapping).To(BeNil())
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(rc.Data.GroupMapping).NotTo(BeNil())
+	g.Expect(rc.Data.GroupMapping.DefaultGroup).To(Equal("Platform"))
 }

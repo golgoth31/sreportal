@@ -48,8 +48,8 @@ func (*Resolver) Type() registry.SourceType { return SourceTypeService }
 func (*Resolver) ObjectList() client.ObjectList { return &corev1.ServiceList{} }
 
 // ResolveObject converts a single Service object into zero or more Endpoints.
-// It emits one A-record Endpoint per Service carrying the external-dns hostname
-// annotation and at least one LoadBalancer ingress IP.
+// For each Service carrying the external-dns hostname annotation, it emits an
+// A-record from LoadBalancer ingress IPs and/or a CNAME from ingress Hostnames.
 func (*Resolver) ResolveObject(_ context.Context, obj client.Object) ([]*endpoint.Endpoint, error) {
 	svc, ok := obj.(*corev1.Service)
 	if !ok {
@@ -59,21 +59,29 @@ func (*Resolver) ResolveObject(_ context.Context, obj client.Object) ([]*endpoin
 	if host == "" {
 		return nil, nil
 	}
-	ips := loadBalancerIPs(svc)
-	if len(ips) == 0 {
+	ips, hostnames := loadBalancerTargets(svc)
+	if len(ips) == 0 && len(hostnames) == 0 {
 		return nil, nil
 	}
-	return []*endpoint.Endpoint{
-		endpoint.NewEndpoint(strings.TrimSuffix(host, "."), endpoint.RecordTypeA, ips...),
-	}, nil
+	dnsName := strings.TrimSuffix(host, ".")
+	var eps []*endpoint.Endpoint
+	if len(ips) > 0 {
+		eps = append(eps, endpoint.NewEndpoint(dnsName, endpoint.RecordTypeA, ips...))
+	}
+	if len(hostnames) > 0 {
+		eps = append(eps, endpoint.NewEndpoint(dnsName, endpoint.RecordTypeCNAME, hostnames...))
+	}
+	return eps, nil
 }
 
-func loadBalancerIPs(svc *corev1.Service) []string {
-	var ips []string
+func loadBalancerTargets(svc *corev1.Service) (ips, hostnames []string) {
 	for _, lb := range svc.Status.LoadBalancer.Ingress {
 		if lb.IP != "" {
 			ips = append(ips, lb.IP)
 		}
+		if lb.Hostname != "" {
+			hostnames = append(hostnames, lb.Hostname)
+		}
 	}
-	return ips
+	return ips, hostnames
 }

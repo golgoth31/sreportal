@@ -96,14 +96,10 @@ func TestCrossplaneScalewayRecordResolver_MissingRequiredFields(t *testing.T) {
 	}
 }
 
-// TestCrossplaneScalewayRecordResolver_TrailingDot documents how the resolver
-// handles a trailing dot in the name or dnsZone field (scenario 3).
-// The crossplane resolver concatenates name+"."+dnsZone verbatim — no trailing
-// dot stripping is applied. A trailing dot in the source fields propagates to
-// the emitted DNSName. This is a known gap.
-// TODO: consider stripping trailing dots from name/dnsZone for consistency.
+// TestCrossplaneScalewayRecordResolver_TrailingDot verifies that the resolver
+// strips trailing dots from dnsZone (and name) before concatenating, so a
+// dnsZone "example.com." resolves to DNSName "api.example.com" (scenario 3).
 func TestCrossplaneScalewayRecordResolver_TrailingDot(t *testing.T) {
-	t.Skip("TODO: resolver does not strip trailing dots from name/dnsZone (scenario 3)")
 	r := cprec.NewResolver()
 	u := &unstructured.Unstructured{Object: map[string]any{
 		"metadata": map[string]any{"namespace": "default", "name": "rec"},
