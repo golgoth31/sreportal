@@ -81,7 +81,7 @@ func (c *Chain[T, D]) Execute(ctx context.Context, rc *ReconcileContext[T, D]) e
 			if errors.Is(err, ErrShortCircuit) {
 				return nil
 			}
-			if ctx.Err() != nil {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 				return nil
 			}
 			return err
