@@ -26,22 +26,28 @@ import (
 	ingsrc "github.com/golgoth31/sreportal/internal/source/ingress"
 )
 
+const (
+	tAnnotHostname = "external-dns.alpha.kubernetes.io/hostname"
+	tNSDefault     = "default"
+	tIP10001       = "10.0.0.1"
+)
+
 func TestIngressResolver_Hostname(t *testing.T) {
 	r := ingsrc.NewResolver()
 	ing := &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "web", Namespace: "default",
-			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/hostname": "web.example.com"},
+			Name: "web", Namespace: tNSDefault,
+			Annotations: map[string]string{tAnnotHostname: "web.example.com"},
 		},
 		Status: networkingv1.IngressStatus{LoadBalancer: networkingv1.IngressLoadBalancerStatus{
-			Ingress: []networkingv1.IngressLoadBalancerIngress{{IP: "10.0.0.1"}},
+			Ingress: []networkingv1.IngressLoadBalancerIngress{{IP: tIP10001}},
 		}},
 	}
 	eps, err := r.ResolveObject(context.Background(), ing)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(eps) != 1 || eps[0].DNSName != "web.example.com" || eps[0].Targets[0] != "10.0.0.1" {
+	if len(eps) != 1 || eps[0].DNSName != "web.example.com" || eps[0].Targets[0] != tIP10001 {
 		t.Fatalf("unexpected: %+v", eps)
 	}
 }
@@ -61,11 +67,11 @@ func TestIngressResolver_TrailingDotHostname(t *testing.T) {
 	r := ingsrc.NewResolver()
 	ing := &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "dot", Namespace: "default",
-			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/hostname": "dot.example.com."},
+			Name: "dot", Namespace: tNSDefault,
+			Annotations: map[string]string{tAnnotHostname: "dot.example.com."},
 		},
 		Status: networkingv1.IngressStatus{LoadBalancer: networkingv1.IngressLoadBalancerStatus{
-			Ingress: []networkingv1.IngressLoadBalancerIngress{{IP: "10.0.0.1"}},
+			Ingress: []networkingv1.IngressLoadBalancerIngress{{IP: tIP10001}},
 		}},
 	}
 	eps, err := r.ResolveObject(context.Background(), ing)
@@ -83,12 +89,12 @@ func TestIngressResolver_MultipleIPs(t *testing.T) {
 	r := ingsrc.NewResolver()
 	ing := &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "multi", Namespace: "default",
-			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/hostname": "multi.example.com"},
+			Name: "multi", Namespace: tNSDefault,
+			Annotations: map[string]string{tAnnotHostname: "multi.example.com"},
 		},
 		Status: networkingv1.IngressStatus{LoadBalancer: networkingv1.IngressLoadBalancerStatus{
 			Ingress: []networkingv1.IngressLoadBalancerIngress{
-				{IP: "10.0.0.1"},
+				{IP: tIP10001},
 				{IP: "10.0.0.2"},
 			},
 		}},

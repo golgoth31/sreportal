@@ -98,25 +98,30 @@ func TestMigrate_DryRun_PassesDryRunAll(t *testing.T) {
 	g.Expect(after.Annotations).To(HaveKey(annotationV1Alpha1Groups))
 }
 
+// newAnnotatedDNS builds a v1alpha2.DNS in namespace "ns" with the given name,
+// PortalRef and v1alpha1-groups annotation payload. Used by the strip-gate tests
+// that only differ in name and JSON payload.
+func newAnnotatedDNS(name, groupsJSON string) *v1alpha2.DNS {
+	return &v1alpha2.DNS{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: "ns",
+			Annotations: map[string]string{
+				annotationV1Alpha1Groups: groupsJSON,
+			},
+		},
+		Spec: v1alpha2.DNSSpec{PortalRef: name},
+	}
+}
+
 // TestMigrate_SuccessStripsAnnotation verifies that when every group is
 // successfully created and dryRun is false, the migration removes the
 // annotationV1Alpha1Groups annotation from the DNS CR.
 func TestMigrate_SuccessStripsAnnotation(t *testing.T) {
 	g := NewWithT(t)
-	scheme := newScheme()
-
-	dns := &v1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "p1",
-			Namespace: "ns",
-			Annotations: map[string]string{
-				annotationV1Alpha1Groups: `[{"name":"Apps","entries":[{"fqdn":"a.example.com"}]}]`,
-			},
-		},
-		Spec: v1alpha2.DNSSpec{PortalRef: "p1"},
-	}
+	dns := newAnnotatedDNS("p1", `[{"name":"Apps","entries":[{"fqdn":"a.example.com"}]}]`)
 	cli := fake.NewClientBuilder().
-		WithScheme(scheme).
+		WithScheme(newScheme()).
 		WithObjects(dns).
 		Build()
 
@@ -136,22 +141,10 @@ func TestMigrate_SuccessStripsAnnotation(t *testing.T) {
 // Skipped (groupCount == 0 means the strip-gate is never reached).
 func TestMigrate_ZeroGroupCount(t *testing.T) {
 	g := NewWithT(t)
-	scheme := newScheme()
-
-	// All groups have empty Entries, so groupCount stays 0.
-	dns := &v1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "p2",
-			Namespace: "ns",
-			Annotations: map[string]string{
-				// Valid JSON but every group has no entries.
-				annotationV1Alpha1Groups: `[{"name":"Empty","entries":[]}]`,
-			},
-		},
-		Spec: v1alpha2.DNSSpec{PortalRef: "p2"},
-	}
+	// Valid JSON but every group has no entries — groupCount stays 0.
+	dns := newAnnotatedDNS("p2", `[{"name":"Empty","entries":[]}]`)
 	cli := fake.NewClientBuilder().
-		WithScheme(scheme).
+		WithScheme(newScheme()).
 		WithObjects(dns).
 		Build()
 

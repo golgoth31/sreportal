@@ -50,7 +50,7 @@ func (s *Store) DeleteKind(kind registry.SourceType) {
 // Lookup returns enriched endpoints for kind/namespace/labelFilter.
 // namespace "" matches all namespaces; labelFilter "" matches all labels.
 func (s *Store) Lookup(kind registry.SourceType, namespace, labelFilter string) ([]domainsource.EnrichedEndpoint, error) {
-	var sel labels.Selector = labels.Everything()
+	sel := labels.Everything()
 	if labelFilter != "" {
 		parsed, err := labels.Parse(labelFilter)
 		if err != nil {

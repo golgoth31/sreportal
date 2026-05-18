@@ -37,20 +37,25 @@ import (
 	"github.com/golgoth31/sreportal/internal/source/service"
 )
 
+const (
+	tNS1   = "ns1"
+	tInfra = "infra"
+)
+
 func TestLookupSourcesHandler_FiltersByNamespaceAndLabel(t *testing.T) {
 	store := rsource.NewStore()
 	store.ReplaceKind(service.SourceTypeService, []domainsource.EnrichedEndpoint{
-		{Endpoint: endpoint.NewEndpoint("a.example.com", "A", "1.1.1.1"), Kind: service.SourceTypeService, Namespace: "ns1", SourceLabels: map[string]string{"team": "a"}},
-		{Endpoint: endpoint.NewEndpoint("b.example.com", "A", "2.2.2.2"), Kind: service.SourceTypeService, Namespace: "ns1", SourceLabels: map[string]string{"team": "b"}},
+		{Endpoint: endpoint.NewEndpoint("a.example.com", "A", "1.1.1.1"), Kind: service.SourceTypeService, Namespace: tNS1, SourceLabels: map[string]string{"team": "a"}},
+		{Endpoint: endpoint.NewEndpoint("b.example.com", "A", "2.2.2.2"), Kind: service.SourceTypeService, Namespace: tNS1, SourceLabels: map[string]string{"team": "b"}},
 		{Endpoint: endpoint.NewEndpoint("c.example.com", "A", "3.3.3.3"), Kind: service.SourceTypeService, Namespace: "ns2"},
 	})
 
 	h := &dnschain.LookupSourcesHandler{Source: store}
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{
 		Resource: &sreportalv1alpha2.DNS{
-			ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "ns1"},
+			ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: tNS1},
 			Spec: sreportalv1alpha2.DNSSpec{
-				Defaults: sreportalv1alpha2.SourceFilterDefaults{Namespace: "ns1"},
+				Defaults: sreportalv1alpha2.SourceFilterDefaults{Namespace: tNS1},
 				Sources: sreportalv1alpha2.SourcesSpec{
 					Service: &sreportalv1alpha2.ServiceSourceSpec{
 						CommonSourceSpec: sreportalv1alpha2.CommonSourceSpec{Enabled: true, LabelFilter: "team=a"},
@@ -181,7 +186,7 @@ func TestLookupSourcesHandler_DNSEndpoint(t *testing.T) {
 	}
 	require.True(t, names["a.example.com"], "expected a.example.com")
 	require.True(t, names["b.example.com"], "expected b.example.com")
-	require.Contains(t, rc.Data.PriorityOrder, registry.SourceType(dnsendpoint.SourceTypeDNSEndpoint))
+	require.Contains(t, rc.Data.PriorityOrder, dnsendpoint.SourceTypeDNSEndpoint)
 }
 
 // TestLookupSourcesHandler_CrossplaneScalewayRecord verifies that when
@@ -197,20 +202,20 @@ func TestLookupSourcesHandler_CrossplaneScalewayRecord(t *testing.T) {
 				Targets:    endpoint.Targets{"1.2.3.4"},
 			},
 			Kind:      crossplanescalewayrecord.SourceTypeCrossplaneScalewayRecord,
-			Namespace: "infra",
+			Namespace: tInfra,
 		},
 	})
 
 	h := &dnschain.LookupSourcesHandler{Source: store}
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{
 		Resource: &sreportalv1alpha2.DNS{
-			ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "infra"},
+			ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: tInfra},
 			Spec: sreportalv1alpha2.DNSSpec{
-				Defaults: sreportalv1alpha2.SourceFilterDefaults{Namespace: "infra"},
+				Defaults: sreportalv1alpha2.SourceFilterDefaults{Namespace: tInfra},
 				Sources: sreportalv1alpha2.SourcesSpec{
 					CrossplaneScalewayRecord: &sreportalv1alpha2.CrossplaneScalewayRecordSourceSpec{
 						Enabled:   true,
-						Namespace: "infra",
+						Namespace: tInfra,
 					},
 				},
 			},
@@ -221,7 +226,7 @@ func TestLookupSourcesHandler_CrossplaneScalewayRecord(t *testing.T) {
 	got := rc.Data.EndpointsByKind[crossplanescalewayrecord.SourceTypeCrossplaneScalewayRecord]
 	require.Len(t, got, 1)
 	require.Equal(t, "api.example.com", got[0].DNSName)
-	require.Contains(t, rc.Data.PriorityOrder, registry.SourceType(crossplanescalewayrecord.SourceTypeCrossplaneScalewayRecord))
+	require.Contains(t, rc.Data.PriorityOrder, crossplanescalewayrecord.SourceTypeCrossplaneScalewayRecord)
 }
 
 func TestLookupSourcesHandler_InvalidLabelSelectorReturnsError(t *testing.T) {

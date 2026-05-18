@@ -42,7 +42,7 @@ func makeEvent(n int) domaindns.ConflictEvent {
 func TestConflictRing_PushUnderCapacity(t *testing.T) {
 	r := newConflictRing(10)
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		r.Push(makeEvent(i))
 	}
 
@@ -59,7 +59,7 @@ func TestConflictRing_PushExactlyToCapacity(t *testing.T) {
 	const size = 4
 	r := newConflictRing(size)
 
-	for i := 0; i < size; i++ {
+	for i := range size {
 		r.Push(makeEvent(i))
 	}
 
@@ -79,7 +79,7 @@ func TestConflictRing_PushPastCapacity(t *testing.T) {
 	r := newConflictRing(size)
 
 	total := size + k
-	for i := 0; i < total; i++ {
+	for i := range total {
 		r.Push(makeEvent(i))
 	}
 

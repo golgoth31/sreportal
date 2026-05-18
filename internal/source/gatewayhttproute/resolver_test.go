@@ -26,12 +26,17 @@ import (
 	ghr "github.com/golgoth31/sreportal/internal/source/gatewayhttproute"
 )
 
+const (
+	tTarget5555  = "5.5.5.5"
+	tAnnotTarget = "external-dns.alpha.kubernetes.io/target"
+)
+
 func TestHTTPRouteResolver_Hostnames(t *testing.T) {
 	r := ghr.NewResolver()
 	rt := &gwapiv1.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "rt", Namespace: "ns",
-			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/target": "5.5.5.5"},
+			Annotations: map[string]string{tAnnotTarget: tTarget5555},
 		},
 		Spec: gwapiv1.HTTPRouteSpec{Hostnames: []gwapiv1.Hostname{"a.example.com", "b.example.com"}},
 	}
@@ -51,7 +56,7 @@ func TestHTTPRouteResolver_TrailingDot(t *testing.T) {
 	rt := &gwapiv1.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "rt", Namespace: "ns",
-			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/target": "5.5.5.5"},
+			Annotations: map[string]string{tAnnotTarget: tTarget5555},
 		},
 		Spec: gwapiv1.HTTPRouteSpec{Hostnames: []gwapiv1.Hostname{"api.example.com."}},
 	}
@@ -71,7 +76,7 @@ func TestHTTPRouteResolver_MultiHost(t *testing.T) {
 	rt := &gwapiv1.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "rt", Namespace: "ns",
-			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/target": "5.5.5.5"},
+			Annotations: map[string]string{tAnnotTarget: tTarget5555},
 		},
 		Spec: gwapiv1.HTTPRouteSpec{Hostnames: []gwapiv1.Hostname{
 			"a.example.com", "b.example.com", "c.example.com",
@@ -94,7 +99,7 @@ func TestHTTPRouteResolver_WildcardSubdomain(t *testing.T) {
 	rt := &gwapiv1.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "rt", Namespace: "ns",
-			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/target": "5.5.5.5"},
+			Annotations: map[string]string{tAnnotTarget: tTarget5555},
 		},
 		Spec: gwapiv1.HTTPRouteSpec{Hostnames: []gwapiv1.Hostname{"*.example.com"}},
 	}

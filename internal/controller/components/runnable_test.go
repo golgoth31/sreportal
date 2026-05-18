@@ -54,13 +54,12 @@ func newTestScheme(t *testing.T) *runtime.Scheme {
 	return s
 }
 
-func newTestPortal(name string, main bool, remote *sreportalv1alpha1.RemotePortalSpec, features *sreportalv1alpha1.PortalFeatures) *sreportalv1alpha1.Portal {
+func newTestPortal(features *sreportalv1alpha1.PortalFeatures) *sreportalv1alpha1.Portal {
 	return &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: tNsDefault},
+		ObjectMeta: metav1.ObjectMeta{Name: tPortalMain, Namespace: tNsDefault},
 		Spec: sreportalv1alpha1.PortalSpec{
-			Title:    name,
-			Main:     main,
-			Remote:   remote,
+			Title:    tPortalMain,
+			Main:     true,
 			Features: features,
 		},
 	}
@@ -70,11 +69,11 @@ func ctxWithLogger() context.Context {
 	return log.IntoContext(context.Background(), log.Log)
 }
 
-func newEnrichedEndpoint(kind registry.SourceType, ns, name string, annotations map[string]string) domainsource.EnrichedEndpoint {
+func newEnrichedEndpoint(name string, annotations map[string]string) domainsource.EnrichedEndpoint {
 	return domainsource.EnrichedEndpoint{
 		Endpoint:          &endpoint.Endpoint{DNSName: name + ".example.com"},
-		Kind:              kind,
-		Namespace:         ns,
+		Kind:              svcsrc.SourceTypeService,
+		Namespace:         tNsDefault,
 		Name:              name,
 		SourceAnnotations: annotations,
 	}
@@ -82,14 +81,14 @@ func newEnrichedEndpoint(kind registry.SourceType, ns, name string, annotations 
 
 func TestReconciler_CreatesComponentFromAnnotations(t *testing.T) {
 	scheme := newTestScheme(t)
-	portal := newTestPortal(tPortalMain, true, nil, nil)
+	portal := newTestPortal(nil)
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
 
 	store := readstoresource.NewStore()
 	reg := registry.NewRegistry(svcsrc.NewResolver())
 
 	store.ReplaceKind(svcsrc.SourceTypeService, []domainsource.EnrichedEndpoint{
-		newEnrichedEndpoint(svcsrc.SourceTypeService, tNsDefault, "my-svc", map[string]string{
+		newEnrichedEndpoint("my-svc", map[string]string{
 			adapter.ComponentAnnotationKey:            tCompName,
 			adapter.ComponentGroupAnnotationKey:       tCompGroup,
 			adapter.ComponentDescriptionAnnotationKey: "Main ingress",
@@ -131,7 +130,7 @@ func TestReconciler_CreatesComponentFromAnnotations(t *testing.T) {
 
 func TestReconciler_UpdatesComponentMetadataButNotStatus(t *testing.T) {
 	scheme := newTestScheme(t)
-	portal := newTestPortal(tPortalMain, true, nil, nil)
+	portal := newTestPortal(nil)
 
 	compName := statuspage.GenerateCRName(tPortalMain, tCompName)
 	existing := &sreportalv1alpha1.Component{
@@ -159,7 +158,7 @@ func TestReconciler_UpdatesComponentMetadataButNotStatus(t *testing.T) {
 	reg := registry.NewRegistry(svcsrc.NewResolver())
 
 	store.ReplaceKind(svcsrc.SourceTypeService, []domainsource.EnrichedEndpoint{
-		newEnrichedEndpoint(svcsrc.SourceTypeService, tNsDefault, "my-svc", map[string]string{
+		newEnrichedEndpoint("my-svc", map[string]string{
 			adapter.ComponentAnnotationKey:            tCompName,
 			adapter.ComponentGroupAnnotationKey:       "New Group",
 			adapter.ComponentDescriptionAnnotationKey: "New desc",
@@ -191,7 +190,7 @@ func TestReconciler_UpdatesComponentMetadataButNotStatus(t *testing.T) {
 
 func TestReconciler_DeletesOrphanedComponent(t *testing.T) {
 	scheme := newTestScheme(t)
-	portal := newTestPortal(tPortalMain, true, nil, nil)
+	portal := newTestPortal(nil)
 
 	orphanName := statuspage.GenerateCRName(tPortalMain, "Removed Service")
 	orphan := &sreportalv1alpha1.Component{
@@ -236,14 +235,14 @@ func TestReconciler_DeletesOrphanedComponent(t *testing.T) {
 func TestReconciler_SkipsWhenStatusPageDisabled(t *testing.T) {
 	scheme := newTestScheme(t)
 	disabled := false
-	portal := newTestPortal(tPortalMain, true, nil, &sreportalv1alpha1.PortalFeatures{StatusPage: &disabled})
+	portal := newTestPortal(&sreportalv1alpha1.PortalFeatures{StatusPage: &disabled})
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
 
 	store := readstoresource.NewStore()
 	reg := registry.NewRegistry(svcsrc.NewResolver())
 
 	store.ReplaceKind(svcsrc.SourceTypeService, []domainsource.EnrichedEndpoint{
-		newEnrichedEndpoint(svcsrc.SourceTypeService, tNsDefault, "my-svc", map[string]string{
+		newEnrichedEndpoint("my-svc", map[string]string{
 			adapter.ComponentAnnotationKey: "API",
 			adapter.PortalAnnotationKey:    tPortalMain,
 		}),
@@ -267,7 +266,7 @@ func TestReconciler_SkipsWhenStatusPageDisabled(t *testing.T) {
 
 func TestReconciler_RoutesUnannotatedToMain(t *testing.T) {
 	scheme := newTestScheme(t)
-	portal := newTestPortal(tPortalMain, true, nil, nil)
+	portal := newTestPortal(nil)
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
 
 	store := readstoresource.NewStore()
@@ -275,7 +274,7 @@ func TestReconciler_RoutesUnannotatedToMain(t *testing.T) {
 
 	// No portal annotation — should route to main.
 	store.ReplaceKind(svcsrc.SourceTypeService, []domainsource.EnrichedEndpoint{
-		newEnrichedEndpoint(svcsrc.SourceTypeService, tNsDefault, "my-svc", map[string]string{
+		newEnrichedEndpoint("my-svc", map[string]string{
 			adapter.ComponentAnnotationKey: tCompName,
 			// No PortalAnnotationKey — routes to main.
 		}),
@@ -301,7 +300,7 @@ func TestReconciler_RoutesUnannotatedToMain(t *testing.T) {
 
 func TestReconciler_DedupesByPortalAndDisplayName(t *testing.T) {
 	scheme := newTestScheme(t)
-	portal := newTestPortal(tPortalMain, true, nil, nil)
+	portal := newTestPortal(nil)
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
 
 	store := readstoresource.NewStore()
@@ -309,11 +308,11 @@ func TestReconciler_DedupesByPortalAndDisplayName(t *testing.T) {
 
 	// Two endpoints with the same component DisplayName + same portal.
 	store.ReplaceKind(svcsrc.SourceTypeService, []domainsource.EnrichedEndpoint{
-		newEnrichedEndpoint(svcsrc.SourceTypeService, tNsDefault, "svc-1", map[string]string{
+		newEnrichedEndpoint("svc-1", map[string]string{
 			adapter.ComponentAnnotationKey: tCompName,
 			adapter.PortalAnnotationKey:    tPortalMain,
 		}),
-		newEnrichedEndpoint(svcsrc.SourceTypeService, tNsDefault, "svc-2", map[string]string{
+		newEnrichedEndpoint("svc-2", map[string]string{
 			adapter.ComponentAnnotationKey: tCompName,
 			adapter.PortalAnnotationKey:    tPortalMain,
 		}),

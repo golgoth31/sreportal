@@ -26,14 +26,20 @@ import (
 	ggr "github.com/golgoth31/sreportal/internal/source/gatewaygrpcroute"
 )
 
+const (
+	tTarget5555  = "5.5.5.5"
+	tFQDNA       = "a.example.com"
+	tAnnotTarget = "external-dns.alpha.kubernetes.io/target"
+)
+
 func TestGRPCRouteResolver_Hostnames(t *testing.T) {
 	r := ggr.NewResolver()
 	rt := &gwapiv1.GRPCRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "rt", Namespace: "ns",
-			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/target": "5.5.5.5"},
+			Annotations: map[string]string{tAnnotTarget: tTarget5555},
 		},
-		Spec: gwapiv1.GRPCRouteSpec{Hostnames: []gwapiv1.Hostname{"a.example.com", "b.example.com"}},
+		Spec: gwapiv1.GRPCRouteSpec{Hostnames: []gwapiv1.Hostname{tFQDNA, "b.example.com"}},
 	}
 	eps, err := r.ResolveObject(context.Background(), rt)
 	if err != nil {
@@ -51,7 +57,7 @@ func TestGRPCRouteResolver_NoTarget(t *testing.T) {
 			Name: "rt", Namespace: "ns",
 			Annotations: map[string]string{},
 		},
-		Spec: gwapiv1.GRPCRouteSpec{Hostnames: []gwapiv1.Hostname{"a.example.com"}},
+		Spec: gwapiv1.GRPCRouteSpec{Hostnames: []gwapiv1.Hostname{tFQDNA}},
 	}
 	eps, _ := r.ResolveObject(context.Background(), rt)
 	if eps != nil {
@@ -64,7 +70,7 @@ func TestGRPCRouteResolver_NoHostnames(t *testing.T) {
 	rt := &gwapiv1.GRPCRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "rt", Namespace: "ns",
-			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/target": "5.5.5.5"},
+			Annotations: map[string]string{tAnnotTarget: tTarget5555},
 		},
 		Spec: gwapiv1.GRPCRouteSpec{Hostnames: []gwapiv1.Hostname{}},
 	}
@@ -79,12 +85,12 @@ func TestGRPCRouteResolver_TrimsTrailingDot(t *testing.T) {
 	rt := &gwapiv1.GRPCRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "rt", Namespace: "ns",
-			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/target": "5.5.5.5"},
+			Annotations: map[string]string{tAnnotTarget: tTarget5555},
 		},
 		Spec: gwapiv1.GRPCRouteSpec{Hostnames: []gwapiv1.Hostname{"a.example.com."}},
 	}
 	eps, _ := r.ResolveObject(context.Background(), rt)
-	if len(eps) != 1 || eps[0].DNSName != "a.example.com" {
+	if len(eps) != 1 || eps[0].DNSName != tFQDNA {
 		t.Fatalf("unexpected: %+v", eps)
 	}
 }

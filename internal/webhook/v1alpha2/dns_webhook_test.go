@@ -34,6 +34,8 @@ const (
 	tRecordManual  = "main-manual-apis"
 	tSourceIngress = "ingress"
 	tFQDNAPIExamp  = "api.example.com"
+	tDNSTeamA      = "team-a-dns"
+	tPortalMy      = "my-portal"
 )
 
 // TestDNSWebhook_NameDiffFromPortalRef asserts that a DNS CR whose name differs
@@ -67,8 +69,8 @@ func TestDNSWebhook_CreateMultiDNSPerPortal(t *testing.T) {
 	g := NewWithT(t)
 	v := webhookv1alpha2.NewDNSCustomValidator()
 	dns := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: "team-a-dns"},
-		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: "my-portal"},
+		ObjectMeta: metav1.ObjectMeta{Name: tDNSTeamA},
+		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: tPortalMy},
 	}
 	_, err := v.ValidateCreate(context.Background(), dns)
 	g.Expect(err).NotTo(HaveOccurred())
@@ -111,12 +113,12 @@ func TestDNSWebhook_UpdateNameDiffFromPortalRef(t *testing.T) {
 	g := NewWithT(t)
 	v := webhookv1alpha2.NewDNSCustomValidator()
 	old := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: "team-a-dns"},
-		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: "my-portal"},
+		ObjectMeta: metav1.ObjectMeta{Name: tDNSTeamA},
+		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: tPortalMy},
 	}
 	newDNS := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: "team-a-dns"},
-		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: "my-portal"},
+		ObjectMeta: metav1.ObjectMeta{Name: tDNSTeamA},
+		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: tPortalMy},
 	}
 	_, err := v.ValidateUpdate(context.Background(), old, newDNS)
 	g.Expect(err).NotTo(HaveOccurred())

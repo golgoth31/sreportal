@@ -16,11 +16,11 @@ func TestFQDNStore_ConcurrentReplaceAndDelete(t *testing.T) {
 	s := NewFQDNStore()
 
 	var wg sync.WaitGroup
-	for w := 0; w < 8; w++ {
+	for w := range 8 {
 		wg.Add(1)
 		go func(w int) {
 			defer wg.Done()
-			for i := 0; i < 200; i++ {
+			for i := range 200 {
 				key := fmt.Sprintf("ns/rec-%d", (i+w)%16)
 				portal := fmt.Sprintf("p%d", i%4)
 				if i%5 == 0 {

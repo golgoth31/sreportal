@@ -19,7 +19,7 @@ package dns
 import (
 	"context"
 	"errors"
-	"sort"
+	"slices"
 
 	"sigs.k8s.io/external-dns/endpoint"
 
@@ -178,7 +178,7 @@ func orderedKinds(dns *sreportalv1alpha2.DNS, enabled map[registry.SourceType]bo
 			rest = append(rest, k)
 		}
 	}
-	sort.Slice(rest, func(i, j int) bool { return rest[i] < rest[j] })
+	slices.Sort(rest)
 	out = append(out, rest...)
 	return out
 }

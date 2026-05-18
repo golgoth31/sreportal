@@ -26,22 +26,28 @@ import (
 	svcsrc "github.com/golgoth31/sreportal/internal/source/service"
 )
 
+const (
+	tNSDefault     = "default"
+	tAnnotHostname = "external-dns.alpha.kubernetes.io/hostname"
+	tIP1234        = "1.2.3.4"
+)
+
 func TestServiceResolver_ResolveObject_Hostname(t *testing.T) {
 	r := svcsrc.NewResolver()
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "echo", Namespace: "default",
-			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/hostname": "echo.example.com"},
+			Name: "echo", Namespace: tNSDefault,
+			Annotations: map[string]string{tAnnotHostname: "echo.example.com"},
 		},
 		Status: corev1.ServiceStatus{LoadBalancer: corev1.LoadBalancerStatus{
-			Ingress: []corev1.LoadBalancerIngress{{IP: "1.2.3.4"}},
+			Ingress: []corev1.LoadBalancerIngress{{IP: tIP1234}},
 		}},
 	}
 	eps, err := r.ResolveObject(context.Background(), svc)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(eps) != 1 || eps[0].DNSName != "echo.example.com" || eps[0].Targets[0] != "1.2.3.4" {
+	if len(eps) != 1 || eps[0].DNSName != "echo.example.com" || eps[0].Targets[0] != tIP1234 {
 		t.Fatalf("unexpected endpoints: %+v", eps)
 	}
 }
@@ -60,7 +66,7 @@ func TestServiceResolver_ResolveObject_NoLBIngress(t *testing.T) {
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "x", Namespace: "y",
-			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/hostname": "x.example.com"},
+			Annotations: map[string]string{tAnnotHostname: "x.example.com"},
 		},
 	}
 	eps, _ := r.ResolveObject(context.Background(), svc)
@@ -76,12 +82,12 @@ func TestServiceResolver_MultipleIPs(t *testing.T) {
 	r := svcsrc.NewResolver()
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "multi", Namespace: "default",
-			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/hostname": "multi.example.com"},
+			Name: "multi", Namespace: tNSDefault,
+			Annotations: map[string]string{tAnnotHostname: "multi.example.com"},
 		},
 		Status: corev1.ServiceStatus{LoadBalancer: corev1.LoadBalancerStatus{
 			Ingress: []corev1.LoadBalancerIngress{
-				{IP: "1.2.3.4"},
+				{IP: tIP1234},
 				{IP: "5.6.7.8"},
 				{IP: "9.10.11.12"},
 			},
@@ -105,11 +111,11 @@ func TestServiceResolver_TrailingDotHostname(t *testing.T) {
 	r := svcsrc.NewResolver()
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "dot", Namespace: "default",
-			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/hostname": "dot.example.com."},
+			Name: "dot", Namespace: tNSDefault,
+			Annotations: map[string]string{tAnnotHostname: "dot.example.com."},
 		},
 		Status: corev1.ServiceStatus{LoadBalancer: corev1.LoadBalancerStatus{
-			Ingress: []corev1.LoadBalancerIngress{{IP: "1.2.3.4"}},
+			Ingress: []corev1.LoadBalancerIngress{{IP: tIP1234}},
 		}},
 	}
 	eps, err := r.ResolveObject(context.Background(), svc)
@@ -128,8 +134,8 @@ func TestServiceResolver_LBHostname_EmittedAsCNAME(t *testing.T) {
 	r := svcsrc.NewResolver()
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "nlb", Namespace: "default",
-			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/hostname": "api.example.com"},
+			Name: "nlb", Namespace: tNSDefault,
+			Annotations: map[string]string{tAnnotHostname: "api.example.com"},
 		},
 		Status: corev1.ServiceStatus{LoadBalancer: corev1.LoadBalancerStatus{
 			Ingress: []corev1.LoadBalancerIngress{{Hostname: "nlb.aws.example.com"}},

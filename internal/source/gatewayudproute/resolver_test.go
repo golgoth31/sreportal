@@ -26,14 +26,21 @@ import (
 	gur "github.com/golgoth31/sreportal/internal/source/gatewayudproute"
 )
 
+const (
+	tAnnotHostname = "external-dns.alpha.kubernetes.io/hostname"
+	tAnnotTarget   = "external-dns.alpha.kubernetes.io/target"
+	tFQDNA         = "a.example.com"
+	tTarget5555    = "5.5.5.5"
+)
+
 func TestUDPRouteResolver_HostnameFromAnnotation(t *testing.T) {
 	r := gur.NewResolver()
 	rt := &gwapiv1alpha2.UDPRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "rt", Namespace: "ns",
 			Annotations: map[string]string{
-				"external-dns.alpha.kubernetes.io/target":   "5.5.5.5",
-				"external-dns.alpha.kubernetes.io/hostname": "a.example.com.",
+				tAnnotTarget:   tTarget5555,
+				tAnnotHostname: "a.example.com.",
 			},
 		},
 	}
@@ -41,7 +48,7 @@ func TestUDPRouteResolver_HostnameFromAnnotation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(eps) != 1 || eps[0].DNSName != "a.example.com" {
+	if len(eps) != 1 || eps[0].DNSName != tFQDNA {
 		t.Fatalf("unexpected: %+v", eps)
 	}
 }
@@ -51,7 +58,7 @@ func TestUDPRouteResolver_NoTarget(t *testing.T) {
 	rt := &gwapiv1alpha2.UDPRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "rt", Namespace: "ns",
-			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/hostname": "a.example.com"},
+			Annotations: map[string]string{tAnnotHostname: tFQDNA},
 		},
 	}
 	eps, _ := r.ResolveObject(context.Background(), rt)
@@ -65,7 +72,7 @@ func TestUDPRouteResolver_NoHostname(t *testing.T) {
 	rt := &gwapiv1alpha2.UDPRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "rt", Namespace: "ns",
-			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/target": "5.5.5.5"},
+			Annotations: map[string]string{tAnnotTarget: tTarget5555},
 		},
 	}
 	eps, _ := r.ResolveObject(context.Background(), rt)
@@ -80,13 +87,13 @@ func TestUDPRouteResolver_TrimsTrailingDot(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "rt", Namespace: "ns",
 			Annotations: map[string]string{
-				"external-dns.alpha.kubernetes.io/target":   "5.5.5.5",
-				"external-dns.alpha.kubernetes.io/hostname": "a.example.com.",
+				tAnnotTarget:   tTarget5555,
+				tAnnotHostname: "a.example.com.",
 			},
 		},
 	}
 	eps, _ := r.ResolveObject(context.Background(), rt)
-	if len(eps) != 1 || eps[0].DNSName != "a.example.com" {
+	if len(eps) != 1 || eps[0].DNSName != tFQDNA {
 		t.Fatalf("unexpected: %+v", eps)
 	}
 }
