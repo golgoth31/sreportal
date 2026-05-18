@@ -75,9 +75,9 @@ func (s *DNSServer) handleGetFQDNDetails(ctx context.Context, request mcp.CallTo
 		RecordType:  view.RecordType,
 		Targets:     view.Targets,
 		SyncStatus:  view.SyncStatus,
-		Portal:      view.PortalName,
+		Portal:      view.FirstPortal(),
 		Namespace:   view.Namespace,
-		DNSResource: fmt.Sprintf("%s/%s", view.Namespace, view.PortalName),
+		DNSResource: fmt.Sprintf("%s/%s", view.Namespace, view.FirstPortal()),
 	}
 	if !view.LastSeen.IsZero() {
 		details.LastSeen = view.LastSeen.Format("2006-01-02T15:04:05Z07:00")

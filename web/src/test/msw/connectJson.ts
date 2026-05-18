@@ -124,8 +124,9 @@ export function sampleFqdn(
     dnsResourceName: "dns-sample",
     dnsResourceNamespace: "default",
     syncStatus: "",
+    portals: [],
     ...overrides,
-  });
+  } as Parameters<typeof create<typeof FQDNSchema>>[1]);
 }
 
 export function samplePortal(

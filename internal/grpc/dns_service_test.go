@@ -33,31 +33,31 @@ import (
 
 func seedFQDNStore(t *testing.T) *dnsstore.FQDNStore {
 	t.Helper()
-	store := dnsstore.NewFQDNStore(nil)
+	store := dnsstore.NewFQDNStore()
 	ctx := context.Background()
 
 	now := time.Now()
 	ref, _ := domaindns.ParseResourceRef("service/production/api-svc")
 
-	err := store.Replace(ctx, "default/test-dns", []domaindns.FQDNView{
+	err := store.Replace(ctx, "default/test-dns", tPortalMain, []domaindns.FQDNView{
 		{
 			Name: tFQDNAPI, Source: domaindns.SourceExternalDNS,
 			Groups: []string{"Services"}, RecordType: "A",
 			Targets: []string{"10.0.0.1"}, LastSeen: now,
-			PortalName: tPortalMain, Namespace: tNsDefault, SyncStatus: "synced",
+			Portals: []string{tPortalMain}, Namespace: tNsDefault, SyncStatus: "synced",
 			OriginRef: &ref,
 		},
 		{
 			Name: "web.example.com", Source: domaindns.SourceExternalDNS,
 			Groups: []string{"Services"}, RecordType: "A",
 			Targets: []string{"10.0.0.2"}, LastSeen: now,
-			PortalName: tPortalMain, Namespace: tNsDefault,
+			Portals: []string{tPortalMain}, Namespace: tNsDefault,
 		},
 		{
 			Name: tFQDNInternal, Source: domaindns.SourceManual,
 			Groups: []string{"Internal"}, RecordType: "A",
 			Targets: []string{"10.0.0.3"}, LastSeen: now,
-			PortalName: tPortalMain, Namespace: tNsDefault,
+			Portals: []string{tPortalMain}, Namespace: tNsDefault,
 		},
 	})
 	require.NoError(t, err)
@@ -152,11 +152,11 @@ func TestListFQDNs_OriginRef_IsNil_ForManualEntries(t *testing.T) {
 }
 
 func TestListFQDNs_ReturnsBothRecordTypes(t *testing.T) {
-	store := dnsstore.NewFQDNStore(nil)
+	store := dnsstore.NewFQDNStore()
 	now := time.Now()
-	_ = store.Replace(context.Background(), "default/test-dns", []domaindns.FQDNView{
-		{Name: tFQDNAPI, RecordType: "A", Targets: []string{"10.0.0.1"}, LastSeen: now, PortalName: tPortalMain},
-		{Name: tFQDNAPI, RecordType: "CNAME", Targets: []string{"lb.example.com"}, LastSeen: now, PortalName: tPortalMain},
+	_ = store.Replace(context.Background(), "default/test-dns", tPortalMain, []domaindns.FQDNView{
+		{Name: tFQDNAPI, RecordType: "A", Targets: []string{"10.0.0.1"}, LastSeen: now, Portals: []string{tPortalMain}},
+		{Name: tFQDNAPI, RecordType: "CNAME", Targets: []string{"lb.example.com"}, LastSeen: now, Portals: []string{tPortalMain}},
 	})
 
 	svc := svcgrpc.NewDNSService(store, nil)

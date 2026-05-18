@@ -89,7 +89,7 @@ func (s *DNSServer) handleSearchFQDNs(ctx context.Context, request mcp.CallToolR
 			RecordType:  v.RecordType,
 			Targets:     v.Targets,
 			SyncStatus:  v.SyncStatus,
-			Portal:      v.PortalName,
+			Portal:      v.FirstPortal(),
 			Namespace:   v.Namespace,
 		})
 	}
