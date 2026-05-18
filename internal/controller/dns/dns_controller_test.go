@@ -28,7 +28,18 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	v1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
+	domainsource "github.com/golgoth31/sreportal/internal/domain/source"
+	"github.com/golgoth31/sreportal/internal/source/registry"
 )
+
+// emptySourceReader is a no-op SourceEndpointReader for controller tests that
+// do not exercise source lookups. LookupSourcesHandler fails loud on a nil
+// reader (wiring bug detection), so tests must supply a non-nil stub.
+type emptySourceReader struct{}
+
+func (emptySourceReader) Lookup(_ registry.SourceType, _, _ string) ([]domainsource.EnrichedEndpoint, error) {
+	return nil, nil
+}
 
 var _ = Describe("DNS Controller", func() {
 	const (
@@ -38,7 +49,7 @@ var _ = Describe("DNS Controller", func() {
 
 	Context("When the DNS resource does not exist", func() {
 		It("should not return an error", func() {
-			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), nil, nil)
+			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), emptySourceReader{}, nil)
 
 			_, err := controllerReconciler.Reconcile(context.Background(), reconcile.Request{
 				NamespacedName: types.NamespacedName{
@@ -88,7 +99,7 @@ var _ = Describe("DNS Controller", func() {
 		})
 
 		It("should successfully reconcile with empty groups and Ready condition", func() {
-			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), nil, nil)
+			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), emptySourceReader{}, nil)
 
 			By("Reconciling and checking the DNS status is empty but has conditions")
 			Eventually(func(g Gomega) {
@@ -172,7 +183,7 @@ var _ = Describe("DNS Controller", func() {
 		})
 
 		It("should aggregate DNSRecord endpoints into DNS status groups", func() {
-			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), nil, nil)
+			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), emptySourceReader{}, nil)
 
 			Eventually(func(g Gomega) {
 				_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: dnsNN})
@@ -226,7 +237,7 @@ var _ = Describe("DNS Controller", func() {
 		})
 
 		It("should skip reconciliation without error", func() {
-			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), nil, nil)
+			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), emptySourceReader{}, nil)
 
 			result, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,

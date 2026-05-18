@@ -25,21 +25,26 @@ type FQDNKey struct {
 	RecordType string
 }
 
+// recordContribution captures everything a single DNSRecord contributes.
+// `seq` is monotonic per FIRST Replace and used to break ties when picking
+// the primary contributor for an (FQDN, recordType): lowest-seq wins, which
+// preserves "first writer wins" semantics across Replace order.
 type recordContribution struct {
-	keys         map[FQDNKey]struct{}
-	portalRef    string
-	dnsNamespace string
-	dnsName      string
+	seq           uint64
+	contributions map[FQDNKey]domaindns.FQDNView
+	portalRef     string
+	dnsNamespace  string
+	dnsName       string
 }
 
 // FQDNStore is the in-memory implementation of dns.FQDNReader and dns.FQDNWriter.
 type FQDNStore struct {
-	mu             sync.RWMutex
-	fqdns          map[FQDNKey]*domaindns.FQDNView
-	byPortal       map[string]map[FQDNKey]struct{}
-	byRecord       map[string]recordContribution
-	perPortalCount map[FQDNKey]map[string]int
-	conflicts      *conflictRing
+	mu        sync.RWMutex
+	fqdns     map[FQDNKey]*domaindns.FQDNView
+	byPortal  map[string]map[FQDNKey]struct{}
+	byRecord  map[string]recordContribution
+	seqCount  uint64
+	conflicts *conflictRing
 
 	notifyMu sync.Mutex
 	notifyCh chan struct{}
@@ -50,12 +55,11 @@ type FQDNStore struct {
 // each Replace call as authoritative for its (recordKey, portalRef) tuple.
 func NewFQDNStore() *FQDNStore {
 	return &FQDNStore{
-		fqdns:          map[FQDNKey]*domaindns.FQDNView{},
-		byPortal:       map[string]map[FQDNKey]struct{}{},
-		byRecord:       map[string]recordContribution{},
-		perPortalCount: map[FQDNKey]map[string]int{},
-		conflicts:      newConflictRing(256),
-		notifyCh:       make(chan struct{}),
+		fqdns:     map[FQDNKey]*domaindns.FQDNView{},
+		byPortal:  map[string]map[FQDNKey]struct{}{},
+		byRecord:  map[string]recordContribution{},
+		conflicts: newConflictRing(256),
+		notifyCh:  make(chan struct{}),
 	}
 }
 
@@ -71,65 +75,56 @@ func (s *FQDNStore) Replace(ctx context.Context, recordKey, portalRef string, fq
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	newKeys := make(map[FQDNKey]struct{}, len(fqdns))
-	for _, v := range fqdns {
-		newKeys[FQDNKey{Name: v.Name, RecordType: v.RecordType}] = struct{}{}
-	}
-
 	prev := s.byRecord[recordKey]
-	portalChanged := prev.portalRef != "" && prev.portalRef != portalRef
-
-	// Remove keys this record no longer contributes. When the record's portal
-	// changed, also decrement kept keys under the previous portal so the old
-	// portal index does not retain a ghost contribution.
-	for k := range prev.keys {
-		if _, kept := newKeys[k]; !kept || portalChanged {
-			s.decrementContribution(k, prev.portalRef)
-		}
+	seq := prev.seq
+	if prev.contributions == nil {
+		s.seqCount++
+		seq = s.seqCount
 	}
 
+	newContributions := make(map[FQDNKey]domaindns.FQDNView, len(fqdns))
 	for _, v := range fqdns {
 		k := FQDNKey{Name: v.Name, RecordType: v.RecordType}
-		existing, ok := s.fqdns[k]
-		if !ok {
-			cp := v
-			cp.Portals = []string{portalRef}
-			s.fqdns[k] = &cp
-		} else {
-			if !sameTargets(existing.Targets, v.Targets) {
-				s.conflicts.Push(domaindns.ConflictEvent{
-					FQDNKey:     domaindns.ConflictFQDNKey{Name: k.Name, RecordType: k.RecordType},
-					LoserRecord: recordKey,
-					PortalRef:   portalRef,
-					At:          time.Now(),
-				})
-				metrics.DNSTargetsConflictTotal.WithLabelValues(portalRef).Inc()
-				// first-writer wins for Targets/SyncStatus/OriginRef/Description
-			}
-			existing.Groups = mergeStrings(existing.Groups, v.Groups)
-			if !contains(existing.Portals, portalRef) {
-				existing.Portals = append(existing.Portals, portalRef)
-				sort.Strings(existing.Portals)
-			}
-		}
-		if s.perPortalCount[k] == nil {
-			s.perPortalCount[k] = map[string]int{}
-		}
-		if _, hadBefore := prev.keys[k]; !hadBefore || portalChanged {
-			s.perPortalCount[k][portalRef]++
-		}
+		newContributions[k] = v
+	}
 
-		if s.byPortal[portalRef] == nil {
-			s.byPortal[portalRef] = map[FQDNKey]struct{}{}
-		}
-		s.byPortal[portalRef][k] = struct{}{}
+	affected := make(map[FQDNKey]struct{}, len(prev.contributions)+len(newContributions))
+	for k := range prev.contributions {
+		affected[k] = struct{}{}
+	}
+	for k := range newContributions {
+		affected[k] = struct{}{}
 	}
 
 	s.byRecord[recordKey] = recordContribution{
-		keys:         newKeys,
-		portalRef:    portalRef,
-		dnsNamespace: prev.dnsNamespace,
-		dnsName:      prev.dnsName,
+		seq:           seq,
+		contributions: newContributions,
+		portalRef:     portalRef,
+		dnsNamespace:  prev.dnsNamespace,
+		dnsName:       prev.dnsName,
+	}
+
+	for k := range affected {
+		s.recomputeFQDN(k)
+	}
+
+	// Conflict detection: a contribution loses iff its targets disagree with
+	// the recomputed primary. Lowest-seq contributor is primary; any
+	// later-seq contributor with different targets is a loser.
+	for k, v := range newContributions {
+		primary, ok := s.fqdns[k]
+		if !ok {
+			continue
+		}
+		if !sameTargets(primary.Targets, v.Targets) {
+			s.conflicts.Push(domaindns.ConflictEvent{
+				FQDNKey:     domaindns.ConflictFQDNKey{Name: k.Name, RecordType: k.RecordType},
+				LoserRecord: recordKey,
+				PortalRef:   portalRef,
+				At:          time.Now(),
+			})
+			metrics.DNSTargetsConflictTotal.WithLabelValues(portalRef).Inc()
+		}
 	}
 
 	go s.broadcast()
@@ -183,10 +178,10 @@ func (s *FQDNStore) Delete(ctx context.Context, recordKey string) error {
 	if !ok {
 		return nil
 	}
-	for k := range contrib.keys {
-		s.decrementContribution(k, contrib.portalRef)
-	}
 	delete(s.byRecord, recordKey)
+	for k := range contrib.contributions {
+		s.recomputeFQDN(k)
+	}
 
 	go s.broadcast()
 	return nil
@@ -266,9 +261,9 @@ func (s *FQDNStore) listLocked(f domaindns.FQDNFilters) []domaindns.FQDNView {
 }
 
 // cloneFQDNView returns a value copy whose slice fields share no backing array
-// with the source. The store's writers append to Portals/Groups/Targets in
-// place when capacity allows, so callers must hold their own copies to be
-// safe across subsequent mutations.
+// with the source. The store's writers rebuild Portals/Groups/Targets on every
+// recompute, so callers must hold their own copies to be safe across
+// subsequent mutations.
 func cloneFQDNView(v *domaindns.FQDNView) domaindns.FQDNView {
 	out := *v
 	if v.Targets != nil {
@@ -302,27 +297,68 @@ func (s *FQDNStore) broadcast() {
 	close(old)
 }
 
-func (s *FQDNStore) decrementContribution(k FQDNKey, portalRef string) {
-	counts := s.perPortalCount[k]
-	if counts == nil {
-		return
+// recomputeFQDN rebuilds s.fqdns[k] from all current contributors. The
+// primary (lowest seq) provides Targets/SyncStatus/OriginRef/Description and
+// every other scalar field; Groups and Portals are derived from the full
+// contributor set. If no contributors remain, the key is purged from fqdns
+// and every byPortal index.
+func (s *FQDNStore) recomputeFQDN(k FQDNKey) {
+	type contrib struct {
+		seq       uint64
+		view      domaindns.FQDNView
+		portalRef string
 	}
-	counts[portalRef]--
-	if counts[portalRef] <= 0 {
-		delete(counts, portalRef)
-		if set := s.byPortal[portalRef]; set != nil {
-			delete(set, k)
-			if len(set) == 0 {
-				delete(s.byPortal, portalRef)
+	var contributors []contrib
+	portalsForKey := map[string]struct{}{}
+	for _, rec := range s.byRecord {
+		if v, ok := rec.contributions[k]; ok {
+			contributors = append(contributors, contrib{seq: rec.seq, view: v, portalRef: rec.portalRef})
+			portalsForKey[rec.portalRef] = struct{}{}
+		}
+	}
+
+	if len(contributors) == 0 {
+		delete(s.fqdns, k)
+		for p, set := range s.byPortal {
+			if _, in := set[k]; in {
+				delete(set, k)
+				if len(set) == 0 {
+					delete(s.byPortal, p)
+				}
 			}
 		}
-		if v := s.fqdns[k]; v != nil {
-			v.Portals = removeString(v.Portals, portalRef)
+		return
+	}
+
+	sort.Slice(contributors, func(i, j int) bool { return contributors[i].seq < contributors[j].seq })
+
+	primary := contributors[0].view
+	groupSet := map[string]struct{}{}
+	for _, c := range contributors {
+		for _, g := range c.view.Groups {
+			groupSet[g] = struct{}{}
 		}
 	}
-	if len(counts) == 0 {
-		delete(s.perPortalCount, k)
-		delete(s.fqdns, k)
+	primary.Groups = sortedKeys(groupSet)
+	primary.Portals = sortedKeys(portalsForKey)
+	s.fqdns[k] = &primary
+
+	for p, set := range s.byPortal {
+		if _, kept := portalsForKey[p]; kept {
+			continue
+		}
+		if _, in := set[k]; in {
+			delete(set, k)
+			if len(set) == 0 {
+				delete(s.byPortal, p)
+			}
+		}
+	}
+	for p := range portalsForKey {
+		if s.byPortal[p] == nil {
+			s.byPortal[p] = map[FQDNKey]struct{}{}
+		}
+		s.byPortal[p][k] = struct{}{}
 	}
 }
 
@@ -338,32 +374,14 @@ func sameTargets(a, b []string) bool {
 	return true
 }
 
-func mergeStrings(a, b []string) []string {
-	out := append([]string(nil), a...)
-	for _, x := range b {
-		if !contains(out, x) {
-			out = append(out, x)
-		}
+func sortedKeys(set map[string]struct{}) []string {
+	if len(set) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(set))
+	for k := range set {
+		out = append(out, k)
 	}
 	sort.Strings(out)
-	return out
-}
-
-func contains(haystack []string, needle string) bool {
-	for _, x := range haystack {
-		if x == needle {
-			return true
-		}
-	}
-	return false
-}
-
-func removeString(a []string, s string) []string {
-	out := make([]string, 0, len(a))
-	for _, x := range a {
-		if x != s {
-			out = append(out, x)
-		}
-	}
 	return out
 }
