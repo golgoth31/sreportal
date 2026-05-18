@@ -217,8 +217,11 @@ func (r *DNSRecordReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					client.InNamespace(portal.Namespace),
 					client.MatchingFields{portalfeatures.FieldIndexPortalRef: portal.Name},
 				); err != nil {
+					// Enqueueing the Portal key here would target a DNSRecord with
+					// that name (the reconciler is registered For DNSRecord). Skip
+					// instead — the next watch tick or periodic resync will retry.
 					log.FromContext(ctx).Error(err, "list DNSRecord for Portal watch", "portal", portal.Name)
-					return []ctrl.Request{{NamespacedName: client.ObjectKeyFromObject(portal)}}
+					return nil
 				}
 				reqs := make([]ctrl.Request, 0, len(list.Items))
 				for i := range list.Items {
@@ -243,8 +246,10 @@ func (r *DNSRecordReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					client.InNamespace(dns.Namespace),
 					client.MatchingFields{portalfeatures.FieldIndexPortalRef: dns.Spec.PortalRef},
 				); err != nil {
+					// Same as above: DNS is not a DNSRecord — enqueueing its key
+					// would resolve to a phantom DNSRecord. Skip on error.
 					log.FromContext(ctx).Error(err, "list DNSRecord for DNS watch", "dns", dns.Name)
-					return []ctrl.Request{{NamespacedName: client.ObjectKeyFromObject(dns)}}
+					return nil
 				}
 				reqs := make([]ctrl.Request, 0, len(list.Items))
 				for i := range list.Items {
