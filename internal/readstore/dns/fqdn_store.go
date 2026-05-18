@@ -1,5 +1,8 @@
-// Package dns provides the in-memory FQDNStore implementation backed by the
-// generic readstore.Store. It implements both dns.FQDNReader and dns.FQDNWriter.
+// Package dns provides the in-memory FQDNStore implementation.
+// It implements both dns.FQDNReader and dns.FQDNWriter.
+// Source-priority dedup is enforced upstream (per-DNS-CR at DNSRecord generation
+// time); the store treats each Replace call as authoritative for its
+// (recordKey, portalRef) tuple.
 package dns
 
 import (
@@ -7,205 +10,360 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"sort"
 	"strings"
+	"sync"
+	"time"
 
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
-	"github.com/golgoth31/sreportal/internal/readstore"
+	"github.com/golgoth31/sreportal/internal/metrics"
 )
+
+// FQDNKey uniquely identifies an (fqdn, recordType) pair.
+type FQDNKey struct {
+	Name       string
+	RecordType string
+}
+
+type recordContribution struct {
+	keys         map[FQDNKey]struct{}
+	portalRef    string
+	dnsNamespace string
+	dnsName      string
+}
 
 // FQDNStore is the in-memory implementation of dns.FQDNReader and dns.FQDNWriter.
 type FQDNStore struct {
-	store          *readstore.Store[domaindns.FQDNView]
-	sourcePriority []string
+	mu             sync.RWMutex
+	fqdns          map[FQDNKey]*domaindns.FQDNView
+	byPortal       map[string]map[FQDNKey]struct{}
+	byRecord       map[string]recordContribution
+	perPortalCount map[FQDNKey]map[string]int
+	conflicts      *conflictRing
+
+	notifyMu sync.Mutex
+	notifyCh chan struct{}
 }
 
-// NewFQDNStore creates a new empty FQDNStore. sourcePriority defines the order
-// used for cross-source deduplication at query time (e.g. ["service", "ingress"]).
-// When nil or empty, no source-priority deduplication is performed.
-func NewFQDNStore(sourcePriority []string) *FQDNStore {
+// NewFQDNStore returns an empty FQDNStore. Source priority is enforced
+// upstream (per-DNS-CR at DNSRecord generation time); the store treats
+// each Replace call as authoritative for its (recordKey, portalRef) tuple.
+func NewFQDNStore() *FQDNStore {
 	return &FQDNStore{
-		store:          readstore.New[domaindns.FQDNView](),
-		sourcePriority: sourcePriority,
+		fqdns:          map[FQDNKey]*domaindns.FQDNView{},
+		byPortal:       map[string]map[FQDNKey]struct{}{},
+		byRecord:       map[string]recordContribution{},
+		perPortalCount: map[FQDNKey]map[string]int{},
+		conflicts:      newConflictRing(256),
+		notifyCh:       make(chan struct{}),
 	}
 }
 
 // compile-time interface checks
 var (
-	_ domaindns.FQDNReader = (*FQDNStore)(nil)
-	_ domaindns.FQDNWriter = (*FQDNStore)(nil)
+	_ domaindns.FQDNReader         = (*FQDNStore)(nil)
+	_ domaindns.FQDNWriter         = (*FQDNStore)(nil)
+	_ domaindns.FQDNConflictReader = (*FQDNStore)(nil)
 )
 
-// Replace atomically replaces all FQDNs for a given DNS resource key.
-func (s *FQDNStore) Replace(_ context.Context, resourceKey string, fqdns []domaindns.FQDNView) error {
-	s.store.Replace(resourceKey, fqdns)
+// Replace atomically replaces all FQDNs contributed by a single DNSRecord.
+func (s *FQDNStore) Replace(ctx context.Context, recordKey, portalRef string, fqdns []domaindns.FQDNView) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	newKeys := make(map[FQDNKey]struct{}, len(fqdns))
+	for _, v := range fqdns {
+		newKeys[FQDNKey{Name: v.Name, RecordType: v.RecordType}] = struct{}{}
+	}
+
+	prev := s.byRecord[recordKey]
+	portalChanged := prev.portalRef != "" && prev.portalRef != portalRef
+
+	// Remove keys this record no longer contributes. When the record's portal
+	// changed, also decrement kept keys under the previous portal so the old
+	// portal index does not retain a ghost contribution.
+	for k := range prev.keys {
+		if _, kept := newKeys[k]; !kept || portalChanged {
+			s.decrementContribution(k, prev.portalRef)
+		}
+	}
+
+	for _, v := range fqdns {
+		k := FQDNKey{Name: v.Name, RecordType: v.RecordType}
+		existing, ok := s.fqdns[k]
+		if !ok {
+			cp := v
+			cp.Portals = []string{portalRef}
+			s.fqdns[k] = &cp
+		} else {
+			if !sameTargets(existing.Targets, v.Targets) {
+				s.conflicts.Push(domaindns.ConflictEvent{
+					FQDNKey:     domaindns.ConflictFQDNKey{Name: k.Name, RecordType: k.RecordType},
+					LoserRecord: recordKey,
+					PortalRef:   portalRef,
+					At:          time.Now(),
+				})
+				metrics.DNSTargetsConflictTotal.WithLabelValues(portalRef).Inc()
+				// first-writer wins for Targets/SyncStatus/OriginRef/Description
+			}
+			existing.Groups = mergeStrings(existing.Groups, v.Groups)
+			if !contains(existing.Portals, portalRef) {
+				existing.Portals = append(existing.Portals, portalRef)
+				sort.Strings(existing.Portals)
+			}
+		}
+		if s.perPortalCount[k] == nil {
+			s.perPortalCount[k] = map[string]int{}
+		}
+		if _, hadBefore := prev.keys[k]; !hadBefore || portalChanged {
+			s.perPortalCount[k][portalRef]++
+		}
+
+		if s.byPortal[portalRef] == nil {
+			s.byPortal[portalRef] = map[FQDNKey]struct{}{}
+		}
+		s.byPortal[portalRef][k] = struct{}{}
+	}
+
+	s.byRecord[recordKey] = recordContribution{
+		keys:         newKeys,
+		portalRef:    portalRef,
+		dnsNamespace: prev.dnsNamespace,
+		dnsName:      prev.dnsName,
+	}
+
+	go s.broadcast()
 	return nil
 }
 
-// Delete removes all FQDNs for a given DNS resource key.
-func (s *FQDNStore) Delete(_ context.Context, resourceKey string) error {
-	s.store.Delete(resourceKey)
+// AnnotateOwner records the DNS owner of a DNSRecord. Called by the
+// DNSRecord controller after a successful Replace.
+func (s *FQDNStore) AnnotateOwner(recordKey, dnsNamespace, dnsName string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	c, ok := s.byRecord[recordKey]
+	if !ok {
+		return
+	}
+	c.dnsNamespace = dnsNamespace
+	c.dnsName = dnsName
+	s.byRecord[recordKey] = c
+}
+
+// Conflicts returns conflict events whose loser DNSRecord is owned by the
+// given DNS. Pass empty strings to return all events.
+// NOTE: Snapshot is taken before acquiring s.mu to preserve lock ordering
+// (ring lock → store read lock, never the other way).
+func (s *FQDNStore) Conflicts(dnsNamespace, dnsName string) []domaindns.ConflictEvent {
+	all := s.conflicts.Snapshot()
+	if dnsNamespace == "" && dnsName == "" {
+		return all
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := make([]domaindns.ConflictEvent, 0)
+	for _, e := range all {
+		c, ok := s.byRecord[e.LoserRecord]
+		if !ok {
+			continue
+		}
+		if c.dnsNamespace == dnsNamespace && c.dnsName == dnsName {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+// Delete removes all FQDNs contributed by a single DNSRecord.
+func (s *FQDNStore) Delete(ctx context.Context, recordKey string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	contrib, ok := s.byRecord[recordKey]
+	if !ok {
+		return nil
+	}
+	for k := range contrib.keys {
+		s.decrementContribution(k, contrib.portalRef)
+	}
+	delete(s.byRecord, recordKey)
+
+	go s.broadcast()
 	return nil
 }
 
 // List returns FQDNs matching the given filters, sorted by (Name, RecordType).
-// When sourcePriority is configured, FQDNs with the same (Name, RecordType) from
-// different sources are deduplicated, keeping only the highest-priority source.
-func (s *FQDNStore) List(_ context.Context, filters domaindns.FQDNFilters) ([]domaindns.FQDNView, error) {
-	all := s.store.All()
-	filtered := applyFilters(all, filters)
-	filtered = deduplicateBySourcePriority(filtered, s.sourcePriority)
-	sortFQDNViews(filtered)
-	return filtered, nil
+func (s *FQDNStore) List(ctx context.Context, f domaindns.FQDNFilters) ([]domaindns.FQDNView, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.listLocked(f), nil
 }
 
-// Get returns a single FQDN by exact name and record type.
-// Name matching is case-insensitive. If recordType is empty, the first match by name is returned.
-func (s *FQDNStore) Get(_ context.Context, name, recordType string) (domaindns.FQDNView, error) {
-	nameLower := strings.ToLower(name)
-	all := s.store.All()
-
-	for _, f := range all {
-		if strings.ToLower(f.Name) != nameLower {
+// Get returns the FQDN matching name (case-insensitive) and recordType. RecordType "" matches any.
+func (s *FQDNStore) Get(ctx context.Context, name, recordType string) (domaindns.FQDNView, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	lname := strings.ToLower(name)
+	for k, v := range s.fqdns {
+		if strings.ToLower(k.Name) != lname {
 			continue
 		}
-		if recordType == "" || f.RecordType == recordType {
-			return f, nil
+		if recordType == "" || k.RecordType == recordType {
+			return cloneFQDNView(v), nil
 		}
 	}
-
 	return domaindns.FQDNView{}, fmt.Errorf("%w: %s/%s", domaindns.ErrFQDNNotFound, name, recordType)
 }
 
 // Count returns the number of FQDNs matching the given filters.
-func (s *FQDNStore) Count(_ context.Context, filters domaindns.FQDNFilters) (int, error) {
-	all := s.store.All()
-	filtered := applyFilters(all, filters)
-	filtered = deduplicateBySourcePriority(filtered, s.sourcePriority)
-	return len(filtered), nil
+func (s *FQDNStore) Count(ctx context.Context, f domaindns.FQDNFilters) (int, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return len(s.listLocked(f)), nil
 }
 
-// Subscribe returns a channel closed on the next store mutation.
-func (s *FQDNStore) Subscribe() <-chan struct{} {
-	return s.store.Subscribe()
-}
-
-func applyFilters(fqdns []domaindns.FQDNView, f domaindns.FQDNFilters) []domaindns.FQDNView {
-	if f.Portal == "" && f.Namespace == "" && f.Source == "" && f.Search == "" {
-		return fqdns
+// listLocked applies filters and sorting. Caller must hold s.mu (read or write).
+// Returned views are deep-copied so callers cannot observe in-place mutations
+// of slice fields by a subsequent Replace.
+func (s *FQDNStore) listLocked(f domaindns.FQDNFilters) []domaindns.FQDNView {
+	var pool []*domaindns.FQDNView
+	if f.Portal != "" {
+		set := s.byPortal[f.Portal]
+		pool = make([]*domaindns.FQDNView, 0, len(set))
+		for k := range set {
+			if v := s.fqdns[k]; v != nil {
+				pool = append(pool, v)
+			}
+		}
+	} else {
+		pool = make([]*domaindns.FQDNView, 0, len(s.fqdns))
+		for _, v := range s.fqdns {
+			pool = append(pool, v)
+		}
 	}
 
 	searchLower := strings.ToLower(f.Search)
-	out := make([]domaindns.FQDNView, 0, len(fqdns))
-
-	for _, fqdn := range fqdns {
-		if f.Portal != "" && fqdn.PortalName != f.Portal {
+	out := make([]domaindns.FQDNView, 0, len(pool))
+	for _, v := range pool {
+		if f.Namespace != "" && v.Namespace != f.Namespace {
 			continue
 		}
-		if f.Namespace != "" && fqdn.Namespace != f.Namespace {
+		if f.Source != "" && string(v.Source) != f.Source {
 			continue
 		}
-		if f.Source != "" && string(fqdn.Source) != f.Source {
+		if f.Search != "" && !strings.Contains(strings.ToLower(v.Name), searchLower) {
 			continue
 		}
-		if f.Search != "" && !strings.Contains(strings.ToLower(fqdn.Name), searchLower) {
-			continue
-		}
-		out = append(out, fqdn)
+		out = append(out, cloneFQDNView(v))
 	}
-
-	return out
-}
-
-func sortFQDNViews(fqdns []domaindns.FQDNView) {
-	slices.SortFunc(fqdns, func(a, b domaindns.FQDNView) int {
+	slices.SortFunc(out, func(a, b domaindns.FQDNView) int {
 		if c := cmp.Compare(a.Name, b.Name); c != 0 {
 			return c
 		}
 		return cmp.Compare(a.RecordType, b.RecordType)
 	})
+	return out
 }
 
-// deduplicateBySourcePriority removes duplicate FQDNs (same Name+RecordType)
-// that come from different sources, keeping only the one from the highest-priority
-// source. Groups are merged across duplicates. Manual and remote sources are never
-// deduplicated against external-dns sources (they use a different Source value).
-// When priority is nil or empty, no deduplication is performed.
-func deduplicateBySourcePriority(views []domaindns.FQDNView, priority []string) []domaindns.FQDNView {
-	if len(priority) == 0 || len(views) == 0 {
-		return views
+// cloneFQDNView returns a value copy whose slice fields share no backing array
+// with the source. The store's writers append to Portals/Groups/Targets in
+// place when capacity allows, so callers must hold their own copies to be
+// safe across subsequent mutations.
+func cloneFQDNView(v *domaindns.FQDNView) domaindns.FQDNView {
+	out := *v
+	if v.Targets != nil {
+		out.Targets = append([]string(nil), v.Targets...)
 	}
-
-	// Build rank map: lower index = higher priority.
-	rank := make(map[string]int, len(priority))
-	for i, src := range priority {
-		rank[src] = i
+	if v.Groups != nil {
+		out.Groups = append([]string(nil), v.Groups...)
 	}
-
-	// sourceRank returns the priority rank based on SourceType.
-	// Non-external-dns sources (manual, remote) are excluded from dedup by
-	// assigning them a rank above any possible external-dns rank, so two entries
-	// with that sentinel rank are never considered duplicates of each other.
-	unlistedRank := len(priority)     // external-dns sources not in the priority list
-	excludedRank := len(priority) + 1 // manual/remote — never deduplicated
-
-	sourceRank := func(v domaindns.FQDNView) int {
-		if v.Source != domaindns.SourceExternalDNS {
-			return excludedRank
-		}
-		if r, ok := rank[v.SourceType]; ok {
-			return r
-		}
-		return unlistedRank
+	if v.Portals != nil {
+		out.Portals = append([]string(nil), v.Portals...)
 	}
-
-	type dedupKey = string
-	seen := make(map[dedupKey]int) // key → index in result
-	result := make([]domaindns.FQDNView, 0, len(views))
-
-	for _, v := range views {
-		key := v.Name + "/" + v.RecordType
-		newRank := sourceRank(v)
-
-		if idx, exists := seen[key]; exists {
-			existing := &result[idx]
-			existingRank := sourceRank(*existing)
-
-			// Never deduplicate when either side is a non-external-dns source.
-			if existingRank == excludedRank || newRank == excludedRank {
-				uniqueKey := key + "/" + string(v.Source) + "/" + v.SourceType
-				if _, alreadySeen := seen[uniqueKey]; !alreadySeen {
-					seen[uniqueKey] = len(result)
-					result = append(result, v)
-				}
-				continue
-			}
-
-			if newRank < existingRank {
-				// New view has higher priority — replace but merge groups.
-				mergedGroups := mergeGroups(existing.Groups, v.Groups)
-				result[idx] = v
-				result[idx].Groups = mergedGroups
-			} else {
-				// Existing wins — just merge groups from the new one.
-				existing.Groups = mergeGroups(existing.Groups, v.Groups)
-			}
-		} else {
-			seen[key] = len(result)
-			result = append(result, v)
-		}
-	}
-
-	return result
+	return out
 }
 
-// mergeGroups merges two group slices, removing duplicates.
-func mergeGroups(a, b []string) []string {
-	merged := make([]string, len(a))
-	copy(merged, a)
-	for _, g := range b {
-		if !slices.Contains(merged, g) {
-			merged = append(merged, g)
+// Subscribe returns a channel closed on the next store mutation.
+func (s *FQDNStore) Subscribe() <-chan struct{} {
+	s.notifyMu.Lock()
+	defer s.notifyMu.Unlock()
+	return s.notifyCh
+}
+
+// broadcast swaps notifyCh under notifyMu and closes the previous channel.
+// MUST NOT be called while holding s.mu — broadcast acquires notifyMu and a
+// future Subscribe caller that walks back into a path holding s.mu would
+// deadlock. Lock order: s.mu first, then release before calling broadcast.
+func (s *FQDNStore) broadcast() {
+	s.notifyMu.Lock()
+	old := s.notifyCh
+	s.notifyCh = make(chan struct{})
+	s.notifyMu.Unlock()
+	close(old)
+}
+
+func (s *FQDNStore) decrementContribution(k FQDNKey, portalRef string) {
+	counts := s.perPortalCount[k]
+	if counts == nil {
+		return
+	}
+	counts[portalRef]--
+	if counts[portalRef] <= 0 {
+		delete(counts, portalRef)
+		if set := s.byPortal[portalRef]; set != nil {
+			delete(set, k)
+			if len(set) == 0 {
+				delete(s.byPortal, portalRef)
+			}
+		}
+		if v := s.fqdns[k]; v != nil {
+			v.Portals = removeString(v.Portals, portalRef)
 		}
 	}
-	return merged
+	if len(counts) == 0 {
+		delete(s.perPortalCount, k)
+		delete(s.fqdns, k)
+	}
+}
+
+func sameTargets(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func mergeStrings(a, b []string) []string {
+	out := append([]string(nil), a...)
+	for _, x := range b {
+		if !contains(out, x) {
+			out = append(out, x)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+func contains(haystack []string, needle string) bool {
+	for _, x := range haystack {
+		if x == needle {
+			return true
+		}
+	}
+	return false
+}
+
+func removeString(a []string, s string) []string {
+	out := make([]string, 0, len(a))
+	for _, x := range a {
+		if x != s {
+			out = append(out, x)
+		}
+	}
+	return out
 }
