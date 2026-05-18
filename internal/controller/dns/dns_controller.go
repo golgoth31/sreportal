@@ -18,6 +18,7 @@ package dns
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"time"
 
@@ -128,7 +129,7 @@ func (r *DNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 
 	// Persist any status updates accumulated by SourcesStatusHandler + above.
 	if err := r.Status().Update(ctx, &resource); err != nil {
-		if ctx.Err() != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 			// Context was canceled or timed out (shutdown / re-queue race): skip silently.
 			return ctrl.Result{}, nil
 		}
