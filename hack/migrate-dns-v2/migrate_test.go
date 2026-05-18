@@ -98,6 +98,122 @@ func TestMigrate_DryRun_PassesDryRunAll(t *testing.T) {
 	g.Expect(after.Annotations).To(HaveKey(annotationV1Alpha1Groups))
 }
 
+// TestMigrate_SuccessStripsAnnotation verifies that when every group is
+// successfully created and dryRun is false, the migration removes the
+// annotationV1Alpha1Groups annotation from the DNS CR.
+func TestMigrate_SuccessStripsAnnotation(t *testing.T) {
+	g := NewWithT(t)
+	scheme := newScheme()
+
+	dns := &v1alpha2.DNS{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "p1",
+			Namespace: "ns",
+			Annotations: map[string]string{
+				annotationV1Alpha1Groups: `[{"name":"Apps","entries":[{"fqdn":"a.example.com"}]}]`,
+			},
+		},
+		Spec: v1alpha2.DNSSpec{PortalRef: "p1"},
+	}
+	cli := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(dns).
+		Build()
+
+	sum, err := Migrate(context.Background(), cli, false)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(sum.Created).To(Equal(1))
+	g.Expect(sum.Failures).To(Equal(0))
+
+	// Annotation must be removed after successful migration.
+	var after v1alpha2.DNS
+	g.Expect(cli.Get(context.Background(), client.ObjectKey{Name: "p1", Namespace: "ns"}, &after)).To(Succeed())
+	g.Expect(after.Annotations).NotTo(HaveKey(annotationV1Alpha1Groups))
+}
+
+// TestMigrate_ZeroGroupCount verifies that a DNS CR whose annotation decodes
+// to a slice with no non-empty groups does not panic and is reported as
+// Skipped (groupCount == 0 means the strip-gate is never reached).
+func TestMigrate_ZeroGroupCount(t *testing.T) {
+	g := NewWithT(t)
+	scheme := newScheme()
+
+	// All groups have empty Entries, so groupCount stays 0.
+	dns := &v1alpha2.DNS{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "p2",
+			Namespace: "ns",
+			Annotations: map[string]string{
+				// Valid JSON but every group has no entries.
+				annotationV1Alpha1Groups: `[{"name":"Empty","entries":[]}]`,
+			},
+		},
+		Spec: v1alpha2.DNSSpec{PortalRef: "p2"},
+	}
+	cli := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(dns).
+		Build()
+
+	sum, err := Migrate(context.Background(), cli, false)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(sum.Failures).To(Equal(0))
+	g.Expect(sum.Created).To(Equal(0))
+	// No DNSRecord was created, so no annotation strip; annotation remains.
+	var after v1alpha2.DNS
+	g.Expect(cli.Get(context.Background(), client.ObjectKey{Name: "p2", Namespace: "ns"}, &after)).To(Succeed())
+	// The annotation is intentionally left; the groupCount==0 gate prevents stripping.
+	g.Expect(after.Annotations).To(HaveKey(annotationV1Alpha1Groups))
+}
+
+// TestMigrate_AllAlreadyExists verifies that when every per-DNS Create returns
+// AlreadyExists the tool: (a) exits cleanly with no error, (b) counts each
+// collision in AlreadyExist, and (c) still strips the annotation because
+// AlreadyExists is counted in perDNSCreated (idempotent re-run semantics).
+func TestMigrate_AllAlreadyExists(t *testing.T) {
+	g := NewWithT(t)
+	scheme := newScheme()
+
+	dns := &v1alpha2.DNS{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "p3",
+			Namespace: "ns",
+			Annotations: map[string]string{
+				annotationV1Alpha1Groups: `[` +
+					`{"name":"Apps","entries":[{"fqdn":"a.example.com"}]},` +
+					`{"name":"Infra","entries":[{"fqdn":"b.example.com"}]}` +
+					`]`,
+			},
+		},
+		Spec: v1alpha2.DNSSpec{PortalRef: "p3"},
+	}
+	// Pre-create both DNSRecords so every Create returns AlreadyExists.
+	existing1 := &v1alpha2.DNSRecord{
+		ObjectMeta: metav1.ObjectMeta{Name: "p3-manual-apps", Namespace: "ns"},
+		Spec:       v1alpha2.DNSRecordSpec{Origin: v1alpha2.DNSRecordOriginManual, PortalRef: "p3"},
+	}
+	existing2 := &v1alpha2.DNSRecord{
+		ObjectMeta: metav1.ObjectMeta{Name: "p3-manual-infra", Namespace: "ns"},
+		Spec:       v1alpha2.DNSRecordSpec{Origin: v1alpha2.DNSRecordOriginManual, PortalRef: "p3"},
+	}
+	cli := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(dns, existing1, existing2).
+		Build()
+
+	sum, err := Migrate(context.Background(), cli, false)
+	g.Expect(err).NotTo(HaveOccurred(), "all-AlreadyExists must not be treated as an error")
+	g.Expect(sum.Failures).To(Equal(0))
+	g.Expect(sum.AlreadyExist).To(Equal(2))
+	g.Expect(sum.Created).To(Equal(0))
+
+	// Because AlreadyExists counts toward perDNSCreated, the strip gate fires
+	// and the annotation must be removed.
+	var after v1alpha2.DNS
+	g.Expect(cli.Get(context.Background(), client.ObjectKey{Name: "p3", Namespace: "ns"}, &after)).To(Succeed())
+	g.Expect(after.Annotations).NotTo(HaveKey(annotationV1Alpha1Groups))
+}
+
 var errFakeBoom = &fakeBoom{}
 
 type fakeBoom struct{}
