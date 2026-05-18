@@ -19,7 +19,6 @@ package v1alpha1
 import (
 	"encoding/json"
 	"fmt"
-	"maps"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
@@ -206,7 +205,9 @@ func init() {
 // ConvertTo converts this DNS (v1alpha1) to the Hub version (v1alpha2).
 func (src *DNS) ConvertTo(dstRaw conversion.Hub) error {
 	dst := dstRaw.(*v1alpha2.DNS)
-	dst.ObjectMeta = src.ObjectMeta
+	// Deep copy ObjectMeta so subsequent mutations (annotation strip/insert) do
+	// not affect the source — the apiserver may pass cached objects in.
+	dst.ObjectMeta = *src.ObjectMeta.DeepCopy()
 
 	dst.Spec.PortalRef = src.Spec.PortalRef
 	dst.Spec.IsRemote = src.Spec.IsRemote
@@ -230,11 +231,10 @@ func (src *DNS) ConvertTo(dstRaw conversion.Hub) error {
 		if err != nil {
 			return err
 		}
-		// Deep copy annotations to avoid mutating source ObjectMeta
-		dstAnnotations := make(map[string]string, len(src.Annotations)+1)
-		maps.Copy(dstAnnotations, src.Annotations)
-		dstAnnotations[annotationV1Alpha1Groups] = string(raw)
-		dst.Annotations = dstAnnotations
+		if dst.Annotations == nil {
+			dst.Annotations = make(map[string]string, 1)
+		}
+		dst.Annotations[annotationV1Alpha1Groups] = string(raw)
 	}
 
 	// TODO(Phase 9): replaced by readstore — status groups are no longer stored in v1alpha2 DNSStatus.
@@ -253,7 +253,9 @@ func (src *DNS) ConvertTo(dstRaw conversion.Hub) error {
 // ConvertFrom converts from the Hub version (v1alpha2) to this DNS (v1alpha1).
 func (dst *DNS) ConvertFrom(srcRaw conversion.Hub) error {
 	src := srcRaw.(*v1alpha2.DNS)
-	dst.ObjectMeta = src.ObjectMeta
+	// Deep copy ObjectMeta so subsequent mutations (annotation insert/strip) do
+	// not affect the source — the apiserver may pass cached objects in.
+	dst.ObjectMeta = *src.ObjectMeta.DeepCopy()
 
 	dst.Spec.PortalRef = src.Spec.PortalRef
 	dst.Spec.IsRemote = src.Spec.IsRemote
