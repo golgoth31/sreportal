@@ -21,6 +21,7 @@ import (
 	"reflect"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -58,19 +59,28 @@ func Cycle(
 		}
 		list := resolver.ObjectList()
 		if err := c.List(ctx, list); err != nil {
-			if apierrors.IsNotFound(err) {
+			// CRD not installed (meta.NoKindMatchError) — surfaced as NotFound
+			// here. Treat as benign: stop counting the kind as active, but do
+			// not wipe previously cached entries (ReplaceKind/DeleteKind is
+			// skipped) so transient API outages don't erase good state.
+			if apierrors.IsNotFound(err) || meta.IsNoMatchError(err) {
 				logger.Info("CRD not installed; skipping kind", "kind", kind)
+				metrics.SourceKindActive.WithLabelValues(string(kind)).Set(0)
 				continue
 			}
-			logger.Error(err, "list failed", "kind", kind)
+			logger.Error(err, "list failed; preserving previous state", "kind", kind)
+			metrics.SourceErrorsTotal.WithLabelValues(string(kind)).Inc()
 			continue
 		}
 		items := extractItems(list)
 		entries := make([]domainsource.EnrichedEndpoint, 0, len(items))
+		resolveErrs := 0
 		for _, obj := range items {
 			eps, rerr := resolver.ResolveObject(ctx, obj)
 			if rerr != nil {
+				resolveErrs++
 				logger.Error(rerr, "resolve failed", "kind", kind, "name", obj.GetName(), "ns", obj.GetNamespace())
+				metrics.SourceErrorsTotal.WithLabelValues(string(kind)).Inc()
 				continue
 			}
 			for _, ep := range eps {
@@ -83,6 +93,16 @@ func Cycle(
 					SourceAnnotations: obj.GetAnnotations(),
 				})
 			}
+		}
+		// Guard against atomic wipe: if we had items but every one of them
+		// failed to resolve, an upstream bug (resolver wired to wrong type,
+		// transient parse error) could otherwise clear every FQDN for the
+		// kind. Preserve the previously cached state instead and rely on
+		// metrics/logs to surface the failure.
+		if len(items) > 0 && resolveErrs == len(items) {
+			logger.Error(nil, "all objects failed to resolve; preserving previous state", "kind", kind, "items", len(items))
+			metrics.SourceKindActive.WithLabelValues(string(kind)).Set(1)
+			continue
 		}
 		store.ReplaceKind(kind, entries)
 		metrics.SourceEndpointsCollected.WithLabelValues(string(kind)).Set(float64(len(entries)))
