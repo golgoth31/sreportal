@@ -109,6 +109,21 @@ export function FqdnCard({ fqdn }: FqdnCardProps) {
         </Badge>
       </div>
 
+      {/* Portals this FQDN belongs to */}
+      {fqdn.portals.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {fqdn.portals.map((portal) => (
+            <Badge
+              key={portal}
+              variant="secondary"
+              className="text-[10px] font-mono uppercase tracking-wider"
+            >
+              {portal}
+            </Badge>
+          ))}
+        </div>
+      )}
+
       {/* Origin resource reference */}
       {fqdn.originRef && (
         <div className="border-t border-border/60 pt-2 flex items-center gap-1.5 text-xs text-muted-foreground">

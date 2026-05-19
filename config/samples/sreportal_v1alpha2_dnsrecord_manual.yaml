@@ -1,0 +1,16 @@
+apiVersion: sreportal.io/v1alpha2
+kind: DNSRecord
+metadata:
+  name: main-manual-apis
+  namespace: default
+spec:
+  origin: manual
+  portalRef: main
+  entries:
+    - fqdn: api.example.com
+      group: APIs
+      description: Main API endpoint
+      recordType: A
+    - fqdn: graphql.example.com
+      group: APIs
+      description: GraphQL API

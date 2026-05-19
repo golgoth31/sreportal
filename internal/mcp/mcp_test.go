@@ -77,39 +77,39 @@ func isErrorResult(result *mcp.CallToolResult) bool {
 // seedDNSStore creates and populates an FQDNStore with test data equivalent
 // to the old CRD-based setup (dns1 in default/test-dns-1, dns2 in production/test-dns-2).
 func seedDNSStore() *dnsstore.FQDNStore {
-	store := dnsstore.NewFQDNStore(nil)
+	store := dnsstore.NewFQDNStore()
 	ctx := context.Background()
 	now := time.Now()
 
 	// dns1: default/test-dns-1 with portalRef portalMain
-	_ = store.Replace(ctx, "default/test-dns-1", []domaindns.FQDNView{
+	_ = store.Replace(ctx, "default/test-dns-1", portalMain, []domaindns.FQDNView{
 		{
 			Name: fqdnAPI, Source: domaindns.SourceExternalDNS,
 			Groups: []string{fqdnWeb}, Description: "Main API",
 			RecordType: "A", Targets: []string{ip192dot1},
-			LastSeen: now, PortalName: portalMain, Namespace: nsDefault,
+			LastSeen: now, Portals: []string{portalMain}, Namespace: nsDefault,
 		},
 		{
 			Name: "web.example.com", Source: domaindns.SourceExternalDNS,
 			Groups: []string{fqdnWeb}, RecordType: "A",
 			Targets: []string{ip192dot2}, LastSeen: now,
-			PortalName: portalMain, Namespace: nsDefault,
+			Portals: []string{portalMain}, Namespace: nsDefault,
 		},
 		{
 			Name: "internal.example.com", Source: domaindns.SourceManual,
 			Groups: []string{"internal"}, RecordType: "A",
-			Targets:    []string{ip10dot1},
-			PortalName: portalMain, Namespace: nsDefault,
+			Targets: []string{ip10dot1},
+			Portals: []string{portalMain}, Namespace: nsDefault,
 		},
 	})
 
 	// dns2: production/test-dns-2 with portalRef "prod"
-	_ = store.Replace(ctx, "production/test-dns-2", []domaindns.FQDNView{
+	_ = store.Replace(ctx, "production/test-dns-2", "prod", []domaindns.FQDNView{
 		{
 			Name: "prod-api.example.com", Source: domaindns.SourceExternalDNS,
 			Groups: []string{"services"}, RecordType: "A",
-			Targets:    []string{"10.10.10.1"},
-			PortalName: "prod", Namespace: "production",
+			Targets: []string{"10.10.10.1"},
+			Portals: []string{"prod"}, Namespace: "production",
 		},
 	})
 
@@ -135,7 +135,7 @@ var _ = Describe("MCP Server", func() {
 
 	Describe("DNSServer creation", func() {
 		It("should create server with all tools registered", func() {
-			store := dnsstore.NewFQDNStore(nil)
+			store := dnsstore.NewFQDNStore()
 			pStore := emptyPortalStore()
 
 			dnsServer := NewDNSServer(store, pStore)
@@ -308,7 +308,7 @@ var _ = Describe("MCP Server", func() {
 			})
 
 			It("should return appropriate message when store is empty", func() {
-				store := dnsstore.NewFQDNStore(nil)
+				store := dnsstore.NewFQDNStore()
 				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("search_fqdns", map[string]any{})
 
@@ -322,19 +322,19 @@ var _ = Describe("MCP Server", func() {
 
 		Context("with sync status", func() {
 			It("should include sync_status in results", func() {
-				store := dnsstore.NewFQDNStore(nil)
-				_ = store.Replace(ctx, "default/test-dns-sync", []domaindns.FQDNView{
+				store := dnsstore.NewFQDNStore()
+				_ = store.Replace(ctx, "default/test-dns-sync", portalMain, []domaindns.FQDNView{
 					{
 						Name: "synced.example.com", Source: domaindns.SourceExternalDNS,
 						Groups: []string{fqdnWeb}, RecordType: "A",
 						Targets: []string{ip10dot1}, SyncStatus: "sync",
-						PortalName: portalMain, Namespace: nsDefault,
+						Portals: []string{portalMain}, Namespace: nsDefault,
 					},
 					{
 						Name: "drifted.example.com", Source: domaindns.SourceExternalDNS,
 						Groups: []string{fqdnWeb}, RecordType: "A",
 						Targets: []string{"10.0.0.2"}, SyncStatus: "notsync",
-						PortalName: portalMain, Namespace: nsDefault,
+						Portals: []string{portalMain}, Namespace: nsDefault,
 					},
 				})
 
@@ -360,30 +360,30 @@ var _ = Describe("MCP Server", func() {
 
 		Context("with duplicate FQDNs across resources", func() {
 			It("should deduplicate FQDNs by name", func() {
-				store := dnsstore.NewFQDNStore(nil)
+				store := dnsstore.NewFQDNStore()
 				views := []domaindns.FQDNView{
 					{
 						Name: fqdnAPI, Source: domaindns.SourceExternalDNS,
 						Groups: []string{fqdnWeb}, RecordType: "A",
-						Targets:    []string{ip192dot1},
-						PortalName: portalMain, Namespace: nsDefault,
+						Targets: []string{ip192dot1},
+						Portals: []string{portalMain}, Namespace: nsDefault,
 					},
 					{
 						Name: "web.example.com", Source: domaindns.SourceExternalDNS,
 						Groups: []string{fqdnWeb}, RecordType: "A",
-						Targets:    []string{ip192dot2},
-						PortalName: portalMain, Namespace: nsDefault,
+						Targets: []string{ip192dot2},
+						Portals: []string{portalMain}, Namespace: nsDefault,
 					},
 					{
 						Name: "internal.example.com", Source: domaindns.SourceManual,
 						Groups: []string{"internal"}, RecordType: "A",
-						Targets:    []string{ip10dot1},
-						PortalName: portalMain, Namespace: nsDefault,
+						Targets: []string{ip10dot1},
+						Portals: []string{portalMain}, Namespace: nsDefault,
 					},
 				}
 				// Same FQDNs in two different resources
-				_ = store.Replace(ctx, "default/test-dns-1", views)
-				_ = store.Replace(ctx, "default/test-dns-copy", views)
+				_ = store.Replace(ctx, "default/test-dns-1", portalMain, views)
+				_ = store.Replace(ctx, "default/test-dns-copy", portalMain, views)
 
 				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("search_fqdns", map[string]any{})
@@ -411,7 +411,7 @@ var _ = Describe("MCP Server", func() {
 					Title: "Dev Portal", SubPath: nsDev, Ready: false,
 				})
 
-				store := dnsstore.NewFQDNStore(nil)
+				store := dnsstore.NewFQDNStore()
 				server := NewDNSServer(store, pStore)
 				request := newCallToolRequest("list_portals", map[string]any{})
 
@@ -436,7 +436,7 @@ var _ = Describe("MCP Server", func() {
 					URL: "https://remote.example.com",
 				})
 
-				store := dnsstore.NewFQDNStore(nil)
+				store := dnsstore.NewFQDNStore()
 				server := NewDNSServer(store, pStore)
 				request := newCallToolRequest("list_portals", map[string]any{})
 
@@ -458,7 +458,7 @@ var _ = Describe("MCP Server", func() {
 					},
 				})
 
-				store := dnsstore.NewFQDNStore(nil)
+				store := dnsstore.NewFQDNStore()
 				server := NewDNSServer(store, pStore)
 				request := newCallToolRequest("list_portals", map[string]any{})
 
@@ -473,7 +473,7 @@ var _ = Describe("MCP Server", func() {
 
 		Context("with no portals", func() {
 			It("should return appropriate message", func() {
-				store := dnsstore.NewFQDNStore(nil)
+				store := dnsstore.NewFQDNStore()
 				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("list_portals", map[string]any{})
 
@@ -489,20 +489,20 @@ var _ = Describe("MCP Server", func() {
 	Describe("handleGetFQDNDetails", func() {
 		Context("with existing FQDN", func() {
 			It("should return full details for the FQDN", func() {
-				store := dnsstore.NewFQDNStore(nil)
-				_ = store.Replace(ctx, "default/test-dns", []domaindns.FQDNView{
+				store := dnsstore.NewFQDNStore()
+				_ = store.Replace(ctx, "default/test-dns", portalMain, []domaindns.FQDNView{
 					{
 						Name: fqdnAPI, Source: domaindns.SourceExternalDNS,
 						Groups: []string{keyAPI}, Description: "Main API endpoint",
 						RecordType: "A", Targets: []string{ip192dot1, ip192dot2},
-						LastSeen:   time.Date(2026, 1, 15, 10, 30, 0, 0, time.UTC),
-						PortalName: portalMain, Namespace: nsDefault,
+						LastSeen: time.Date(2026, 1, 15, 10, 30, 0, 0, time.UTC),
+						Portals:  []string{portalMain}, Namespace: nsDefault,
 					},
 					{
 						Name: "api-v2.example.com", Source: domaindns.SourceExternalDNS,
 						Groups: []string{keyAPI}, RecordType: "CNAME",
-						Targets:    []string{fqdnAPI},
-						PortalName: portalMain, Namespace: nsDefault,
+						Targets: []string{fqdnAPI},
+						Portals: []string{portalMain}, Namespace: nsDefault,
 					},
 				})
 
@@ -531,13 +531,13 @@ var _ = Describe("MCP Server", func() {
 			})
 
 			It("should be case-insensitive", func() {
-				store := dnsstore.NewFQDNStore(nil)
-				_ = store.Replace(ctx, "default/test-dns", []domaindns.FQDNView{
+				store := dnsstore.NewFQDNStore()
+				_ = store.Replace(ctx, "default/test-dns", portalMain, []domaindns.FQDNView{
 					{
 						Name: fqdnAPI, Source: domaindns.SourceExternalDNS,
 						Groups: []string{keyAPI}, RecordType: "A",
-						Targets:    []string{ip192dot1},
-						PortalName: portalMain, Namespace: nsDefault,
+						Targets: []string{ip192dot1},
+						Portals: []string{portalMain}, Namespace: nsDefault,
 					},
 				})
 
@@ -555,13 +555,13 @@ var _ = Describe("MCP Server", func() {
 			})
 
 			It("should handle trailing dot in FQDN", func() {
-				store := dnsstore.NewFQDNStore(nil)
-				_ = store.Replace(ctx, "default/test-dns", []domaindns.FQDNView{
+				store := dnsstore.NewFQDNStore()
+				_ = store.Replace(ctx, "default/test-dns", portalMain, []domaindns.FQDNView{
 					{
 						Name: fqdnAPI, Source: domaindns.SourceExternalDNS,
 						Groups: []string{keyAPI}, RecordType: "A",
-						Targets:    []string{ip192dot1},
-						PortalName: portalMain, Namespace: nsDefault,
+						Targets: []string{ip192dot1},
+						Portals: []string{portalMain}, Namespace: nsDefault,
 					},
 				})
 
@@ -581,13 +581,13 @@ var _ = Describe("MCP Server", func() {
 
 		Context("with sync status", func() {
 			It("should include sync_status in details", func() {
-				store := dnsstore.NewFQDNStore(nil)
-				_ = store.Replace(ctx, "default/test-dns", []domaindns.FQDNView{
+				store := dnsstore.NewFQDNStore()
+				_ = store.Replace(ctx, "default/test-dns", portalMain, []domaindns.FQDNView{
 					{
 						Name: fqdnAPI, Source: domaindns.SourceExternalDNS,
 						Groups: []string{keyAPI}, RecordType: "A",
 						Targets: []string{ip192dot1}, SyncStatus: "sync",
-						PortalName: portalMain, Namespace: nsDefault,
+						Portals: []string{portalMain}, Namespace: nsDefault,
 					},
 				})
 
@@ -629,7 +629,7 @@ var _ = Describe("MCP Server", func() {
 
 		Context("with missing required parameter", func() {
 			It("should return error when fqdn is not provided", func() {
-				store := dnsstore.NewFQDNStore(nil)
+				store := dnsstore.NewFQDNStore()
 				server := NewDNSServer(store, emptyPortalStore())
 				request := newCallToolRequest("get_fqdn_details", map[string]any{})
 
@@ -645,13 +645,13 @@ var _ = Describe("MCP Server", func() {
 
 	Describe("JSON output format", func() {
 		It("should produce valid JSON in search results", func() {
-			store := dnsstore.NewFQDNStore(nil)
-			_ = store.Replace(ctx, "default/test-dns", []domaindns.FQDNView{
+			store := dnsstore.NewFQDNStore()
+			_ = store.Replace(ctx, "default/test-dns", portalMain, []domaindns.FQDNView{
 				{
 					Name: fqdnAPI, Source: domaindns.SourceExternalDNS,
 					Groups: []string{fqdnWeb}, RecordType: "A",
-					Targets:    []string{ip192dot1},
-					PortalName: portalMain, Namespace: nsDefault,
+					Targets: []string{ip192dot1},
+					Portals: []string{portalMain}, Namespace: nsDefault,
 				},
 			})
 
@@ -681,7 +681,7 @@ var _ = Describe("MCP Server", func() {
 				Title: "Main Portal", Main: true, Ready: true,
 			})
 
-			store := dnsstore.NewFQDNStore(nil)
+			store := dnsstore.NewFQDNStore()
 			server := NewDNSServer(store, pStore)
 			request := newCallToolRequest("list_portals", map[string]any{})
 
@@ -703,13 +703,13 @@ var _ = Describe("MCP Server", func() {
 		})
 
 		It("should produce valid JSON in FQDN details results", func() {
-			store := dnsstore.NewFQDNStore(nil)
-			_ = store.Replace(ctx, "default/test-dns", []domaindns.FQDNView{
+			store := dnsstore.NewFQDNStore()
+			_ = store.Replace(ctx, "default/test-dns", portalMain, []domaindns.FQDNView{
 				{
 					Name: fqdnAPI, Source: domaindns.SourceExternalDNS,
 					Groups: []string{keyAPI}, RecordType: "A",
-					Targets:    []string{ip192dot1},
-					PortalName: portalMain, Namespace: nsDefault,
+					Targets: []string{ip192dot1},
+					Portals: []string{portalMain}, Namespace: nsDefault,
 				},
 			})
 

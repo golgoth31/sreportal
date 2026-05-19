@@ -1,0 +1,25 @@
+apiVersion: sreportal.io/v1alpha2
+kind: DNS
+metadata:
+  name: main
+  namespace: default
+spec:
+  portalRef: main
+  sources:
+    ingress:
+      enabled: true
+      annotationFilter: "external-dns.alpha.kubernetes.io/hostname"
+    service:
+      enabled: true
+      serviceTypeFilter: [LoadBalancer]
+    priority: [ingress, service]
+  groupMapping:
+    defaultGroup: Services
+    labelKey: sreportal.io/group
+    byNamespace:
+      monitoring: Monitoring
+      default: Development
+  reconciliation:
+    interval: 5m
+    retryOnError: 30s
+    disableDNSCheck: false

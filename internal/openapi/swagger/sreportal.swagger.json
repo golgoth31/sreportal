@@ -1283,11 +1283,11 @@
         },
         "dnsResourceName": {
           "type": "string",
-          "title": "dns_resource_name is the name of the DNS resource this FQDN belongs to"
+          "description": "dns_resource_name is the name of the DNS resource this FQDN belongs to.\nDeprecated: replaced by `portals` to support an FQDN belonging to several\nportals after inter-DNS dedup. Kept for back-compat with older clients."
         },
         "dnsResourceNamespace": {
           "type": "string",
-          "title": "dns_resource_namespace is the namespace of the DNS resource"
+          "description": "dns_resource_namespace is the namespace of the DNS resource.\nDeprecated: see `dns_resource_name`. Kept for back-compat with older clients."
         },
         "originRef": {
           "$ref": "#/definitions/v1OriginResourceRef",
@@ -1296,6 +1296,13 @@
         "syncStatus": {
           "type": "string",
           "description": "sync_status indicates whether the FQDN is correctly resolved in DNS.\nValues: \"sync\", \"notavailable\", \"notsync\", or empty."
+        },
+        "portals": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "portals lists every portal this FQDN belongs to (post inter-DNS dedup).\nSorted and deduplicated."
         }
       },
       "title": "FQDN represents a fully qualified domain name with metadata"

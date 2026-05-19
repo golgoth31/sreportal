@@ -24,6 +24,7 @@ import (
 	"sigs.k8s.io/external-dns/endpoint"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	v1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 	"github.com/golgoth31/sreportal/internal/config"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 )
@@ -531,6 +532,111 @@ func selectByPriority(endpointsBySource map[string][]sreportalv1alpha1.EndpointS
 			return result[i].RecordType < result[j].RecordType
 		}
 		return result[i].DNSName < result[j].DNSName
+	})
+
+	return result
+}
+
+// strategyFromV2Spec builds a GroupMappingStrategy from a v1alpha2.GroupMappingSpec.
+// A nil mapping yields a strategy with the "Services" default group.
+func strategyFromV2Spec(mapping *v1alpha2.GroupMappingSpec) domaindns.GroupMappingStrategy {
+	if mapping == nil {
+		return domaindns.GroupMappingStrategy{DefaultGroup: defaultGroupServices}
+	}
+	return domaindns.GroupMappingStrategy{
+		DefaultGroup: mapping.DefaultGroup,
+		LabelKey:     mapping.LabelKey,
+		ByNamespace:  mapping.ByNamespace,
+	}
+}
+
+// originRefV2FromLabel parses an external-dns resource label into a v1alpha2.OriginResourceRef.
+// Returns nil when the label is absent or malformed.
+func originRefV2FromLabel(raw string) *v1alpha2.OriginResourceRef {
+	ref, err := domaindns.ParseResourceRef(raw)
+	if err != nil || ref.IsZero() {
+		return nil
+	}
+	return &v1alpha2.OriginResourceRef{
+		Kind:      ref.Kind(),
+		Namespace: ref.Namespace(),
+		Name:      ref.Name(),
+	}
+}
+
+// IsEndpointStatusV2Ignored returns true when a v1alpha2.EndpointStatus has the
+// sreportal.io/ignore label set to "true".
+func IsEndpointStatusV2Ignored(ep *v1alpha2.EndpointStatus) bool {
+	if ep == nil {
+		return false
+	}
+	return ep.Labels[IgnoreAnnotationKey] == annotationValueTrue
+}
+
+// fqdnKeyV2 uniquely identifies an FQDN within a group for v1alpha2 dedup.
+type fqdnKeyV2 struct {
+	groupName  string
+	dnsName    string
+	recordType string
+}
+
+// EndpointStatusToGroupsV2 converts a v1alpha2.EndpointStatus slice to v1alpha2.FQDNGroupStatus.
+// Semantics identical to EndpointStatusToGroups but uses v1alpha2 types throughout.
+// Duplicate FQDNs (same DNSName + RecordType) within the same group are merged,
+// combining their targets.
+func EndpointStatusToGroupsV2(endpoints []v1alpha2.EndpointStatus, mapping *v1alpha2.GroupMappingSpec) []v1alpha2.FQDNGroupStatus {
+	strategy := strategyFromV2Spec(mapping)
+
+	groups := make(map[string]*v1alpha2.FQDNGroupStatus)
+	seen := make(map[fqdnKeyV2]int)
+
+	for _, ep := range endpoints {
+		if IsEndpointStatusV2Ignored(&ep) {
+			continue
+		}
+
+		ns := extractNamespace(ep.Labels[endpoint.ResourceLabelKey])
+		groupNames := strategy.Resolve(ep.Labels, ns)
+
+		for _, groupName := range groupNames {
+			if _, exists := groups[groupName]; !exists {
+				groups[groupName] = &v1alpha2.FQDNGroupStatus{
+					Name:   groupName,
+					Source: SourceExternalDNS,
+					FQDNs:  []v1alpha2.FQDNStatus{},
+				}
+			}
+
+			key := fqdnKeyV2{groupName: groupName, dnsName: ep.DNSName, recordType: ep.RecordType}
+			if idx, dup := seen[key]; dup {
+				existing := &groups[groupName].FQDNs[idx]
+				existing.Targets = mergeTargets(existing.Targets, ep.Targets)
+				if ep.LastSeen.After(existing.LastSeen.Time) {
+					existing.LastSeen = ep.LastSeen
+				}
+			} else {
+				seen[key] = len(groups[groupName].FQDNs)
+				groups[groupName].FQDNs = append(groups[groupName].FQDNs, v1alpha2.FQDNStatus{
+					FQDN:       ep.DNSName,
+					RecordType: ep.RecordType,
+					Targets:    ep.Targets,
+					SyncStatus: ep.SyncStatus,
+					LastSeen:   ep.LastSeen,
+					OriginRef:  originRefV2FromLabel(ep.Labels[endpoint.ResourceLabelKey]),
+				})
+			}
+		}
+	}
+
+	result := make([]v1alpha2.FQDNGroupStatus, 0, len(groups))
+	for _, group := range groups {
+		sort.Slice(group.FQDNs, func(i, j int) bool {
+			return group.FQDNs[i].FQDN < group.FQDNs[j].FQDN
+		})
+		result = append(result, *group)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Name < result[j].Name
 	})
 
 	return result

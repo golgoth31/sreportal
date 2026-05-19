@@ -17,8 +17,29 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"encoding/json"
+	"fmt"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/conversion"
+
+	v1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 )
+
+const (
+	annotationV1Alpha1Groups  = "sreportal.io/v1alpha1-groups"
+	annotationV1Alpha2DNSSpec = "sreportal.io/v1alpha2-spec"
+)
+
+// preservedDNSSpec holds v1alpha2-only DNSSpec fields that have no v1alpha1
+// representation. It is JSON-encoded into annotationV1Alpha2DNSSpec on
+// ConvertFrom (hub → spoke) and restored on ConvertTo (spoke → hub).
+type preservedDNSSpec struct {
+	Defaults       v1alpha2.SourceFilterDefaults `json:"defaults,omitempty"`
+	Sources        v1alpha2.SourcesSpec          `json:"sources,omitempty"`
+	GroupMapping   v1alpha2.GroupMappingSpec     `json:"groupMapping,omitempty"`
+	Reconciliation v1alpha2.ReconciliationSpec   `json:"reconciliation,omitempty"`
+}
 
 // DNSSpec defines the desired state of DNS
 type DNSSpec struct {
@@ -179,4 +200,101 @@ type DNSList struct {
 
 func init() {
 	SchemeBuilder.Register(&DNS{}, &DNSList{})
+}
+
+// ConvertTo converts this DNS (v1alpha1) to the Hub version (v1alpha2).
+func (src *DNS) ConvertTo(dstRaw conversion.Hub) error {
+	dst := dstRaw.(*v1alpha2.DNS)
+	// Deep copy ObjectMeta so subsequent mutations (annotation strip/insert) do
+	// not affect the source — the apiserver may pass cached objects in.
+	dst.ObjectMeta = *src.ObjectMeta.DeepCopy()
+
+	dst.Spec.PortalRef = src.Spec.PortalRef
+	dst.Spec.IsRemote = src.Spec.IsRemote
+	// v1alpha2-only spec (sources/groupMapping/reconciliation) is restored below
+	// from annotationV1Alpha2DNSSpec; fresh v1alpha1 objects leave them zero
+	// (migration CLI fills them).
+	if raw, ok := src.Annotations[annotationV1Alpha2DNSSpec]; ok && raw != "" {
+		var p preservedDNSSpec
+		if err := json.Unmarshal([]byte(raw), &p); err != nil {
+			return fmt.Errorf("unmarshal v1alpha2 DNSSpec annotation on %s/%s: %w", src.Namespace, src.Name, err)
+		}
+		dst.Spec.Defaults = p.Defaults
+		dst.Spec.Sources = p.Sources
+		dst.Spec.GroupMapping = p.GroupMapping
+		dst.Spec.Reconciliation = p.Reconciliation
+		delete(dst.Annotations, annotationV1Alpha2DNSSpec)
+	}
+
+	if len(src.Spec.Groups) > 0 {
+		raw, err := json.Marshal(src.Spec.Groups)
+		if err != nil {
+			return err
+		}
+		if dst.Annotations == nil {
+			dst.Annotations = make(map[string]string, 1)
+		}
+		dst.Annotations[annotationV1Alpha1Groups] = string(raw)
+	}
+
+	// TODO(Phase 9): replaced by readstore — status groups are no longer stored in v1alpha2 DNSStatus.
+	// v1alpha1 status.groups had been mapped to v1alpha2 Status.Groups here, but that field was
+	// removed; FQDN grouping is now maintained in the ReadStore.
+	// for _, g := range src.Status.Groups {
+	// 	fqdns := make([]v1alpha2.FQDNStatus, 0, len(g.FQDNs))
+	// 	for _, f := range g.FQDNs { ... }
+	// 	dst.Status.Groups = append(dst.Status.Groups, ...)
+	// }
+	dst.Status.Conditions = src.Status.Conditions
+	dst.Status.LastReconcileTime = src.Status.LastReconcileTime
+	return nil
+}
+
+// ConvertFrom converts from the Hub version (v1alpha2) to this DNS (v1alpha1).
+func (dst *DNS) ConvertFrom(srcRaw conversion.Hub) error {
+	src := srcRaw.(*v1alpha2.DNS)
+	// Deep copy ObjectMeta so subsequent mutations (annotation insert/strip) do
+	// not affect the source — the apiserver may pass cached objects in.
+	dst.ObjectMeta = *src.ObjectMeta.DeepCopy()
+
+	dst.Spec.PortalRef = src.Spec.PortalRef
+	dst.Spec.IsRemote = src.Spec.IsRemote
+
+	preserved := preservedDNSSpec{
+		Defaults:       src.Spec.Defaults,
+		Sources:        src.Spec.Sources,
+		GroupMapping:   src.Spec.GroupMapping,
+		Reconciliation: src.Spec.Reconciliation,
+	}
+	preservedRaw, err := json.Marshal(preserved)
+	if err != nil {
+		return fmt.Errorf("marshal v1alpha2-only DNSSpec for %s/%s: %w", src.Namespace, src.Name, err)
+	}
+	if dst.Annotations == nil {
+		dst.Annotations = make(map[string]string, 1)
+	}
+	dst.Annotations[annotationV1Alpha2DNSSpec] = string(preservedRaw)
+
+	if raw, ok := src.Annotations[annotationV1Alpha1Groups]; ok && raw != "" {
+		var groups []DNSGroup
+		if err := json.Unmarshal([]byte(raw), &groups); err != nil {
+			return err
+		}
+		dst.Spec.Groups = groups
+		// Remove migration annotation from restored v1alpha1 object
+		delete(dst.Annotations, annotationV1Alpha1Groups)
+	}
+
+	// TODO(Phase 9): replaced by readstore — status groups are no longer stored in v1alpha2 DNSStatus.
+	// v1alpha2 Status.Groups was removed; FQDN grouping is now maintained in the ReadStore.
+	// When converting back to v1alpha1, status.groups will be empty until the readstore
+	// projection is wired (Phase 9).
+	// for _, g := range src.Status.Groups {
+	// 	fqdns := make([]FQDNStatus, 0, len(g.FQDNs))
+	// 	for _, f := range g.FQDNs { ... }
+	// 	dst.Status.Groups = append(dst.Status.Groups, ...)
+	// }
+	dst.Status.Conditions = src.Status.Conditions
+	dst.Status.LastReconcileTime = src.Status.LastReconcileTime
+	return nil
 }

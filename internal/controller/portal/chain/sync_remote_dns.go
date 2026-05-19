@@ -148,7 +148,7 @@ func (h *SyncRemoteDNSHandler) reconcileRemoteDNS(ctx context.Context, portal *s
 	if data.FQDNWriter != nil {
 		resourceKey := dns.Namespace + "/" + dns.Name
 		views := dnsctrl.GroupsToFQDNViews(dns)
-		if err := data.FQDNWriter.Replace(ctx, resourceKey, views); err != nil {
+		if err := data.FQDNWriter.Replace(ctx, resourceKey, dns.Spec.PortalRef, views); err != nil {
 			logger.Error(err, "failed to update FQDN read store for remote DNS")
 		}
 	}

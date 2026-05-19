@@ -22,7 +22,7 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	v1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 	"github.com/golgoth31/sreportal/internal/adapter"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/reconciler"
@@ -41,14 +41,23 @@ func NewSyncEndpointsHashHandler(c client.Client) *SyncEndpointsHashHandler {
 }
 
 // Handle implements reconciler.Handler.
-func (h *SyncEndpointsHashHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.DNSRecord, ChainData]) error {
+func (h *SyncEndpointsHashHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*v1alpha2.DNSRecord, ChainData]) error {
 	record := rc.Resource
+	logger := log.FromContext(ctx)
 	if len(record.Status.Endpoints) == 0 {
+		if record.Status.EndpointsHash == "" {
+			return nil
+		}
+		logger.Info("endpoints emptied, clearing EndpointsHash", "stored", record.Status.EndpointsHash)
+		base := record.DeepCopy()
+		record.Status.EndpointsHash = ""
+		if err := h.client.Status().Patch(ctx, record, client.MergeFrom(base)); err != nil {
+			return fmt.Errorf("clear EndpointsHash: %w", err)
+		}
 		return nil
 	}
 
-	logger := log.FromContext(ctx)
-	computedHash := adapter.EndpointStatusHash(record.Status.Endpoints)
+	computedHash := adapter.EndpointStatusHashV2(record.Status.Endpoints)
 	if record.Status.EndpointsHash == computedHash {
 		return nil
 	}

@@ -123,6 +123,7 @@ const fqdn = (
     targets,
     dnsResourceName: "dns-sample",
     dnsResourceNamespace: "default",
+    portals: ["main"],
   });
 
 const FQDNS = [
