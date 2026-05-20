@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	v1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
@@ -37,6 +38,11 @@ import (
 	"github.com/golgoth31/sreportal/internal/metrics"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
+
+// DNSRecordResolveInterval is the RequeueAfter applied at the end of every
+// reconcile to re-run the DNS resolution drift check. The DNSRecord chain
+// is otherwise purely event-driven on spec changes (generation bumps).
+const DNSRecordResolveInterval = 1 * time.Hour
 
 // DNSRecordReconciler reconciles a v1alpha2 DNSRecord object and projects its
 // endpoints directly into the FQDN read store via a Chain-of-Responsibility
@@ -167,6 +173,10 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
+	if rc.Result.RequeueAfter == 0 {
+		rc.Result.RequeueAfter = DNSRecordResolveInterval
+	}
+
 	originLabel := string(record.Spec.Origin)
 	if originLabel == "" {
 		originLabel = "external-dns"
@@ -200,7 +210,7 @@ func (r *DNSRecordReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha2.DNSRecord{}).
+		For(&v1alpha2.DNSRecord{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Watches(
 			&sreportalv1alpha1.Portal{},
 			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []ctrl.Request {

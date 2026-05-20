@@ -26,6 +26,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
@@ -530,6 +532,77 @@ var _ = Describe("DNSRecord Controller", func() {
 				views, err := store.List(ctx, domaindns.FQDNFilters{Portal: tPortalMain})
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(views).To(BeEmpty())
+			}, timeout, interval).Should(Succeed())
+		})
+	})
+
+	Context("GenerationChangedPredicate and RequeueAfter behaviour", func() {
+		const recordName = "test-dnsrecord-predicate"
+		ctx := context.Background()
+
+		recordNN := types.NamespacedName{Name: recordName, Namespace: tNsDefault}
+
+		AfterEach(func() {
+			rec := &v1alpha2.DNSRecord{}
+			if err := k8sClient.Get(ctx, recordNN, rec); err == nil {
+				Expect(k8sClient.Delete(ctx, rec)).To(Succeed())
+			}
+		})
+
+		It("does not reconcile when only status is patched (same generation)", func() {
+			// Build two snapshots: same Generation, different ResourceVersion / Status.
+			// GenerationChangedPredicate must return false for a status-only patch.
+			gen := int64(3)
+			oldObj := &v1alpha2.DNSRecord{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            recordName,
+					Namespace:       tNsDefault,
+					Generation:      gen,
+					ResourceVersion: "100",
+				},
+			}
+			newObj := &v1alpha2.DNSRecord{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            recordName,
+					Namespace:       tNsDefault,
+					Generation:      gen, // same generation → status-only change
+					ResourceVersion: "101",
+				},
+				Status: v1alpha2.DNSRecordStatus{
+					EndpointsHash: "some-new-hash",
+				},
+			}
+
+			p := predicate.GenerationChangedPredicate{}
+			Expect(p.Update(event.UpdateEvent{ObjectOld: oldObj, ObjectNew: newObj})).To(BeFalse(),
+				"same generation should not enqueue (status-only patch)")
+
+			// Conversely: generation bump must enqueue.
+			newObjSpecChange := newObj.DeepCopy()
+			newObjSpecChange.Generation = gen + 1
+			Expect(p.Update(event.UpdateEvent{ObjectOld: oldObj, ObjectNew: newObjSpecChange})).To(BeTrue(),
+				"generation bump should enqueue (spec change)")
+		})
+
+		It("requeues after DNSRecordResolveInterval on successful reconcile", func() {
+			store := dnsreadstore.NewFQDNStore()
+			rec := NewDNSRecordReconciler(k8sClient, k8sClient.Scheme(), nil)
+			rec.SetFQDNWriter(store)
+
+			Expect(k8sClient.Create(ctx, &v1alpha2.DNSRecord{
+				ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: tNsDefault},
+				Spec: v1alpha2.DNSRecordSpec{
+					Origin:     v1alpha2.DNSRecordOriginAuto,
+					SourceType: tSrcService,
+					PortalRef:  tPortalMain,
+				},
+			})).To(Succeed())
+
+			Eventually(func(g Gomega) {
+				result, err := rec.Reconcile(ctx, reconcile.Request{NamespacedName: recordNN})
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(result.RequeueAfter).To(Equal(DNSRecordResolveInterval),
+					"reconcile must schedule a periodic drift-check requeue")
 			}, timeout, interval).Should(Succeed())
 		})
 	})
