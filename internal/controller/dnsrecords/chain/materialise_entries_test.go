@@ -22,7 +22,7 @@ func TestMaterialiseEntriesHandler_ConvertEntriesToEndpoints(t *testing.T) {
 			Origin:    v1alpha2.DNSRecordOriginManual,
 			PortalRef: tPortalMain,
 			Entries: []v1alpha2.DNSRecordEntry{
-				{FQDN: "api.example.com", Group: "APIs", RecordType: "A", Targets: []string{"1.2.3.4"}},
+				{FQDN: "api.example.com", Group: "APIs", RecordType: "A", Targets: []string{tIP1234}},
 				{FQDN: "graphql.example.com", Group: "APIs"},
 				{FQDN: "health.example.com"},
 			},
@@ -40,7 +40,7 @@ func TestMaterialiseEntriesHandler_ConvertEntriesToEndpoints(t *testing.T) {
 	g.Expect(record.Status.Endpoints).To(HaveLen(3))
 	g.Expect(record.Status.Endpoints[0].DNSName).To(Equal("api.example.com"))
 	g.Expect(record.Status.Endpoints[0].RecordType).To(Equal("A"))
-	g.Expect(record.Status.Endpoints[0].Targets).To(ConsistOf("1.2.3.4"))
+	g.Expect(record.Status.Endpoints[0].Targets).To(ConsistOf(tIP1234))
 	g.Expect(record.Status.Endpoints[1].DNSName).To(Equal("graphql.example.com"))
 	g.Expect(record.Status.Endpoints[1].RecordType).To(Equal("A")) // default
 	g.Expect(record.Status.Endpoints[0].LastSeen.IsZero()).To(BeFalse())
@@ -58,7 +58,7 @@ func TestMaterialiseEntriesHandler_MaterialisesForAuto(t *testing.T) {
 			SourceType: "ingress",
 			PortalRef:  tPortalMain,
 			Entries: []v1alpha2.DNSRecordEntry{
-				{FQDN: "auto.example.com", RecordType: "A", Targets: []string{"1.2.3.4"}},
+				{FQDN: "auto.example.com", RecordType: "A", Targets: []string{tIP1234}},
 			},
 		},
 	}
@@ -121,7 +121,7 @@ func TestMaterialiseEntriesHandler_Idempotent(t *testing.T) {
 			Origin:    v1alpha2.DNSRecordOriginManual,
 			PortalRef: tPortalMain,
 			Entries: []v1alpha2.DNSRecordEntry{
-				{FQDN: "a.example.com", RecordType: "A", Targets: []string{"1.2.3.4"}},
+				{FQDN: "a.example.com", RecordType: "A", Targets: []string{tIP1234}},
 				{FQDN: "b.example.com", RecordType: "A", Targets: []string{"5.6.7.8"}},
 			},
 		},

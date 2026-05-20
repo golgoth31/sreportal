@@ -34,6 +34,8 @@ import (
 	webhookv1alpha2 "github.com/golgoth31/sreportal/internal/webhook/v1alpha2"
 )
 
+const testControllerSA = "system:serviceaccount:sreportal-system:sreportal-controller-manager"
+
 func ctxWithUser(username string) context.Context {
 	req := admission.Request{
 		AdmissionRequest: admissionv1.AdmissionRequest{
@@ -104,7 +106,6 @@ func TestDNSRecordWebhook_AutoRequiresSourceType(t *testing.T) {
 	g.Expect(err).To(HaveOccurred())
 	g.Expect(err.Error()).To(ContainSubstring("sourceType is required"))
 }
-
 
 func TestDNSRecordWebhook_ManualRequiresEntries(t *testing.T) {
 	g := NewWithT(t)
@@ -184,7 +185,7 @@ func TestDNSRecordWebhook_PortalRefImmutable(t *testing.T) {
 
 func TestDNSRecordWebhook_AutoBlockedForNonControllerSA(t *testing.T) {
 	g := NewWithT(t)
-	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t), "system:serviceaccount:sreportal-system:sreportal-controller-manager")
+	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t), testControllerSA)
 	r := &sreportalv1alpha2.DNSRecord{
 		ObjectMeta: metav1.ObjectMeta{Name: tRecordIngress},
 		Spec: sreportalv1alpha2.DNSRecordSpec{
@@ -287,7 +288,7 @@ func TestDNSRecordWebhook_DeleteNoOp(t *testing.T) {
 
 func TestDNSRecordWebhook_AutoAllowedForControllerSA(t *testing.T) {
 	g := NewWithT(t)
-	controllerSA := "system:serviceaccount:sreportal-system:sreportal-controller-manager"
+	controllerSA := testControllerSA
 	dns := newDNS()
 	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), controllerSA)
 	r := &sreportalv1alpha2.DNSRecord{
@@ -562,7 +563,7 @@ func TestDNSRecordWebhook_AutoAllowedWhenNoSAConfigured(t *testing.T) {
 
 func TestDNSRecordWebhook_AutoAllowsEntriesFromControllerSA(t *testing.T) {
 	g := NewWithT(t)
-	controllerSA := "system:serviceaccount:sreportal-system:sreportal-controller-manager"
+	controllerSA := testControllerSA
 	dns := newDNS()
 	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), controllerSA)
 	r := &sreportalv1alpha2.DNSRecord{
@@ -586,7 +587,7 @@ func TestDNSRecordWebhook_AutoAllowsEntriesFromControllerSA(t *testing.T) {
 
 func TestDNSRecordWebhook_AutoRejectsEntriesFromNonControllerSA(t *testing.T) {
 	g := NewWithT(t)
-	controllerSA := "system:serviceaccount:sreportal-system:sreportal-controller-manager"
+	controllerSA := testControllerSA
 	dns := newDNS()
 	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), controllerSA)
 	r := &sreportalv1alpha2.DNSRecord{
