@@ -41,6 +41,7 @@ type DNSRecordSpec struct {
 	// +optional
 	// +listType=map
 	// +listMapKey=fqdn
+	// +listMapKey=recordType
 	Entries []DNSRecordEntry `json:"entries,omitempty"`
 }
 

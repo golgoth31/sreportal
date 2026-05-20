@@ -185,6 +185,51 @@ func TestUpsertDNSRecordsHandler_MultipleKinds(t *testing.T) {
 	}
 }
 
+// TestUpsertDNSRecordsHandler_DualStack verifies that A and AAAA endpoints
+// for the same FQDN survive the upsert path: with the composite listMapKey
+// (fqdn, recordType) on spec.entries, the apiserver accepts both, and the
+// handler preserves them as two distinct entries.
+func TestUpsertDNSRecordsHandler_DualStack(t *testing.T) {
+	scheme := runtime.NewScheme()
+	require.NoError(t, sreportalv1alpha2.AddToScheme(scheme))
+
+	dns := &sreportalv1alpha2.DNS{
+		ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: upsertTestNS1, UID: "uid-dual"},
+		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: "p"},
+	}
+	c := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithStatusSubresource(&sreportalv1alpha2.DNSRecord{}).
+		WithObjects(dns).
+		Build()
+
+	h := &dnschain.UpsertDNSRecordsHandler{Client: c}
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{
+		Resource: dns,
+		Data: dnschain.ChainData{
+			KeptEndpointsByKind: map[registry.SourceType][]*endpoint.Endpoint{
+				service.SourceTypeService: {
+					endpoint.NewEndpoint("dual.example.com", "A", "1.2.3.4"),
+					endpoint.NewEndpoint("dual.example.com", "AAAA", "::1"),
+				},
+			},
+		},
+	}
+	require.NoError(t, h.Handle(context.Background(), rc))
+
+	var created sreportalv1alpha2.DNSRecord
+	require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: upsertTestNS1, Name: "d-service"}, &created))
+	require.Len(t, created.Spec.Entries, 2, "both A and AAAA must be preserved")
+	byType := map[string]sreportalv1alpha2.DNSRecordEntry{}
+	for _, e := range created.Spec.Entries {
+		byType[e.RecordType] = e
+	}
+	require.Contains(t, byType, "A")
+	require.Contains(t, byType, "AAAA")
+	require.Equal(t, []string{"1.2.3.4"}, byType["A"].Targets)
+	require.Equal(t, []string{"::1"}, byType["AAAA"].Targets)
+}
+
 // TestUpsertDNSRecordsHandler_NoOpWhenUnchanged verifies that a second
 // reconcile with identical endpoints does not bump the DNSRecord
 // generation or ResourceVersion (the foundation of the burst-cascade fix).

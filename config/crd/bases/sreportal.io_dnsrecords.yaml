@@ -290,6 +290,7 @@ spec:
                 type: array
                 x-kubernetes-list-map-keys:
                 - fqdn
+                - recordType
                 x-kubernetes-list-type: map
               origin:
                 allOf:
