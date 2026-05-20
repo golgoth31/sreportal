@@ -14,7 +14,7 @@ const (
 )
 
 // DNSRecordSpec defines the desired state of DNSRecord (v1alpha2).
-// +kubebuilder:validation:XValidation:rule="self.origin == 'auto' ? has(self.sourceType) && (!has(self.entries) || size(self.entries) == 0) : !has(self.sourceType) && has(self.entries) && size(self.entries) > 0",message="auto records require sourceType and no entries; manual records require entries and no sourceType"
+// +kubebuilder:validation:XValidation:rule="self.origin == 'auto' ? has(self.sourceType) : !has(self.sourceType) && has(self.entries) && size(self.entries) > 0",message="auto records require sourceType; manual records require entries and no sourceType"
 type DNSRecordSpec struct {
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Enum=auto;manual
@@ -30,7 +30,14 @@ type DNSRecordSpec struct {
 	// +optional
 	SourceType SourceType `json:"sourceType,omitempty"`
 
-	// Required when origin=manual. Must be empty when origin=auto.
+	// Endpoints projected for this DNSRecord.
+	//
+	// For origin=manual: required, set by the user (at least one entry).
+	// For origin=auto: written exclusively by the operator's DNS controller
+	// from the in-memory source store. The validating webhook reserves
+	// updates of auto records to the controller ServiceAccount, so manual
+	// edits by humans are rejected at admission. Any field stored here by
+	// other means will be overwritten at the next DNS reconcile.
 	// +optional
 	// +listType=map
 	// +listMapKey=fqdn

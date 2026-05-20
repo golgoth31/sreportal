@@ -265,7 +265,15 @@ spec:
             description: spec defines the desired state of DNSRecord
             properties:
               entries:
-                description: Required when origin=manual. Must be empty when origin=auto.
+                description: |-
+                  Endpoints projected for this DNSRecord.
+  
+                  For origin=manual: required, set by the user (at least one entry).
+                  For origin=auto: written exclusively by the operator's DNS controller
+                  from the in-memory source store. The validating webhook reserves
+                  updates of auto records to the controller ServiceAccount, so manual
+                  edits by humans are rejected at admission. Any field stored here by
+                  other means will be overwritten at the next DNS reconcile.
                 items:
                   description: DNSRecordEntry is a single manual DNS entry.
                   properties:
@@ -336,11 +344,10 @@ spec:
             - portalRef
             type: object
             x-kubernetes-validations:
-            - message: auto records require sourceType and no entries; manual records
-                require entries and no sourceType
-              rule: 'self.origin == ''auto'' ? has(self.sourceType) && (!has(self.entries)
-                || size(self.entries) == 0) : !has(self.sourceType) && has(self.entries)
-                && size(self.entries) > 0'
+            - message: auto records require sourceType; manual records require entries
+                and no sourceType
+              rule: 'self.origin == ''auto'' ? has(self.sourceType) : !has(self.sourceType)
+                && has(self.entries) && size(self.entries) > 0'
           status:
             description: status defines the observed state of DNSRecord
             properties:
