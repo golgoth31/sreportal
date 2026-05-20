@@ -515,7 +515,7 @@ _Appears in:_
 
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
-| `sourceType` _string_ | sourceType indicates the external-dns source type that provides this record |   | Enum: [service ingress dnsendpoint istio-gateway istio-virtualservice gateway-httproute gateway-grpcroute gateway-tlsroute gateway-tcproute gateway-udproute] |
+| `sourceType` _string_ | sourceType indicates the external-dns source type that provides this record. Empty when the v1alpha2 hub object has origin=manual (no source — entries live in the v1alpha2-only annotation). The conversion would otherwise produce a v1alpha1 object that fails its own validation. |   | Enum: [ service ingress dnsendpoint istio-gateway istio-virtualservice gateway-httproute gateway-grpcroute gateway-tlsroute gateway-tcproute gateway-udproute] |
 | `portalRef` _string_ | portalRef is the name of the Portal this record belongs to |   |   |
 
 

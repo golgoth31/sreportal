@@ -39,10 +39,13 @@ type preservedDNSRecordSpec struct {
 
 // DNSRecordSpec defines the desired state of DNSRecord
 type DNSRecordSpec struct {
-	// sourceType indicates the external-dns source type that provides this record
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Enum=service;ingress;dnsendpoint;istio-gateway;istio-virtualservice;gateway-httproute;gateway-grpcroute;gateway-tlsroute;gateway-tcproute;gateway-udproute
-	SourceType string `json:"sourceType"`
+	// sourceType indicates the external-dns source type that provides this record.
+	// Empty when the v1alpha2 hub object has origin=manual (no source — entries
+	// live in the v1alpha2-only annotation). The conversion would otherwise
+	// produce a v1alpha1 object that fails its own validation.
+	// +optional
+	// +kubebuilder:validation:Enum="";service;ingress;dnsendpoint;istio-gateway;istio-virtualservice;gateway-httproute;gateway-grpcroute;gateway-tlsroute;gateway-tcproute;gateway-udproute
+	SourceType string `json:"sourceType,omitempty"`
 
 	// portalRef is the name of the Portal this record belongs to
 	// +kubebuilder:validation:Required

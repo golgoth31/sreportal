@@ -75,9 +75,13 @@ spec:
                 minLength: 1
                 type: string
               sourceType:
-                description: sourceType indicates the external-dns source type that
-                  provides this record
+                description: |-
+                  sourceType indicates the external-dns source type that provides this record.
+                  Empty when the v1alpha2 hub object has origin=manual (no source — entries
+                  live in the v1alpha2-only annotation). The conversion would otherwise
+                  produce a v1alpha1 object that fails its own validation.
                 enum:
+                - ""
                 - service
                 - ingress
                 - dnsendpoint
@@ -91,7 +95,6 @@ spec:
                 type: string
             required:
             - portalRef
-            - sourceType
             type: object
           status:
             description: status defines the observed state of DNSRecord
