@@ -105,22 +105,6 @@ func TestDNSRecordWebhook_AutoRequiresSourceType(t *testing.T) {
 	g.Expect(err.Error()).To(ContainSubstring("sourceType is required"))
 }
 
-func TestDNSRecordWebhook_AutoRejectsEntries(t *testing.T) {
-	g := NewWithT(t)
-	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t), "")
-	r := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Name: tRecordIngress},
-		Spec: sreportalv1alpha2.DNSRecordSpec{
-			Origin:     sreportalv1alpha2.DNSRecordOriginAuto,
-			PortalRef:  tPortalMain,
-			SourceType: tSourceIngress,
-			Entries:    []sreportalv1alpha2.DNSRecordEntry{{FQDN: tFQDNAPIExamp}},
-		},
-	}
-	_, err := v.ValidateCreate(context.Background(), r)
-	g.Expect(err).To(HaveOccurred())
-	g.Expect(err.Error()).To(ContainSubstring("entries must be empty"))
-}
 
 func TestDNSRecordWebhook_ManualRequiresEntries(t *testing.T) {
 	g := NewWithT(t)
@@ -574,4 +558,53 @@ func TestDNSRecordWebhook_AutoAllowedWhenNoSAConfigured(t *testing.T) {
 	}
 	_, err := v.ValidateCreate(ctxWithUser("any-user"), r)
 	g.Expect(err).NotTo(HaveOccurred())
+}
+
+func TestDNSRecordWebhook_AutoAllowsEntriesFromControllerSA(t *testing.T) {
+	g := NewWithT(t)
+	controllerSA := "system:serviceaccount:sreportal-system:sreportal-controller-manager"
+	dns := newDNS()
+	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), controllerSA)
+	r := &sreportalv1alpha2.DNSRecord{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            tRecordIngress,
+			Namespace:       tNamespace,
+			OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
+		},
+		Spec: sreportalv1alpha2.DNSRecordSpec{
+			Origin:     sreportalv1alpha2.DNSRecordOriginAuto,
+			PortalRef:  tPortalMain,
+			SourceType: tSourceIngress,
+			Entries: []sreportalv1alpha2.DNSRecordEntry{
+				{FQDN: tFQDNAPIExamp, RecordType: "A", Targets: []string{"1.2.3.4"}},
+			},
+		},
+	}
+	_, err := v.ValidateCreate(ctxWithUser(controllerSA), r)
+	g.Expect(err).NotTo(HaveOccurred())
+}
+
+func TestDNSRecordWebhook_AutoRejectsEntriesFromNonControllerSA(t *testing.T) {
+	g := NewWithT(t)
+	controllerSA := "system:serviceaccount:sreportal-system:sreportal-controller-manager"
+	dns := newDNS()
+	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), controllerSA)
+	r := &sreportalv1alpha2.DNSRecord{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            tRecordIngress,
+			Namespace:       tNamespace,
+			OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
+		},
+		Spec: sreportalv1alpha2.DNSRecordSpec{
+			Origin:     sreportalv1alpha2.DNSRecordOriginAuto,
+			PortalRef:  tPortalMain,
+			SourceType: tSourceIngress,
+			Entries: []sreportalv1alpha2.DNSRecordEntry{
+				{FQDN: tFQDNAPIExamp, RecordType: "A", Targets: []string{"1.2.3.4"}},
+			},
+		},
+	}
+	_, err := v.ValidateCreate(ctxWithUser("kubectl-user"), r)
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(err.Error()).To(ContainSubstring("reserved for the operator controller"))
 }

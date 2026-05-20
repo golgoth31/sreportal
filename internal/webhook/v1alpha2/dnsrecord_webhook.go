@@ -86,9 +86,6 @@ func (v *DNSRecordCustomValidator) validate(ctx context.Context, r *sreportalv1a
 		if r.Spec.SourceType == "" {
 			return fmt.Errorf("spec.sourceType is required when spec.origin=auto")
 		}
-		if len(r.Spec.Entries) > 0 {
-			return fmt.Errorf("spec.entries must be empty when spec.origin=auto")
-		}
 		// origin=auto reserved to controller SA. Fail closed if we cannot
 		// determine the caller (no admission context): refusing is safer than
 		// letting an unauthenticated path through.
