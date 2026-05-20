@@ -39,7 +39,11 @@ import (
 	"github.com/golgoth31/sreportal/internal/source/service"
 )
 
-const upsertTestNS1 = "ns1"
+const (
+	upsertTestNS1     = "ns1"
+	upsertTestRecord  = "d-service"
+	upsertTestTargetA = "1.1.1.1"
+)
 
 func TestUpsertDNSRecords_CreatesAndDeletes(t *testing.T) {
 	scheme := runtime.NewScheme()
@@ -77,21 +81,21 @@ func TestUpsertDNSRecords_CreatesAndDeletes(t *testing.T) {
 		Resource: dns,
 		Data: dnschain.ChainData{
 			KeptEndpointsByKind: map[registry.SourceType][]*endpoint.Endpoint{
-				service.SourceTypeService: {endpoint.NewEndpoint("a.example.com", "A", "1.1.1.1")},
+				service.SourceTypeService: {endpoint.NewEndpoint("a.example.com", "A", upsertTestTargetA)},
 			},
 		},
 	}
 	require.NoError(t, h.Handle(context.Background(), rc))
 
 	var created sreportalv1alpha2.DNSRecord
-	require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: upsertTestNS1, Name: "d-service"}, &created))
+	require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: upsertTestNS1, Name: upsertTestRecord}, &created))
 	require.Equal(t, sreportalv1alpha2.DNSRecordOriginAuto, created.Spec.Origin)
 	require.Equal(t, string(service.SourceTypeService), string(created.Spec.SourceType))
 	require.Equal(t, "p", created.Spec.PortalRef)
 	require.Len(t, created.Spec.Entries, 1)
 	require.Equal(t, "a.example.com", created.Spec.Entries[0].FQDN)
 	require.Equal(t, "A", created.Spec.Entries[0].RecordType)
-	require.Equal(t, []string{"1.1.1.1"}, created.Spec.Entries[0].Targets)
+	require.Equal(t, []string{upsertTestTargetA}, created.Spec.Entries[0].Targets)
 
 	var gone sreportalv1alpha2.DNSRecord
 	err := c.Get(context.Background(), types.NamespacedName{Namespace: upsertTestNS1, Name: "d-ingress"}, &gone)
@@ -122,7 +126,7 @@ func TestUpsertDNSRecordsHandler_MultipleKinds(t *testing.T) {
 		Data: dnschain.ChainData{
 			KeptEndpointsByKind: map[registry.SourceType][]*endpoint.Endpoint{
 				service.SourceTypeService: {
-					endpoint.NewEndpoint("svc.example.com", "A", "1.1.1.1"),
+					endpoint.NewEndpoint("svc.example.com", "A", upsertTestTargetA),
 				},
 				ingress.SourceTypeIngress: {
 					endpoint.NewEndpoint("ing.example.com", "A", "2.2.2.2"),
@@ -218,7 +222,7 @@ func TestUpsertDNSRecordsHandler_DualStack(t *testing.T) {
 	require.NoError(t, h.Handle(context.Background(), rc))
 
 	var created sreportalv1alpha2.DNSRecord
-	require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: upsertTestNS1, Name: "d-service"}, &created))
+	require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: upsertTestNS1, Name: upsertTestRecord}, &created))
 	require.Len(t, created.Spec.Entries, 2, "both A and AAAA must be preserved")
 	byType := map[string]sreportalv1alpha2.DNSRecordEntry{}
 	for _, e := range created.Spec.Entries {
@@ -263,20 +267,20 @@ func TestUpsertDNSRecordsHandler_DeterministicOrder(t *testing.T) {
 
 	order1 := []*endpoint.Endpoint{
 		endpoint.NewEndpoint("b.example.com", "A", "2.2.2.2"),
-		endpoint.NewEndpoint("a.example.com", "A", "1.1.1.1"),
+		endpoint.NewEndpoint("a.example.com", "A", upsertTestTargetA),
 		endpoint.NewEndpoint("a.example.com", "AAAA", "::1"),
 	}
 	require.NoError(t, h.Handle(context.Background(), build(order1)))
 
 	var first sreportalv1alpha2.DNSRecord
-	key := types.NamespacedName{Namespace: upsertTestNS1, Name: "d-service"}
+	key := types.NamespacedName{Namespace: upsertTestNS1, Name: upsertTestRecord}
 	require.NoError(t, c.Get(context.Background(), key, &first))
 	firstRV := first.ResourceVersion
 
 	order2 := []*endpoint.Endpoint{
 		endpoint.NewEndpoint("a.example.com", "AAAA", "::1"),
 		endpoint.NewEndpoint("b.example.com", "A", "2.2.2.2"),
-		endpoint.NewEndpoint("a.example.com", "A", "1.1.1.1"),
+		endpoint.NewEndpoint("a.example.com", "A", upsertTestTargetA),
 	}
 	require.NoError(t, h.Handle(context.Background(), build(order2)))
 
@@ -318,7 +322,7 @@ func TestUpsertDNSRecordsHandler_DedupSameKey(t *testing.T) {
 			KeptEndpointsByKind: map[registry.SourceType][]*endpoint.Endpoint{
 				service.SourceTypeService: {
 					endpoint.NewEndpoint("dup.example.com", "A", "2.2.2.2"),
-					endpoint.NewEndpoint("dup.example.com", "A", "1.1.1.1"),
+					endpoint.NewEndpoint("dup.example.com", "A", upsertTestTargetA),
 				},
 			},
 		},
@@ -326,7 +330,7 @@ func TestUpsertDNSRecordsHandler_DedupSameKey(t *testing.T) {
 	require.NoError(t, h.Handle(context.Background(), rc))
 
 	var created sreportalv1alpha2.DNSRecord
-	require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: upsertTestNS1, Name: "d-service"}, &created))
+	require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: upsertTestNS1, Name: upsertTestRecord}, &created))
 	require.Len(t, created.Spec.Entries, 1, "duplicate (fqdn, recordType) must be deduplicated")
 	require.Equal(t, []string{"1.1.1.1", "2.2.2.2"}, created.Spec.Entries[0].Targets,
 		"targets from duplicates must be merged and sorted")
@@ -355,7 +359,7 @@ func TestUpsertDNSRecordsHandler_NoOpWhenUnchanged(t *testing.T) {
 			Resource: dns,
 			Data: dnschain.ChainData{
 				KeptEndpointsByKind: map[registry.SourceType][]*endpoint.Endpoint{
-					service.SourceTypeService: {endpoint.NewEndpoint("a.example.com", "A", "1.1.1.1")},
+					service.SourceTypeService: {endpoint.NewEndpoint("a.example.com", "A", upsertTestTargetA)},
 				},
 			},
 		}
@@ -364,7 +368,7 @@ func TestUpsertDNSRecordsHandler_NoOpWhenUnchanged(t *testing.T) {
 	require.NoError(t, h.Handle(context.Background(), build()))
 
 	var first sreportalv1alpha2.DNSRecord
-	key := types.NamespacedName{Namespace: upsertTestNS1, Name: "d-service"}
+	key := types.NamespacedName{Namespace: upsertTestNS1, Name: upsertTestRecord}
 	require.NoError(t, c.Get(context.Background(), key, &first))
 	firstGen := first.Generation
 	firstRV := first.ResourceVersion

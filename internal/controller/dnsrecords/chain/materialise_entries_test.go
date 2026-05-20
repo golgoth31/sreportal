@@ -121,12 +121,13 @@ func TestMaterialiseEntriesHandler_RecordTypeVariants(t *testing.T) {
 // handlers (ResolveDNS, ProjectStore) cannot drop the materialised status
 // by short-circuiting.
 func TestMaterialiseEntriesHandler_PersistsStatus(t *testing.T) {
+	const persistName = "persist"
 	g := NewWithT(t)
 	scheme := runtime.NewScheme()
 	g.Expect(v1alpha2.AddToScheme(scheme)).To(Succeed())
 
 	record := &v1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Name: "persist", Namespace: tNsDefault, Generation: 3},
+		ObjectMeta: metav1.ObjectMeta{Name: persistName, Namespace: tNsDefault, Generation: 3},
 		Spec: v1alpha2.DNSRecordSpec{
 			Origin:    v1alpha2.DNSRecordOriginManual,
 			PortalRef: tPortalMain,
@@ -146,7 +147,7 @@ func TestMaterialiseEntriesHandler_PersistsStatus(t *testing.T) {
 	g.Expect(h.Handle(context.Background(), rc)).To(Succeed())
 
 	var got v1alpha2.DNSRecord
-	g.Expect(c.Get(context.Background(), types.NamespacedName{Namespace: tNsDefault, Name: "persist"}, &got)).To(Succeed())
+	g.Expect(c.Get(context.Background(), types.NamespacedName{Namespace: tNsDefault, Name: persistName}, &got)).To(Succeed())
 	g.Expect(got.Status.Endpoints).To(HaveLen(1))
 	g.Expect(got.Status.EndpointsHash).NotTo(BeEmpty())
 	g.Expect(got.Status.ObservedGeneration).To(Equal(int64(3)))
@@ -155,7 +156,7 @@ func TestMaterialiseEntriesHandler_PersistsStatus(t *testing.T) {
 	// Second call with the same content: must not patch (hash + obsGen unchanged).
 	rv := got.ResourceVersion
 	g.Expect(h.Handle(context.Background(), rc)).To(Succeed())
-	g.Expect(c.Get(context.Background(), types.NamespacedName{Namespace: tNsDefault, Name: "persist"}, &got)).To(Succeed())
+	g.Expect(c.Get(context.Background(), types.NamespacedName{Namespace: tNsDefault, Name: persistName}, &got)).To(Succeed())
 	g.Expect(got.ResourceVersion).To(Equal(rv), "no-op materialise must not patch status")
 }
 

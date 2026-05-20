@@ -115,18 +115,21 @@ func Migrate(ctx context.Context, c client.Client, dryRun bool) (Summary, error)
 						continue
 					}
 					var existing v1alpha2.DNSRecord
-					getErr := c.Get(ctx, types.NamespacedName{Namespace: dns.Namespace, Name: recordName}, &existing)
-					if getErr != nil {
+					existingKey := types.NamespacedName{Namespace: dns.Namespace, Name: recordName}
+					if getErr := c.Get(ctx, existingKey, &existing); getErr != nil {
 						sum.Failures++
 						perDNSFailures++
-						errAggr = append(errAggr, fmt.Errorf("get existing %s/%s after AlreadyExists: %w", dns.Namespace, recordName, getErr))
+						errAggr = append(errAggr, fmt.Errorf(
+							"get existing %s/%s after AlreadyExists: %w",
+							dns.Namespace, recordName, getErr))
 						continue
 					}
 					if !sameEntries(existing.Spec.Entries, entries) {
 						sum.Failures++
 						perDNSFailures++
 						errAggr = append(errAggr, fmt.Errorf(
-							"DNSRecord %s/%s already exists with different entries; refusing to overwrite (rename group %q to avoid the collision)",
+							"DNSRecord %s/%s already exists with different entries; "+
+								"refusing to overwrite (rename group %q to avoid the collision)",
 							dns.Namespace, recordName, g.Name))
 						continue
 					}

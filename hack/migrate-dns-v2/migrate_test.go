@@ -13,6 +13,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
+const testGroupApps = "Apps"
+
 func TestMigrate_PartialFailure_KeepsAnnotation_NonZeroExit(t *testing.T) {
 	g := NewWithT(t)
 	scheme := newScheme()
@@ -187,7 +189,7 @@ func TestMigrate_AllAlreadyExists(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "p3-manual-apps", Namespace: "ns"},
 		Spec: v1alpha2.DNSRecordSpec{
 			Origin: v1alpha2.DNSRecordOriginManual, PortalRef: "p3",
-			Entries: []v1alpha2.DNSRecordEntry{{FQDN: "a.example.com", Group: "Apps", RecordType: "A"}},
+			Entries: []v1alpha2.DNSRecordEntry{{FQDN: "a.example.com", Group: testGroupApps, RecordType: "A"}},
 		},
 	}
 	existing2 := &v1alpha2.DNSRecord{
@@ -271,7 +273,7 @@ func TestMigrate_AlreadyExists_DifferentEntries_Fails(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "p5-manual-apps", Namespace: "ns"},
 		Spec: v1alpha2.DNSRecordSpec{
 			Origin: v1alpha2.DNSRecordOriginManual, PortalRef: "p5",
-			Entries: []v1alpha2.DNSRecordEntry{{FQDN: "stale.example.com", Group: "Apps", RecordType: "A"}},
+			Entries: []v1alpha2.DNSRecordEntry{{FQDN: "stale.example.com", Group: testGroupApps, RecordType: "A"}},
 		},
 	}
 	cli := fake.NewClientBuilder().WithScheme(scheme).WithObjects(dns, existing).Build()

@@ -146,7 +146,9 @@ const (
             secretKeyRef:
               key: {{ .Values.auth.secretKey | quote }}
               name: {{ .Values.auth.secretRef | quote }}
-        {{- end }}`
+        {{- end }}
+        - name: SREPORTAL_CONTROLLER_SA
+          value: system:serviceaccount:{{ .Release.Namespace }}:{{ include "helm.serviceAccountName" . }}`
 )
 
 const flowObserverBlock = `flowObserver:

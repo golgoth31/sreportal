@@ -639,7 +639,9 @@ func main() {
 		}
 		controllerSA := os.Getenv("SREPORTAL_CONTROLLER_SA")
 		if controllerSA == "" {
-			setupLog.Error(nil, "SREPORTAL_CONTROLLER_SA is required when webhooks are enabled; refusing to start with origin=auto admission open")
+			setupLog.Error(nil,
+				"SREPORTAL_CONTROLLER_SA is required when webhooks are enabled; "+
+					"refusing to start with origin=auto admission open")
 			os.Exit(1)
 		}
 		if err := webhookv1alpha2.SetupDNSRecordWebhookWithManager(mgr, controllerSA); err != nil {
