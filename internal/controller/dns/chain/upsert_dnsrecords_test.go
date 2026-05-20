@@ -230,6 +230,108 @@ func TestUpsertDNSRecordsHandler_DualStack(t *testing.T) {
 	require.Equal(t, []string{"::1"}, byType["AAAA"].Targets)
 }
 
+// TestUpsertDNSRecordsHandler_DeterministicOrder verifies that the upsert
+// path produces a stable spec.entries ordering regardless of the input slice
+// order. Source endpoints come from a map iterated in random order; without
+// a deterministic sort, spec would churn on every reconcile cycle and defeat
+// the spec-canonical idempotence promised by the controller.
+func TestUpsertDNSRecordsHandler_DeterministicOrder(t *testing.T) {
+	scheme := runtime.NewScheme()
+	require.NoError(t, sreportalv1alpha2.AddToScheme(scheme))
+
+	dns := &sreportalv1alpha2.DNS{
+		ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: upsertTestNS1, UID: "uid-det"},
+		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: "p"},
+	}
+	c := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithStatusSubresource(&sreportalv1alpha2.DNSRecord{}).
+		WithObjects(dns).
+		Build()
+
+	h := &dnschain.UpsertDNSRecordsHandler{Client: c}
+	build := func(eps []*endpoint.Endpoint) *reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData] {
+		return &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{
+			Resource: dns,
+			Data: dnschain.ChainData{
+				KeptEndpointsByKind: map[registry.SourceType][]*endpoint.Endpoint{
+					service.SourceTypeService: eps,
+				},
+			},
+		}
+	}
+
+	order1 := []*endpoint.Endpoint{
+		endpoint.NewEndpoint("b.example.com", "A", "2.2.2.2"),
+		endpoint.NewEndpoint("a.example.com", "A", "1.1.1.1"),
+		endpoint.NewEndpoint("a.example.com", "AAAA", "::1"),
+	}
+	require.NoError(t, h.Handle(context.Background(), build(order1)))
+
+	var first sreportalv1alpha2.DNSRecord
+	key := types.NamespacedName{Namespace: upsertTestNS1, Name: "d-service"}
+	require.NoError(t, c.Get(context.Background(), key, &first))
+	firstRV := first.ResourceVersion
+
+	order2 := []*endpoint.Endpoint{
+		endpoint.NewEndpoint("a.example.com", "AAAA", "::1"),
+		endpoint.NewEndpoint("b.example.com", "A", "2.2.2.2"),
+		endpoint.NewEndpoint("a.example.com", "A", "1.1.1.1"),
+	}
+	require.NoError(t, h.Handle(context.Background(), build(order2)))
+
+	var second sreportalv1alpha2.DNSRecord
+	require.NoError(t, c.Get(context.Background(), key, &second))
+	require.Equal(t, firstRV, second.ResourceVersion,
+		"identical content with different input order must not bump ResourceVersion")
+
+	require.Len(t, second.Spec.Entries, 3)
+	require.Equal(t, "a.example.com", second.Spec.Entries[0].FQDN)
+	require.Equal(t, "A", second.Spec.Entries[0].RecordType)
+	require.Equal(t, "a.example.com", second.Spec.Entries[1].FQDN)
+	require.Equal(t, "AAAA", second.Spec.Entries[1].RecordType)
+	require.Equal(t, "b.example.com", second.Spec.Entries[2].FQDN)
+}
+
+// TestUpsertDNSRecordsHandler_DedupSameKey verifies that duplicate
+// (FQDN, RecordType) entries from a source are collapsed to one, with
+// targets merged and sorted. external-dns can emit duplicate endpoints
+// when multiple Services/Ingresses share an FQDN.
+func TestUpsertDNSRecordsHandler_DedupSameKey(t *testing.T) {
+	scheme := runtime.NewScheme()
+	require.NoError(t, sreportalv1alpha2.AddToScheme(scheme))
+
+	dns := &sreportalv1alpha2.DNS{
+		ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: upsertTestNS1, UID: "uid-dedup"},
+		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: "p"},
+	}
+	c := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithStatusSubresource(&sreportalv1alpha2.DNSRecord{}).
+		WithObjects(dns).
+		Build()
+
+	h := &dnschain.UpsertDNSRecordsHandler{Client: c}
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{
+		Resource: dns,
+		Data: dnschain.ChainData{
+			KeptEndpointsByKind: map[registry.SourceType][]*endpoint.Endpoint{
+				service.SourceTypeService: {
+					endpoint.NewEndpoint("dup.example.com", "A", "2.2.2.2"),
+					endpoint.NewEndpoint("dup.example.com", "A", "1.1.1.1"),
+				},
+			},
+		},
+	}
+	require.NoError(t, h.Handle(context.Background(), rc))
+
+	var created sreportalv1alpha2.DNSRecord
+	require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: upsertTestNS1, Name: "d-service"}, &created))
+	require.Len(t, created.Spec.Entries, 1, "duplicate (fqdn, recordType) must be deduplicated")
+	require.Equal(t, []string{"1.1.1.1", "2.2.2.2"}, created.Spec.Entries[0].Targets,
+		"targets from duplicates must be merged and sorted")
+}
+
 // TestUpsertDNSRecordsHandler_NoOpWhenUnchanged verifies that a second
 // reconcile with identical endpoints does not bump the DNSRecord
 // generation or ResourceVersion (the foundation of the burst-cascade fix).

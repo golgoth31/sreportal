@@ -19,6 +19,7 @@ package dns
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -95,19 +96,55 @@ func (h *UpsertDNSRecordsHandler) upsertOne(ctx context.Context, dns *sreportalv
 // DNSRecordEntry used in spec.entries. The group label is propagated via
 // DNSRecordEntry.Group; other labels are dropped here and will be re-derived
 // downstream from the DNS CR config.
+//
+// Output is deterministic: entries are sorted by (FQDN, RecordType) and each
+// entry's Targets is sorted. Duplicate (FQDN, RecordType) inputs are merged
+// (targets unioned). Determinism + dedup keep CreateOrUpdate idempotent —
+// the spec is written only when content actually changes, and the
+// GenerationChangedPredicate on the DNSRecord controller filters out
+// no-op spec updates.
 func endpointsToEntries(eps []*endpoint.Endpoint) []sreportalv1alpha2.DNSRecordEntry {
-	out := make([]sreportalv1alpha2.DNSRecordEntry, 0, len(eps))
-	for _, e := range eps {
-		entry := sreportalv1alpha2.DNSRecordEntry{
-			FQDN:       e.DNSName,
-			RecordType: e.RecordType,
-			Targets:    append([]string(nil), e.Targets...),
-		}
-		if g, ok := e.Labels["sreportal.io/group"]; ok {
-			entry.Group = g
-		}
-		out = append(out, entry)
+	type key struct {
+		fqdn, recordType string
 	}
+	byKey := make(map[key]*sreportalv1alpha2.DNSRecordEntry, len(eps))
+	for _, e := range eps {
+		k := key{fqdn: e.DNSName, recordType: e.RecordType}
+		entry, ok := byKey[k]
+		if !ok {
+			entry = &sreportalv1alpha2.DNSRecordEntry{
+				FQDN:       e.DNSName,
+				RecordType: e.RecordType,
+			}
+			if g, gok := e.Labels["sreportal.io/group"]; gok {
+				entry.Group = g
+			}
+			byKey[k] = entry
+		}
+		entry.Targets = append(entry.Targets, e.Targets...)
+	}
+
+	out := make([]sreportalv1alpha2.DNSRecordEntry, 0, len(byKey))
+	for _, entry := range byKey {
+		seen := make(map[string]struct{}, len(entry.Targets))
+		dedup := entry.Targets[:0]
+		for _, t := range entry.Targets {
+			if _, exists := seen[t]; exists {
+				continue
+			}
+			seen[t] = struct{}{}
+			dedup = append(dedup, t)
+		}
+		sort.Strings(dedup)
+		entry.Targets = dedup
+		out = append(out, *entry)
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].FQDN != out[j].FQDN {
+			return out[i].FQDN < out[j].FQDN
+		}
+		return out[i].RecordType < out[j].RecordType
+	})
 	return out
 }
 
