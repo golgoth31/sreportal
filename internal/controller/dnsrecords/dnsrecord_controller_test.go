@@ -124,8 +124,9 @@ var _ = Describe("DNSRecord Controller", func() {
 				Expect(k8sClient.Create(ctx, &v1alpha2.DNSRecord{
 					ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: tNsDefault},
 					Spec: v1alpha2.DNSRecordSpec{
-						Origin:    v1alpha2.DNSRecordOriginManual,
-						PortalRef: tPortalMy,
+						Origin:     v1alpha2.DNSRecordOriginAuto,
+						SourceType: tSrcService,
+						PortalRef:  tPortalMy,
 						Entries: []v1alpha2.DNSRecordEntry{
 							{FQDN: "api.example.com", RecordType: "A", Targets: []string{tIP1234}},
 							{FQDN: "web.example.com", RecordType: "CNAME", Targets: []string{"lb.example.com"}},
@@ -158,7 +159,7 @@ var _ = Describe("DNSRecord Controller", func() {
 				for _, v := range views {
 					g.Expect(v.FirstPortal()).To(Equal(tPortalMy))
 					g.Expect(v.Namespace).To(Equal(tNsDefault))
-					g.Expect(v.Source).To(Equal(domaindns.SourceManual))
+					g.Expect(v.Source).To(Equal(domaindns.SourceExternalDNS))
 				}
 			}, timeout, interval).Should(Succeed())
 		})
@@ -179,8 +180,9 @@ var _ = Describe("DNSRecord Controller", func() {
 			Expect(k8sClient.Create(ctx, &v1alpha2.DNSRecord{
 				ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: tNsDefault},
 				Spec: v1alpha2.DNSRecordSpec{
-					Origin:    v1alpha2.DNSRecordOriginManual,
-					PortalRef: tPortalMain,
+					Origin:     v1alpha2.DNSRecordOriginAuto,
+					SourceType: tSrcService,
+					PortalRef:  tPortalMain,
 					Entries: []v1alpha2.DNSRecordEntry{
 						{FQDN: "delete-me.example.com", RecordType: "A", Targets: []string{tIP1234}},
 					},
@@ -229,8 +231,9 @@ var _ = Describe("DNSRecord Controller", func() {
 				Expect(k8sClient.Create(ctx, &v1alpha2.DNSRecord{
 					ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: tNsDefault},
 					Spec: v1alpha2.DNSRecordSpec{
-						Origin:    v1alpha2.DNSRecordOriginManual,
-						PortalRef: tPortalMy,
+						Origin:     v1alpha2.DNSRecordOriginAuto,
+						SourceType: tSrcService,
+						PortalRef:  tPortalMy,
 						Entries: []v1alpha2.DNSRecordEntry{
 							{FQDN: "resolved.example.com", RecordType: "A", Targets: []string{tIP1234}},
 							{FQDN: "missing.example.com", RecordType: "A", Targets: []string{"5.6.7.8"}},
@@ -311,8 +314,9 @@ var _ = Describe("DNSRecord Controller", func() {
 			Expect(k8sClient.Create(ctx, &v1alpha2.DNSRecord{
 				ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: tNsDefault},
 				Spec: v1alpha2.DNSRecordSpec{
-					Origin:    v1alpha2.DNSRecordOriginManual,
-					PortalRef: tPortalMain,
+					Origin:     v1alpha2.DNSRecordOriginAuto,
+					SourceType: tSrcService,
+					PortalRef:  tPortalMain,
 					Entries: []v1alpha2.DNSRecordEntry{
 						{FQDN: "hash.example.com", RecordType: "A", Targets: []string{tIP1234}},
 					},
@@ -349,8 +353,9 @@ var _ = Describe("DNSRecord Controller", func() {
 			Expect(k8sClient.Create(ctx, &v1alpha2.DNSRecord{
 				ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: tNsDefault},
 				Spec: v1alpha2.DNSRecordSpec{
-					Origin:    v1alpha2.DNSRecordOriginManual,
-					PortalRef: tPortalMain,
+					Origin:     v1alpha2.DNSRecordOriginAuto,
+					SourceType: tSrcService,
+					PortalRef:  tPortalMain,
 					Entries: []v1alpha2.DNSRecordEntry{
 						{FQDN: "edited.example.com", RecordType: "A", Targets: []string{"9.9.9.9"}},
 					},

@@ -147,8 +147,9 @@ var _ = Describe("DNS Controller", func() {
 				rec = &v1alpha2.DNSRecord{
 					ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: tNsDefault},
 					Spec: v1alpha2.DNSRecordSpec{
-						Origin:    v1alpha2.DNSRecordOriginManual,
-						PortalRef: dnsName,
+						Origin:     v1alpha2.DNSRecordOriginAuto,
+						SourceType: "ingress",
+						PortalRef:  dnsName,
 						Entries: []v1alpha2.DNSRecordEntry{
 							{FQDN: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
 						},
