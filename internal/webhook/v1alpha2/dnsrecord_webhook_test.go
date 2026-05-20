@@ -141,7 +141,7 @@ func TestDNSRecordWebhook_ManualRejectsSourceType(t *testing.T) {
 
 func TestDNSRecordWebhook_OriginImmutable(t *testing.T) {
 	g := NewWithT(t)
-	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t), "")
+	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t), testControllerSA)
 	old := &sreportalv1alpha2.DNSRecord{
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:    sreportalv1alpha2.DNSRecordOriginManual,
@@ -156,7 +156,7 @@ func TestDNSRecordWebhook_OriginImmutable(t *testing.T) {
 			SourceType: tSourceIngress,
 		},
 	}
-	_, err := v.ValidateUpdate(context.Background(), old, newR)
+	_, err := v.ValidateUpdate(ctxWithUser(testControllerSA), old, newR)
 	g.Expect(err).To(HaveOccurred())
 	g.Expect(err.Error()).To(ContainSubstring("origin is immutable"))
 }
@@ -204,7 +204,7 @@ func TestDNSRecordWebhook_AutoBlockedForNonControllerSA(t *testing.T) {
 func TestDNSRecordWebhook_AutoValidCreate(t *testing.T) {
 	g := NewWithT(t)
 	dns := newDNS()
-	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), "")
+	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), testControllerSA)
 	r := &sreportalv1alpha2.DNSRecord{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            tRecordIngress,
@@ -217,7 +217,7 @@ func TestDNSRecordWebhook_AutoValidCreate(t *testing.T) {
 			SourceType: tSourceIngress,
 		},
 	}
-	_, err := v.ValidateCreate(context.Background(), r)
+	_, err := v.ValidateCreate(ctxWithUser(testControllerSA), r)
 	g.Expect(err).NotTo(HaveOccurred())
 }
 
@@ -312,7 +312,7 @@ func TestDNSRecordWebhook_AutoAllowedForControllerSA(t *testing.T) {
 func TestDNSRecordWebhook_AutoRejectsMissingOwnerRef(t *testing.T) {
 	g := NewWithT(t)
 	dns := newDNS()
-	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), "")
+	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), testControllerSA)
 	r := &sreportalv1alpha2.DNSRecord{
 		ObjectMeta: metav1.ObjectMeta{Name: tRecordIngress, Namespace: tNamespace},
 		Spec: sreportalv1alpha2.DNSRecordSpec{
@@ -321,7 +321,7 @@ func TestDNSRecordWebhook_AutoRejectsMissingOwnerRef(t *testing.T) {
 			SourceType: tSourceIngress,
 		},
 	}
-	_, err := v.ValidateCreate(context.Background(), r)
+	_, err := v.ValidateCreate(ctxWithUser(testControllerSA), r)
 	g.Expect(err).To(HaveOccurred())
 	g.Expect(err.Error()).To(ContainSubstring("required when spec.origin=auto"))
 }
@@ -329,7 +329,7 @@ func TestDNSRecordWebhook_AutoRejectsMissingOwnerRef(t *testing.T) {
 func TestDNSRecordWebhook_RejectsMultipleDNSControllerOwnerRefs(t *testing.T) {
 	g := NewWithT(t)
 	dns := newDNS()
-	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), "")
+	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), testControllerSA)
 	ref2 := validOwnerRef()
 	ref2.Name = "second-dns"
 	ref2.UID = "dns-uid-second"
@@ -345,7 +345,7 @@ func TestDNSRecordWebhook_RejectsMultipleDNSControllerOwnerRefs(t *testing.T) {
 			SourceType: tSourceIngress,
 		},
 	}
-	_, err := v.ValidateCreate(context.Background(), r)
+	_, err := v.ValidateCreate(ctxWithUser(testControllerSA), r)
 	g.Expect(err).To(HaveOccurred())
 	g.Expect(err.Error()).To(ContainSubstring("at most one ownerReference"))
 }
@@ -353,7 +353,7 @@ func TestDNSRecordWebhook_RejectsMultipleDNSControllerOwnerRefs(t *testing.T) {
 func TestDNSRecordWebhook_RejectsOwnerRefWithoutBlockOwnerDeletion(t *testing.T) {
 	g := NewWithT(t)
 	dns := newDNS()
-	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), "")
+	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), testControllerSA)
 	ref := validOwnerRef()
 	ref.BlockOwnerDeletion = nil
 	r := &sreportalv1alpha2.DNSRecord{
@@ -368,7 +368,7 @@ func TestDNSRecordWebhook_RejectsOwnerRefWithoutBlockOwnerDeletion(t *testing.T)
 			SourceType: tSourceIngress,
 		},
 	}
-	_, err := v.ValidateCreate(context.Background(), r)
+	_, err := v.ValidateCreate(ctxWithUser(testControllerSA), r)
 	g.Expect(err).To(HaveOccurred())
 	g.Expect(err.Error()).To(ContainSubstring("blockOwnerDeletion=true"))
 }
@@ -376,7 +376,7 @@ func TestDNSRecordWebhook_RejectsOwnerRefWithoutBlockOwnerDeletion(t *testing.T)
 func TestDNSRecordWebhook_RejectsDanglingOwnerDNS(t *testing.T) {
 	g := NewWithT(t)
 	// fake client has no DNS objects → owner lookup returns NotFound.
-	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t), "")
+	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t), testControllerSA)
 	r := &sreportalv1alpha2.DNSRecord{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            tRecordIngress,
@@ -389,7 +389,7 @@ func TestDNSRecordWebhook_RejectsDanglingOwnerDNS(t *testing.T) {
 			SourceType: tSourceIngress,
 		},
 	}
-	_, err := v.ValidateCreate(context.Background(), r)
+	_, err := v.ValidateCreate(ctxWithUser(testControllerSA), r)
 	g.Expect(err).To(HaveOccurred())
 	g.Expect(err.Error()).To(ContainSubstring("not found in namespace"))
 }
@@ -397,7 +397,7 @@ func TestDNSRecordWebhook_RejectsDanglingOwnerDNS(t *testing.T) {
 func TestDNSRecordWebhook_RejectsPortalRefMismatch(t *testing.T) {
 	g := NewWithT(t)
 	dns := newDNS() // owner DNS has spec.portalRef=tPortalMain.
-	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), "")
+	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), testControllerSA)
 	r := &sreportalv1alpha2.DNSRecord{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            tRecordIngress,
@@ -410,7 +410,7 @@ func TestDNSRecordWebhook_RejectsPortalRefMismatch(t *testing.T) {
 			SourceType: tSourceIngress,
 		},
 	}
-	_, err := v.ValidateCreate(context.Background(), r)
+	_, err := v.ValidateCreate(ctxWithUser(testControllerSA), r)
 	g.Expect(err).To(HaveOccurred())
 	g.Expect(err.Error()).To(ContainSubstring("must match owner DNS spec.portalRef"))
 }
@@ -540,9 +540,12 @@ func TestDNSRecordWebhook_UpdateReparentingRejected(t *testing.T) {
 	g.Expect(err.Error()).To(ContainSubstring("cannot re-parent"))
 }
 
-func TestDNSRecordWebhook_AutoAllowedWhenNoSAConfigured(t *testing.T) {
+func TestDNSRecordWebhook_AutoRejectedWhenNoSAConfigured(t *testing.T) {
 	g := NewWithT(t)
-	// When controllerSA is empty, any user can create auto records (SA check disabled).
+	// Fail closed: empty controllerSA must refuse every origin=auto write,
+	// not silently allow them. Mirrors the cmd/main.go contract that the
+	// operator refuses to start without SREPORTAL_CONTROLLER_SA when
+	// webhooks are enabled.
 	dns := newDNS()
 	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), "")
 	r := &sreportalv1alpha2.DNSRecord{
@@ -558,7 +561,8 @@ func TestDNSRecordWebhook_AutoAllowedWhenNoSAConfigured(t *testing.T) {
 		},
 	}
 	_, err := v.ValidateCreate(ctxWithUser("any-user"), r)
-	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(err.Error()).To(ContainSubstring("SREPORTAL_CONTROLLER_SA"))
 }
 
 func TestDNSRecordWebhook_AutoAllowsEntriesFromControllerSA(t *testing.T) {

@@ -86,17 +86,20 @@ func (v *DNSRecordCustomValidator) validate(ctx context.Context, r *sreportalv1a
 		if r.Spec.SourceType == "" {
 			return fmt.Errorf("spec.sourceType is required when spec.origin=auto")
 		}
-		// origin=auto reserved to controller SA. Fail closed if we cannot
-		// determine the caller (no admission context): refusing is safer than
-		// letting an unauthenticated path through.
-		if v.controllerSA != "" {
-			req, err := admission.RequestFromContext(ctx)
-			if err != nil {
-				return fmt.Errorf("cannot determine caller identity for origin=auto: %w", err)
-			}
-			if req.UserInfo.Username != v.controllerSA {
-				return fmt.Errorf("spec.origin=auto is reserved for the operator controller (caller: %q)", req.UserInfo.Username)
-			}
+		// origin=auto reserved to controller SA. Enforced unconditionally:
+		// if the operator was started without a configured controllerSA we
+		// refuse every auto-origin write rather than fall open. The
+		// constructor accepts an empty SA so tests can exercise this branch;
+		// production startup (cmd/main.go) requires the env var.
+		if v.controllerSA == "" {
+			return fmt.Errorf("origin=auto admission is disabled: operator started without SREPORTAL_CONTROLLER_SA")
+		}
+		req, err := admission.RequestFromContext(ctx)
+		if err != nil {
+			return fmt.Errorf("cannot determine caller identity for origin=auto: %w", err)
+		}
+		if req.UserInfo.Username != v.controllerSA {
+			return fmt.Errorf("spec.origin=auto is reserved for the operator controller (caller: %q)", req.UserInfo.Username)
 		}
 	case sreportalv1alpha2.DNSRecordOriginManual:
 		if r.Spec.SourceType != "" {

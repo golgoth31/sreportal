@@ -43,6 +43,8 @@ spec:
         {{- end }}
         - name: KUBERNETES_CLUSTER_DOMAIN
           value: {{ quote .Values.kubernetesClusterDomain }}
+        - name: SREPORTAL_CONTROLLER_SA
+          value: system:serviceaccount:{{ .Release.Namespace }}:{{ include "helm.serviceAccountName" . }}
         image: {{ .Values.controllerManager.manager.image.repository }}:{{ .Values.controllerManager.manager.image.tag
           | default .Chart.AppVersion }}
         livenessProbe:
