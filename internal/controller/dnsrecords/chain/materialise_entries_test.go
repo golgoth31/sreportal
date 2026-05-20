@@ -1,4 +1,4 @@
-// internal/controller/dnsrecords/chain/materialise_manual_test.go
+// internal/controller/dnsrecords/chain/materialise_entries_test.go
 package chain_test
 
 import (
@@ -13,7 +13,7 @@ import (
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
-func TestMaterialiseManualEntriesHandler_ConvertEntriesToEndpoints(t *testing.T) {
+func TestMaterialiseEntriesHandler_ConvertEntriesToEndpoints(t *testing.T) {
 	g := NewWithT(t)
 
 	record := &v1alpha2.DNSRecord{
@@ -34,7 +34,7 @@ func TestMaterialiseManualEntriesHandler_ConvertEntriesToEndpoints(t *testing.T)
 		Data:     chain.ChainData{ResourceKey: "default/main-manual-apis"},
 	}
 
-	h := chain.NewMaterialiseManualEntriesHandler()
+	h := chain.NewMaterialiseEntriesHandler()
 	err := h.Handle(context.Background(), rc)
 	g.Expect(err).NotTo(HaveOccurred())
 	g.Expect(record.Status.Endpoints).To(HaveLen(3))
@@ -46,23 +46,31 @@ func TestMaterialiseManualEntriesHandler_ConvertEntriesToEndpoints(t *testing.T)
 	g.Expect(record.Status.Endpoints[0].LastSeen.IsZero()).To(BeFalse())
 	g.Expect(record.Status.Endpoints[0].Labels["sreportal.io/group"]).To(Equal("APIs"))
 	g.Expect(record.Status.Endpoints[2].Labels).To(BeNil())
+	g.Expect(record.Status.EndpointsHash).NotTo(BeEmpty())
 }
 
-func TestMaterialiseManualEntriesHandler_NoopForAuto(t *testing.T) {
+func TestMaterialiseEntriesHandler_MaterialisesForAuto(t *testing.T) {
 	g := NewWithT(t)
 	record := &v1alpha2.DNSRecord{
+		ObjectMeta: metav1.ObjectMeta{Name: "auto", Namespace: tNsDefault},
 		Spec: v1alpha2.DNSRecordSpec{
 			Origin:     v1alpha2.DNSRecordOriginAuto,
 			SourceType: "ingress",
+			PortalRef:  tPortalMain,
+			Entries: []v1alpha2.DNSRecordEntry{
+				{FQDN: "auto.example.com", RecordType: "A", Targets: []string{"1.2.3.4"}},
+			},
 		},
 	}
 	rc := &reconciler.ReconcileContext[*v1alpha2.DNSRecord, chain.ChainData]{Resource: record}
-	h := chain.NewMaterialiseManualEntriesHandler()
+	h := chain.NewMaterialiseEntriesHandler()
 	g.Expect(h.Handle(context.Background(), rc)).To(Succeed())
-	g.Expect(record.Status.Endpoints).To(BeNil())
+	g.Expect(record.Status.Endpoints).To(HaveLen(1))
+	g.Expect(record.Status.Endpoints[0].DNSName).To(Equal("auto.example.com"))
+	g.Expect(record.Status.EndpointsHash).NotTo(BeEmpty())
 }
 
-func TestMaterialiseManualEntriesHandler_EmptyEntries(t *testing.T) {
+func TestMaterialiseEntriesHandler_EmptyEntries(t *testing.T) {
 	g := NewWithT(t)
 	record := &v1alpha2.DNSRecord{
 		ObjectMeta: metav1.ObjectMeta{Name: "empty", Namespace: tNsDefault},
@@ -73,13 +81,14 @@ func TestMaterialiseManualEntriesHandler_EmptyEntries(t *testing.T) {
 		},
 	}
 	rc := &reconciler.ReconcileContext[*v1alpha2.DNSRecord, chain.ChainData]{Resource: record}
-	h := chain.NewMaterialiseManualEntriesHandler()
+	h := chain.NewMaterialiseEntriesHandler()
 	g.Expect(h.Handle(context.Background(), rc)).To(Succeed())
 	g.Expect(record.Status.Endpoints).To(BeEmpty())
 	g.Expect(record.Status.LastReconcileTime).NotTo(BeNil())
+	g.Expect(record.Status.EndpointsHash).To(Equal(""))
 }
 
-func TestMaterialiseManualEntriesHandler_RecordTypeVariants(t *testing.T) {
+func TestMaterialiseEntriesHandler_RecordTypeVariants(t *testing.T) {
 	g := NewWithT(t)
 	record := &v1alpha2.DNSRecord{
 		ObjectMeta: metav1.ObjectMeta{Name: "variants", Namespace: tNsDefault},
@@ -95,7 +104,7 @@ func TestMaterialiseManualEntriesHandler_RecordTypeVariants(t *testing.T) {
 		},
 	}
 	rc := &reconciler.ReconcileContext[*v1alpha2.DNSRecord, chain.ChainData]{Resource: record}
-	h := chain.NewMaterialiseManualEntriesHandler()
+	h := chain.NewMaterialiseEntriesHandler()
 	g.Expect(h.Handle(context.Background(), rc)).To(Succeed())
 	g.Expect(record.Status.Endpoints).To(HaveLen(4))
 	g.Expect(record.Status.Endpoints[0].RecordType).To(Equal("A"))
@@ -104,7 +113,7 @@ func TestMaterialiseManualEntriesHandler_RecordTypeVariants(t *testing.T) {
 	g.Expect(record.Status.Endpoints[3].RecordType).To(Equal("TXT"))
 }
 
-func TestMaterialiseManualEntriesHandler_Idempotent(t *testing.T) {
+func TestMaterialiseEntriesHandler_Idempotent(t *testing.T) {
 	g := NewWithT(t)
 	record := &v1alpha2.DNSRecord{
 		ObjectMeta: metav1.ObjectMeta{Name: "idem", Namespace: tNsDefault},
@@ -118,7 +127,7 @@ func TestMaterialiseManualEntriesHandler_Idempotent(t *testing.T) {
 		},
 	}
 	rc := &reconciler.ReconcileContext[*v1alpha2.DNSRecord, chain.ChainData]{Resource: record}
-	h := chain.NewMaterialiseManualEntriesHandler()
+	h := chain.NewMaterialiseEntriesHandler()
 	g.Expect(h.Handle(context.Background(), rc)).To(Succeed())
 	g.Expect(record.Status.Endpoints).To(HaveLen(2))
 
