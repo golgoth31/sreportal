@@ -237,14 +237,6 @@ func (src *DNS) ConvertTo(dstRaw conversion.Hub) error {
 		dst.Annotations[annotationV1Alpha1Groups] = string(raw)
 	}
 
-	// TODO(Phase 9): replaced by readstore — status groups are no longer stored in v1alpha2 DNSStatus.
-	// v1alpha1 status.groups had been mapped to v1alpha2 Status.Groups here, but that field was
-	// removed; FQDN grouping is now maintained in the ReadStore.
-	// for _, g := range src.Status.Groups {
-	// 	fqdns := make([]v1alpha2.FQDNStatus, 0, len(g.FQDNs))
-	// 	for _, f := range g.FQDNs { ... }
-	// 	dst.Status.Groups = append(dst.Status.Groups, ...)
-	// }
 	dst.Status.Conditions = src.Status.Conditions
 	dst.Status.LastReconcileTime = src.Status.LastReconcileTime
 	return nil
@@ -285,15 +277,6 @@ func (dst *DNS) ConvertFrom(srcRaw conversion.Hub) error {
 		delete(dst.Annotations, annotationV1Alpha1Groups)
 	}
 
-	// TODO(Phase 9): replaced by readstore — status groups are no longer stored in v1alpha2 DNSStatus.
-	// v1alpha2 Status.Groups was removed; FQDN grouping is now maintained in the ReadStore.
-	// When converting back to v1alpha1, status.groups will be empty until the readstore
-	// projection is wired (Phase 9).
-	// for _, g := range src.Status.Groups {
-	// 	fqdns := make([]FQDNStatus, 0, len(g.FQDNs))
-	// 	for _, f := range g.FQDNs { ... }
-	// 	dst.Status.Groups = append(dst.Status.Groups, ...)
-	// }
 	dst.Status.Conditions = src.Status.Conditions
 	dst.Status.LastReconcileTime = src.Status.LastReconcileTime
 	return nil

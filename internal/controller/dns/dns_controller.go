@@ -19,7 +19,6 @@ package dns
 import (
 	"context"
 	"errors"
-	"slices"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -173,52 +172,6 @@ func requeueInterval(dns *v1alpha2.DNS) time.Duration {
 		return MinRequeueAfter
 	}
 	return d
-}
-
-// GroupsToFQDNViews converts a DNS resource's status groups into a deduplicated,
-// sorted slice of FQDNViews for the read store.
-// NOTE: still takes *sreportalv1alpha1.DNS because sync_remote_dns.go (portal chain)
-// has not yet been migrated to v1alpha2. Will be updated when that migration is done.
-func GroupsToFQDNViews(resource *sreportalv1alpha1.DNS) []domaindns.FQDNView {
-	seen := make(map[string]*domaindns.FQDNView)
-
-	for _, group := range resource.Status.Groups {
-		for _, fqdn := range group.FQDNs {
-			key := fqdn.FQDN + "/" + fqdn.RecordType
-			if existing, ok := seen[key]; ok {
-				if !slices.Contains(existing.Groups, group.Name) {
-					existing.Groups = append(existing.Groups, group.Name)
-				}
-			} else {
-				view := domaindns.FQDNView{
-					Name:        fqdn.FQDN,
-					Source:      domaindns.Source(group.Source),
-					Groups:      []string{group.Name},
-					Description: fqdn.Description,
-					RecordType:  fqdn.RecordType,
-					Targets:     fqdn.Targets,
-					LastSeen:    fqdn.LastSeen.Time,
-					Portals:     []string{resource.Spec.PortalRef},
-					Namespace:   resource.Namespace,
-					SyncStatus:  fqdn.SyncStatus,
-				}
-				if fqdn.OriginRef != nil {
-					ref, _ := domaindns.ParseResourceRef(
-						fqdn.OriginRef.Kind + "/" + fqdn.OriginRef.Namespace + "/" + fqdn.OriginRef.Name,
-					)
-					view.OriginRef = &ref
-				}
-				seen[key] = &view
-			}
-		}
-	}
-
-	views := make([]domaindns.FQDNView, 0, len(seen))
-	for _, v := range seen {
-		views = append(views, *v)
-	}
-
-	return views
 }
 
 // SetupWithManager sets up the controller with the Manager.

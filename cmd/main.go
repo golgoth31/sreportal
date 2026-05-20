@@ -349,20 +349,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Add field indexer for DNSRecord.spec.portalRef
+	// Add field indexer for DNSRecord.spec.portalRef (v1alpha2 hub)
 	if err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),
-		&sreportalv1alpha1.DNSRecord{},
+		&sreportalv1alpha2.DNSRecord{},
 		portalfeatures.FieldIndexPortalRef,
 		func(o client.Object) []string {
-			dnsRecord := o.(*sreportalv1alpha1.DNSRecord)
+			dnsRecord := o.(*sreportalv1alpha2.DNSRecord)
 			if dnsRecord.Spec.PortalRef == "" {
 				return nil
 			}
 			return []string{dnsRecord.Spec.PortalRef}
 		},
 	); err != nil {
-		setupLog.Error(err, "unable to create field indexer", "field", portalfeatures.FieldIndexPortalRef)
+		setupLog.Error(err, "unable to create field indexer",
+			"field", portalfeatures.FieldIndexPortalRef, "kind", "v1alpha2.DNSRecord")
 		os.Exit(1)
 	}
 
@@ -384,24 +385,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Add field indexer for DNS.spec.portalRef
-	if err := mgr.GetFieldIndexer().IndexField(
-		context.Background(),
-		&sreportalv1alpha1.DNS{},
-		portalfeatures.FieldIndexPortalRef,
-		func(o client.Object) []string {
-			dns := o.(*sreportalv1alpha1.DNS)
-			if dns.Spec.PortalRef == "" {
-				return nil
-			}
-			return []string{dns.Spec.PortalRef}
-		},
-	); err != nil {
-		setupLog.Error(err, "unable to create field indexer", "field", portalfeatures.FieldIndexPortalRef)
-		os.Exit(1)
-	}
-
-	// Add field indexer for v1alpha2 DNS.spec.portalRef
+	// Add field indexer for DNS.spec.portalRef (v1alpha2 hub)
 	if err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),
 		&sreportalv1alpha2.DNS{},

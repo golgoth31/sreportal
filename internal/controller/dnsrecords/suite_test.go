@@ -100,21 +100,6 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).NotTo(HaveOccurred())
 
-	// Add field indexer for v1alpha1 DNSRecord.spec.portalRef
-	err = mgr.GetFieldIndexer().IndexField(
-		context.Background(),
-		&sreportalv1alpha1.DNSRecord{},
-		portalfeatures.FieldIndexPortalRef,
-		func(o client.Object) []string {
-			dnsRecord := o.(*sreportalv1alpha1.DNSRecord)
-			if dnsRecord.Spec.PortalRef == "" {
-				return nil
-			}
-			return []string{dnsRecord.Spec.PortalRef}
-		},
-	)
-	Expect(err).NotTo(HaveOccurred())
-
 	// Add field indexer for v1alpha2 DNSRecord.spec.portalRef
 	err = mgr.GetFieldIndexer().IndexField(
 		context.Background(),
@@ -130,22 +115,7 @@ var _ = BeforeSuite(func() {
 	)
 	Expect(err).NotTo(HaveOccurred())
 
-	// Add field indexer for DNS.spec.portalRef
-	err = mgr.GetFieldIndexer().IndexField(
-		context.Background(),
-		&sreportalv1alpha1.DNS{},
-		portalfeatures.FieldIndexPortalRef,
-		func(o client.Object) []string {
-			dns := o.(*sreportalv1alpha1.DNS)
-			if dns.Spec.PortalRef == "" {
-				return nil
-			}
-			return []string{dns.Spec.PortalRef}
-		},
-	)
-	Expect(err).NotTo(HaveOccurred())
-
-	// Add field indexer for v1alpha2 DNS.spec.portalRef
+	// Add field indexer for DNS.spec.portalRef (v1alpha2 hub)
 	err = mgr.GetFieldIndexer().IndexField(
 		context.Background(),
 		&v1alpha2.DNS{},

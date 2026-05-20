@@ -29,6 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	sreportalv1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 	domainnetpol "github.com/golgoth31/sreportal/internal/domain/netpol"
 	domainrelease "github.com/golgoth31/sreportal/internal/domain/release"
@@ -102,11 +103,11 @@ var _ = Describe("Portal Controller", func() {
 		recordNN := types.NamespacedName{Name: recordName, Namespace: tNsDefault}
 
 		AfterEach(func() {
-			rec := &sreportalv1alpha1.DNSRecord{}
+			rec := &sreportalv1alpha2.DNSRecord{}
 			if err := k8sClient.Get(ctx, recordNN, rec); err == nil {
 				_ = k8sClient.Delete(ctx, rec)
 			}
-			dns := &sreportalv1alpha1.DNS{}
+			dns := &sreportalv1alpha2.DNS{}
 			if err := k8sClient.Get(ctx, dnsNN, dns); err == nil {
 				_ = k8sClient.Delete(ctx, dns)
 			}
@@ -130,17 +131,19 @@ var _ = Describe("Portal Controller", func() {
 			})).To(Succeed())
 
 			By("creating a DNS CR for this portal")
-			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.DNS{
+			Expect(k8sClient.Create(ctx, &sreportalv1alpha2.DNS{
 				ObjectMeta: metav1.ObjectMeta{Name: dnsName, Namespace: tNsDefault},
-				Spec: sreportalv1alpha1.DNSSpec{
-					PortalRef: portalName,
+				Spec: sreportalv1alpha2.DNSSpec{
+					PortalRef:    portalName,
+					GroupMapping: sreportalv1alpha2.GroupMappingSpec{DefaultGroup: "Services"},
 				},
 			})).To(Succeed())
 
 			By("creating a DNSRecord CR for this portal")
-			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.DNSRecord{
+			Expect(k8sClient.Create(ctx, &sreportalv1alpha2.DNSRecord{
 				ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: tNsDefault},
-				Spec: sreportalv1alpha1.DNSRecordSpec{
+				Spec: sreportalv1alpha2.DNSRecordSpec{
+					Origin:     sreportalv1alpha2.DNSRecordOriginAuto,
 					SourceType: "service",
 					PortalRef:  portalName,
 				},
@@ -180,10 +183,10 @@ var _ = Describe("Portal Controller", func() {
 
 			By("verifying DNS CR still exists but DNSRecord is deleted")
 			Eventually(func(g Gomega) {
-				var dns sreportalv1alpha1.DNS
+				var dns sreportalv1alpha2.DNS
 				g.Expect(k8sClient.Get(ctx, dnsNN, &dns)).To(Succeed(), "DNS CR should be preserved")
 
-				var rec sreportalv1alpha1.DNSRecord
+				var rec sreportalv1alpha2.DNSRecord
 				err := k8sClient.Get(ctx, recordNN, &rec)
 				g.Expect(errors.IsNotFound(err)).To(BeTrue(), "DNSRecord should be deleted")
 			}, 10*time.Second, 250*time.Millisecond).Should(Succeed())
@@ -203,10 +206,11 @@ var _ = Describe("Portal Controller", func() {
 			})).To(Succeed())
 
 			By("creating a DNS CR for this portal")
-			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.DNS{
+			Expect(k8sClient.Create(ctx, &sreportalv1alpha2.DNS{
 				ObjectMeta: metav1.ObjectMeta{Name: dnsName, Namespace: tNsDefault},
-				Spec: sreportalv1alpha1.DNSSpec{
-					PortalRef: portalName,
+				Spec: sreportalv1alpha2.DNSSpec{
+					PortalRef:    portalName,
+					GroupMapping: sreportalv1alpha2.GroupMappingSpec{DefaultGroup: "Services"},
 				},
 			})).To(Succeed())
 

@@ -2,7 +2,7 @@ apiVersion: sreportal.io/v1alpha2
 kind: DNS
 metadata:
   name: main
-  namespace: default
+  namespace: sreportal-system
 spec:
   portalRef: main
   sources:
@@ -11,6 +11,7 @@ spec:
       annotationFilter: "external-dns.alpha.kubernetes.io/hostname"
     service:
       enabled: true
+      annotationFilter: "external-dns.alpha.kubernetes.io/hostname"
       serviceTypeFilter: [LoadBalancer]
     priority: [ingress, service]
   groupMapping:
