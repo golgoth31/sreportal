@@ -82,7 +82,7 @@ func (r *DNSRecordReconciler) rebuildChain() {
 	r.chain = reconciler.NewChain(
 		"dnsrecord",
 		dnsrecordchain.NewLoadDNSConfigHandler(r.Client),
-		dnsrecordchain.NewMaterialiseEntriesHandler(),
+		dnsrecordchain.NewMaterialiseEntriesHandler(r.Client),
 		dnsrecordchain.NewResolveDNSHandler(r.Client, r.resolver),
 		dnsrecordchain.NewProjectStoreHandler(r.fqdnWriter),
 	)

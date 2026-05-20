@@ -7,6 +7,9 @@ import (
 
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	v1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 	"github.com/golgoth31/sreportal/internal/controller/dnsrecords/chain"
@@ -34,7 +37,7 @@ func TestMaterialiseEntriesHandler_ConvertEntriesToEndpoints(t *testing.T) {
 		Data:     chain.ChainData{ResourceKey: "default/main-manual-apis"},
 	}
 
-	h := chain.NewMaterialiseEntriesHandler()
+	h := chain.NewMaterialiseEntriesHandler(nil)
 	err := h.Handle(context.Background(), rc)
 	g.Expect(err).NotTo(HaveOccurred())
 	g.Expect(record.Status.Endpoints).To(HaveLen(3))
@@ -63,7 +66,7 @@ func TestMaterialiseEntriesHandler_MaterialisesForAuto(t *testing.T) {
 		},
 	}
 	rc := &reconciler.ReconcileContext[*v1alpha2.DNSRecord, chain.ChainData]{Resource: record}
-	h := chain.NewMaterialiseEntriesHandler()
+	h := chain.NewMaterialiseEntriesHandler(nil)
 	g.Expect(h.Handle(context.Background(), rc)).To(Succeed())
 	g.Expect(record.Status.Endpoints).To(HaveLen(1))
 	g.Expect(record.Status.Endpoints[0].DNSName).To(Equal("auto.example.com"))
@@ -81,7 +84,7 @@ func TestMaterialiseEntriesHandler_EmptyEntries(t *testing.T) {
 		},
 	}
 	rc := &reconciler.ReconcileContext[*v1alpha2.DNSRecord, chain.ChainData]{Resource: record}
-	h := chain.NewMaterialiseEntriesHandler()
+	h := chain.NewMaterialiseEntriesHandler(nil)
 	g.Expect(h.Handle(context.Background(), rc)).To(Succeed())
 	g.Expect(record.Status.Endpoints).To(BeEmpty())
 	g.Expect(record.Status.LastReconcileTime).NotTo(BeNil())
@@ -104,13 +107,56 @@ func TestMaterialiseEntriesHandler_RecordTypeVariants(t *testing.T) {
 		},
 	}
 	rc := &reconciler.ReconcileContext[*v1alpha2.DNSRecord, chain.ChainData]{Resource: record}
-	h := chain.NewMaterialiseEntriesHandler()
+	h := chain.NewMaterialiseEntriesHandler(nil)
 	g.Expect(h.Handle(context.Background(), rc)).To(Succeed())
 	g.Expect(record.Status.Endpoints).To(HaveLen(4))
 	g.Expect(record.Status.Endpoints[0].RecordType).To(Equal("A"))
 	g.Expect(record.Status.Endpoints[1].RecordType).To(Equal("AAAA"))
 	g.Expect(record.Status.Endpoints[2].RecordType).To(Equal("CNAME"))
 	g.Expect(record.Status.Endpoints[3].RecordType).To(Equal("TXT"))
+}
+
+// TestMaterialiseEntriesHandler_PersistsStatus verifies that the handler
+// patches DNSRecord status when the endpoints hash changes — so downstream
+// handlers (ResolveDNS, ProjectStore) cannot drop the materialised status
+// by short-circuiting.
+func TestMaterialiseEntriesHandler_PersistsStatus(t *testing.T) {
+	g := NewWithT(t)
+	scheme := runtime.NewScheme()
+	g.Expect(v1alpha2.AddToScheme(scheme)).To(Succeed())
+
+	record := &v1alpha2.DNSRecord{
+		ObjectMeta: metav1.ObjectMeta{Name: "persist", Namespace: tNsDefault, Generation: 3},
+		Spec: v1alpha2.DNSRecordSpec{
+			Origin:    v1alpha2.DNSRecordOriginManual,
+			PortalRef: tPortalMain,
+			Entries: []v1alpha2.DNSRecordEntry{
+				{FQDN: "p.example.com", RecordType: "A", Targets: []string{tIP1234}},
+			},
+		},
+	}
+	c := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithStatusSubresource(&v1alpha2.DNSRecord{}).
+		WithObjects(record).
+		Build()
+
+	rc := &reconciler.ReconcileContext[*v1alpha2.DNSRecord, chain.ChainData]{Resource: record}
+	h := chain.NewMaterialiseEntriesHandler(c)
+	g.Expect(h.Handle(context.Background(), rc)).To(Succeed())
+
+	var got v1alpha2.DNSRecord
+	g.Expect(c.Get(context.Background(), types.NamespacedName{Namespace: tNsDefault, Name: "persist"}, &got)).To(Succeed())
+	g.Expect(got.Status.Endpoints).To(HaveLen(1))
+	g.Expect(got.Status.EndpointsHash).NotTo(BeEmpty())
+	g.Expect(got.Status.ObservedGeneration).To(Equal(int64(3)))
+	g.Expect(got.Status.LastReconcileTime).NotTo(BeNil())
+
+	// Second call with the same content: must not patch (hash + obsGen unchanged).
+	rv := got.ResourceVersion
+	g.Expect(h.Handle(context.Background(), rc)).To(Succeed())
+	g.Expect(c.Get(context.Background(), types.NamespacedName{Namespace: tNsDefault, Name: "persist"}, &got)).To(Succeed())
+	g.Expect(got.ResourceVersion).To(Equal(rv), "no-op materialise must not patch status")
 }
 
 func TestMaterialiseEntriesHandler_Idempotent(t *testing.T) {
@@ -127,7 +173,7 @@ func TestMaterialiseEntriesHandler_Idempotent(t *testing.T) {
 		},
 	}
 	rc := &reconciler.ReconcileContext[*v1alpha2.DNSRecord, chain.ChainData]{Resource: record}
-	h := chain.NewMaterialiseEntriesHandler()
+	h := chain.NewMaterialiseEntriesHandler(nil)
 	g.Expect(h.Handle(context.Background(), rc)).To(Succeed())
 	g.Expect(record.Status.Endpoints).To(HaveLen(2))
 
