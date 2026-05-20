@@ -216,25 +216,11 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 // SetupWithManager sets up the controller with the Manager.
 //
-// It registers a field index on v1alpha2.DNSRecord spec.portalRef and watches
-// both v1alpha1.Portal (DNS feature toggle) and v1alpha2.DNS (config changes)
-// to enqueue affected DNSRecord resources.
+// The field index on v1alpha2.DNSRecord spec.portalRef is registered by
+// cmd/main.go (and by suite_test.go for envtest), so this method only wires
+// the controller's watches: v1alpha1.Portal (DNS feature toggle) and
+// v1alpha2.DNS (config changes) to enqueue affected DNSRecord resources.
 func (r *DNSRecordReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	if err := mgr.GetFieldIndexer().IndexField(
-		context.Background(),
-		&v1alpha2.DNSRecord{},
-		portalfeatures.FieldIndexPortalRef,
-		func(obj client.Object) []string {
-			rec, ok := obj.(*v1alpha2.DNSRecord)
-			if !ok || rec.Spec.PortalRef == "" {
-				return nil
-			}
-			return []string{rec.Spec.PortalRef}
-		},
-	); err != nil {
-		return err
-	}
-
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha2.DNSRecord{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Watches(
