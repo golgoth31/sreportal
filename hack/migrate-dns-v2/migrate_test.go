@@ -180,14 +180,22 @@ func TestMigrate_AllAlreadyExists(t *testing.T) {
 		},
 		Spec: v1alpha2.DNSSpec{PortalRef: "p3"},
 	}
-	// Pre-create both DNSRecords so every Create returns AlreadyExists.
+	// Pre-create both DNSRecords with the exact same entries the migrator
+	// would write, so every Create returns AlreadyExists and the
+	// sameEntries check passes (true idempotent re-run).
 	existing1 := &v1alpha2.DNSRecord{
 		ObjectMeta: metav1.ObjectMeta{Name: "p3-manual-apps", Namespace: "ns"},
-		Spec:       v1alpha2.DNSRecordSpec{Origin: v1alpha2.DNSRecordOriginManual, PortalRef: "p3"},
+		Spec: v1alpha2.DNSRecordSpec{
+			Origin: v1alpha2.DNSRecordOriginManual, PortalRef: "p3",
+			Entries: []v1alpha2.DNSRecordEntry{{FQDN: "a.example.com", Group: "Apps", RecordType: "A"}},
+		},
 	}
 	existing2 := &v1alpha2.DNSRecord{
 		ObjectMeta: metav1.ObjectMeta{Name: "p3-manual-infra", Namespace: "ns"},
-		Spec:       v1alpha2.DNSRecordSpec{Origin: v1alpha2.DNSRecordOriginManual, PortalRef: "p3"},
+		Spec: v1alpha2.DNSRecordSpec{
+			Origin: v1alpha2.DNSRecordOriginManual, PortalRef: "p3",
+			Entries: []v1alpha2.DNSRecordEntry{{FQDN: "b.example.com", Group: "Infra", RecordType: "A"}},
+		},
 	}
 	cli := fake.NewClientBuilder().
 		WithScheme(scheme).
@@ -205,6 +213,77 @@ func TestMigrate_AllAlreadyExists(t *testing.T) {
 	var after v1alpha2.DNS
 	g.Expect(cli.Get(context.Background(), client.ObjectKey{Name: "p3", Namespace: "ns"}, &after)).To(Succeed())
 	g.Expect(after.Annotations).NotTo(HaveKey(annotationV1Alpha1Groups))
+}
+
+// TestMigrate_SlugCollision_DistinctGroups verifies that two different
+// group names normalising to the same slug surface as a hard failure,
+// preserving the source annotation so the operator can rename one.
+func TestMigrate_SlugCollision_DistinctGroups(t *testing.T) {
+	g := NewWithT(t)
+	scheme := newScheme()
+	dns := &v1alpha2.DNS{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "p4",
+			Namespace: "ns",
+			Annotations: map[string]string{
+				// "API Endpoints" and "api-endpoints" both slug to "api-endpoints".
+				annotationV1Alpha1Groups: `[` +
+					`{"name":"API Endpoints","entries":[{"fqdn":"a.example.com"}]},` +
+					`{"name":"api-endpoints","entries":[{"fqdn":"b.example.com"}]}` +
+					`]`,
+			},
+		},
+		Spec: v1alpha2.DNSSpec{PortalRef: "p4"},
+	}
+	cli := fake.NewClientBuilder().WithScheme(scheme).WithObjects(dns).Build()
+
+	sum, err := Migrate(context.Background(), cli, false)
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(err.Error()).To(ContainSubstring("slug collision"))
+	g.Expect(sum.Failures).To(BeNumerically(">=", 1))
+
+	// First group wins the slug; second group is rejected. Annotation stays
+	// in place so the operator can rename one of the groups and re-run.
+	var after v1alpha2.DNS
+	g.Expect(cli.Get(context.Background(), client.ObjectKey{Name: "p4", Namespace: "ns"}, &after)).To(Succeed())
+	g.Expect(after.Annotations).To(HaveKey(annotationV1Alpha1Groups))
+}
+
+// TestMigrate_AlreadyExists_DifferentEntries_Fails verifies that an
+// AlreadyExists for a DNSRecord whose entries differ from what we would
+// write is reported as a failure (not silently treated as success).
+func TestMigrate_AlreadyExists_DifferentEntries_Fails(t *testing.T) {
+	g := NewWithT(t)
+	scheme := newScheme()
+	dns := &v1alpha2.DNS{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "p5",
+			Namespace: "ns",
+			Annotations: map[string]string{
+				annotationV1Alpha1Groups: `[` +
+					`{"name":"Apps","entries":[{"fqdn":"new.example.com"}]}` +
+					`]`,
+			},
+		},
+		Spec: v1alpha2.DNSSpec{PortalRef: "p5"},
+	}
+	existing := &v1alpha2.DNSRecord{
+		ObjectMeta: metav1.ObjectMeta{Name: "p5-manual-apps", Namespace: "ns"},
+		Spec: v1alpha2.DNSRecordSpec{
+			Origin: v1alpha2.DNSRecordOriginManual, PortalRef: "p5",
+			Entries: []v1alpha2.DNSRecordEntry{{FQDN: "stale.example.com", Group: "Apps", RecordType: "A"}},
+		},
+	}
+	cli := fake.NewClientBuilder().WithScheme(scheme).WithObjects(dns, existing).Build()
+
+	sum, err := Migrate(context.Background(), cli, false)
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(err.Error()).To(ContainSubstring("already exists with different entries"))
+	g.Expect(sum.Failures).To(Equal(1))
+
+	var after v1alpha2.DNS
+	g.Expect(cli.Get(context.Background(), client.ObjectKey{Name: "p5", Namespace: "ns"}, &after)).To(Succeed())
+	g.Expect(after.Annotations).To(HaveKey(annotationV1Alpha1Groups), "annotation must remain on data conflict")
 }
 
 var errFakeBoom = &fakeBoom{}

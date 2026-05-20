@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	v1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
@@ -58,12 +60,26 @@ func Migrate(ctx context.Context, c client.Client, dryRun bool) (Summary, error)
 		}
 
 		groupCount, perDNSCreated, perDNSFailures := 0, 0, 0
+		// slugOwner tracks which original group name first claimed a given
+		// record slug, so a collision between two distinct group names that
+		// normalise to the same slug fails loudly instead of silently
+		// overwriting one with the other on AlreadyExists.
+		slugOwner := map[string]string{}
 		for _, g := range groups {
 			if len(g.Entries) == 0 {
 				continue
 			}
 			groupCount++
 			recordName := dns.Name + "-manual-" + slug(g.Name)
+			if prev, claimed := slugOwner[recordName]; claimed && prev != g.Name {
+				sum.Failures++
+				perDNSFailures++
+				errAggr = append(errAggr, fmt.Errorf(
+					"DNS %s/%s: slug collision: groups %q and %q both map to record %q; rename one of them before re-running",
+					dns.Namespace, dns.Name, prev, g.Name, recordName))
+				continue
+			}
+			slugOwner[recordName] = g.Name
 			entries := make([]v1alpha2.DNSRecordEntry, 0, len(g.Entries))
 			for _, e := range g.Entries {
 				entries = append(entries, v1alpha2.DNSRecordEntry{
@@ -87,12 +103,39 @@ func Migrate(ctx context.Context, c client.Client, dryRun bool) (Summary, error)
 			}
 			if err := c.Create(ctx, record, opts...); err != nil {
 				if apierrors.IsAlreadyExists(err) {
+					// Idempotent re-run is only safe when the existing record
+					// carries the same entries we would have written. If the
+					// remote content differs, this is a slug collision with a
+					// pre-existing manual record — fail loudly so the operator
+					// can rename the group rather than lose data silently.
+					if dryRun {
+						sum.AlreadyExist++
+						perDNSCreated++
+						fmt.Printf("[dry-run] DNSRecord %s/%s already exists\n", dns.Namespace, recordName)
+						continue
+					}
+					var existing v1alpha2.DNSRecord
+					getErr := c.Get(ctx, types.NamespacedName{Namespace: dns.Namespace, Name: recordName}, &existing)
+					if getErr != nil {
+						sum.Failures++
+						perDNSFailures++
+						errAggr = append(errAggr, fmt.Errorf("get existing %s/%s after AlreadyExists: %w", dns.Namespace, recordName, getErr))
+						continue
+					}
+					if !sameEntries(existing.Spec.Entries, entries) {
+						sum.Failures++
+						perDNSFailures++
+						errAggr = append(errAggr, fmt.Errorf(
+							"DNSRecord %s/%s already exists with different entries; refusing to overwrite (rename group %q to avoid the collision)",
+							dns.Namespace, recordName, g.Name))
+						continue
+					}
 					sum.AlreadyExist++
 					// Count toward perDNSCreated so the annotation-strip gate
 					// (perDNSCreated == groupCount) succeeds on idempotent re-runs
 					// after a partial failure.
 					perDNSCreated++
-					fmt.Printf("DNSRecord %s/%s already exists, leaving in place\n", dns.Namespace, recordName)
+					fmt.Printf("DNSRecord %s/%s already exists with matching entries, leaving in place\n", dns.Namespace, recordName)
 					continue
 				}
 				sum.Failures++
@@ -124,4 +167,28 @@ func Migrate(ctx context.Context, c client.Client, dryRun bool) (Summary, error)
 		return sum, errors.Join(errAggr...)
 	}
 	return sum, nil
+}
+
+// sameEntries reports whether two slices of DNSRecordEntry are equivalent
+// for migration-idempotence purposes. We compare on the fields the migrator
+// writes (FQDN, Group, Description, RecordType, Targets) and ignore any
+// fields the user might have added manually after a partial run.
+func sameEntries(existing, want []v1alpha2.DNSRecordEntry) bool {
+	if len(existing) != len(want) {
+		return false
+	}
+	idx := make(map[string]v1alpha2.DNSRecordEntry, len(want))
+	for _, e := range want {
+		idx[e.FQDN+"|"+e.RecordType] = e
+	}
+	for _, e := range existing {
+		w, ok := idx[e.FQDN+"|"+e.RecordType]
+		if !ok {
+			return false
+		}
+		if e.Group != w.Group || e.Description != w.Description || !reflect.DeepEqual(e.Targets, w.Targets) {
+			return false
+		}
+	}
+	return true
 }
