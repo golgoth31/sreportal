@@ -141,33 +141,20 @@ var _ = Describe("DNS Controller", func() {
 				})).To(Succeed())
 			}
 
-			By("creating a DNSRecord with endpoint status")
+			By("creating a DNSRecord with spec entries")
 			rec := &v1alpha2.DNSRecord{}
 			if err := k8sClient.Get(ctx, recordNN, rec); err != nil && errors.IsNotFound(err) {
 				rec = &v1alpha2.DNSRecord{
 					ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: tNsDefault},
 					Spec: v1alpha2.DNSRecordSpec{
-						Origin:     v1alpha2.DNSRecordOriginAuto,
-						PortalRef:  dnsName,
-						SourceType: "ingress",
+						Origin:    v1alpha2.DNSRecordOriginManual,
+						PortalRef: dnsName,
+						Entries: []v1alpha2.DNSRecordEntry{
+							{FQDN: "api.example.com", RecordType: "A", Targets: []string{"10.0.0.1"}},
+						},
 					},
 				}
 				Expect(k8sClient.Create(ctx, rec)).To(Succeed())
-
-				// Pre-populate the DNSRecord status with endpoints
-				Eventually(func() error {
-					return k8sClient.Get(ctx, recordNN, rec)
-				}, timeout, interval).Should(Succeed())
-
-				rec.Status.Endpoints = []v1alpha2.EndpointStatus{
-					{
-						DNSName:    "api.example.com",
-						RecordType: "A",
-						Targets:    []string{"10.0.0.1"},
-						LastSeen:   metav1.Now(),
-					},
-				}
-				Expect(k8sClient.Status().Update(ctx, rec)).To(Succeed())
 			}
 		})
 

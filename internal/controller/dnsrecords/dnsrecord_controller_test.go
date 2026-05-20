@@ -32,7 +32,6 @@ import (
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	v1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
-	"github.com/golgoth31/sreportal/internal/adapter"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 	dnsreadstore "github.com/golgoth31/sreportal/internal/readstore/dns"
 )
@@ -125,22 +124,15 @@ var _ = Describe("DNSRecord Controller", func() {
 				Expect(k8sClient.Create(ctx, &v1alpha2.DNSRecord{
 					ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: tNsDefault},
 					Spec: v1alpha2.DNSRecordSpec{
-						Origin:     v1alpha2.DNSRecordOriginAuto,
-						SourceType: tSrcService,
-						PortalRef:  tPortalMy,
+						Origin:    v1alpha2.DNSRecordOriginManual,
+						PortalRef: tPortalMy,
+						Entries: []v1alpha2.DNSRecordEntry{
+							{FQDN: "api.example.com", RecordType: "A", Targets: []string{tIP1234}},
+							{FQDN: "web.example.com", RecordType: "CNAME", Targets: []string{"lb.example.com"}},
+						},
 					},
 				})).To(Succeed())
 			}
-
-			Eventually(func(g Gomega) {
-				var r v1alpha2.DNSRecord
-				g.Expect(k8sClient.Get(ctx, recordNN, &r)).To(Succeed())
-				r.Status.Endpoints = []v1alpha2.EndpointStatus{
-					{DNSName: "api.example.com", RecordType: "A", Targets: []string{tIP1234}, LastSeen: metav1.Now()},
-					{DNSName: "web.example.com", RecordType: "CNAME", Targets: []string{"lb.example.com"}, LastSeen: metav1.Now()},
-				}
-				g.Expect(k8sClient.Status().Update(ctx, &r)).To(Succeed())
-			}, timeout, interval).Should(Succeed())
 		})
 
 		AfterEach(func() {
@@ -166,7 +158,7 @@ var _ = Describe("DNSRecord Controller", func() {
 				for _, v := range views {
 					g.Expect(v.FirstPortal()).To(Equal(tPortalMy))
 					g.Expect(v.Namespace).To(Equal(tNsDefault))
-					g.Expect(v.Source).To(Equal(domaindns.SourceExternalDNS))
+					g.Expect(v.Source).To(Equal(domaindns.SourceManual))
 				}
 			}, timeout, interval).Should(Succeed())
 		})
@@ -187,20 +179,13 @@ var _ = Describe("DNSRecord Controller", func() {
 			Expect(k8sClient.Create(ctx, &v1alpha2.DNSRecord{
 				ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: tNsDefault},
 				Spec: v1alpha2.DNSRecordSpec{
-					Origin:     v1alpha2.DNSRecordOriginAuto,
-					SourceType: tSrcService,
-					PortalRef:  tPortalMain,
+					Origin:    v1alpha2.DNSRecordOriginManual,
+					PortalRef: tPortalMain,
+					Entries: []v1alpha2.DNSRecordEntry{
+						{FQDN: "delete-me.example.com", RecordType: "A", Targets: []string{tIP1234}},
+					},
 				},
 			})).To(Succeed())
-
-			Eventually(func(g Gomega) {
-				var r v1alpha2.DNSRecord
-				g.Expect(k8sClient.Get(ctx, recordNN, &r)).To(Succeed())
-				r.Status.Endpoints = []v1alpha2.EndpointStatus{
-					{DNSName: "delete-me.example.com", RecordType: "A", Targets: []string{tIP1234}, LastSeen: metav1.Now()},
-				}
-				g.Expect(k8sClient.Status().Update(ctx, &r)).To(Succeed())
-			}, timeout, interval).Should(Succeed())
 
 			By("reconciling to populate the store")
 			Eventually(func(g Gomega) {
@@ -244,22 +229,15 @@ var _ = Describe("DNSRecord Controller", func() {
 				Expect(k8sClient.Create(ctx, &v1alpha2.DNSRecord{
 					ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: tNsDefault},
 					Spec: v1alpha2.DNSRecordSpec{
-						Origin:     v1alpha2.DNSRecordOriginAuto,
-						SourceType: tSrcService,
-						PortalRef:  tPortalMy,
+						Origin:    v1alpha2.DNSRecordOriginManual,
+						PortalRef: tPortalMy,
+						Entries: []v1alpha2.DNSRecordEntry{
+							{FQDN: "resolved.example.com", RecordType: "A", Targets: []string{tIP1234}},
+							{FQDN: "missing.example.com", RecordType: "A", Targets: []string{"5.6.7.8"}},
+						},
 					},
 				})).To(Succeed())
 			}
-
-			Eventually(func(g Gomega) {
-				var r v1alpha2.DNSRecord
-				g.Expect(k8sClient.Get(ctx, recordNN, &r)).To(Succeed())
-				r.Status.Endpoints = []v1alpha2.EndpointStatus{
-					{DNSName: "resolved.example.com", RecordType: "A", Targets: []string{tIP1234}, LastSeen: metav1.Now()},
-					{DNSName: "missing.example.com", RecordType: "A", Targets: []string{"5.6.7.8"}, LastSeen: metav1.Now()},
-				}
-				g.Expect(k8sClient.Status().Update(ctx, &r)).To(Succeed())
-			}, timeout, interval).Should(Succeed())
 		})
 
 		AfterEach(func() {
@@ -324,82 +302,78 @@ var _ = Describe("DNSRecord Controller", func() {
 			}
 		})
 
-		It("should recompute and persist the correct EndpointsHash", func() {
+		It("should correctly project spec entries into the store even when EndpointsHash is missing", func() {
 			store := dnsreadstore.NewFQDNStore()
 			reconciler := NewDNSRecordReconciler(k8sClient, k8sClient.Scheme(), nil)
 			reconciler.SetFQDNWriter(store)
 
-			By("creating a DNSRecord with endpoints but no hash")
+			By("creating a DNSRecord with spec entries")
 			Expect(k8sClient.Create(ctx, &v1alpha2.DNSRecord{
 				ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: tNsDefault},
 				Spec: v1alpha2.DNSRecordSpec{
-					Origin:     v1alpha2.DNSRecordOriginAuto,
-					SourceType: tSrcService,
-					PortalRef:  tPortalMain,
+					Origin:    v1alpha2.DNSRecordOriginManual,
+					PortalRef: tPortalMain,
+					Entries: []v1alpha2.DNSRecordEntry{
+						{FQDN: "hash.example.com", RecordType: "A", Targets: []string{tIP1234}},
+					},
 				},
 			})).To(Succeed())
-
-			endpoints := []v1alpha2.EndpointStatus{
-				{DNSName: "hash.example.com", RecordType: "A", Targets: []string{tIP1234}, LastSeen: metav1.Now()},
-			}
-			expectedHash := adapter.EndpointStatusHashV2(endpoints)
 
 			Eventually(func(g Gomega) {
 				var r v1alpha2.DNSRecord
 				g.Expect(k8sClient.Get(ctx, recordNN, &r)).To(Succeed())
-				r.Status.Endpoints = endpoints
-				r.Status.EndpointsHash = "" // no hash set
+				r.Status.EndpointsHash = "" // clear hash to simulate missing
 				g.Expect(k8sClient.Status().Update(ctx, &r)).To(Succeed())
 			}, timeout, interval).Should(Succeed())
 
-			By("reconciling — hash should be computed and persisted")
+			By("reconciling — spec entries are materialised and projected to the store")
 			Eventually(func(g Gomega) {
 				_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: recordNN})
 				g.Expect(err).NotTo(HaveOccurred())
 
-				var updated v1alpha2.DNSRecord
-				g.Expect(k8sClient.Get(ctx, recordNN, &updated)).To(Succeed())
-				g.Expect(updated.Status.EndpointsHash).To(Equal(expectedHash))
+				views, vErr := store.List(ctx, domaindns.FQDNFilters{Portal: tPortalMain})
+				g.Expect(vErr).NotTo(HaveOccurred())
+				g.Expect(views).To(HaveLen(1))
+				g.Expect(views[0].Name).To(Equal("hash.example.com"))
+				g.Expect(views[0].RecordType).To(Equal("A"))
+				g.Expect(views[0].Targets).To(ConsistOf(tIP1234))
 			}, timeout, interval).Should(Succeed())
 		})
 
-		It("should fix a wrong EndpointsHash after manual endpoint edit", func() {
+		It("should correctly project spec entries into the store even when EndpointsHash is stale", func() {
 			store := dnsreadstore.NewFQDNStore()
 			reconciler := NewDNSRecordReconciler(k8sClient, k8sClient.Scheme(), nil)
 			reconciler.SetFQDNWriter(store)
 
-			By("creating a DNSRecord with a stale hash")
+			By("creating a DNSRecord with spec entries")
 			Expect(k8sClient.Create(ctx, &v1alpha2.DNSRecord{
 				ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: tNsDefault},
 				Spec: v1alpha2.DNSRecordSpec{
-					Origin:     v1alpha2.DNSRecordOriginAuto,
-					SourceType: tSrcService,
-					PortalRef:  tPortalMain,
+					Origin:    v1alpha2.DNSRecordOriginManual,
+					PortalRef: tPortalMain,
+					Entries: []v1alpha2.DNSRecordEntry{
+						{FQDN: "edited.example.com", RecordType: "A", Targets: []string{"9.9.9.9"}},
+					},
 				},
 			})).To(Succeed())
-
-			endpoints := []v1alpha2.EndpointStatus{
-				{DNSName: "edited.example.com", RecordType: "A", Targets: []string{"9.9.9.9"}, LastSeen: metav1.Now()},
-			}
-			expectedHash := adapter.EndpointStatusHashV2(endpoints)
 
 			Eventually(func(g Gomega) {
 				var r v1alpha2.DNSRecord
 				g.Expect(k8sClient.Get(ctx, recordNN, &r)).To(Succeed())
-				r.Status.Endpoints = endpoints
 				r.Status.EndpointsHash = "stale-wrong-hash"
 				g.Expect(k8sClient.Status().Update(ctx, &r)).To(Succeed())
 			}, timeout, interval).Should(Succeed())
 
-			By("reconciling — stale hash should be corrected")
+			By("reconciling — spec entries are materialised and projected to the store regardless of stale hash")
 			Eventually(func(g Gomega) {
 				_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: recordNN})
 				g.Expect(err).NotTo(HaveOccurred())
 
-				var updated v1alpha2.DNSRecord
-				g.Expect(k8sClient.Get(ctx, recordNN, &updated)).To(Succeed())
-				g.Expect(updated.Status.EndpointsHash).To(Equal(expectedHash))
-				g.Expect(updated.Status.EndpointsHash).NotTo(Equal("stale-wrong-hash"))
+				views, vErr := store.List(ctx, domaindns.FQDNFilters{Portal: tPortalMain})
+				g.Expect(vErr).NotTo(HaveOccurred())
+				g.Expect(views).To(HaveLen(1))
+				g.Expect(views[0].Name).To(Equal("edited.example.com"))
+				g.Expect(views[0].Targets).To(ConsistOf("9.9.9.9"))
 			}, timeout, interval).Should(Succeed())
 		})
 	})
