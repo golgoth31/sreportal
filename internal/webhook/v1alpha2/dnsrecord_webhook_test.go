@@ -613,3 +613,50 @@ func TestDNSRecordWebhook_AutoRejectsEntriesFromNonControllerSA(t *testing.T) {
 	g.Expect(err).To(HaveOccurred())
 	g.Expect(err.Error()).To(ContainSubstring("reserved for the operator controller"))
 }
+
+// autoRecordWithEntry returns an origin=auto DNSRecord with a single entry,
+// shared by the ValidateUpdate SA-check tests below.
+func autoRecordWithEntry(target string) *sreportalv1alpha2.DNSRecord {
+	return &sreportalv1alpha2.DNSRecord{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            tRecordIngress,
+			Namespace:       tNamespace,
+			OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
+		},
+		Spec: sreportalv1alpha2.DNSRecordSpec{
+			Origin:     sreportalv1alpha2.DNSRecordOriginAuto,
+			PortalRef:  tPortalMain,
+			SourceType: tSourceIngress,
+			Entries: []sreportalv1alpha2.DNSRecordEntry{
+				{FQDN: tFQDNAPIExamp, RecordType: "A", Targets: []string{target}},
+			},
+		},
+	}
+}
+
+// TestDNSRecordWebhook_AutoUpdateBlocksNonControllerSA closes the Update-path
+// gap: ValidateUpdate must enforce the controllerSA gate, otherwise a human
+// could not Create an origin=auto record but could mutate one after the
+// operator created it.
+func TestDNSRecordWebhook_AutoUpdateBlocksNonControllerSA(t *testing.T) {
+	g := NewWithT(t)
+	dns := newDNS()
+	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), testControllerSA)
+	old := autoRecordWithEntry("1.2.3.4")
+	newR := autoRecordWithEntry("9.9.9.9")
+	_, err := v.ValidateUpdate(ctxWithUser("kubectl-user"), old, newR)
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(err.Error()).To(ContainSubstring("reserved for the operator controller"))
+}
+
+// TestDNSRecordWebhook_AutoUpdateAllowedForControllerSA is the positive
+// counterpart: the operator must still be able to update its own auto records.
+func TestDNSRecordWebhook_AutoUpdateAllowedForControllerSA(t *testing.T) {
+	g := NewWithT(t)
+	dns := newDNS()
+	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), testControllerSA)
+	old := autoRecordWithEntry("1.2.3.4")
+	newR := autoRecordWithEntry("9.9.9.9")
+	_, err := v.ValidateUpdate(ctxWithUser(testControllerSA), old, newR)
+	g.Expect(err).NotTo(HaveOccurred())
+}
