@@ -1437,7 +1437,7 @@ _Appears in:_
 | `origin` _[sreportal.io/v1alpha2.DNSRecordOrigin](#sreportaliov1alpha2dnsrecordorigin)_ |   |   | Enum: [auto manual] |
 | `portalRef` _string_ |   |   |   |
 | `sourceType` _[sreportal.io/v1alpha2.SourceType](#sreportaliov1alpha2sourcetype)_ | Required when origin=auto. Must be empty when origin=manual. |   |   |
-| `entries` _[sreportal.io/v1alpha2.DNSRecordEntry](#sreportaliov1alpha2dnsrecordentry) array_ | Required when origin=manual. Must be empty when origin=auto. |   |   |
+| `entries` _[sreportal.io/v1alpha2.DNSRecordEntry](#sreportaliov1alpha2dnsrecordentry) array_ | Endpoints projected for this DNSRecord. For origin=manual: required, set by the user (at least one entry). For origin=auto: written exclusively by the operator's DNS controller from the in-memory source store. The validating webhook reserves updates of auto records to the controller ServiceAccount, so manual edits by humans are rejected at admission. Any field stored here by other means will be overwritten at the next DNS reconcile. |   |   |
 
 
 
