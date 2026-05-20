@@ -35,25 +35,41 @@ type SourcesStatusHandler struct {
 // Handle implements reconciler.Handler.
 func (h *SourcesStatusHandler) Handle(_ context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha2.DNS, ChainData]) error {
 	dns := rc.Resource
-	setCondition(dns, metav1.Condition{
-		Type:   "SourcesReady",
-		Status: metav1.ConditionTrue,
-		Reason: "Producing",
-	})
+	// SourcesReady reflects whether the lookup chain reached this step with at
+	// least one enabled source. When PriorityOrder is empty the DNS CR has no
+	// source enabled (spec.sources.* all off) — that's a configuration gap, not
+	// a healthy "Producing" state, so emit Unknown/NoSourcesEnabled instead.
+	// Chain failures upstream (LookupSourcesHandler error) short-circuit before
+	// this handler runs; the DNS controller is responsible for flipping
+	// SourcesReady=False in that path.
+	if len(rc.Data.PriorityOrder) == 0 {
+		SetCondition(dns, metav1.Condition{
+			Type:    "SourcesReady",
+			Status:  metav1.ConditionUnknown,
+			Reason:  "NoSourcesEnabled",
+			Message: "no source kinds are enabled in spec.sources",
+		})
+	} else {
+		SetCondition(dns, metav1.Condition{
+			Type:   "SourcesReady",
+			Status: metav1.ConditionTrue,
+			Reason: "Producing",
+		})
+	}
 
 	var events []domaindns.ConflictEvent
 	if h.Conflicts != nil {
 		events = h.Conflicts.Conflicts(dns.Namespace, dns.Name)
 	}
 	if len(events) > 0 {
-		setCondition(dns, metav1.Condition{
+		SetCondition(dns, metav1.Condition{
 			Type:    "TargetsConflict",
 			Status:  metav1.ConditionTrue,
 			Reason:  "FirstWriterWins",
 			Message: "this DNS lost target conflicts on one or more FQDNs",
 		})
 	} else {
-		setCondition(dns, metav1.Condition{
+		SetCondition(dns, metav1.Condition{
 			Type:   "TargetsConflict",
 			Status: metav1.ConditionFalse,
 			Reason: "NoConflicts",
@@ -62,7 +78,9 @@ func (h *SourcesStatusHandler) Handle(_ context.Context, rc *reconciler.Reconcil
 	return nil
 }
 
-func setCondition(dns *sreportalv1alpha2.DNS, c metav1.Condition) {
+// SetCondition upserts c into dns.Status.Conditions, preserving
+// LastTransitionTime when status is unchanged.
+func SetCondition(dns *sreportalv1alpha2.DNS, c metav1.Condition) {
 	for i := range dns.Status.Conditions {
 		if dns.Status.Conditions[i].Type == c.Type {
 			if dns.Status.Conditions[i].Status != c.Status {

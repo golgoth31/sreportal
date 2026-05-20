@@ -115,6 +115,19 @@ func (r *DNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 
 	if err := r.chain.Execute(ctx, rc); err != nil {
 		logger.Error(err, "reconciliation failed")
+		// Surface the chain failure on SourcesReady so the DNS CR no longer
+		// advertises a stale True condition while the controller is broken.
+		// Best-effort: ignore the patch error (we'll already return the chain
+		// error and re-run).
+		dnschain.SetCondition(&resource, metav1.Condition{
+			Type:    "SourcesReady",
+			Status:  metav1.ConditionFalse,
+			Reason:  "ReconcileFailed",
+			Message: err.Error(),
+		})
+		if patchErr := r.Status().Update(ctx, &resource); patchErr != nil {
+			logger.V(1).Info("failed to persist SourcesReady=False after chain error", "patchError", patchErr)
+		}
 		metrics.ReconcileTotal.WithLabelValues("dns", "error").Inc()
 		metrics.ReconcileDuration.WithLabelValues("dns", "").Observe(time.Since(start).Seconds())
 		return ctrl.Result{}, err

@@ -27,7 +27,15 @@ import (
 	dnschain "github.com/golgoth31/sreportal/internal/controller/dns/chain"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 	"github.com/golgoth31/sreportal/internal/reconciler"
+	"github.com/golgoth31/sreportal/internal/source/registry"
+	"github.com/golgoth31/sreportal/internal/source/service"
 )
+
+// chainDataWithEnabledKind builds ChainData with one enabled source kind so
+// SourcesStatusHandler emits Status=True instead of Unknown.
+func chainDataWithEnabledKind() dnschain.ChainData {
+	return dnschain.ChainData{PriorityOrder: []registry.SourceType{service.SourceTypeService}}
+}
 
 type fakeConflicts struct{ events []domaindns.ConflictEvent }
 
@@ -36,7 +44,7 @@ func (f fakeConflicts) Conflicts(string, string) []domaindns.ConflictEvent { ret
 func TestSourcesStatus_NoConflicts(t *testing.T) {
 	dns := &sreportalv1alpha2.DNS{ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "n"}}
 	h := &dnschain.SourcesStatusHandler{Conflicts: fakeConflicts{}}
-	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{Resource: dns}
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{Resource: dns, Data: chainDataWithEnabledKind()}
 	require.NoError(t, h.Handle(context.Background(), rc))
 	require.Equal(t, metav1.ConditionTrue, conditionStatus(dns, "SourcesReady"))
 	require.Equal(t, metav1.ConditionFalse, conditionStatus(dns, "TargetsConflict"))
@@ -45,7 +53,7 @@ func TestSourcesStatus_NoConflicts(t *testing.T) {
 func TestSourcesStatus_WithConflicts(t *testing.T) {
 	dns := &sreportalv1alpha2.DNS{ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "n"}}
 	h := &dnschain.SourcesStatusHandler{Conflicts: fakeConflicts{events: []domaindns.ConflictEvent{{LoserRecord: "n/d"}}}}
-	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{Resource: dns}
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{Resource: dns, Data: chainDataWithEnabledKind()}
 	require.NoError(t, h.Handle(context.Background(), rc))
 	require.Equal(t, metav1.ConditionTrue, conditionStatus(dns, "TargetsConflict"))
 }
@@ -53,10 +61,24 @@ func TestSourcesStatus_WithConflicts(t *testing.T) {
 func TestSourcesStatus_NilConflictsReader(t *testing.T) {
 	dns := &sreportalv1alpha2.DNS{ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "n"}}
 	h := &dnschain.SourcesStatusHandler{}
-	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{Resource: dns}
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{Resource: dns, Data: chainDataWithEnabledKind()}
 	require.NoError(t, h.Handle(context.Background(), rc))
 	require.Equal(t, metav1.ConditionTrue, conditionStatus(dns, "SourcesReady"))
 	require.Equal(t, metav1.ConditionFalse, conditionStatus(dns, "TargetsConflict"))
+}
+
+// TestSourcesStatus_NoSourcesEnabled verifies that SourcesReady=Unknown is
+// emitted when no source kind is enabled on the DNS CR. The condition must
+// not unconditionally report True — that masked "DNS does nothing" configs.
+func TestSourcesStatus_NoSourcesEnabled(t *testing.T) {
+	dns := &sreportalv1alpha2.DNS{ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "n"}}
+	h := &dnschain.SourcesStatusHandler{Conflicts: fakeConflicts{}}
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{Resource: dns}
+	require.NoError(t, h.Handle(context.Background(), rc))
+	cond := findCondition(dns, "SourcesReady")
+	require.NotNil(t, cond)
+	require.Equal(t, metav1.ConditionUnknown, cond.Status)
+	require.Equal(t, "NoSourcesEnabled", cond.Reason)
 }
 
 func conditionStatus(dns *sreportalv1alpha2.DNS, t string) metav1.ConditionStatus {
@@ -83,7 +105,7 @@ func findCondition(dns *sreportalv1alpha2.DNS, t string) *metav1.Condition {
 func TestSourcesStatusHandler_LastTransitionTimeStableOnRepeatedHandle(t *testing.T) {
 	dns := &sreportalv1alpha2.DNS{ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "n"}}
 	h := &dnschain.SourcesStatusHandler{Conflicts: fakeConflicts{}}
-	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{Resource: dns}
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{Resource: dns, Data: chainDataWithEnabledKind()}
 
 	// First call: conditions are created, timestamps are set.
 	require.NoError(t, h.Handle(context.Background(), rc))
@@ -118,7 +140,7 @@ func TestSourcesStatusHandler_LastTransitionTimeUpdatesOnStatusFlip(t *testing.T
 
 	// First call: no conflicts → TargetsConflict=False
 	h1 := &dnschain.SourcesStatusHandler{Conflicts: fakeConflicts{}}
-	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{Resource: dns}
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{Resource: dns, Data: chainDataWithEnabledKind()}
 	require.NoError(t, h1.Handle(context.Background(), rc))
 
 	condBefore := findCondition(dns, "TargetsConflict")
