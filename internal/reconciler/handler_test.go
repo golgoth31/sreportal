@@ -94,6 +94,37 @@ func TestChain_Execute_RunsAllHandlers_WhenNoShortCircuit(t *testing.T) {
 	assert.Equal(t, []int{1, 2}, calls)
 }
 
+func TestChain_Execute_SwallowsCtxErr_WhenParentDone(t *testing.T) {
+	// Parent ctx is canceled — handler returns context.Canceled. This is a
+	// shutdown / re-queue race, not a real failure, so Execute must swallow.
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	chain := reconciler.NewChain[*struct{}, testData](
+		"",
+		reconciler.HandlerFunc[*struct{}, testData](func(_ context.Context, _ *reconciler.ReconcileContext[*struct{}, testData]) error {
+			return context.Canceled
+		}),
+	)
+	rc := &reconciler.ReconcileContext[*struct{}, testData]{}
+	require.NoError(t, chain.Execute(ctx, rc))
+}
+
+func TestChain_Execute_PropagatesCtxErr_WhenParentAlive(t *testing.T) {
+	// Parent ctx is alive — handler returned context.DeadlineExceeded because
+	// of its own per-call timeout. The chain must propagate so controller-
+	// runtime sees the failure and retries.
+	chain := reconciler.NewChain[*struct{}, testData](
+		"",
+		reconciler.HandlerFunc[*struct{}, testData](func(_ context.Context, _ *reconciler.ReconcileContext[*struct{}, testData]) error {
+			return context.DeadlineExceeded
+		}),
+	)
+	rc := &reconciler.ReconcileContext[*struct{}, testData]{}
+	err := chain.Execute(context.Background(), rc)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+}
+
 func TestChain_Execute_SharesTypedData(t *testing.T) {
 	chain := reconciler.NewChain[*struct{}, testData](
 		"",

@@ -70,8 +70,14 @@ func NewChain[T any, D any](controller string, handlers ...Handler[T, D]) *Chain
 // Execute runs all handlers in sequence until one errors or requests requeue.
 // When the chain has a controller name set, each handler's duration is observed
 // on metrics.ReconcileDuration with handler=<TypeName>.
-// A context.Canceled or context.DeadlineExceeded error is silently dropped:
-// it signals a shutdown or re-queue race, not a real reconciliation failure.
+//
+// Context error handling: a context.Canceled / context.DeadlineExceeded is
+// swallowed only when the parent ctx itself is done — that's a manager
+// shutdown or re-queue race, not a real reconciliation failure. If the
+// handler returns a context error while the parent ctx is still alive, the
+// error came from a handler-local timeout (e.g. an http.Client.Timeout) and
+// is propagated like any other reconciliation failure so controller-runtime
+// records it and re-queues with backoff.
 func (c *Chain[T, D]) Execute(ctx context.Context, rc *ReconcileContext[T, D]) error {
 	for _, h := range c.handlers {
 		start := time.Now()
@@ -81,7 +87,7 @@ func (c *Chain[T, D]) Execute(ctx context.Context, rc *ReconcileContext[T, D]) e
 			if errors.Is(err, ErrShortCircuit) {
 				return nil
 			}
-			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			if isShutdownCtxErr(ctx, err) {
 				return nil
 			}
 			return err
@@ -92,6 +98,17 @@ func (c *Chain[T, D]) Execute(ctx context.Context, rc *ReconcileContext[T, D]) e
 		}
 	}
 	return nil
+}
+
+// isShutdownCtxErr reports whether err is a context cancellation/deadline
+// caused by the parent ctx itself being done — distinguishing manager
+// shutdown / re-queue races from handler-local timeouts the controller
+// should still treat as failures.
+func isShutdownCtxErr(ctx context.Context, err error) bool {
+	if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+		return false
+	}
+	return ctx.Err() != nil
 }
 
 // observe records the duration of a single handler step. Skipped when the
