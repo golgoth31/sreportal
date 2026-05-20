@@ -152,6 +152,32 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 	}
 
+	// No DNS CR for this portal — drop any read store contribution from this
+	// DNSRecord and return without requeue. Mirrors the Portal-not-found
+	// branch above. Without this, an orphan DNSRecord whose parent DNS has
+	// been deleted would keep its old entries in the fqdnStore indefinitely
+	// because LoadDNSConfigHandler short-circuits the chain before
+	// ProjectStoreHandler runs.
+	if record.Spec.PortalRef != "" {
+		var dnsList v1alpha2.DNSList
+		if err := r.List(ctx, &dnsList,
+			client.InNamespace(record.Namespace),
+			client.MatchingFields{portalfeatures.FieldIndexPortalRef: record.Spec.PortalRef},
+		); err != nil {
+			return ctrl.Result{}, err
+		}
+		if len(dnsList.Items) == 0 {
+			logger.Info("parent DNS not found, dropping DNSRecord from read store", "portal", record.Spec.PortalRef)
+			if r.fqdnWriter != nil {
+				resourceKey := record.Namespace + "/" + record.Name
+				if wErr := r.fqdnWriter.Delete(ctx, resourceKey); wErr != nil {
+					return ctrl.Result{}, wErr
+				}
+			}
+			return ctrl.Result{}, nil
+		}
+	}
+
 	ownerDNSName := ""
 	for _, or := range record.OwnerReferences {
 		if or.Controller != nil && *or.Controller && or.Kind == "DNS" {
