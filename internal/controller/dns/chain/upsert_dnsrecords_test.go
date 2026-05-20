@@ -88,10 +88,10 @@ func TestUpsertDNSRecords_CreatesAndDeletes(t *testing.T) {
 	require.Equal(t, sreportalv1alpha2.DNSRecordOriginAuto, created.Spec.Origin)
 	require.Equal(t, string(service.SourceTypeService), string(created.Spec.SourceType))
 	require.Equal(t, "p", created.Spec.PortalRef)
-	require.Empty(t, created.Spec.Entries)
-	require.Len(t, created.Status.Endpoints, 1)
-	require.Equal(t, "a.example.com", created.Status.Endpoints[0].DNSName)
-	require.Equal(t, []string{"1.1.1.1"}, created.Status.Endpoints[0].Targets)
+	require.Len(t, created.Spec.Entries, 1)
+	require.Equal(t, "a.example.com", created.Spec.Entries[0].FQDN)
+	require.Equal(t, "A", created.Spec.Entries[0].RecordType)
+	require.Equal(t, []string{"1.1.1.1"}, created.Spec.Entries[0].Targets)
 
 	var gone sreportalv1alpha2.DNSRecord
 	err := c.Get(context.Background(), types.NamespacedName{Namespace: upsertTestNS1, Name: "d-ingress"}, &gone)
@@ -167,11 +167,11 @@ func TestUpsertDNSRecordsHandler_MultipleKinds(t *testing.T) {
 		require.Equal(t, sreportalv1alpha2.SourceType(tc.kind), dr.Spec.SourceType,
 			"DNSRecord %q: wrong SourceType", name)
 
-		// Status.Endpoints contains the expected FQDN+target.
-		require.Len(t, dr.Status.Endpoints, 1, "DNSRecord %q: expected 1 endpoint", name)
-		require.Equal(t, tc.dnsName, dr.Status.Endpoints[0].DNSName,
-			"DNSRecord %q: wrong DNSName", name)
-		require.Equal(t, []string{tc.target}, dr.Status.Endpoints[0].Targets,
+		// Spec.Entries contains the expected FQDN+target.
+		require.Len(t, dr.Spec.Entries, 1, "DNSRecord %q: expected 1 spec entry", name)
+		require.Equal(t, tc.dnsName, dr.Spec.Entries[0].FQDN,
+			"DNSRecord %q: wrong FQDN", name)
+		require.Equal(t, []string{tc.target}, dr.Spec.Entries[0].Targets,
 			"DNSRecord %q: wrong Targets", name)
 
 		// OwnerReference points back to the DNS CR.
@@ -183,4 +183,49 @@ func TestUpsertDNSRecordsHandler_MultipleKinds(t *testing.T) {
 		require.NotNil(t, ref.Controller, "DNSRecord %q: ownerRef.Controller must be set", name)
 		require.True(t, *ref.Controller, "DNSRecord %q: ownerRef.Controller must be true", name)
 	}
+}
+
+// TestUpsertDNSRecordsHandler_NoOpWhenUnchanged verifies that a second
+// reconcile with identical endpoints does not bump the DNSRecord
+// generation or ResourceVersion (the foundation of the burst-cascade fix).
+func TestUpsertDNSRecordsHandler_NoOpWhenUnchanged(t *testing.T) {
+	scheme := runtime.NewScheme()
+	require.NoError(t, sreportalv1alpha2.AddToScheme(scheme))
+
+	dns := &sreportalv1alpha2.DNS{
+		ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: upsertTestNS1, UID: "uid-noop"},
+		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: "p"},
+	}
+	c := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithStatusSubresource(&sreportalv1alpha2.DNSRecord{}).
+		WithObjects(dns).
+		Build()
+
+	h := &dnschain.UpsertDNSRecordsHandler{Client: c}
+	build := func() *reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData] {
+		return &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{
+			Resource: dns,
+			Data: dnschain.ChainData{
+				KeptEndpointsByKind: map[registry.SourceType][]*endpoint.Endpoint{
+					service.SourceTypeService: {endpoint.NewEndpoint("a.example.com", "A", "1.1.1.1")},
+				},
+			},
+		}
+	}
+
+	require.NoError(t, h.Handle(context.Background(), build()))
+
+	var first sreportalv1alpha2.DNSRecord
+	key := types.NamespacedName{Namespace: upsertTestNS1, Name: "d-service"}
+	require.NoError(t, c.Get(context.Background(), key, &first))
+	firstGen := first.Generation
+	firstRV := first.ResourceVersion
+
+	require.NoError(t, h.Handle(context.Background(), build()))
+
+	var second sreportalv1alpha2.DNSRecord
+	require.NoError(t, c.Get(context.Background(), key, &second))
+	require.Equal(t, firstGen, second.Generation, "generation must not bump on no-op upsert")
+	require.Equal(t, firstRV, second.ResourceVersion, "no write expected when content is identical")
 }

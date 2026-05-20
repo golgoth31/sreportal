@@ -86,7 +86,6 @@ func NewDNSReconciler(
 // +kubebuilder:rbac:groups=sreportal.io,resources=dns/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=dns/finalizers,verbs=update
 // +kubebuilder:rbac:groups=sreportal.io,resources=dnsrecords,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=sreportal.io,resources=dnsrecords/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=dnsrecords/finalizers,verbs=update
 // +kubebuilder:rbac:groups=sreportal.io,resources=portals,verbs=get;list;watch
 // +kubebuilder:rbac:groups=sreportal.io,resources=components,verbs=get;list;watch;create;update;delete
@@ -217,8 +216,8 @@ func (r *DNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			&v1alpha2.DNSRecord{},
 			handler.EnqueueRequestsFromMapFunc(r.enqueueDNSForRecord),
 			// Ignore status-only patches (e.g. syncStatus, endpointsHash) — they
-			// don't affect DNS reconciliation and would cause a hot-loop because
-			// UpsertDNSRecordsHandler writes DNSRecord status on every cycle.
+			// don't affect DNS reconciliation. Spec changes (generation bump) from
+			// UpsertDNSRecordsHandler will still trigger re-reconciliation correctly.
 			builder.WithPredicates(predicate.GenerationChangedPredicate{}),
 		).
 		Watches(

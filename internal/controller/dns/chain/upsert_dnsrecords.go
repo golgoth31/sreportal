@@ -75,36 +75,38 @@ func (h *UpsertDNSRecordsHandler) Handle(ctx context.Context, rc *reconciler.Rec
 func (h *UpsertDNSRecordsHandler) upsertOne(ctx context.Context, dns *sreportalv1alpha2.DNS, kind registry.SourceType, eps []*endpoint.Endpoint) error {
 	name := fmt.Sprintf("%s-%s", dns.Name, string(kind))
 	dr := &sreportalv1alpha2.DNSRecord{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: dns.Namespace}}
+	desiredEntries := endpointsToEntries(eps)
+
 	if _, err := controllerutil.CreateOrUpdate(ctx, h.Client, dr, func() error {
 		if dr.Spec.Origin == "" {
 			dr.Spec.Origin = sreportalv1alpha2.DNSRecordOriginAuto
 		}
 		dr.Spec.PortalRef = dns.Spec.PortalRef
 		dr.Spec.SourceType = sreportalv1alpha2.SourceType(kind)
-		// Auto-origin DNSRecord CEL forbids spec.entries; endpoints are
-		// projected to status by this handler below and then refined by the
-		// DNSRecord controller's chain (hash, resolve, project store).
+		dr.Spec.Entries = desiredEntries
 		return controllerutil.SetControllerReference(dns, dr, h.Client.Scheme())
 	}); err != nil {
 		return err
 	}
-
-	base := dr.DeepCopy()
-	now := metav1.Now()
-	dr.Status.Endpoints = endpointsToStatus(eps, now)
-	dr.Status.LastReconcileTime = &now
-	return h.Client.Status().Patch(ctx, dr, client.MergeFrom(base))
+	return nil
 }
 
-func endpointsToStatus(eps []*endpoint.Endpoint, now metav1.Time) []sreportalv1alpha2.EndpointStatus {
-	out := make([]sreportalv1alpha2.EndpointStatus, 0, len(eps))
+// endpointsToEntries converts external-dns endpoints into the manifest-shape
+// DNSRecordEntry used in spec.entries. The group label is propagated via
+// DNSRecordEntry.Group; other labels are dropped here and will be re-derived
+// downstream from the DNS CR config.
+func endpointsToEntries(eps []*endpoint.Endpoint) []sreportalv1alpha2.DNSRecordEntry {
+	out := make([]sreportalv1alpha2.DNSRecordEntry, 0, len(eps))
 	for _, e := range eps {
-		out = append(out, sreportalv1alpha2.EndpointStatus{
-			DNSName:    e.DNSName,
+		entry := sreportalv1alpha2.DNSRecordEntry{
+			FQDN:       e.DNSName,
 			RecordType: e.RecordType,
 			Targets:    append([]string(nil), e.Targets...),
-			LastSeen:   now,
-		})
+		}
+		if g, ok := e.Labels["sreportal.io/group"]; ok {
+			entry.Group = g
+		}
+		out = append(out, entry)
 	}
 	return out
 }
