@@ -115,6 +115,24 @@ var _ = BeforeSuite(func() {
 	)
 	Expect(err).NotTo(HaveOccurred())
 
+	// Add field indexer for v1alpha2.DNS.spec.portalRef — used by the
+	// DNSRecord controller's LoadDNSConfigHandler and by the
+	// orphan-cleanup branch in the DNSRecord controller. The DNS → DNSRecord
+	// E2E test exercises both paths.
+	err = mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&sreportalv1alpha2.DNS{},
+		portalfeatures.FieldIndexPortalRef,
+		func(o client.Object) []string {
+			d, ok := o.(*sreportalv1alpha2.DNS)
+			if !ok || d.Spec.PortalRef == "" {
+				return nil
+			}
+			return []string{d.Spec.PortalRef}
+		},
+	)
+	Expect(err).NotTo(HaveOccurred())
+
 	// Start the manager in background
 	go func() {
 		defer GinkgoRecover()
