@@ -77,7 +77,6 @@ func (r *DNSRecordReconciler) rebuildChain() {
 		"dnsrecord",
 		dnsrecordchain.NewLoadDNSConfigHandler(r.Client),
 		dnsrecordchain.NewMaterialiseEntriesHandler(),
-		dnsrecordchain.NewSyncEndpointsHashHandler(r.Client),
 		dnsrecordchain.NewResolveDNSHandler(r.Client, r.resolver),
 		dnsrecordchain.NewProjectStoreHandler(r.fqdnWriter),
 	)
