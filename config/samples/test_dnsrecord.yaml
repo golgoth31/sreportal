@@ -1,0 +1,32 @@
+# DNS resource that will be updated by the source controller with discovered FQDNs
+apiVersion: sreportal.io/v1alpha2
+kind: DNSRecord
+metadata:
+  name: pouet
+  namespace: sreportal-system
+spec:
+  origin: manual
+  portalRef: main
+  # Manual DNS entries (these will be preserved alongside discovered ones)
+  entries:
+    - fqdn: "applications.example.com"
+      description: "Applications"
+    - fqdn: "status.example.com"
+      description: "Status page"
+    - fqdn: "portal.notrenet.ovh"
+      description: "Portal"
+---
+apiVersion: sreportal.io/v1alpha2
+kind: DNSRecord
+metadata:
+  name: pouet
+  namespace: default
+spec:
+  origin: manual
+  portalRef: loc-1
+  # Manual DNS entries (these will be preserved alongside discovered ones)
+  entries:
+    - fqdn: "status.example.com"
+      description: "Status page"
+    - fqdn: "portal.notrenet.ovh"
+      description: "Portal"
