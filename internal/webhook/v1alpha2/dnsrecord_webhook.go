@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	sreportalv1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 	"github.com/golgoth31/sreportal/internal/log"
 )
@@ -154,7 +155,7 @@ func (v *DNSRecordCustomValidator) validateOwnerRef(ctx context.Context, r, old 
 	}
 
 	if !hasRef {
-		return nil
+		return v.validatePortalRefExists(ctx, r)
 	}
 
 	ref := refs[0]
@@ -172,6 +173,27 @@ func (v *DNSRecordCustomValidator) validateOwnerRef(ctx context.Context, r, old 
 
 	if r.Spec.PortalRef != owner.Spec.PortalRef {
 		return fmt.Errorf("spec.portalRef %q must match owner DNS spec.portalRef %q", r.Spec.PortalRef, owner.Spec.PortalRef)
+	}
+
+	return nil
+}
+
+// validatePortalRefExists checks that spec.portalRef names a Portal in the
+// DNSRecord's own namespace. Only called for records with no controller
+// ownerReference to a DNS — owned records' portalRef is pinned to (and was
+// validated via) their owner DNS.
+func (v *DNSRecordCustomValidator) validatePortalRefExists(ctx context.Context, r *sreportalv1alpha2.DNSRecord) error {
+	if r.Spec.PortalRef == "" {
+		return fmt.Errorf("spec.portalRef is required")
+	}
+
+	var portal sreportalv1alpha1.Portal
+	key := types.NamespacedName{Name: r.Spec.PortalRef, Namespace: r.Namespace}
+	if err := v.client.Get(ctx, key, &portal); err != nil {
+		if apierrors.IsNotFound(err) {
+			return fmt.Errorf("referenced portal %q not found in namespace %q", r.Spec.PortalRef, r.Namespace)
+		}
+		return fmt.Errorf("failed to check portal reference: %w", err)
 	}
 
 	return nil

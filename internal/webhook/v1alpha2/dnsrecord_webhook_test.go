@@ -30,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	sreportalv1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 	webhookv1alpha2 "github.com/golgoth31/sreportal/internal/webhook/v1alpha2"
 )
@@ -45,11 +46,15 @@ func ctxWithUser(username string) context.Context {
 	return admission.NewContextWithRequest(context.Background(), req)
 }
 
-// newFakeClient builds a controller-runtime fake client with the v1alpha2 scheme registered.
+// newFakeClient builds a controller-runtime fake client with the v1alpha1 and
+// v1alpha2 schemes registered. v1alpha1 is needed because Portal has no
+// v1alpha2 type — the DNSRecord webhook's portalRef-existence check looks up
+// sreportalv1alpha1.Portal.
 func newFakeClient(t *testing.T, objs ...client.Object) client.Client {
 	t.Helper()
 	s := runtime.NewScheme()
 	g := NewWithT(t)
+	g.Expect(sreportalv1alpha1.AddToScheme(s)).To(Succeed())
 	g.Expect(sreportalv1alpha2.AddToScheme(s)).To(Succeed())
 	return fake.NewClientBuilder().WithScheme(s).WithObjects(objs...).Build()
 }
@@ -63,6 +68,19 @@ func newDNS() *sreportalv1alpha2.DNS {
 		},
 		Spec: sreportalv1alpha2.DNSSpec{
 			PortalRef: tPortalMain,
+		},
+	}
+}
+
+// newPortal constructs a minimal Portal object for seeding the fake client.
+func newPortal() *sreportalv1alpha1.Portal {
+	return &sreportalv1alpha1.Portal{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      tPortalMain,
+			Namespace: tNamespace,
+		},
+		Spec: sreportalv1alpha1.PortalSpec{
+			Title: "Main Portal",
 		},
 	}
 }
@@ -417,7 +435,8 @@ func TestDNSRecordWebhook_RejectsPortalRefMismatch(t *testing.T) {
 
 func TestDNSRecordWebhook_ManualWithoutOwnerRefAccepted(t *testing.T) {
 	g := NewWithT(t)
-	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t), "")
+	portal := newPortal()
+	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, portal), "")
 	r := &sreportalv1alpha2.DNSRecord{
 		ObjectMeta: metav1.ObjectMeta{Name: tRecordManual, Namespace: tNamespace},
 		Spec: sreportalv1alpha2.DNSRecordSpec{
@@ -428,6 +447,24 @@ func TestDNSRecordWebhook_ManualWithoutOwnerRefAccepted(t *testing.T) {
 	}
 	_, err := v.ValidateCreate(context.Background(), r)
 	g.Expect(err).NotTo(HaveOccurred())
+}
+
+func TestDNSRecordWebhook_ManualWithoutOwnerRefRejectedWhenPortalMissing(t *testing.T) {
+	g := NewWithT(t)
+	// fake client has no Portal objects → portalRef lookup returns NotFound.
+	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t), "")
+	r := &sreportalv1alpha2.DNSRecord{
+		ObjectMeta: metav1.ObjectMeta{Name: tRecordManual, Namespace: tNamespace},
+		Spec: sreportalv1alpha2.DNSRecordSpec{
+			Origin:    sreportalv1alpha2.DNSRecordOriginManual,
+			PortalRef: tPortalMain,
+			Entries:   []sreportalv1alpha2.DNSRecordEntry{{FQDN: tFQDNAPIExamp}},
+		},
+	}
+	_, err := v.ValidateCreate(context.Background(), r)
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(err.Error()).To(ContainSubstring("referenced portal"))
+	g.Expect(err.Error()).To(ContainSubstring("not found in namespace"))
 }
 
 func TestDNSRecordWebhook_ManualWithDanglingOwnerRefRejected(t *testing.T) {
