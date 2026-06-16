@@ -19,6 +19,7 @@ package crossplanescalewayrecord
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -87,6 +88,9 @@ func recordToEndpoint(obj *unstructured.Unstructured) (*endpoint.Endpoint, bool)
 	}
 
 	name, _ := forProvider["name"].(string)
+
+	dnsZone = strings.TrimSuffix(dnsZone, ".")
+	name = strings.TrimSuffix(name, ".")
 
 	var dnsName string
 	if name == "" {

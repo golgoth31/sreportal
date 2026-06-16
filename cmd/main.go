@@ -34,7 +34,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -50,11 +49,13 @@ import (
 
 	sreportal "github.com/golgoth31/sreportal"
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	sreportalv1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 	"github.com/golgoth31/sreportal/internal/alertmanagerclient"
 	"github.com/golgoth31/sreportal/internal/auth"
 	"github.com/golgoth31/sreportal/internal/config"
 	alertmanagerctrl "github.com/golgoth31/sreportal/internal/controller/alertmanager"
 	componentctrl "github.com/golgoth31/sreportal/internal/controller/component"
+	componentsctrl "github.com/golgoth31/sreportal/internal/controller/components"
 	dnsctrl "github.com/golgoth31/sreportal/internal/controller/dns"
 	dnschain "github.com/golgoth31/sreportal/internal/controller/dns/chain"
 	dnsrecordsctrl "github.com/golgoth31/sreportal/internal/controller/dnsrecords"
@@ -82,14 +83,27 @@ import (
 	netpolreadstore "github.com/golgoth31/sreportal/internal/readstore/netpol"
 	portalreadstore "github.com/golgoth31/sreportal/internal/readstore/portal"
 	releasereadstore "github.com/golgoth31/sreportal/internal/readstore/release"
+	readstoresource "github.com/golgoth31/sreportal/internal/readstore/source"
 	"github.com/golgoth31/sreportal/internal/registry"
 	releaseservice "github.com/golgoth31/sreportal/internal/release"
 	"github.com/golgoth31/sreportal/internal/remoteclient"
 	"github.com/golgoth31/sreportal/internal/slackclient"
-	"github.com/golgoth31/sreportal/internal/source"
+	"github.com/golgoth31/sreportal/internal/source/crossplanescalewayrecord"
+	"github.com/golgoth31/sreportal/internal/source/dnsendpoint"
+	"github.com/golgoth31/sreportal/internal/source/gatewaygrpcroute"
+	"github.com/golgoth31/sreportal/internal/source/gatewayhttproute"
+	"github.com/golgoth31/sreportal/internal/source/gatewaytcproute"
+	"github.com/golgoth31/sreportal/internal/source/gatewaytlsroute"
+	"github.com/golgoth31/sreportal/internal/source/gatewayudproute"
+	"github.com/golgoth31/sreportal/internal/source/ingress"
+	"github.com/golgoth31/sreportal/internal/source/istiogateway"
+	"github.com/golgoth31/sreportal/internal/source/istiovirtualservice"
+	srcregistry "github.com/golgoth31/sreportal/internal/source/registry"
+	"github.com/golgoth31/sreportal/internal/source/service"
 	statuspagesvc "github.com/golgoth31/sreportal/internal/statuspage"
 	"github.com/golgoth31/sreportal/internal/version"
 	webhookv1alpha1 "github.com/golgoth31/sreportal/internal/webhook/v1alpha1"
+	webhookv1alpha2 "github.com/golgoth31/sreportal/internal/webhook/v1alpha2"
 	"github.com/golgoth31/sreportal/internal/webserver"
 	// +kubebuilder:scaffold:imports
 )
@@ -105,6 +119,7 @@ func init() {
 	utilruntime.Must(externaldnsv1alpha1.AddToScheme(scheme))
 
 	utilruntime.Must(sreportalv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(sreportalv1alpha2.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -334,20 +349,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Add field indexer for DNSRecord.spec.portalRef
+	// Add field indexer for DNSRecord.spec.portalRef (v1alpha2 hub)
 	if err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),
-		&sreportalv1alpha1.DNSRecord{},
+		&sreportalv1alpha2.DNSRecord{},
 		portalfeatures.FieldIndexPortalRef,
 		func(o client.Object) []string {
-			dnsRecord := o.(*sreportalv1alpha1.DNSRecord)
+			dnsRecord := o.(*sreportalv1alpha2.DNSRecord)
 			if dnsRecord.Spec.PortalRef == "" {
 				return nil
 			}
 			return []string{dnsRecord.Spec.PortalRef}
 		},
 	); err != nil {
-		setupLog.Error(err, "unable to create field indexer", "field", portalfeatures.FieldIndexPortalRef)
+		setupLog.Error(err, "unable to create field indexer",
+			"field", portalfeatures.FieldIndexPortalRef, "kind", "v1alpha2.DNSRecord")
 		os.Exit(1)
 	}
 
@@ -369,20 +385,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Add field indexer for DNS.spec.portalRef
+	// Add field indexer for DNS.spec.portalRef (v1alpha2 hub)
 	if err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),
-		&sreportalv1alpha1.DNS{},
+		&sreportalv1alpha2.DNS{},
 		portalfeatures.FieldIndexPortalRef,
 		func(o client.Object) []string {
-			dns := o.(*sreportalv1alpha1.DNS)
+			dns := o.(*sreportalv1alpha2.DNS)
 			if dns.Spec.PortalRef == "" {
 				return nil
 			}
 			return []string{dns.Spec.PortalRef}
 		},
 	); err != nil {
-		setupLog.Error(err, "unable to create field indexer", "field", portalfeatures.FieldIndexPortalRef)
+		setupLog.Error(err, "unable to create field indexer",
+			"field", portalfeatures.FieldIndexPortalRef, "kind", "v1alpha2.DNS")
 		os.Exit(1)
 	}
 
@@ -503,27 +520,24 @@ func main() {
 	ctx, cancel := context.WithCancel(signalCtx)
 	defer cancel()
 
-	// Create kubernetes clientset for external-dns sources
-	restConfig := ctrl.GetConfigOrDie()
-	kubeClient, err := kubernetes.NewForConfig(restConfig)
-	if err != nil {
-		setupLog.Error(err, "unable to create kubernetes client")
-		os.Exit(1)
-	}
-
 	annotations.SetAnnotationPrefix("external-dns.alpha.kubernetes.io/")
 
 	// Create ReadStores: controllers write, gRPC/MCP read.
-	sourceBuilders := source.DefaultBuilders()
-	var sourcePriority []string
-	var disableDNSCheck bool
-	var groupMapping *config.GroupMappingConfig
-	if operatorConfig != nil {
-		sourcePriority = source.FilterPriorityOrder(operatorConfig.Sources.Priority, sourceBuilders, operatorConfig)
-		disableDNSCheck = operatorConfig.Reconciliation.DisableDNSCheck
-		groupMapping = &operatorConfig.GroupMapping
-	}
-	fqdnStore := dnsreadstore.NewFQDNStore(nil) // priority dedup handled in SourceReconciler
+	sourceStore := readstoresource.NewStore()
+	sourceRegistry := srcregistry.NewRegistry(
+		service.NewResolver(),
+		ingress.NewResolver(),
+		dnsendpoint.NewResolver(),
+		istiogateway.NewResolver(),
+		istiovirtualservice.NewResolver(),
+		gatewayhttproute.NewResolver(),
+		gatewaygrpcroute.NewResolver(),
+		gatewaytcproute.NewResolver(),
+		gatewaytlsroute.NewResolver(),
+		gatewayudproute.NewResolver(),
+		crossplanescalewayrecord.NewResolver(),
+	)
+	fqdnStore := dnsreadstore.NewFQDNStore()
 	portalStore := portalreadstore.NewPortalStore()
 	releaseStore := releasereadstore.NewReleaseStore()
 	alertmanagerStore := alertmanagerreadstore.NewAlertmanagerStore()
@@ -557,9 +571,9 @@ func main() {
 	dnsReconciler := dnsctrl.NewDNSReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),
-		disableDNSCheck,
+		sourceStore,
+		fqdnStore,
 	)
-	dnsReconciler.SetFQDNWriter(fqdnStore)
 	if err := dnsReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "DNS")
 		os.Exit(1)
@@ -568,9 +582,7 @@ func main() {
 	dnsRecordReconciler := dnsrecordsctrl.NewDNSRecordReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),
-		groupMapping,
 		dnschain.NewNetResolver(),
-		disableDNSCheck,
 	)
 	dnsRecordReconciler.SetFQDNWriter(fqdnStore)
 	if err := dnsRecordReconciler.SetupWithManager(mgr); err != nil {
@@ -578,16 +590,24 @@ func main() {
 		os.Exit(1)
 	}
 
-	sourceReconciler := sourcectrl.NewSourceReconciler(
-		mgr.GetClient(),
-		kubeClient,
-		restConfig,
-		operatorConfig,
-		sourceBuilders,
-		sourcePriority,
-	)
-	if err := sourceReconciler.SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Source")
+	if err := mgr.Add(&sourcectrl.SourceReconciler{
+		Client:   mgr.GetClient(),
+		Registry: sourceRegistry,
+		Store:    sourceStore,
+		Interval: operatorConfig.Reconciliation.Interval.Duration(),
+	}); err != nil {
+		setupLog.Error(err, "unable to set up SourceReconciler")
+		os.Exit(1)
+	}
+
+	if err := mgr.Add(&componentsctrl.Reconciler{
+		Client:   mgr.GetClient(),
+		Scheme:   mgr.GetScheme(),
+		Reader:   sourceStore,
+		Registry: sourceRegistry,
+		Interval: operatorConfig.Reconciliation.Interval.Duration(),
+	}); err != nil {
+		setupLog.Error(err, "unable to add ComponentsReconciler")
 		os.Exit(1)
 	}
 
@@ -595,6 +615,25 @@ func main() {
 	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
 		if err := webhookv1alpha1.SetupDNSWebhookWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create webhook", "webhook", "DNS")
+			os.Exit(1)
+		}
+		if err := webhookv1alpha2.SetupDNSWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "DNS/v1alpha2")
+			os.Exit(1)
+		}
+		controllerSA := os.Getenv("SREPORTAL_CONTROLLER_SA")
+		if controllerSA == "" {
+			setupLog.Error(nil,
+				"SREPORTAL_CONTROLLER_SA is required when webhooks are enabled; "+
+					"refusing to start with origin=auto admission open")
+			os.Exit(1)
+		}
+		if err := webhookv1alpha2.SetupDNSRecordWebhookWithManager(mgr, controllerSA); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "DNSRecord/v1alpha2")
+			os.Exit(1)
+		}
+		if err := webhookv1alpha1.SetupDNSRecordWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "DNSRecord/v1alpha1")
 			os.Exit(1)
 		}
 		if err := webhookv1alpha1.SetupPortalWebhookWithManager(mgr); err != nil {
@@ -615,6 +654,7 @@ func main() {
 		mgr.GetClient(),
 		mgr.GetScheme(),
 		remoteCache,
+		operatorConfig,
 	)
 	portalReconciler.SetPortalWriter(portalStore)
 	portalReconciler.SetFQDNWriter(fqdnStore)

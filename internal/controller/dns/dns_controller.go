@@ -18,73 +18,73 @@ package dns
 
 import (
 	"context"
-	"slices"
+	"errors"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-
-	"github.com/golgoth31/sreportal/internal/log"
-	"github.com/golgoth31/sreportal/internal/metrics"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	v1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 	dnschain "github.com/golgoth31/sreportal/internal/controller/dns/chain"
-	portalfeatures "github.com/golgoth31/sreportal/internal/controller/portal/features"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
+	domainsource "github.com/golgoth31/sreportal/internal/domain/source"
+	"github.com/golgoth31/sreportal/internal/log"
+	"github.com/golgoth31/sreportal/internal/metrics"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
 const (
-	// DefaultRequeueAfter is the default requeue interval
+	// DefaultRequeueAfter is the fallback requeue interval when the DNS CR
+	// has no explicit reconciliation.interval set.
 	DefaultRequeueAfter = 5 * time.Minute
+	// MinRequeueAfter caps the lower bound of spec.reconciliation.interval to
+	// avoid hot-looping the controller.
+	MinRequeueAfter = 30 * time.Second
 )
 
 // DNSReconciler reconciles a DNS object
 type DNSReconciler struct {
 	client.Client
-	Scheme     *runtime.Scheme
-	chain      *reconciler.Chain[*sreportalv1alpha1.DNS, dnschain.ChainData]
-	fqdnWriter domaindns.FQDNWriter
-}
-
-// SetFQDNWriter sets the FQDN read-store writer. When set, the reconciler
-// pushes pre-aggregated FQDNViews into the store after each successful reconciliation.
-func (r *DNSReconciler) SetFQDNWriter(w domaindns.FQDNWriter) {
-	r.fqdnWriter = w
+	Scheme       *runtime.Scheme
+	SourceReader domainsource.SourceEndpointReader
+	Conflicts    domaindns.FQDNConflictReader
+	chain        *reconciler.Chain[*v1alpha2.DNS, dnschain.ChainData]
 }
 
 // NewDNSReconciler creates a new DNSReconciler with the handler chain.
-// The chain handles manual DNS entries only; external-dns endpoints are handled
-// by the DNSRecordReconciler which projects directly into the read store.
-// When disableDNSCheck is true, the ResolveDNSHandler step is omitted.
-func NewDNSReconciler(c client.Client, scheme *runtime.Scheme, disableDNSCheck bool) *DNSReconciler {
-	handlers := []reconciler.Handler[*sreportalv1alpha1.DNS, dnschain.ChainData]{
-		dnschain.NewCollectManualEntriesHandler(),
-		dnschain.NewAggregateFQDNsHandler(),
+func NewDNSReconciler(
+	c client.Client,
+	scheme *runtime.Scheme,
+	sourceReader domainsource.SourceEndpointReader,
+	conflicts domaindns.FQDNConflictReader,
+) *DNSReconciler {
+	r := &DNSReconciler{
+		Client:       c,
+		Scheme:       scheme,
+		SourceReader: sourceReader,
+		Conflicts:    conflicts,
 	}
-	if !disableDNSCheck {
-		handlers = append(handlers, dnschain.NewResolveDNSHandler(dnschain.NewNetResolver()))
-	}
-	handlers = append(handlers,
-		dnschain.NewUpdateStatusHandler(c),
-		dnschain.NewReconcileManualComponentsHandler(c, scheme),
+	r.chain = reconciler.NewChain[*v1alpha2.DNS, dnschain.ChainData](
+		"dns",
+		&dnschain.LookupSourcesHandler{Source: sourceReader},
+		&dnschain.IntraDNSDedupHandler{},
+		&dnschain.UpsertDNSRecordsHandler{Client: c},
+		&dnschain.SourcesStatusHandler{Conflicts: conflicts},
 	)
-
-	return &DNSReconciler{
-		Client: c,
-		Scheme: scheme,
-		chain:  reconciler.NewChain("dns", handlers...),
-	}
+	return r
 }
 
 // +kubebuilder:rbac:groups=sreportal.io,resources=dns,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=sreportal.io,resources=dns/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=dns/finalizers,verbs=update
 // +kubebuilder:rbac:groups=sreportal.io,resources=dnsrecords,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=sreportal.io,resources=dnsrecords/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=dnsrecords/finalizers,verbs=update
 // +kubebuilder:rbac:groups=sreportal.io,resources=portals,verbs=get;list;watch
 // +kubebuilder:rbac:groups=sreportal.io,resources=components,verbs=get;list;watch;create;update;delete
@@ -95,16 +95,8 @@ func (r *DNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	start := time.Now()
 	logger := log.FromContext(ctx)
 
-	// Fetch the DNS resource
-	var resource sreportalv1alpha1.DNS
+	var resource v1alpha2.DNS
 	if err := r.Get(ctx, req.NamespacedName, &resource); err != nil {
-		if client.IgnoreNotFound(err) == nil && r.fqdnWriter != nil {
-			// Resource deleted — remove from read store
-			resourceKey := req.Namespace + "/" + req.Name
-			if wErr := r.fqdnWriter.Delete(ctx, resourceKey); wErr != nil {
-				logger.Error(wErr, "failed to delete FQDN views from read store")
-			}
-		}
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
@@ -114,128 +106,136 @@ func (r *DNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		return ctrl.Result{}, nil
 	}
 
-	// Skip reconciliation when DNS feature is disabled on the referenced portal.
-	// Cleanup of read store entries and DNSRecord resources is handled by the
-	// portal controller when the toggle changes.
-	if resource.Spec.PortalRef != "" {
-		enabled, err := portalfeatures.LookupPortalFeature(ctx, r.Client, resource.Namespace, resource.Spec.PortalRef,
-			func(f *sreportalv1alpha1.PortalFeatures) bool { return f.IsDNSEnabled() })
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		if !enabled {
-			logger.V(1).Info("DNS feature disabled for portal, skipping", "portal", resource.Spec.PortalRef)
-			return ctrl.Result{}, nil
-		}
-	}
-
 	logger.Info("reconciling DNS resource", "name", resource.Name, "namespace", resource.Namespace)
 
-	// Create reconcile context
-	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.DNS, dnschain.ChainData]{
+	rc := &reconciler.ReconcileContext[*v1alpha2.DNS, dnschain.ChainData]{
 		Resource: &resource,
 	}
 
-	// Execute handler chain
 	if err := r.chain.Execute(ctx, rc); err != nil {
 		logger.Error(err, "reconciliation failed")
+		// Surface the chain failure on SourcesReady so the DNS CR no longer
+		// advertises a stale True condition while the controller is broken.
+		// Best-effort: ignore the patch error (we'll already return the chain
+		// error and re-run).
+		dnschain.SetCondition(&resource, metav1.Condition{
+			Type:    "SourcesReady",
+			Status:  metav1.ConditionFalse,
+			Reason:  "ReconcileFailed",
+			Message: err.Error(),
+		})
+		if patchErr := r.Status().Update(ctx, &resource); patchErr != nil {
+			logger.V(1).Info("failed to persist SourcesReady=False after chain error", "patchError", patchErr)
+		}
 		metrics.ReconcileTotal.WithLabelValues("dns", "error").Inc()
 		metrics.ReconcileDuration.WithLabelValues("dns", "").Observe(time.Since(start).Seconds())
 		return ctrl.Result{}, err
 	}
 
-	// If no explicit requeue requested, requeue after default interval
-	if rc.Result.RequeueAfter == 0 {
-		rc.Result.RequeueAfter = DefaultRequeueAfter
+	now := metav1.Now()
+	resource.Status.LastReconcileTime = &now
+	resource.Status.ObservedGeneration = resource.Generation
+	next := metav1.NewTime(now.Add(requeueInterval(&resource)))
+	resource.Status.NextReconcileTime = &next
+
+	// Persist any status updates accumulated by SourcesStatusHandler + above.
+	if err := r.Status().Update(ctx, &resource); err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			// Context was canceled or timed out (shutdown / re-queue race): skip silently.
+			return ctrl.Result{}, nil
+		}
+		logger.Error(err, "failed to update DNS status")
+		metrics.ReconcileTotal.WithLabelValues("dns", "error").Inc()
+		metrics.ReconcileDuration.WithLabelValues("dns", "").Observe(time.Since(start).Seconds())
+		return ctrl.Result{}, err
 	}
 
-	// Update FQDN and group gauges
-	portal := resource.Spec.PortalRef
-	fqdnsBySource := make(map[string]int)
-	for _, g := range resource.Status.Groups {
-		fqdnsBySource[g.Source] += len(g.FQDNs)
+	if rc.Result.RequeueAfter == 0 {
+		rc.Result.RequeueAfter = requeueInterval(&resource)
 	}
-	for src, count := range fqdnsBySource {
-		metrics.DNSFQDNsTotal.WithLabelValues(portal, src).Set(float64(count))
-	}
-	metrics.DNSGroupsTotal.WithLabelValues(portal).Set(float64(len(resource.Status.Groups)))
 
 	metrics.ReconcileTotal.WithLabelValues("dns", "success").Inc()
 	metrics.ReconcileDuration.WithLabelValues("dns", "").Observe(time.Since(start).Seconds())
-
-	// Project aggregated groups into the FQDN read store
-	if r.fqdnWriter != nil {
-		resourceKey := resource.Namespace + "/" + resource.Name
-		views := GroupsToFQDNViews(&resource)
-		if err := r.fqdnWriter.Replace(ctx, resourceKey, views); err != nil {
-			logger.Error(err, "failed to update FQDN read store")
-		}
-	}
 
 	logger.Info("reconciliation completed", "requeueAfter", rc.Result.RequeueAfter)
 	return rc.Result, nil
 }
 
-// GroupsToFQDNViews converts a DNS resource's status groups into a deduplicated,
-// sorted slice of FQDNViews. This centralises the CRD → domain transformation
-// that was previously duplicated across gRPC and MCP services.
-func GroupsToFQDNViews(resource *sreportalv1alpha1.DNS) []domaindns.FQDNView {
-	seen := make(map[string]*domaindns.FQDNView)
-
-	for _, group := range resource.Status.Groups {
-		for _, fqdn := range group.FQDNs {
-			key := fqdn.FQDN + "/" + fqdn.RecordType
-			if existing, ok := seen[key]; ok {
-				if !slices.Contains(existing.Groups, group.Name) {
-					existing.Groups = append(existing.Groups, group.Name)
-				}
-			} else {
-				view := domaindns.FQDNView{
-					Name:        fqdn.FQDN,
-					Source:      domaindns.Source(group.Source),
-					Groups:      []string{group.Name},
-					Description: fqdn.Description,
-					RecordType:  fqdn.RecordType,
-					Targets:     fqdn.Targets,
-					LastSeen:    fqdn.LastSeen.Time,
-					PortalName:  resource.Spec.PortalRef,
-					Namespace:   resource.Namespace,
-					SyncStatus:  fqdn.SyncStatus,
-				}
-				if fqdn.OriginRef != nil {
-					ref, _ := domaindns.ParseResourceRef(
-						fqdn.OriginRef.Kind + "/" + fqdn.OriginRef.Namespace + "/" + fqdn.OriginRef.Name,
-					)
-					view.OriginRef = &ref
-				}
-				seen[key] = &view
-			}
-		}
+// requeueInterval returns the per-DNS requeue duration, falling back to
+// DefaultRequeueAfter when unset and clamping anything below MinRequeueAfter.
+func requeueInterval(dns *v1alpha2.DNS) time.Duration {
+	d := dns.Spec.Reconciliation.Interval.Duration
+	if d <= 0 {
+		return DefaultRequeueAfter
 	}
-
-	views := make([]domaindns.FQDNView, 0, len(seen))
-	for _, v := range seen {
-		views = append(views, *v)
+	if d < MinRequeueAfter {
+		return MinRequeueAfter
 	}
-
-	return views
+	return d
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *DNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&sreportalv1alpha1.DNS{}).
+		For(
+			&v1alpha2.DNS{},
+			// Ignore status-only self-writes (LastReconcileTime / NextReconcileTime /
+			// SourcesReady) the reconciler performs on every pass. Without this they
+			// bump resourceVersion and re-enqueue the DNS, producing a tight
+			// reconcile loop. Spec changes still bump generation and trigger.
+			builder.WithPredicates(predicate.GenerationChangedPredicate{}),
+		).
+		Watches(
+			&v1alpha2.DNSRecord{},
+			handler.EnqueueRequestsFromMapFunc(r.enqueueDNSForRecord),
+			// Ignore status-only patches (e.g. syncStatus, endpointsHash) — they
+			// don't affect DNS reconciliation. Spec changes (generation bump) from
+			// UpsertDNSRecordsHandler will still trigger re-reconciliation correctly.
+			builder.WithPredicates(predicate.GenerationChangedPredicate{}),
+		).
 		Watches(
 			&sreportalv1alpha1.Portal{},
-			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []ctrl.Request {
-				portal, ok := obj.(*sreportalv1alpha1.Portal)
-				if !ok {
-					return nil
-				}
-				return portalfeatures.DnsReconcileRequestsForPortal(ctx, r.Client, portal)
-			}),
-			builder.WithPredicates(portalfeatures.PortalDNSEnabledWakeupPredicate()),
+			handler.EnqueueRequestsFromMapFunc(r.enqueueDNSForPortal),
 		).
 		Named("dns").
 		Complete(r)
+}
+
+// enqueueDNSForRecord enqueues the owning DNS for a DNSRecord change. The
+// DNSRecord webhook enforces a controller ownerRef to a DNS CR, so reading
+// ownerRefs is sufficient and avoids a name-based fallback.
+func (r *DNSReconciler) enqueueDNSForRecord(_ context.Context, obj client.Object) []ctrl.Request {
+	dr, ok := obj.(*v1alpha2.DNSRecord)
+	if !ok {
+		return nil
+	}
+	for _, ref := range dr.GetOwnerReferences() {
+		if ref.Controller != nil && *ref.Controller && ref.Kind == "DNS" {
+			return []ctrl.Request{{NamespacedName: types.NamespacedName{Namespace: dr.Namespace, Name: ref.Name}}}
+		}
+	}
+	return nil
+}
+
+// enqueueDNSForPortal enqueues every DNS in the Portal's namespace that
+// references it via spec.portalRef.
+func (r *DNSReconciler) enqueueDNSForPortal(ctx context.Context, obj client.Object) []ctrl.Request {
+	portal, ok := obj.(*sreportalv1alpha1.Portal)
+	if !ok {
+		return nil
+	}
+	var list v1alpha2.DNSList
+	if err := r.List(ctx, &list, client.InNamespace(portal.Namespace)); err != nil {
+		log.FromContext(ctx).Error(err, "list DNS for Portal watch", "portal", portal.Name)
+		return nil
+	}
+	reqs := make([]ctrl.Request, 0, len(list.Items))
+	for i := range list.Items {
+		if list.Items[i].Spec.PortalRef == portal.Name {
+			reqs = append(reqs, ctrl.Request{NamespacedName: types.NamespacedName{
+				Namespace: list.Items[i].Namespace, Name: list.Items[i].Name,
+			}})
+		}
+	}
+	return reqs
 }

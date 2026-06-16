@@ -19,6 +19,30 @@ type Chain[T any, D any] struct { handlers []Handler[T, D] }
 // Execute runs handlers sequentially; short-circuits on requeue or error
 ```
 
+## DNSRecord Spec/Status Contract
+
+`DNSRecord.spec.entries` is the canonical channel for endpoints, for
+both `origin=auto` and `origin=manual`:
+
+- **manual**: user writes `spec.entries`.
+- **auto**: the DNS controller writes `spec.entries` via CreateOrUpdate
+  (idempotent — no spec write when source content is unchanged).
+  The validating webhook (`internal/webhook/v1alpha2`) restricts
+  origin=auto updates to the operator ServiceAccount, so human edits
+  on auto records are rejected at admission. Any other write — should
+  one slip through — is overwritten at the next DNS reconcile.
+
+`status` is observed-only and written exclusively by the DNSRecord
+controller (`MaterialiseEntriesHandler`, `ResolveDNSHandler`,
+`ProjectStoreHandler`). The DNSRecord controller's `For()` watch uses
+`GenerationChangedPredicate`, so status patches do not re-trigger the
+controller (no feedback loop).
+
+DNS-resolution drift checks (`ResolveDNSHandler`) run on every reconcile.
+Because spec changes are sparse, a constant `DNSRecordResolveInterval`
+(1h) requeue keeps drift detection active without coupling it to the
+source poll cadence.
+
 ## cmd/main.go Setup
 
 Registers:

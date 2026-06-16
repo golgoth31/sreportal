@@ -25,6 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	sreportalv1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 	portalfeatures "github.com/golgoth31/sreportal/internal/controller/portal/features"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/reconciler"
@@ -89,7 +90,7 @@ func (h *CleanupDisabledFeaturesHandler) cleanupDNSData(ctx context.Context, por
 		return nil
 	}
 
-	var dnsList sreportalv1alpha1.DNSList
+	var dnsList sreportalv1alpha2.DNSList
 	if err := h.client.List(ctx, &dnsList,
 		client.InNamespace(portal.Namespace),
 		client.MatchingFields{portalfeatures.FieldIndexPortalRef: portal.Name},
@@ -104,7 +105,7 @@ func (h *CleanupDisabledFeaturesHandler) cleanupDNSData(ctx context.Context, por
 		}
 	}
 
-	var dnsRecordList sreportalv1alpha1.DNSRecordList
+	var dnsRecordList sreportalv1alpha2.DNSRecordList
 	if err := h.client.List(ctx, &dnsRecordList,
 		client.InNamespace(portal.Namespace),
 		client.MatchingFields{portalfeatures.FieldIndexPortalRef: portal.Name},

@@ -17,7 +17,25 @@ metadata:
     app.kubernetes.io/name: sreportal
     app.kubernetes.io/managed-by: kustomize
   name: loc-1
-  namespace: sreportal-system
+  namespace: default
 spec:
   title: "loc 1"
   subPath: "loc-1"
+---
+apiVersion: sreportal.io/v1alpha2
+kind: DNS
+metadata:
+  name: loc-1
+  namespace: default
+spec:
+  groupMapping:
+    defaultGroup: Services
+  portalRef: loc-1
+  reconciliation:
+    interval: 5m
+    retryOnError: 30s
+  sources:
+    service:
+      enabled: true
+      serviceTypeFilter: [LoadBalancer]
+      labelFilter: "app=sreportal"

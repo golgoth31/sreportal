@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file sreportal/v1/dns.proto.
  */
 export const file_sreportal_v1_dns: GenFile = /*@__PURE__*/
-  fileDesc("ChZzcmVwb3J0YWwvdjEvZG5zLnByb3RvEgxzcmVwb3J0YWwudjEifAoQTGlzdEZRRE5zUmVxdWVzdBIRCgluYW1lc3BhY2UYASABKAkSDgoGc291cmNlGAIgASgJEg4KBnNlYXJjaBgDIAEoCRIOCgZwb3J0YWwYBCABKAkSEQoJcGFnZV9zaXplGAUgASgFEhIKCnBhZ2VfdG9rZW4YBiABKAkiYwoRTGlzdEZRRE5zUmVzcG9uc2USIQoFZnFkbnMYASADKAsyEi5zcmVwb3J0YWwudjEuRlFEThIXCg9uZXh0X3BhZ2VfdG9rZW4YAiABKAkSEgoKdG90YWxfc2l6ZRgDIAEoBSJXChJTdHJlYW1GUUROc1JlcXVlc3QSEQoJbmFtZXNwYWNlGAEgASgJEg4KBnBvcnRhbBgCIAEoCRIOCgZzb3VyY2UYAyABKAkSDgoGc2VhcmNoGAQgASgJIl8KE1N0cmVhbUZRRE5zUmVzcG9uc2USJgoEdHlwZRgBIAEoDjIYLnNyZXBvcnRhbC52MS5VcGRhdGVUeXBlEiAKBGZxZG4YAiABKAsyEi5zcmVwb3J0YWwudjEuRlFETiJCChFPcmlnaW5SZXNvdXJjZVJlZhIMCgRraW5kGAEgASgJEhEKCW5hbWVzcGFjZRgCIAEoCRIMCgRuYW1lGAMgASgJIrcCCgRGUUROEgwKBG5hbWUYASABKAkSDgoGc291cmNlGAIgASgJEg4KBmdyb3VwcxgDIAMoCRITCgtkZXNjcmlwdGlvbhgEIAEoCRITCgtyZWNvcmRfdHlwZRgFIAEoCRIPCgd0YXJnZXRzGAYgAygJEi0KCWxhc3Rfc2VlbhgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGQoRZG5zX3Jlc291cmNlX25hbWUYCCABKAkSHgoWZG5zX3Jlc291cmNlX25hbWVzcGFjZRgJIAEoCRI4CgpvcmlnaW5fcmVmGAogASgLMh8uc3JlcG9ydGFsLnYxLk9yaWdpblJlc291cmNlUmVmSACIAQESEwoLc3luY19zdGF0dXMYCyABKAlCDQoLX29yaWdpbl9yZWYqcwoKVXBkYXRlVHlwZRIbChdVUERBVEVfVFlQRV9VTlNQRUNJRklFRBAAEhUKEVVQREFURV9UWVBFX0FEREVEEAESGAoUVVBEQVRFX1RZUEVfTU9ESUZJRUQQAhIXChNVUERBVEVfVFlQRV9ERUxFVEVEEAMysAEKCkROU1NlcnZpY2USTAoJTGlzdEZRRE5zEh4uc3JlcG9ydGFsLnYxLkxpc3RGUUROc1JlcXVlc3QaHy5zcmVwb3J0YWwudjEuTGlzdEZRRE5zUmVzcG9uc2USVAoLU3RyZWFtRlFETnMSIC5zcmVwb3J0YWwudjEuU3RyZWFtRlFETnNSZXF1ZXN0GiEuc3JlcG9ydGFsLnYxLlN0cmVhbUZRRE5zUmVzcG9uc2UwAUK4AQoQY29tLnNyZXBvcnRhbC52MUIIRG5zUHJvdG9QAVpJZ2l0aHViLmNvbS9nb2xnb3RoMzEvc3JlcG9ydGFsL2ludGVybmFsL2dycGMvZ2VuL3NyZXBvcnRhbC92MTtzcmVwb3J0YWx2MaICA1NYWKoCDFNyZXBvcnRhbC5WMcoCDFNyZXBvcnRhbFxWMeICGFNyZXBvcnRhbFxWMVxHUEJNZXRhZGF0YeoCDVNyZXBvcnRhbDo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
+  fileDesc("ChZzcmVwb3J0YWwvdjEvZG5zLnByb3RvEgxzcmVwb3J0YWwudjEifAoQTGlzdEZRRE5zUmVxdWVzdBIRCgluYW1lc3BhY2UYASABKAkSDgoGc291cmNlGAIgASgJEg4KBnNlYXJjaBgDIAEoCRIOCgZwb3J0YWwYBCABKAkSEQoJcGFnZV9zaXplGAUgASgFEhIKCnBhZ2VfdG9rZW4YBiABKAkiYwoRTGlzdEZRRE5zUmVzcG9uc2USIQoFZnFkbnMYASADKAsyEi5zcmVwb3J0YWwudjEuRlFEThIXCg9uZXh0X3BhZ2VfdG9rZW4YAiABKAkSEgoKdG90YWxfc2l6ZRgDIAEoBSJXChJTdHJlYW1GUUROc1JlcXVlc3QSEQoJbmFtZXNwYWNlGAEgASgJEg4KBnBvcnRhbBgCIAEoCRIOCgZzb3VyY2UYAyABKAkSDgoGc2VhcmNoGAQgASgJIl8KE1N0cmVhbUZRRE5zUmVzcG9uc2USJgoEdHlwZRgBIAEoDjIYLnNyZXBvcnRhbC52MS5VcGRhdGVUeXBlEiAKBGZxZG4YAiABKAsyEi5zcmVwb3J0YWwudjEuRlFETiJCChFPcmlnaW5SZXNvdXJjZVJlZhIMCgRraW5kGAEgASgJEhEKCW5hbWVzcGFjZRgCIAEoCRIMCgRuYW1lGAMgASgJItACCgRGUUROEgwKBG5hbWUYASABKAkSDgoGc291cmNlGAIgASgJEg4KBmdyb3VwcxgDIAMoCRITCgtkZXNjcmlwdGlvbhgEIAEoCRITCgtyZWNvcmRfdHlwZRgFIAEoCRIPCgd0YXJnZXRzGAYgAygJEi0KCWxhc3Rfc2VlbhgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASHQoRZG5zX3Jlc291cmNlX25hbWUYCCABKAlCAhgBEiIKFmRuc19yZXNvdXJjZV9uYW1lc3BhY2UYCSABKAlCAhgBEjgKCm9yaWdpbl9yZWYYCiABKAsyHy5zcmVwb3J0YWwudjEuT3JpZ2luUmVzb3VyY2VSZWZIAIgBARITCgtzeW5jX3N0YXR1cxgLIAEoCRIPCgdwb3J0YWxzGAwgAygJQg0KC19vcmlnaW5fcmVmKnMKClVwZGF0ZVR5cGUSGwoXVVBEQVRFX1RZUEVfVU5TUEVDSUZJRUQQABIVChFVUERBVEVfVFlQRV9BRERFRBABEhgKFFVQREFURV9UWVBFX01PRElGSUVEEAISFwoTVVBEQVRFX1RZUEVfREVMRVRFRBADMrABCgpETlNTZXJ2aWNlEkwKCUxpc3RGUUROcxIeLnNyZXBvcnRhbC52MS5MaXN0RlFETnNSZXF1ZXN0Gh8uc3JlcG9ydGFsLnYxLkxpc3RGUUROc1Jlc3BvbnNlElQKC1N0cmVhbUZRRE5zEiAuc3JlcG9ydGFsLnYxLlN0cmVhbUZRRE5zUmVxdWVzdBohLnNyZXBvcnRhbC52MS5TdHJlYW1GUUROc1Jlc3BvbnNlMAFCuAEKEGNvbS5zcmVwb3J0YWwudjFCCERuc1Byb3RvUAFaSWdpdGh1Yi5jb20vZ29sZ290aDMxL3NyZXBvcnRhbC9pbnRlcm5hbC9ncnBjL2dlbi9zcmVwb3J0YWwvdjE7c3JlcG9ydGFsdjGiAgNTWFiqAgxTcmVwb3J0YWwuVjHKAgxTcmVwb3J0YWxcVjHiAhhTcmVwb3J0YWxcVjFcR1BCTWV0YWRhdGHqAg1TcmVwb3J0YWw6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp]);
 
 /**
  * ListFQDNsRequest is the request for listing FQDNs
@@ -269,16 +269,21 @@ export type FQDN = Message<"sreportal.v1.FQDN"> & {
   lastSeen?: Timestamp | undefined;
 
   /**
-   * dns_resource_name is the name of the DNS resource this FQDN belongs to
+   * dns_resource_name is the name of the DNS resource this FQDN belongs to.
+   * Deprecated: replaced by `portals` to support an FQDN belonging to several
+   * portals after inter-DNS dedup. Kept for back-compat with older clients.
    *
-   * @generated from field: string dns_resource_name = 8;
+   * @generated from field: string dns_resource_name = 8 [deprecated = true];
+   * @deprecated
    */
   dnsResourceName: string;
 
   /**
-   * dns_resource_namespace is the namespace of the DNS resource
+   * dns_resource_namespace is the namespace of the DNS resource.
+   * Deprecated: see `dns_resource_name`. Kept for back-compat with older clients.
    *
-   * @generated from field: string dns_resource_namespace = 9;
+   * @generated from field: string dns_resource_namespace = 9 [deprecated = true];
+   * @deprecated
    */
   dnsResourceNamespace: string;
 
@@ -297,6 +302,14 @@ export type FQDN = Message<"sreportal.v1.FQDN"> & {
    * @generated from field: string sync_status = 11;
    */
   syncStatus: string;
+
+  /**
+   * portals lists every portal this FQDN belongs to (post inter-DNS dedup).
+   * Sorted and deduplicated.
+   *
+   * @generated from field: repeated string portals = 12;
+   */
+  portals: string[];
 };
 
 /**

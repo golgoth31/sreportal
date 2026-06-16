@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	sreportalv1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 	"github.com/golgoth31/sreportal/internal/log"
 )
 
@@ -136,7 +137,7 @@ func listReleasesForPortal(ctx context.Context, c client.Client, ns, portalName 
 }
 
 func listDNSForPortal(ctx context.Context, c client.Client, ns, portalName string) ([]ctrl.Request, error) {
-	var list sreportalv1alpha1.DNSList
+	var list sreportalv1alpha2.DNSList
 	if err := c.List(ctx, &list,
 		client.InNamespace(ns),
 		client.MatchingFields{FieldIndexPortalRef: portalName},
@@ -154,7 +155,7 @@ func listDNSForPortal(ctx context.Context, c client.Client, ns, portalName strin
 }
 
 func listDNSRecordsForPortal(ctx context.Context, c client.Client, ns, portalName string) ([]ctrl.Request, error) {
-	var list sreportalv1alpha1.DNSRecordList
+	var list sreportalv1alpha2.DNSRecordList
 	if err := c.List(ctx, &list,
 		client.InNamespace(ns),
 		client.MatchingFields{FieldIndexPortalRef: portalName},

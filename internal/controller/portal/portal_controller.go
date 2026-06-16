@@ -25,6 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
+	"github.com/golgoth31/sreportal/internal/config"
 	portalchain "github.com/golgoth31/sreportal/internal/controller/portal/chain"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 	domainnetpol "github.com/golgoth31/sreportal/internal/domain/netpol"
@@ -68,10 +69,14 @@ func (r *PortalReconciler) SetFlowGraphWriter(w domainnetpol.FlowGraphWriter) {
 }
 
 // NewPortalReconciler creates a new PortalReconciler with the handler chain.
-func NewPortalReconciler(c client.Client, scheme *runtime.Scheme, cache *remoteclient.Cache) *PortalReconciler {
+// operatorConfig is the (optional) legacy operator configuration; its source
+// settings seed the main portal's DNS CR on first reconcile, falling back to
+// built-in defaults when absent.
+func NewPortalReconciler(c client.Client, scheme *runtime.Scheme, cache *remoteclient.Cache, operatorConfig *config.OperatorConfig) *PortalReconciler {
 	handlers := []reconciler.Handler[*sreportalv1alpha1.Portal, portalchain.ChainData]{
 		portalchain.NewCleanupDisabledFeaturesHandler(c),
 		portalchain.NewEnsureLocalResourcesHandler(c, scheme),
+		portalchain.NewEnsureMainDNSHandler(c, scheme, operatorConfig),
 		portalchain.NewBuildRemoteClientHandler(c, cache),
 		portalchain.NewHealthCheckRemoteHandler(c),
 		portalchain.NewFetchRemoteDataHandler(c),

@@ -1,4 +1,4 @@
-import { CheckIcon, CopyIcon, NetworkIcon } from "lucide-react";
+import { CheckIcon, CopyIcon, NetworkIcon, ServerIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -89,14 +89,30 @@ export function FqdnCard({ fqdn }: FqdnCardProps) {
             {fqdn.recordType}
           </Badge>
         )}
-        {fqdn.targets.map((target) => (
-          <span
-            key={target}
-            className="text-muted-foreground font-mono text-xs"
-          >
-            {target}
-          </span>
-        ))}
+        {fqdn.targets.length === 1 && (
+          <span className="text-muted-foreground font-mono text-xs">{fqdn.targets[0]}</span>
+        )}
+        {fqdn.targets.length > 1 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 rounded-md border border-transparent px-1.5 py-0.5 -mx-1.5 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={`${fqdn.targets.length} targets`}
+              >
+                <ServerIcon className="size-3 shrink-0" />
+                <span>{fqdn.targets.length} targets</span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" align="start">
+              <div className="flex flex-col gap-1">
+                {fqdn.targets.map((target) => (
+                  <span key={target} className="font-mono text-[11px]">{target}</span>
+                ))}
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        )}
         <Badge
           variant="secondary"
           className={cn(

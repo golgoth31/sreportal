@@ -19,6 +19,8 @@ package chain
 import (
 	"context"
 	"fmt"
+	"slices"
+	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -29,7 +31,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
-	dnsctrl "github.com/golgoth31/sreportal/internal/controller/dns"
+	sreportalv1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
+	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 	"github.com/golgoth31/sreportal/internal/remoteclient"
@@ -87,7 +90,7 @@ func (h *SyncRemoteDNSHandler) reconcileRemoteDNS(ctx context.Context, portal *s
 	logger := log.FromContext(ctx)
 
 	dnsName := RemoteDNSName(portal.Name)
-	dns := &sreportalv1alpha1.DNS{}
+	dns := &sreportalv1alpha2.DNS{}
 
 	err := h.client.Get(ctx, types.NamespacedName{Name: dnsName, Namespace: portal.Namespace}, dns)
 	if err != nil && !errors.IsNotFound(err) {
@@ -96,14 +99,19 @@ func (h *SyncRemoteDNSHandler) reconcileRemoteDNS(ctx context.Context, portal *s
 
 	isNew := errors.IsNotFound(err)
 	if isNew {
-		dns = &sreportalv1alpha1.DNS{
+		dns = &sreportalv1alpha2.DNS{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      dnsName,
 				Namespace: portal.Namespace,
 			},
-			Spec: sreportalv1alpha1.DNSSpec{
-				PortalRef: portal.Name,
-				IsRemote:  true,
+			Spec: sreportalv1alpha2.DNSSpec{
+				PortalRef:    portal.Name,
+				IsRemote:     true,
+				GroupMapping: sreportalv1alpha2.GroupMappingSpec{DefaultGroup: "Services"},
+				Reconciliation: sreportalv1alpha2.ReconciliationSpec{
+					Interval:     metav1.Duration{Duration: 5 * time.Minute},
+					RetryOnError: metav1.Duration{Duration: 30 * time.Second},
+				},
 			},
 		}
 	}
@@ -125,41 +133,84 @@ func (h *SyncRemoteDNSHandler) reconcileRemoteDNS(ctx context.Context, portal *s
 		}
 	}
 
-	// Update status with fetched groups
 	dnsBase := dns.DeepCopy()
 	now := metav1.Now()
-	dns.Status.Groups = result.Groups
 	dns.Status.LastReconcileTime = &now
-
-	readyCondition := metav1.Condition{
+	meta.SetStatusCondition(&dns.Status.Conditions, metav1.Condition{
 		Type:               conditionTypeReady,
 		Status:             metav1.ConditionTrue,
 		Reason:             "RemoteSyncSuccess",
 		Message:            fmt.Sprintf("Successfully synced %d FQDNs from remote portal", result.FQDNCount),
 		LastTransitionTime: now,
-	}
-	meta.SetStatusCondition(&dns.Status.Conditions, readyCondition)
+	})
 
 	if err := h.client.Status().Patch(ctx, dns, client.MergeFrom(dnsBase)); err != nil {
 		return fmt.Errorf("patch DNS status: %w", err)
 	}
 
-	// Project remote FQDNs into FQDN read store
+	// Project remote FQDNs directly into the FQDN read store. The read store
+	// (in-memory) is the source of truth for the API/UI; the DNS CR no longer
+	// materialises grouped FQDNs in its status.
 	if data.FQDNWriter != nil {
 		resourceKey := dns.Namespace + "/" + dns.Name
-		views := dnsctrl.GroupsToFQDNViews(dns)
-		if err := data.FQDNWriter.Replace(ctx, resourceKey, views); err != nil {
+		views := fqdnViewsFromRemoteGroups(result.Groups, dns.Spec.PortalRef, dns.Namespace)
+		if err := data.FQDNWriter.Replace(ctx, resourceKey, dns.Spec.PortalRef, views); err != nil {
 			logger.Error(err, "failed to update FQDN read store for remote DNS")
 		}
 	}
 
-	logger.Info("updated DNS status with remote FQDNs",
+	logger.Info("synced remote FQDNs",
 		"dns", dnsName,
 		"portal", portal.Name,
 		"fqdnCount", result.FQDNCount,
 		"groupCount", len(result.Groups))
 
 	return nil
+}
+
+// fqdnViewsFromRemoteGroups builds a deduplicated slice of FQDNViews from the
+// grouped FQDNs returned by a remote portal. Duplicate FQDN/recordType pairs
+// (which can occur when a single FQDN appears in multiple groups) collapse
+// into one view whose Groups slice carries every group it belongs to.
+func fqdnViewsFromRemoteGroups(groups []sreportalv1alpha1.FQDNGroupStatus, portalRef, namespace string) []domaindns.FQDNView {
+	seen := make(map[string]*domaindns.FQDNView)
+
+	for _, group := range groups {
+		for _, fqdn := range group.FQDNs {
+			key := fqdn.FQDN + "/" + fqdn.RecordType
+			if existing, ok := seen[key]; ok {
+				if !slices.Contains(existing.Groups, group.Name) {
+					existing.Groups = append(existing.Groups, group.Name)
+				}
+				continue
+			}
+			view := domaindns.FQDNView{
+				Name:        fqdn.FQDN,
+				Source:      domaindns.Source(group.Source),
+				Groups:      []string{group.Name},
+				Description: fqdn.Description,
+				RecordType:  fqdn.RecordType,
+				Targets:     fqdn.Targets,
+				LastSeen:    fqdn.LastSeen.Time,
+				Portals:     []string{portalRef},
+				Namespace:   namespace,
+				SyncStatus:  fqdn.SyncStatus,
+			}
+			if fqdn.OriginRef != nil {
+				ref, _ := domaindns.ParseResourceRef(
+					fqdn.OriginRef.Kind + "/" + fqdn.OriginRef.Namespace + "/" + fqdn.OriginRef.Name,
+				)
+				view.OriginRef = &ref
+			}
+			seen[key] = &view
+		}
+	}
+
+	views := make([]domaindns.FQDNView, 0, len(seen))
+	for _, v := range seen {
+		views = append(views, *v)
+	}
+	return views
 }
 
 // RemoteDNSName returns the name of the DNS CR for a remote portal.

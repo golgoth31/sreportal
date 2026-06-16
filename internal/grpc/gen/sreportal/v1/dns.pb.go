@@ -442,16 +442,26 @@ type FQDN struct {
 	Targets []string `protobuf:"bytes,6,rep,name=targets,proto3" json:"targets,omitempty"`
 	// last_seen is the timestamp when this FQDN was last observed
 	LastSeen *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=last_seen,json=lastSeen,proto3" json:"last_seen,omitempty"`
-	// dns_resource_name is the name of the DNS resource this FQDN belongs to
+	// dns_resource_name is the name of the DNS resource this FQDN belongs to.
+	// Deprecated: replaced by `portals` to support an FQDN belonging to several
+	// portals after inter-DNS dedup. Kept for back-compat with older clients.
+	//
+	// Deprecated: Marked as deprecated in sreportal/v1/dns.proto.
 	DnsResourceName string `protobuf:"bytes,8,opt,name=dns_resource_name,json=dnsResourceName,proto3" json:"dns_resource_name,omitempty"`
-	// dns_resource_namespace is the namespace of the DNS resource
+	// dns_resource_namespace is the namespace of the DNS resource.
+	// Deprecated: see `dns_resource_name`. Kept for back-compat with older clients.
+	//
+	// Deprecated: Marked as deprecated in sreportal/v1/dns.proto.
 	DnsResourceNamespace string `protobuf:"bytes,9,opt,name=dns_resource_namespace,json=dnsResourceNamespace,proto3" json:"dns_resource_namespace,omitempty"`
 	// origin_ref identifies the Kubernetes resource (Service, Ingress, DNSEndpoint)
 	// that produced this FQDN via external-dns. Not set for manual entries.
 	OriginRef *OriginResourceRef `protobuf:"bytes,10,opt,name=origin_ref,json=originRef,proto3,oneof" json:"origin_ref,omitempty"`
 	// sync_status indicates whether the FQDN is correctly resolved in DNS.
 	// Values: "sync", "notavailable", "notsync", or empty.
-	SyncStatus    string `protobuf:"bytes,11,opt,name=sync_status,json=syncStatus,proto3" json:"sync_status,omitempty"`
+	SyncStatus string `protobuf:"bytes,11,opt,name=sync_status,json=syncStatus,proto3" json:"sync_status,omitempty"`
+	// portals lists every portal this FQDN belongs to (post inter-DNS dedup).
+	// Sorted and deduplicated.
+	Portals       []string `protobuf:"bytes,12,rep,name=portals,proto3" json:"portals,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -535,6 +545,7 @@ func (x *FQDN) GetLastSeen() *timestamppb.Timestamp {
 	return nil
 }
 
+// Deprecated: Marked as deprecated in sreportal/v1/dns.proto.
 func (x *FQDN) GetDnsResourceName() string {
 	if x != nil {
 		return x.DnsResourceName
@@ -542,6 +553,7 @@ func (x *FQDN) GetDnsResourceName() string {
 	return ""
 }
 
+// Deprecated: Marked as deprecated in sreportal/v1/dns.proto.
 func (x *FQDN) GetDnsResourceNamespace() string {
 	if x != nil {
 		return x.DnsResourceNamespace
@@ -561,6 +573,13 @@ func (x *FQDN) GetSyncStatus() string {
 		return x.SyncStatus
 	}
 	return ""
+}
+
+func (x *FQDN) GetPortals() []string {
+	if x != nil {
+		return x.Portals
+	}
+	return nil
 }
 
 var File_sreportal_v1_dns_proto protoreflect.FileDescriptor
@@ -592,7 +611,7 @@ const file_sreportal_v1_dns_proto_rawDesc = "" +
 	"\x11OriginResourceRef\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x1c\n" +
 	"\tnamespace\x18\x02 \x01(\tR\tnamespace\x12\x12\n" +
-	"\x04name\x18\x03 \x01(\tR\x04name\"\xb7\x03\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\"\xd9\x03\n" +
 	"\x04FQDN\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
 	"\x06source\x18\x02 \x01(\tR\x06source\x12\x16\n" +
@@ -601,14 +620,15 @@ const file_sreportal_v1_dns_proto_rawDesc = "" +
 	"\vrecord_type\x18\x05 \x01(\tR\n" +
 	"recordType\x12\x18\n" +
 	"\atargets\x18\x06 \x03(\tR\atargets\x127\n" +
-	"\tlast_seen\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\blastSeen\x12*\n" +
-	"\x11dns_resource_name\x18\b \x01(\tR\x0fdnsResourceName\x124\n" +
-	"\x16dns_resource_namespace\x18\t \x01(\tR\x14dnsResourceNamespace\x12C\n" +
+	"\tlast_seen\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\blastSeen\x12.\n" +
+	"\x11dns_resource_name\x18\b \x01(\tB\x02\x18\x01R\x0fdnsResourceName\x128\n" +
+	"\x16dns_resource_namespace\x18\t \x01(\tB\x02\x18\x01R\x14dnsResourceNamespace\x12C\n" +
 	"\n" +
 	"origin_ref\x18\n" +
 	" \x01(\v2\x1f.sreportal.v1.OriginResourceRefH\x00R\toriginRef\x88\x01\x01\x12\x1f\n" +
 	"\vsync_status\x18\v \x01(\tR\n" +
-	"syncStatusB\r\n" +
+	"syncStatus\x12\x18\n" +
+	"\aportals\x18\f \x03(\tR\aportalsB\r\n" +
 	"\v_origin_ref*s\n" +
 	"\n" +
 	"UpdateType\x12\x1b\n" +

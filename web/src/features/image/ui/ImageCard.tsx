@@ -95,21 +95,21 @@ export function ImageCard({ image }: ImageCardProps) {
         className={cn(
           "group rounded-lg border border-border/70 bg-card/60 backdrop-blur-sm p-4 flex flex-col gap-2 transition-all hover:border-primary/40 hover:bg-card hover:shadow-md hover:shadow-primary/5",
           image.hasMutation &&
-            "border-amber-300/70 dark:border-amber-700/60 hover:border-amber-400 dark:hover:border-amber-600",
+          "border-amber-300/70 dark:border-amber-700/60 hover:border-amber-400 dark:hover:border-amber-600",
           !image.hasMutation &&
-            image.hasInjection &&
-            "border-violet-300/70 dark:border-violet-700/60 hover:border-violet-400 dark:hover:border-violet-600",
+          image.hasInjection &&
+          "border-violet-300/70 dark:border-violet-700/60 hover:border-violet-400 dark:hover:border-violet-600",
         )}
       >
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 min-w-0">
             {image.upgradeAvailable && (
-                  <span
-                    className="inline-flex items-center text-emerald-600 dark:text-emerald-400 shrink-0"
-                    aria-label="Upgrade available"
-                  >
-                    <ArrowUpCircleIcon className="size-3.5" />
-                  </span>
+              <span
+                className="inline-flex items-center text-emerald-600 dark:text-emerald-400 shrink-0"
+                aria-label="Latest available"
+              >
+                <ArrowUpCircleIcon className="size-3.5" />
+              </span>
             )}
             <p className="font-medium text-sm tracking-tight truncate">{shortName}</p>
           </div>
@@ -162,22 +162,20 @@ export function ImageCard({ image }: ImageCardProps) {
         <div className="flex items-center gap-2 flex-wrap">
           {image.tagType === "semver" ? (
             <span className="font-mono text-[11px] text-muted-foreground">
-              {image.latestVersion ? (
+              {image.latestVersion && image.upgradeAvailable ? (
                 <>
                   Upgrade available:{" "}
                   <span
                     className={cn(
                       "font-semibold",
-                      image.upgradeAvailable
-                        ? "text-emerald-700 dark:text-emerald-400"
-                        : "text-foreground/70",
+                      "text-emerald-700 dark:text-emerald-400",
                     )}
                   >
                     {image.latestVersion}
                   </span>
                 </>
               ) : (
-                <span className="opacity-40">latest: —</span>
+                <span className="opacity-40">No upgrade available</span>
               )}
             </span>
           ) : (
@@ -248,76 +246,76 @@ export function ImageCard({ image }: ImageCardProps) {
               mutatedImage ||
               image.latestVersion ||
               image.latestError) && (
-              <section
-                className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2.5 space-y-2"
-                aria-label="Registry details"
-              >
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Registry details
-                </p>
-                {image.originalImage && (
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
-                      Original image
-                    </span>
-                    <CopyableImageRef
-                      display={image.originalImage}
-                      fullRef={image.originalImage}
-                    />
-                  </div>
-                )}
-                {mutatedImage && (
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
-                      Mutated image (running)
-                    </span>
-                    <CopyableImageRef display={mutatedImage} fullRef={mutatedImage} />
-                  </div>
-                )}
-                {image.tagType === "semver" && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
-                      Latest version
-                    </span>
-                    <span
-                      className={cn(
-                        "font-mono text-xs",
-                        image.upgradeAvailable
-                          ? "text-emerald-700 dark:text-emerald-400 font-semibold"
-                          : "text-muted-foreground",
-                      )}
-                    >
-                      {image.latestVersion ?? "—"}
-                    </span>
-                    {image.upgradeAvailable && (
-                      <ArrowUpCircleIcon
-                        className="size-3.5 text-emerald-600 dark:text-emerald-400"
-                        aria-label="Upgrade available"
+                <section
+                  className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2.5 space-y-2"
+                  aria-label="Registry details"
+                >
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Registry details
+                  </p>
+                  {image.originalImage && (
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                        Original image
+                      </span>
+                      <CopyableImageRef
+                        display={image.originalImage}
+                        fullRef={image.originalImage}
                       />
-                    )}
-                  </div>
-                )}
-                {relativeTime && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
-                      Last checked
-                    </span>
-                    <span className="font-mono text-xs text-muted-foreground">{relativeTime}</span>
-                  </div>
-                )}
-                {image.latestError && (
-                  <div
-                    className="flex items-start gap-1.5 rounded bg-destructive/10 border border-destructive/20 px-2 py-1.5"
-                    role="alert"
-                  >
-                    <AlertCircleIcon className="size-3.5 mt-0.5 shrink-0 text-destructive" aria-hidden="true" />
-                    <p className="font-mono text-[11px] text-destructive break-all">
-                      {image.latestError}
-                    </p>
-                  </div>
-                )}
-              </section>
-            )}
+                    </div>
+                  )}
+                  {mutatedImage && (
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                        Mutated image (running)
+                      </span>
+                      <CopyableImageRef display={mutatedImage} fullRef={mutatedImage} />
+                    </div>
+                  )}
+                  {image.tagType === "semver" && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                        Latest version
+                      </span>
+                      <span
+                        className={cn(
+                          "font-mono text-xs",
+                          image.upgradeAvailable
+                            ? "text-emerald-700 dark:text-emerald-400 font-semibold"
+                            : "text-muted-foreground",
+                        )}
+                      >
+                        {image.latestVersion ?? "—"}
+                      </span>
+                      {image.upgradeAvailable && (
+                        <ArrowUpCircleIcon
+                          className="size-3.5 text-emerald-600 dark:text-emerald-400"
+                          aria-label="Upgrade available"
+                        />
+                      )}
+                    </div>
+                  )}
+                  {relativeTime && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                        Last checked
+                      </span>
+                      <span className="font-mono text-xs text-muted-foreground">{relativeTime}</span>
+                    </div>
+                  )}
+                  {image.latestError && (
+                    <div
+                      className="flex items-start gap-1.5 rounded bg-destructive/10 border border-destructive/20 px-2 py-1.5"
+                      role="alert"
+                    >
+                      <AlertCircleIcon className="size-3.5 mt-0.5 shrink-0 text-destructive" aria-hidden="true" />
+                      <p className="font-mono text-[11px] text-destructive break-all">
+                        {image.latestError}
+                      </p>
+                    </div>
+                  )}
+                </section>
+              )}
             <WorkloadList workloads={visibleWorkloads} variant="full" />
           </SheetBody>
         </SheetContent>

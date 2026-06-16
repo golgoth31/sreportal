@@ -209,9 +209,10 @@ func fqdnViewToProto(v domaindns.FQDNView) *dnsv1.FQDN {
 		RecordType:           v.RecordType,
 		Targets:              v.Targets,
 		LastSeen:             timestamppb.New(v.LastSeen),
-		DnsResourceName:      v.PortalName,
+		DnsResourceName:      v.FirstPortal(),
 		DnsResourceNamespace: v.Namespace,
 		SyncStatus:           v.SyncStatus,
+		Portals:              v.Portals,
 	}
 	if v.OriginRef != nil {
 		f.OriginRef = &dnsv1.OriginResourceRef{
@@ -244,6 +245,14 @@ func fqdnEqual(a, b *dnsv1.FQDN) bool {
 	}
 	for i, t := range a.Targets {
 		if t != b.Targets[i] {
+			return false
+		}
+	}
+	if len(a.Portals) != len(b.Portals) {
+		return false
+	}
+	for i, p := range a.Portals {
+		if p != b.Portals[i] {
 			return false
 		}
 	}

@@ -17,15 +17,35 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"encoding/json"
+	"fmt"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/conversion"
+
+	v1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 )
+
+const annotationV1Alpha2DNSRecordSpec = "sreportal.io/v1alpha2-dnsrecord-spec"
+
+// preservedDNSRecordSpec holds v1alpha2-only DNSRecordSpec fields that have no
+// v1alpha1 representation. It is JSON-encoded into
+// annotationV1Alpha2DNSRecordSpec on ConvertFrom (hub → spoke) and restored on
+// ConvertTo (spoke → hub).
+type preservedDNSRecordSpec struct {
+	Origin  v1alpha2.DNSRecordOrigin  `json:"origin"`
+	Entries []v1alpha2.DNSRecordEntry `json:"entries,omitempty"`
+}
 
 // DNSRecordSpec defines the desired state of DNSRecord
 type DNSRecordSpec struct {
-	// sourceType indicates the external-dns source type that provides this record
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Enum=service;ingress;dnsendpoint;istio-gateway;istio-virtualservice;gateway-httproute;gateway-grpcroute;gateway-tlsroute;gateway-tcproute;gateway-udproute
-	SourceType string `json:"sourceType"`
+	// sourceType indicates the external-dns source type that provides this record.
+	// Empty when the v1alpha2 hub object has origin=manual (no source — entries
+	// live in the v1alpha2-only annotation). The conversion would otherwise
+	// produce a v1alpha1 object that fails its own validation.
+	// +optional
+	// +kubebuilder:validation:Enum="";service;ingress;dnsendpoint;istio-gateway;istio-virtualservice;gateway-httproute;gateway-grpcroute;gateway-tlsroute;gateway-tcproute;gateway-udproute
+	SourceType string `json:"sourceType,omitempty"`
 
 	// portalRef is the name of the Portal this record belongs to
 	// +kubebuilder:validation:Required
@@ -128,4 +148,90 @@ type DNSRecordList struct {
 
 func init() {
 	SchemeBuilder.Register(&DNSRecord{}, &DNSRecordList{})
+}
+
+// ConvertTo converts this DNSRecord (v1alpha1) to the Hub version (v1alpha2).
+// Fresh v1alpha1 records are auto-discovered (origin=auto). Records that
+// originated from v1alpha2 carry annotationV1Alpha2DNSRecordSpec and have
+// their Origin/Entries restored from it.
+func (src *DNSRecord) ConvertTo(dstRaw conversion.Hub) error {
+	dst := dstRaw.(*v1alpha2.DNSRecord)
+	// Deep copy ObjectMeta so subsequent mutations (annotation strip) do not
+	// affect the source — the apiserver may pass cached objects in.
+	dst.ObjectMeta = *src.ObjectMeta.DeepCopy()
+	dst.Spec.Origin = v1alpha2.DNSRecordOriginAuto
+	dst.Spec.PortalRef = src.Spec.PortalRef
+	dst.Spec.SourceType = v1alpha2.SourceType(src.Spec.SourceType)
+
+	if raw, ok := src.Annotations[annotationV1Alpha2DNSRecordSpec]; ok && raw != "" {
+		var p preservedDNSRecordSpec
+		if err := json.Unmarshal([]byte(raw), &p); err != nil {
+			return fmt.Errorf("unmarshal v1alpha2 DNSRecordSpec annotation on %s/%s: %w", src.Namespace, src.Name, err)
+		}
+		dst.Spec.Origin = p.Origin
+		dst.Spec.Entries = p.Entries
+		if p.Origin == v1alpha2.DNSRecordOriginManual {
+			dst.Spec.SourceType = "" // mutex with entries
+		}
+		delete(dst.Annotations, annotationV1Alpha2DNSRecordSpec)
+	}
+
+	for _, e := range src.Status.Endpoints {
+		dst.Status.Endpoints = append(dst.Status.Endpoints, v1alpha2.EndpointStatus{
+			DNSName:    e.DNSName,
+			RecordType: e.RecordType,
+			Targets:    e.Targets,
+			TTL:        e.TTL,
+			Labels:     e.Labels,
+			SyncStatus: v1alpha2.SyncStatus(e.SyncStatus),
+			LastSeen:   e.LastSeen,
+		})
+	}
+	dst.Status.EndpointsHash = src.Status.EndpointsHash
+	dst.Status.LastReconcileTime = src.Status.LastReconcileTime
+	dst.Status.Conditions = src.Status.Conditions
+	return nil
+}
+
+// ConvertFrom converts from the Hub version (v1alpha2) to this DNSRecord (v1alpha1).
+// v1alpha1 cannot represent manual entries or the origin discriminator natively,
+// so they are stashed in annotationV1Alpha2DNSRecordSpec for lossless round-trip.
+func (dst *DNSRecord) ConvertFrom(srcRaw conversion.Hub) error {
+	src := srcRaw.(*v1alpha2.DNSRecord)
+	// Deep copy ObjectMeta so subsequent mutations (annotation insert) do not
+	// affect the source — the apiserver may pass cached objects in.
+	dst.ObjectMeta = *src.ObjectMeta.DeepCopy()
+	dst.Spec.PortalRef = src.Spec.PortalRef
+	dst.Spec.SourceType = string(src.Spec.SourceType)
+
+	preserved := preservedDNSRecordSpec{Origin: src.Spec.Origin, Entries: src.Spec.Entries}
+	preservedRaw, err := json.Marshal(preserved)
+	if err != nil {
+		return fmt.Errorf("marshal v1alpha2-only DNSRecordSpec for %s/%s: %w", src.Namespace, src.Name, err)
+	}
+	if dst.Annotations == nil {
+		dst.Annotations = make(map[string]string, 1)
+	}
+	dst.Annotations[annotationV1Alpha2DNSRecordSpec] = string(preservedRaw)
+	// v1alpha1 has no SourceType for manual records; force empty so the
+	// conversion does not produce an invalid v1alpha1 object.
+	if src.Spec.Origin == v1alpha2.DNSRecordOriginManual {
+		dst.Spec.SourceType = ""
+	}
+
+	for _, e := range src.Status.Endpoints {
+		dst.Status.Endpoints = append(dst.Status.Endpoints, EndpointStatus{
+			DNSName:    e.DNSName,
+			RecordType: e.RecordType,
+			Targets:    e.Targets,
+			TTL:        e.TTL,
+			Labels:     e.Labels,
+			SyncStatus: string(e.SyncStatus),
+			LastSeen:   e.LastSeen,
+		})
+	}
+	dst.Status.EndpointsHash = src.Status.EndpointsHash
+	dst.Status.LastReconcileTime = src.Status.LastReconcileTime
+	dst.Status.Conditions = src.Status.Conditions
+	return nil
 }

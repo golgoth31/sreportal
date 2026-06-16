@@ -42,3 +42,6 @@ docs/.hugo_build.lock
 
 # Generated at build time from emojibase-data
 web/src/features/emoji/ui/shortcode-map.json
+
+# Local build artifact of hack/migrate-dns-v2
+/migrate-dns-v2

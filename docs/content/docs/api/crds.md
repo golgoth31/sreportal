@@ -2,6 +2,7 @@
 
 ## Packages
 - [sreportal.io/v1alpha1](#sreportaliov1alpha1)
+- [sreportal.io/v1alpha2](#sreportaliov1alpha2)
 
 
 ## sreportal.io/v1alpha1
@@ -372,6 +373,19 @@ _Appears in:_
 
 
 
+#### sreportal.io/v1alpha1.preservedDNSSpec
+
+preservedDNSSpec holds v1alpha2-only DNSSpec fields that have no v1alpha1 representation. It is JSON-encoded into annotationV1Alpha2DNSSpec on ConvertFrom (hub → spoke) and restored on ConvertTo (spoke → hub).
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `defaults` _[v1alpha2.SourceFilterDefaults](#v1alpha2sourcefilterdefaults)_ |   |   |   |
+| `sources` _[v1alpha2.SourcesSpec](#v1alpha2sourcesspec)_ |   |   |   |
+| `groupMapping` _[v1alpha2.GroupMappingSpec](#v1alpha2groupmappingspec)_ |   |   |   |
+| `reconciliation` _[v1alpha2.ReconciliationSpec](#v1alpha2reconciliationspec)_ |   |   |   |
+
+
+
 #### sreportal.io/v1alpha1.DNSSpec
 
 DNSSpec defines the desired state of DNS
@@ -481,6 +495,17 @@ _Appears in:_
 
 
 
+#### sreportal.io/v1alpha1.preservedDNSRecordSpec
+
+preservedDNSRecordSpec holds v1alpha2-only DNSRecordSpec fields that have no v1alpha1 representation. It is JSON-encoded into annotationV1Alpha2DNSRecordSpec on ConvertFrom (hub → spoke) and restored on ConvertTo (spoke → hub).
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `origin` _[v1alpha2.DNSRecordOrigin](#v1alpha2dnsrecordorigin)_ |   |   |   |
+| `entries` _[v1alpha2.DNSRecordEntry](#v1alpha2dnsrecordentry) array_ |   |   |   |
+
+
+
 #### sreportal.io/v1alpha1.DNSRecordSpec
 
 DNSRecordSpec defines the desired state of DNSRecord
@@ -490,7 +515,7 @@ _Appears in:_
 
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
-| `sourceType` _string_ | sourceType indicates the external-dns source type that provides this record |   | Enum: [service ingress dnsendpoint istio-gateway istio-virtualservice gateway-httproute gateway-grpcroute gateway-tlsroute gateway-tcproute gateway-udproute] |
+| `sourceType` _string_ | sourceType indicates the external-dns source type that provides this record. Empty when the v1alpha2 hub object has origin=manual (no source — entries live in the v1alpha2-only annotation). The conversion would otherwise produce a v1alpha1 object that fails its own validation. |   | Enum: [ service ingress dnsendpoint istio-gateway istio-virtualservice gateway-httproute gateway-grpcroute gateway-tlsroute gateway-tcproute gateway-udproute] |
 | `portalRef` _string_ | portalRef is the name of the Portal this record belongs to |   |   |
 
 
@@ -1114,6 +1139,358 @@ _Appears in:_
 | --- | --- | --- | --- |
 | `entryCount` _integer_ | entryCount is the number of release entries in this CR |   |   |
 | `conditions` _[Condition](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#condition-v1-meta) array_ | conditions represent the current state of the Release resource. |   |   |
+
+
+
+
+
+## sreportal.io/v1alpha2
+
+### Resource Types
+- [sreportal.io/v1alpha2.DNS](#sreportaliov1alpha2dns)
+- [sreportal.io/v1alpha2.DNSRecord](#sreportaliov1alpha2dnsrecord)
+
+
+#### sreportal.io/v1alpha2.DNS
+
+DNS is the Schema for the dns API
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `apiVersion` _string_ | `sreportal.io/v1alpha2` |   |   |
+| `kind` _string_ | `DNS` |   |   |
+| `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#objectmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |   |   |
+| `spec` _[sreportal.io/v1alpha2.DNSSpec](#sreportaliov1alpha2dnsspec)_ | spec defines the desired state of DNS |   |   |
+| `status` _[sreportal.io/v1alpha2.DNSStatus](#sreportaliov1alpha2dnsstatus)_ | status defines the observed state of DNS |   |   |
+
+
+
+#### sreportal.io/v1alpha2.DNSRecord
+
+DNSRecord is the Schema for the dnsrecords API
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `apiVersion` _string_ | `sreportal.io/v1alpha2` |   |   |
+| `kind` _string_ | `DNSRecord` |   |   |
+| `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#objectmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |   |   |
+| `spec` _[sreportal.io/v1alpha2.DNSRecordSpec](#sreportaliov1alpha2dnsrecordspec)_ | spec defines the desired state of DNSRecord |   |   |
+| `status` _[sreportal.io/v1alpha2.DNSRecordStatus](#sreportaliov1alpha2dnsrecordstatus)_ | status defines the observed state of DNSRecord |   |   |
+
+
+
+#### sreportal.io/v1alpha2.CommonSourceSpec
+
+CommonSourceSpec carries the fields shared by every external-dns source spec. Embed it with json:",inline" so the CRD schema remains flat (no nesting).
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `enabled` _boolean_ |   |   |   |
+| `namespace` _string_ |   |   |   |
+| `annotationFilter` _string_ |   |   |   |
+| `labelFilter` _string_ |   |   |   |
+| `fqdnTemplate` _string_ |   |   |   |
+| `combineFqdnAndAnnotation` _boolean_ |   |   |   |
+| `ignoreHostnameAnnotation` _boolean_ |   |   |   |
+
+
+
+#### sreportal.io/v1alpha2.SourceFilterDefaults
+
+SourceFilterDefaults defines fallback filter values applied to every source in this DNS CR. A source's own Namespace/LabelFilter, when non-empty, overrides the corresponding default.
+
+_Appears in:_
+- [sreportal.io/v1alpha2.DNSSpec](#sreportaliov1alpha2dnsspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `namespace` _string_ |   |   |   |
+| `labelFilter` _string_ |   |   |   |
+
+
+
+#### sreportal.io/v1alpha2.SourcesSpec
+
+_Appears in:_
+- [sreportal.io/v1alpha2.DNSSpec](#sreportaliov1alpha2dnsspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `service` _[sreportal.io/v1alpha2.ServiceSourceSpec](#sreportaliov1alpha2servicesourcespec)_ |   |   |   |
+| `ingress` _[sreportal.io/v1alpha2.IngressSourceSpec](#sreportaliov1alpha2ingresssourcespec)_ |   |   |   |
+| `dnsEndpoint` _[sreportal.io/v1alpha2.DNSEndpointSourceSpec](#sreportaliov1alpha2dnsendpointsourcespec)_ |   |   |   |
+| `istioGateway` _[sreportal.io/v1alpha2.IstioGatewaySourceSpec](#sreportaliov1alpha2istiogatewaysourcespec)_ |   |   |   |
+| `istioVirtualService` _[sreportal.io/v1alpha2.IstioVirtualServiceSourceSpec](#sreportaliov1alpha2istiovirtualservicesourcespec)_ |   |   |   |
+| `gatewayHTTPRoute` _[sreportal.io/v1alpha2.GatewayRouteSourceSpec](#sreportaliov1alpha2gatewayroutesourcespec)_ |   |   |   |
+| `gatewayGRPCRoute` _[sreportal.io/v1alpha2.GatewayRouteSourceSpec](#sreportaliov1alpha2gatewayroutesourcespec)_ |   |   |   |
+| `gatewayTLSRoute` _[sreportal.io/v1alpha2.GatewayRouteSourceSpec](#sreportaliov1alpha2gatewayroutesourcespec)_ |   |   |   |
+| `gatewayTCPRoute` _[sreportal.io/v1alpha2.GatewayRouteSourceSpec](#sreportaliov1alpha2gatewayroutesourcespec)_ |   |   |   |
+| `gatewayUDPRoute` _[sreportal.io/v1alpha2.GatewayRouteSourceSpec](#sreportaliov1alpha2gatewayroutesourcespec)_ |   |   |   |
+| `crossplaneScalewayRecord` _[sreportal.io/v1alpha2.CrossplaneScalewayRecordSourceSpec](#sreportaliov1alpha2crossplanescalewayrecordsourcespec)_ |   |   |   |
+| `priority` _[sreportal.io/v1alpha2.SourceType](#sreportaliov1alpha2sourcetype) array_ |   |   |   |
+
+
+
+#### sreportal.io/v1alpha2.ServiceSourceSpec
+
+_Appears in:_
+- [sreportal.io/v1alpha2.SourcesSpec](#sreportaliov1alpha2sourcesspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `publishInternal` _boolean_ |   |   |   |
+| `publishHostIP` _boolean_ |   |   |   |
+| `serviceTypeFilter` _string array_ |   |   |   |
+
+
+
+#### sreportal.io/v1alpha2.IngressSourceSpec
+
+_Appears in:_
+- [sreportal.io/v1alpha2.SourcesSpec](#sreportaliov1alpha2sourcesspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `ingressClassNames` _string array_ |   |   |   |
+
+
+
+#### sreportal.io/v1alpha2.DNSEndpointSourceSpec
+
+_Appears in:_
+- [sreportal.io/v1alpha2.SourcesSpec](#sreportaliov1alpha2sourcesspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `enabled` _boolean_ |   |   |   |
+| `namespace` _string_ |   |   |   |
+| `labelFilter` _string_ |   |   |   |
+
+
+
+#### sreportal.io/v1alpha2.IstioGatewaySourceSpec
+
+_Appears in:_
+- [sreportal.io/v1alpha2.SourcesSpec](#sreportaliov1alpha2sourcesspec)
+
+
+
+#### sreportal.io/v1alpha2.IstioVirtualServiceSourceSpec
+
+_Appears in:_
+- [sreportal.io/v1alpha2.SourcesSpec](#sreportaliov1alpha2sourcesspec)
+
+
+
+#### sreportal.io/v1alpha2.GatewayRouteSourceSpec
+
+_Appears in:_
+- [sreportal.io/v1alpha2.SourcesSpec](#sreportaliov1alpha2sourcesspec)
+- [sreportal.io/v1alpha2.SourcesSpec](#sreportaliov1alpha2sourcesspec)
+- [sreportal.io/v1alpha2.SourcesSpec](#sreportaliov1alpha2sourcesspec)
+- [sreportal.io/v1alpha2.SourcesSpec](#sreportaliov1alpha2sourcesspec)
+- [sreportal.io/v1alpha2.SourcesSpec](#sreportaliov1alpha2sourcesspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `gatewayName` _string_ |   |   |   |
+| `gatewayNamespace` _string_ |   |   |   |
+| `gatewayLabelFilter` _string_ |   |   |   |
+
+
+
+#### sreportal.io/v1alpha2.CrossplaneScalewayRecordSourceSpec
+
+_Appears in:_
+- [sreportal.io/v1alpha2.SourcesSpec](#sreportaliov1alpha2sourcesspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `enabled` _boolean_ |   |   |   |
+| `namespace` _string_ |   |   |   |
+| `labelFilter` _string_ |   |   |   |
+| `clusterScoped` _boolean_ |   |   |   |
+
+
+
+#### sreportal.io/v1alpha2.GroupMappingSpec
+
+GroupMappingSpec configures how FQDNs are organised into groups in the UI.
+
+_Appears in:_
+- [sreportal.io/v1alpha2.DNSSpec](#sreportaliov1alpha2dnsspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `defaultGroup` _string_ |   |   |   |
+| `labelKey` _string_ |   |   |   |
+| `byNamespace` _[sreportal.io/v1alpha2.map[string]string](#sreportaliov1alpha2map[string]string)_ |   |   |   |
+
+
+
+#### sreportal.io/v1alpha2.ReconciliationSpec
+
+ReconciliationSpec controls timing of the source poll loop.
+
+_Appears in:_
+- [sreportal.io/v1alpha2.DNSSpec](#sreportaliov1alpha2dnsspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `interval` _[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#duration-v1-meta)_ |   |   |   |
+| `retryOnError` _[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#duration-v1-meta)_ |   |   |   |
+| `disableDNSCheck` _boolean_ |   |   |   |
+
+
+
+#### sreportal.io/v1alpha2.DNSSpec
+
+DNSSpec defines the desired state of DNS (v1alpha2). Multiple DNS CRs may reference the same Portal via spec.portalRef (1 portal → N DNS CRs, e.g. per-team split).
+
+_Appears in:_
+- [sreportal.io/v1alpha2.DNS](#sreportaliov1alpha2dns)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `portalRef` _string_ |   |   |   |
+| `isRemote` _boolean_ |   |   |   |
+| `defaults` _[sreportal.io/v1alpha2.SourceFilterDefaults](#sreportaliov1alpha2sourcefilterdefaults)_ |   |   |   |
+| `sources` _[sreportal.io/v1alpha2.SourcesSpec](#sreportaliov1alpha2sourcesspec)_ |   |   |   |
+| `groupMapping` _[sreportal.io/v1alpha2.GroupMappingSpec](#sreportaliov1alpha2groupmappingspec)_ |   |   |   |
+| `reconciliation` _[sreportal.io/v1alpha2.ReconciliationSpec](#sreportaliov1alpha2reconciliationspec)_ |   |   |   |
+
+
+
+#### sreportal.io/v1alpha2.DNSStatus
+
+DNSStatus defines the observed state of DNS (v1alpha2).
+
+_Appears in:_
+- [sreportal.io/v1alpha2.DNS](#sreportaliov1alpha2dns)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `conditions` _[Condition](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#condition-v1-meta) array_ |   |   |   |
+| `lastReconcileTime` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ |   |   |   |
+| `observedGeneration` _integer_ |   |   |   |
+| `activeSources` _string array_ |   |   |   |
+| `nextReconcileTime` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ |   |   |   |
+
+
+
+#### sreportal.io/v1alpha2.FQDNGroupStatus
+
+FQDNGroupStatus represents a group of FQDNs in the status
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `name` _string_ | name is the group name |   |   |
+| `description` _string_ | description is the group description |   |   |
+| `source` _[sreportal.io/v1alpha2.FQDNGroupSource](#sreportaliov1alpha2fqdngroupsource)_ | source indicates where this group came from (manual, external-dns, or remote) |   |   |
+| `fqdns` _[sreportal.io/v1alpha2.FQDNStatus](#sreportaliov1alpha2fqdnstatus) array_ | fqdns is the list of FQDNs in this group |   |   |
+
+
+
+#### sreportal.io/v1alpha2.OriginResourceRef
+
+OriginResourceRef identifies the Kubernetes resource that produced an FQDN. Only populated for FQDNs discovered via external-dns sources.
+
+_Appears in:_
+- [sreportal.io/v1alpha2.FQDNStatus](#sreportaliov1alpha2fqdnstatus)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `kind` _string_ | kind is the Kubernetes resource kind (e.g. Service, Ingress, DNSEndpoint) |   |   |
+| `namespace` _string_ | namespace is the Kubernetes namespace of the origin resource |   |   |
+| `name` _string_ | name is the name of the origin Kubernetes resource |   |   |
+
+
+
+#### sreportal.io/v1alpha2.FQDNStatus
+
+FQDNStatus represents the status of an aggregated FQDN
+
+_Appears in:_
+- [sreportal.io/v1alpha2.FQDNGroupStatus](#sreportaliov1alpha2fqdngroupstatus)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `fqdn` _string_ | fqdn is the fully qualified domain name |   |   |
+| `description` _string_ | description is an optional description for the FQDN |   |   |
+| `recordType` _string_ | recordType is the DNS record type (A, AAAA, CNAME, etc.) |   |   |
+| `targets` _string array_ | targets is the list of target addresses for this FQDN |   |   |
+| `syncStatus` _[sreportal.io/v1alpha2.SyncStatus](#sreportaliov1alpha2syncstatus)_ | syncStatus indicates whether the FQDN is correctly resolved in DNS. sync: the FQDN resolves to the expected type and targets. notavailable: the FQDN does not exist in DNS. notsync: the FQDN exists but resolves to different targets or type. |   |   |
+| `lastSeen` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | lastSeen is the timestamp when this FQDN was last observed |   |   |
+| `originRef` _[sreportal.io/v1alpha2.OriginResourceRef](#sreportaliov1alpha2originresourceref)_ | originRef identifies the Kubernetes resource (Service, Ingress, DNSEndpoint) that produced this FQDN via external-dns. Not set for manual entries. |   |   |
+
+
+
+#### sreportal.io/v1alpha2.DNSRecordSpec
+
+DNSRecordSpec defines the desired state of DNSRecord (v1alpha2).
+
+_Appears in:_
+- [sreportal.io/v1alpha2.DNSRecord](#sreportaliov1alpha2dnsrecord)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `origin` _[sreportal.io/v1alpha2.DNSRecordOrigin](#sreportaliov1alpha2dnsrecordorigin)_ |   |   | Enum: [auto manual] |
+| `portalRef` _string_ |   |   |   |
+| `sourceType` _[sreportal.io/v1alpha2.SourceType](#sreportaliov1alpha2sourcetype)_ | Required when origin=auto. Must be empty when origin=manual. |   |   |
+| `entries` _[sreportal.io/v1alpha2.DNSRecordEntry](#sreportaliov1alpha2dnsrecordentry) array_ | Endpoints projected for this DNSRecord. For origin=manual: required, set by the user (at least one entry). For origin=auto: written exclusively by the operator's DNS controller from the in-memory source store. The validating webhook reserves updates of auto records to the controller ServiceAccount, so manual edits by humans are rejected at admission. Any field stored here by other means will be overwritten at the next DNS reconcile. |   |   |
+
+
+
+#### sreportal.io/v1alpha2.DNSRecordEntry
+
+DNSRecordEntry is a single manual DNS entry.
+
+_Appears in:_
+- [sreportal.io/v1alpha2.DNSRecordSpec](#sreportaliov1alpha2dnsrecordspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `fqdn` _string_ |   |   | Pattern: `^([a-zA-Z0-9]([a-zA-Z0-9-]\{0,61\}[a-zA-Z0-9])?\.)+[a-zA-Z]\{2,\}$` |
+| `group` _string_ |   |   |   |
+| `description` _string_ |   |   |   |
+| `recordType` _string_ |   |   | Enum: [A AAAA CNAME TXT] |
+| `targets` _string array_ |   |   |   |
+
+
+
+#### sreportal.io/v1alpha2.DNSRecordStatus
+
+DNSRecordStatus defines the observed state of DNSRecord (v1alpha2).
+
+_Appears in:_
+- [sreportal.io/v1alpha2.DNSRecord](#sreportaliov1alpha2dnsrecord)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `endpoints` _[sreportal.io/v1alpha2.EndpointStatus](#sreportaliov1alpha2endpointstatus) array_ |   |   |   |
+| `endpointsHash` _string_ |   |   |   |
+| `lastReconcileTime` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ |   |   |   |
+| `conditions` _[Condition](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#condition-v1-meta) array_ |   |   |   |
+| `observedGeneration` _integer_ |   |   |   |
+
+
+
+#### sreportal.io/v1alpha2.EndpointStatus
+
+EndpointStatus represents a single DNS endpoint discovered from external-dns
+
+_Appears in:_
+- [sreportal.io/v1alpha2.DNSRecordStatus](#sreportaliov1alpha2dnsrecordstatus)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `dnsName` _string_ | dnsName is the fully qualified domain name |   |   |
+| `recordType` _string_ | recordType is the DNS record type (A, AAAA, CNAME, TXT, etc.) |   |   |
+| `targets` _string array_ | targets is the list of target addresses for this endpoint |   |   |
+| `ttl` _integer_ | ttl is the DNS record TTL in seconds |   |   |
+| `labels` _[sreportal.io/v1alpha2.map[string]string](#sreportaliov1alpha2map[string]string)_ | labels contains the endpoint labels from external-dns |   |   |
+| `syncStatus` _[sreportal.io/v1alpha2.SyncStatus](#sreportaliov1alpha2syncstatus)_ | syncStatus indicates whether the endpoint is correctly resolved in DNS. sync: the FQDN resolves to the expected type and targets. notavailable: the FQDN does not exist in DNS. notsync: the FQDN exists but resolves to different targets or type. |   |   |
+| `lastSeen` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ | lastSeen is the timestamp when this endpoint was last observed |   |   |
 
 
 
