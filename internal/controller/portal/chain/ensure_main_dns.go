@@ -39,7 +39,11 @@ import (
 // seeded by EnsureMainDNSHandler. Once present, the handler never touches the
 // CR's sources again — the CR is the source of truth and the legacy ConfigMap
 // can be decommissioned.
-const annotationSourcesMigrated = "sreportal.io/sources-migrated"
+const (
+	annotationSourcesMigrated = "sreportal.io/sources-migrated"
+	// sourcesMigratedValue is the marker annotation's set value.
+	sourcesMigratedValue = "true"
+)
 
 // EnsureMainDNSHandler ensures the main (local) portal owns a DNS CR carrying
 // the discovery source configuration. The desired configuration is resolved
@@ -96,7 +100,7 @@ func (h *EnsureMainDNSHandler) Handle(ctx context.Context, rc *reconciler.Reconc
 	}
 
 	// Already migrated: the CR owns its configuration, leave it alone.
-	if existing.Annotations[annotationSourcesMigrated] == "true" {
+	if existing.Annotations[annotationSourcesMigrated] == sourcesMigratedValue {
 		return nil
 	}
 
@@ -113,7 +117,7 @@ func (h *EnsureMainDNSHandler) Handle(ctx context.Context, rc *reconciler.Reconc
 	if existing.Annotations == nil {
 		existing.Annotations = map[string]string{}
 	}
-	existing.Annotations[annotationSourcesMigrated] = "true"
+	existing.Annotations[annotationSourcesMigrated] = sourcesMigratedValue
 	if err := h.client.Patch(ctx, existing, client.MergeFrom(base)); err != nil {
 		return fmt.Errorf("mark/backfill DNS %q: %w", existing.Name, err)
 	}
@@ -150,7 +154,7 @@ func (h *EnsureMainDNSHandler) createMainDNS(ctx context.Context, portal *srepor
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        portal.Name,
 			Namespace:   portal.Namespace,
-			Annotations: map[string]string{annotationSourcesMigrated: "true"},
+			Annotations: map[string]string{annotationSourcesMigrated: sourcesMigratedValue},
 		},
 		Spec: sreportalv1alpha2.DNSSpec{
 			PortalRef:      portal.Name,

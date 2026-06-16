@@ -16,6 +16,7 @@ const (
 	tIP1234  = "1.2.3.4"
 	tIP2222  = "2.2.2.2"
 	tFQDNX   = "x.example.com"
+	tFQDNC   = "c.example.com"
 	tPortalX = "portal-x"
 	tPortalY = "portal-y"
 )
@@ -141,15 +142,15 @@ func TestFQDNStore_ConflictKeepsFirstWriter(t *testing.T) {
 	s := dnsstore.NewFQDNStore()
 
 	err := s.Replace(ctx, "ns/rec-a", tPortalX, []domaindns.FQDNView{
-		{Name: "c.example.com", RecordType: "A", Targets: []string{tIP1}},
+		{Name: tFQDNC, RecordType: "A", Targets: []string{tIP1}},
 	})
 	require.NoError(t, err)
 	err = s.Replace(ctx, "ns/rec-b", tPortalY, []domaindns.FQDNView{
-		{Name: "c.example.com", RecordType: "A", Targets: []string{tIP2222}},
+		{Name: tFQDNC, RecordType: "A", Targets: []string{tIP2222}},
 	})
 	require.NoError(t, err)
 
-	got, err := s.Get(ctx, "c.example.com", "A")
+	got, err := s.Get(ctx, tFQDNC, "A")
 	require.NoError(t, err)
 	assert.Equal(t, []string{tIP1}, got.Targets)
 
@@ -170,23 +171,23 @@ func TestFQDNStore_ConflictEmittedOnlyOnTransition(t *testing.T) {
 
 	// rec-a writes first → winner.
 	require.NoError(t, s.Replace(ctx, "ns/rec-a", tPortalX, []domaindns.FQDNView{
-		{Name: "c.example.com", RecordType: "A", Targets: []string{tIP1}},
+		{Name: tFQDNC, RecordType: "A", Targets: []string{tIP1}},
 	}))
 	// rec-b loses → one conflict event.
 	require.NoError(t, s.Replace(ctx, "ns/rec-b", tPortalX, []domaindns.FQDNView{
-		{Name: "c.example.com", RecordType: "A", Targets: []string{tIP2222}},
+		{Name: tFQDNC, RecordType: "A", Targets: []string{tIP2222}},
 	}))
 	assert.Len(t, s.Conflicts("", ""), 1, "first divergence emits one event")
 
 	// Idempotent replay of rec-b with the SAME losing targets → no new event.
 	require.NoError(t, s.Replace(ctx, "ns/rec-b", tPortalX, []domaindns.FQDNView{
-		{Name: "c.example.com", RecordType: "A", Targets: []string{tIP2222}},
+		{Name: tFQDNC, RecordType: "A", Targets: []string{tIP2222}},
 	}))
 	assert.Len(t, s.Conflicts("", ""), 1, "stable conflict must not be re-emitted")
 
 	// rec-b changes its (still losing) targets → transition → new event.
 	require.NoError(t, s.Replace(ctx, "ns/rec-b", tPortalX, []domaindns.FQDNView{
-		{Name: "c.example.com", RecordType: "A", Targets: []string{tIP1234}},
+		{Name: tFQDNC, RecordType: "A", Targets: []string{tIP1234}},
 	}))
 	assert.Len(t, s.Conflicts("", ""), 2, "changed losing targets re-emit")
 }
