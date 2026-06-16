@@ -157,6 +157,38 @@ func TestFQDNStore_ConflictKeepsFirstWriter(t *testing.T) {
 	conflicts := s.Conflicts("ns", "dns-b")
 	assert.Len(t, conflicts, 1)
 	assert.Equal(t, "ns/rec-b", conflicts[0].LoserRecord)
+	// WinnerRecord must identify the surviving (first) writer.
+	assert.Equal(t, "ns/rec-a", conflicts[0].WinnerRecord)
+}
+
+// TestFQDNStore_ConflictEmittedOnlyOnTransition verifies 5-A: a stable conflict
+// is reported once, not re-pushed on every idempotent Replace; a change in the
+// loser's targets re-emits.
+func TestFQDNStore_ConflictEmittedOnlyOnTransition(t *testing.T) {
+	ctx := context.Background()
+	s := dnsstore.NewFQDNStore()
+
+	// rec-a writes first → winner.
+	require.NoError(t, s.Replace(ctx, "ns/rec-a", tPortalX, []domaindns.FQDNView{
+		{Name: "c.example.com", RecordType: "A", Targets: []string{tIP1}},
+	}))
+	// rec-b loses → one conflict event.
+	require.NoError(t, s.Replace(ctx, "ns/rec-b", tPortalX, []domaindns.FQDNView{
+		{Name: "c.example.com", RecordType: "A", Targets: []string{tIP2222}},
+	}))
+	assert.Len(t, s.Conflicts("", ""), 1, "first divergence emits one event")
+
+	// Idempotent replay of rec-b with the SAME losing targets → no new event.
+	require.NoError(t, s.Replace(ctx, "ns/rec-b", tPortalX, []domaindns.FQDNView{
+		{Name: "c.example.com", RecordType: "A", Targets: []string{tIP2222}},
+	}))
+	assert.Len(t, s.Conflicts("", ""), 1, "stable conflict must not be re-emitted")
+
+	// rec-b changes its (still losing) targets → transition → new event.
+	require.NoError(t, s.Replace(ctx, "ns/rec-b", tPortalX, []domaindns.FQDNView{
+		{Name: "c.example.com", RecordType: "A", Targets: []string{tIP1234}},
+	}))
+	assert.Len(t, s.Conflicts("", ""), 2, "changed losing targets re-emit")
 }
 
 func TestFQDNStore_ReplacePreservesOwnerAnnotation(t *testing.T) {
@@ -177,10 +209,10 @@ func TestFQDNStore_ReplacePreservesOwnerAnnotation(t *testing.T) {
 	// 3. Annotate rec-a's DNS owner.
 	s.AnnotateOwner("ns/rec-a", "ns", "dns-a")
 
-	// 4. Benign replay of rec-a with identical targets. No new conflict is
-	//    emitted (targets match the winner is false — first writer wins, so
-	//    rec-a's targets still mismatch). We expect the second conflict event
-	//    here too, but the key invariant is that the owner annotation survives.
+	// 4. Benign replay of rec-a with identical targets. No NEW conflict event is
+	//    emitted (transition-only emission: rec-a was already losing with these
+	//    targets). The key invariant under test here is that the owner
+	//    annotation survives the replay.
 	require.NoError(t, s.Replace(ctx, "ns/rec-a", "p", []domaindns.FQDNView{
 		{Name: tFQDNX, RecordType: "A", Targets: []string{tIP1}},
 	}))

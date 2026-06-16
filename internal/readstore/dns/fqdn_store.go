@@ -35,6 +35,12 @@ type recordContribution struct {
 	portalRef     string
 	dnsNamespace  string
 	dnsName       string
+	// losing maps each FQDNKey this record currently loses (its targets
+	// disagree with the primary) to a fingerprint of those targets. Used to
+	// emit a conflict event/metric only on transition — when a key newly
+	// enters conflict or its losing targets change — instead of on every
+	// idempotent Replace.
+	losing map[FQDNKey]string
 }
 
 // FQDNStore is the in-memory implementation of dns.FQDNReader and dns.FQDNWriter.
@@ -43,6 +49,7 @@ type FQDNStore struct {
 	fqdns     map[FQDNKey]*domaindns.FQDNView
 	byPortal  map[string]map[FQDNKey]struct{}
 	byRecord  map[string]recordContribution
+	winners   map[FQDNKey]string // FQDNKey -> recordKey of the primary contributor
 	seqCount  uint64
 	conflicts *conflictRing
 
@@ -58,6 +65,7 @@ func NewFQDNStore() *FQDNStore {
 		fqdns:     map[FQDNKey]*domaindns.FQDNView{},
 		byPortal:  map[string]map[FQDNKey]struct{}{},
 		byRecord:  map[string]recordContribution{},
+		winners:   map[FQDNKey]string{},
 		conflicts: newConflictRing(256),
 		notifyCh:  make(chan struct{}),
 	}
@@ -117,21 +125,38 @@ func (s *FQDNStore) Replace(ctx context.Context, recordKey, portalRef string, fq
 	// Conflict detection: a contribution loses iff its targets disagree with
 	// the recomputed primary. Lowest-seq contributor is primary; any
 	// later-seq contributor with different targets is a loser.
+	//
+	// Emit an event/metric only on transition: a key newly losing, or losing
+	// with different targets than last time. Without this guard a stable
+	// conflict would be re-pushed on every (idempotent) Replace — inflating
+	// the counter and evicting distinct conflicts from the bounded ring.
+	newLosing := make(map[FQDNKey]string)
 	for k, v := range newContributions {
 		primary, ok := s.fqdns[k]
 		if !ok {
 			continue
 		}
-		if !sameTargets(primary.Targets, v.Targets) {
-			s.conflicts.Push(domaindns.ConflictEvent{
-				FQDNKey:     domaindns.ConflictFQDNKey{Name: k.Name, RecordType: k.RecordType},
-				LoserRecord: recordKey,
-				PortalRef:   portalRef,
-				At:          time.Now(),
-			})
-			metrics.DNSTargetsConflictTotal.WithLabelValues(portalRef).Inc()
+		if sameTargets(primary.Targets, v.Targets) {
+			continue
 		}
+		fp := targetsKey(v.Targets)
+		newLosing[k] = fp
+		if prev.losing[k] == fp {
+			continue // already reported with these targets — no transition
+		}
+		s.conflicts.Push(domaindns.ConflictEvent{
+			FQDNKey:      domaindns.ConflictFQDNKey{Name: k.Name, RecordType: k.RecordType},
+			WinnerRecord: s.winners[k],
+			LoserRecord:  recordKey,
+			PortalRef:    portalRef,
+			At:           time.Now(),
+		})
+		metrics.DNSTargetsConflictTotal.WithLabelValues(portalRef).Inc()
 	}
+	// Persist the losing set so the next Replace can detect transitions.
+	c := s.byRecord[recordKey]
+	c.losing = newLosing
+	s.byRecord[recordKey] = c
 
 	go s.broadcast()
 	return nil
@@ -362,18 +387,20 @@ func (s *FQDNStore) recomputeFQDN(k FQDNKey) {
 		seq       uint64
 		view      domaindns.FQDNView
 		portalRef string
+		recordKey string
 	}
 	var contributors []contrib
 	portalsForKey := map[string]struct{}{}
-	for _, rec := range s.byRecord {
+	for recordKey, rec := range s.byRecord {
 		if v, ok := rec.contributions[k]; ok {
-			contributors = append(contributors, contrib{seq: rec.seq, view: v, portalRef: rec.portalRef})
+			contributors = append(contributors, contrib{seq: rec.seq, view: v, portalRef: rec.portalRef, recordKey: recordKey})
 			portalsForKey[rec.portalRef] = struct{}{}
 		}
 	}
 
 	if len(contributors) == 0 {
 		delete(s.fqdns, k)
+		delete(s.winners, k)
 		for p, set := range s.byPortal {
 			if _, in := set[k]; in {
 				delete(set, k)
@@ -387,6 +414,7 @@ func (s *FQDNStore) recomputeFQDN(k FQDNKey) {
 
 	sort.Slice(contributors, func(i, j int) bool { return contributors[i].seq < contributors[j].seq })
 
+	s.winners[k] = contributors[0].recordKey
 	primary := contributors[0].view
 	groupSet := map[string]struct{}{}
 	for _, c := range contributors {
@@ -415,6 +443,14 @@ func (s *FQDNStore) recomputeFQDN(k FQDNKey) {
 		}
 		s.byPortal[p][k] = struct{}{}
 	}
+}
+
+// targetsKey returns an order-sensitive fingerprint of a target set, matching
+// sameTargets semantics (targets are deterministic/sorted upstream). Used to
+// detect when a losing record's targets change between reconciles. The NUL
+// separator cannot appear in a DNS target, so distinct sets never collide.
+func targetsKey(targets []string) string {
+	return strings.Join(targets, "\x00")
 }
 
 func sameTargets(a, b []string) bool {

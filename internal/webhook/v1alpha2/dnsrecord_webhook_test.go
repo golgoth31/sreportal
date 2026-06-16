@@ -140,6 +140,24 @@ func TestDNSRecordWebhook_ManualRequiresEntries(t *testing.T) {
 	g.Expect(err.Error()).To(ContainSubstring("entries"))
 }
 
+// TestDNSRecordWebhook_UnknownOriginRejected guards defense-in-depth: even if
+// the CRD enum/CEL markers regress, the webhook must reject an unknown origin
+// rather than fall open and skip the controllerSA gate.
+func TestDNSRecordWebhook_UnknownOriginRejected(t *testing.T) {
+	g := NewWithT(t)
+	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t), testControllerSA)
+	r := &sreportalv1alpha2.DNSRecord{
+		ObjectMeta: metav1.ObjectMeta{Name: tRecordManual},
+		Spec: sreportalv1alpha2.DNSRecordSpec{
+			Origin:    "bogus",
+			PortalRef: tPortalMain,
+		},
+	}
+	_, err := v.ValidateCreate(context.Background(), r)
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(err.Error()).To(ContainSubstring("spec.origin must be"))
+}
+
 func TestDNSRecordWebhook_ManualRejectsSourceType(t *testing.T) {
 	g := NewWithT(t)
 	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t), "")
@@ -241,13 +259,15 @@ func TestDNSRecordWebhook_AutoValidCreate(t *testing.T) {
 
 func TestDNSRecordWebhook_ManualValidCreate(t *testing.T) {
 	g := NewWithT(t)
-	dns := newDNS()
-	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), "")
+	// A legitimate manual record is standalone: no DNS controller ownerReference
+	// (rejected on create since 6-A), just a portalRef pointing at an existing
+	// Portal.
+	portal := newPortal()
+	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, portal), "")
 	r := &sreportalv1alpha2.DNSRecord{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            tRecordManual,
-			Namespace:       tNamespace,
-			OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
+			Name:      tRecordManual,
+			Namespace: tNamespace,
 		},
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:    sreportalv1alpha2.DNSRecordOriginManual,
@@ -261,14 +281,11 @@ func TestDNSRecordWebhook_ManualValidCreate(t *testing.T) {
 
 func TestDNSRecordWebhook_ValidUpdate(t *testing.T) {
 	g := NewWithT(t)
-	dns := newDNS()
-	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), "")
-	ownerRef := validOwnerRef()
+	// A standalone manual record (no DNS owner) is updated to add an entry.
+	portal := newPortal()
+	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, portal), "")
 	old := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:       tNamespace,
-			OwnerReferences: []metav1.OwnerReference{ownerRef},
-		},
+		ObjectMeta: metav1.ObjectMeta{Namespace: tNamespace},
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:    sreportalv1alpha2.DNSRecordOriginManual,
 			PortalRef: tPortalMain,
@@ -276,10 +293,7 @@ func TestDNSRecordWebhook_ValidUpdate(t *testing.T) {
 		},
 	}
 	newR := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:       tNamespace,
-			OwnerReferences: []metav1.OwnerReference{ownerRef},
-		},
+		ObjectMeta: metav1.ObjectMeta{Namespace: tNamespace},
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:    sreportalv1alpha2.DNSRecordOriginManual,
 			PortalRef: tPortalMain,
@@ -467,10 +481,15 @@ func TestDNSRecordWebhook_ManualWithoutOwnerRefRejectedWhenPortalMissing(t *test
 	g.Expect(err.Error()).To(ContainSubstring("not found in namespace"))
 }
 
-func TestDNSRecordWebhook_ManualWithDanglingOwnerRefRejected(t *testing.T) {
+// TestDNSRecordWebhook_ManualWithOwnerRefRejectedOnCreate verifies the create
+// gate: a manual record may not declare a DNS controller ownerReference at
+// creation, regardless of whether the owner DNS exists. This blocks the abuse
+// vector where an author binds a manual record to a DNS it doesn't own.
+func TestDNSRecordWebhook_ManualWithOwnerRefRejectedOnCreate(t *testing.T) {
 	g := NewWithT(t)
-	// Manual record carries an ownerRef but the DNS does not exist.
-	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t), "")
+	// Owner DNS exists, yet a manual record still may not adopt it on create.
+	dns := newDNS()
+	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), "")
 	r := &sreportalv1alpha2.DNSRecord{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            tRecordManual,
@@ -485,10 +504,13 @@ func TestDNSRecordWebhook_ManualWithDanglingOwnerRefRejected(t *testing.T) {
 	}
 	_, err := v.ValidateCreate(context.Background(), r)
 	g.Expect(err).To(HaveOccurred())
-	g.Expect(err.Error()).To(ContainSubstring("not found in namespace"))
+	g.Expect(err.Error()).To(ContainSubstring("must not declare a controller ownerReference"))
 }
 
-func TestDNSRecordWebhook_UpdateAdoptionOneWayAccepted(t *testing.T) {
+// TestDNSRecordWebhook_ManualAdoptionViaUpdateRejected verifies the blanket
+// ban also closes the adoption-via-update vector: a standalone manual record
+// cannot acquire a DNS controller ownerReference on update.
+func TestDNSRecordWebhook_ManualAdoptionViaUpdateRejected(t *testing.T) {
 	g := NewWithT(t)
 	dns := newDNS()
 	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), "")
@@ -512,7 +534,8 @@ func TestDNSRecordWebhook_UpdateAdoptionOneWayAccepted(t *testing.T) {
 		},
 	}
 	_, err := v.ValidateUpdate(context.Background(), old, newR)
-	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(err.Error()).To(ContainSubstring("must not declare a controller ownerReference"))
 }
 
 func TestDNSRecordWebhook_UpdateOwnerRefRemovalRejected(t *testing.T) {

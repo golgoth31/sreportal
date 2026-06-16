@@ -177,7 +177,14 @@ func requeueInterval(dns *v1alpha2.DNS) time.Duration {
 // SetupWithManager sets up the controller with the Manager.
 func (r *DNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha2.DNS{}).
+		For(
+			&v1alpha2.DNS{},
+			// Ignore status-only self-writes (LastReconcileTime / NextReconcileTime /
+			// SourcesReady) the reconciler performs on every pass. Without this they
+			// bump resourceVersion and re-enqueue the DNS, producing a tight
+			// reconcile loop. Spec changes still bump generation and trigger.
+			builder.WithPredicates(predicate.GenerationChangedPredicate{}),
+		).
 		Watches(
 			&v1alpha2.DNSRecord{},
 			handler.EnqueueRequestsFromMapFunc(r.enqueueDNSForRecord),

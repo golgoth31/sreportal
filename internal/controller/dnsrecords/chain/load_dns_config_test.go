@@ -148,3 +148,88 @@ func TestLoadDNSConfigHandler_DNSNameMismatchesPortalRef(t *testing.T) {
 	g.Expect(rc.Data.GroupMapping).NotTo(BeNil())
 	g.Expect(rc.Data.GroupMapping.DefaultGroup).To(Equal("Platform"))
 }
+
+// TestLoadDNSConfigHandler_MultipleDNS_PrefersOwner verifies that when several
+// DNS CRs reference the same Portal (N:1 allowed), an auto record resolves the
+// config of its owning DNS (via OwnerDNSName), not an arbitrary list entry.
+func TestLoadDNSConfigHandler_MultipleDNS_PrefersOwner(t *testing.T) {
+	g := NewWithT(t)
+
+	scheme := runtime.NewScheme()
+	g.Expect(v1alpha2.AddToScheme(scheme)).To(Succeed())
+
+	dnsA := &v1alpha2.DNS{
+		ObjectMeta: metav1.ObjectMeta{Name: "dns-a", Namespace: tNsDefault},
+		Spec: v1alpha2.DNSSpec{
+			PortalRef:    tPortalMain,
+			GroupMapping: v1alpha2.GroupMappingSpec{DefaultGroup: "GroupA"},
+		},
+	}
+	dnsB := &v1alpha2.DNS{
+		ObjectMeta: metav1.ObjectMeta{Name: "dns-b", Namespace: tNsDefault},
+		Spec: v1alpha2.DNSSpec{
+			PortalRef:    tPortalMain,
+			GroupMapping: v1alpha2.GroupMappingSpec{DefaultGroup: "GroupB"},
+		},
+	}
+	c := newFakeClientWithDNSIndex(scheme, dnsA, dnsB)
+
+	rc := &reconciler.ReconcileContext[*v1alpha2.DNSRecord, chain.ChainData]{
+		Resource: &v1alpha2.DNSRecord{
+			ObjectMeta: metav1.ObjectMeta{Name: "svc-ingress", Namespace: tNsDefault},
+			Spec: v1alpha2.DNSRecordSpec{
+				Origin:    v1alpha2.DNSRecordOriginAuto,
+				PortalRef: tPortalMain,
+			},
+		},
+		Data: chain.ChainData{OwnerDNSName: "dns-b"},
+	}
+
+	err := chain.NewLoadDNSConfigHandler(c).Handle(context.Background(), rc)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(rc.Data.GroupMapping).NotTo(BeNil())
+	g.Expect(rc.Data.GroupMapping.DefaultGroup).To(Equal("GroupB"))
+}
+
+// TestLoadDNSConfigHandler_MultipleDNS_NoOwner_LowestName verifies the
+// deterministic fallback: with no owner (e.g. a manual record), the DNS with
+// the lowest name is selected regardless of list ordering, so an unchanged
+// record never flaps between configs.
+func TestLoadDNSConfigHandler_MultipleDNS_NoOwner_LowestName(t *testing.T) {
+	g := NewWithT(t)
+
+	scheme := runtime.NewScheme()
+	g.Expect(v1alpha2.AddToScheme(scheme)).To(Succeed())
+
+	dnsZ := &v1alpha2.DNS{
+		ObjectMeta: metav1.ObjectMeta{Name: "dns-z", Namespace: tNsDefault},
+		Spec: v1alpha2.DNSSpec{
+			PortalRef:    tPortalMain,
+			GroupMapping: v1alpha2.GroupMappingSpec{DefaultGroup: "GroupZ"},
+		},
+	}
+	dnsA := &v1alpha2.DNS{
+		ObjectMeta: metav1.ObjectMeta{Name: "dns-a", Namespace: tNsDefault},
+		Spec: v1alpha2.DNSSpec{
+			PortalRef:    tPortalMain,
+			GroupMapping: v1alpha2.GroupMappingSpec{DefaultGroup: "GroupA"},
+		},
+	}
+	// Pass dns-z first to ensure selection isn't insertion-order dependent.
+	c := newFakeClientWithDNSIndex(scheme, dnsZ, dnsA)
+
+	rc := &reconciler.ReconcileContext[*v1alpha2.DNSRecord, chain.ChainData]{
+		Resource: &v1alpha2.DNSRecord{
+			ObjectMeta: metav1.ObjectMeta{Name: "manual-rec", Namespace: tNsDefault},
+			Spec: v1alpha2.DNSRecordSpec{
+				Origin:    v1alpha2.DNSRecordOriginManual,
+				PortalRef: tPortalMain,
+			},
+		},
+	}
+
+	err := chain.NewLoadDNSConfigHandler(c).Handle(context.Background(), rc)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(rc.Data.GroupMapping).NotTo(BeNil())
+	g.Expect(rc.Data.GroupMapping.DefaultGroup).To(Equal("GroupA"))
+}

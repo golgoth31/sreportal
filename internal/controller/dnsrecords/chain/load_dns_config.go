@@ -19,6 +19,7 @@ package chain
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -58,8 +59,28 @@ func (h *LoadDNSConfigHandler) Handle(ctx context.Context, rc *reconciler.Reconc
 		// will re-enqueue this DNSRecord when a matching DNS appears.
 		return reconciler.ErrShortCircuit
 	}
-	dns := &list.Items[0]
+	// A Portal may be referenced by several DNS CRs (N:1 is allowed by the DNS
+	// webhook), and the field-index List returns them in no guaranteed order.
+	// Pick deterministically so an unchanged record always resolves the same
+	// config and its projected group doesn't flap between reconciles:
+	//   1. for auto records, prefer the owning DNS (controller ownerRef);
+	//   2. otherwise fall back to the lowest name.
+	dns := selectDNS(list.Items, rc.Data.OwnerDNSName)
 	rc.Data.GroupMapping = &dns.Spec.GroupMapping
 	rc.Data.DisableDNSCheck = dns.Spec.Reconciliation.DisableDNSCheck
 	return nil
+}
+
+// selectDNS deterministically picks one DNS from a non-empty list. If ownerName
+// matches one of the items it wins; otherwise the item with the lowest name.
+func selectDNS(items []v1alpha2.DNS, ownerName string) *v1alpha2.DNS {
+	if ownerName != "" {
+		for i := range items {
+			if items[i].Name == ownerName {
+				return &items[i]
+			}
+		}
+	}
+	sort.Slice(items, func(i, j int) bool { return items[i].Name < items[j].Name })
+	return &items[0]
 }

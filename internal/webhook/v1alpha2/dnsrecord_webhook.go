@@ -109,6 +109,12 @@ func (v *DNSRecordCustomValidator) validate(ctx context.Context, r *sreportalv1a
 		if len(r.Spec.Entries) == 0 {
 			return fmt.Errorf("spec.entries must have at least one entry when spec.origin=manual")
 		}
+	default:
+		// Defense-in-depth: the CRD enum + CEL already reject unknown origins,
+		// but the webhook must not fall open if those markers ever regress —
+		// an unhandled origin would otherwise skip the controllerSA gate.
+		return fmt.Errorf("spec.origin must be %q or %q, got %q",
+			sreportalv1alpha2.DNSRecordOriginAuto, sreportalv1alpha2.DNSRecordOriginManual, r.Spec.Origin)
 	}
 
 	if old != nil && old.Spec.Origin != r.Spec.Origin {
@@ -152,6 +158,19 @@ func (v *DNSRecordCustomValidator) validateOwnerRef(ctx context.Context, r, old 
 				return fmt.Errorf("ownerReference to DNS is immutable: cannot re-parent from %q to %q", oldRef.Name, newRef.Name)
 			}
 		}
+	}
+
+	// A manual record may never carry a DNS controller ownerReference. Such a
+	// ref lets any author bind a manual record to a DNS it doesn't own (same
+	// portalRef), gaining cascade-delete and, via blockOwnerDeletion, the
+	// ability to block that DNS's deletion. No code path legitimately creates
+	// manual records with a DNS owner, so this is a pure abuse vector. Enforced
+	// unconditionally (create and adoption-via-update): v1alpha2 is new, so no
+	// pre-existing object carries such a ref and a blanket ban needs no grace.
+	// Placed after the immutability switch so removal/re-parent of an owned
+	// record still report their specific (shared, auto-relevant) errors.
+	if hasRef && r.Spec.Origin == sreportalv1alpha2.DNSRecordOriginManual {
+		return fmt.Errorf("origin=manual records must not declare a controller ownerReference to a DNS")
 	}
 
 	if !hasRef {
