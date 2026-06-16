@@ -1,5 +1,38 @@
 # Changelog
 
+## [1.35.0](https://github.com/golgoth31/sreportal/compare/v1.34.2...v1.35.0) (2026-06-16)
+
+
+### Features
+
+* **dns:** migrate DNS and DNSRecord CRDs to v1alpha2 ([#274](https://github.com/golgoth31/sreportal/issues/274)) ([e10db18](https://github.com/golgoth31/sreportal/commit/e10db183ffa9fd5570acf7214d032c1c4046ffc9))
+* **imageregistry:** match latest version by tag format ([#272](https://github.com/golgoth31/sreportal/issues/272)) ([910b256](https://github.com/golgoth31/sreportal/commit/910b2561f31f1a4941750888ee1a8086ed02bc30))
+
+
+### Bug Fixes
+
+* **controllers:** apply P0 controller review fixes ([#256](https://github.com/golgoth31/sreportal/issues/256)) ([66d6275](https://github.com/golgoth31/sreportal/commit/66d627515f50bd49e2a5b8963f7ad0898a73d88c))
+* **controllers:** co-locate missing RBAC markers (source, dnsrecords) ([#257](https://github.com/golgoth31/sreportal/issues/257)) ([13ab4e7](https://github.com/golgoth31/sreportal/commit/13ab4e7eb4c62ce447ceb72b48e06c8b431e2029))
+* **controllers:** set owner refs on auto-managed components for GC ([#262](https://github.com/golgoth31/sreportal/issues/262)) ([e71b8b2](https://github.com/golgoth31/sreportal/commit/e71b8b28c7033a170bc135b56217042ed07852cf))
+* **controllers:** surface transient errors on portal feature-gates and read-store writes ([#261](https://github.com/golgoth31/sreportal/issues/261)) ([e2e968d](https://github.com/golgoth31/sreportal/commit/e2e968dbc09c0901eea8f7671672008561d66851))
+* **controllers:** tighten maintenance/incident/portal edge cases ([#263](https://github.com/golgoth31/sreportal/issues/263)) ([4eb8f65](https://github.com/golgoth31/sreportal/commit/4eb8f652c14d8946b5fe3606894f841cfbc5ad5b))
+* **deps:** update dependency react-day-picker to v10 ([#271](https://github.com/golgoth31/sreportal/issues/271)) ([c35d37c](https://github.com/golgoth31/sreportal/commit/c35d37c0cc44bdbf18011fce7fffc46a08fcc508))
+* **deps:** update go-testing to v1.42.0 ([#283](https://github.com/golgoth31/sreportal/issues/283)) ([d92d840](https://github.com/golgoth31/sreportal/commit/d92d840eb786fec27c4115d06484f664e5feab48))
+* **deps:** update kubernetes ([#275](https://github.com/golgoth31/sreportal/issues/275)) ([a4256d4](https://github.com/golgoth31/sreportal/commit/a4256d4b5b457b0fdbee75d6552f88cfe1891db9))
+* **deps:** update module github.com/mark3labs/mcp-go to v0.53.0 ([#268](https://github.com/golgoth31/sreportal/issues/268)) ([3cc59e5](https://github.com/golgoth31/sreportal/commit/3cc59e5a663eb2f755cb789e3d00ade4f645d99f))
+* **deps:** update module golang.org/x/mod to v0.36.0 ([#255](https://github.com/golgoth31/sreportal/issues/255)) ([fce3055](https://github.com/golgoth31/sreportal/commit/fce3055084b2e53b00c2f07db99db0270385d3ad))
+* **deps:** update module golang.org/x/net to v0.54.0 ([#269](https://github.com/golgoth31/sreportal/issues/269)) ([edfa63a](https://github.com/golgoth31/sreportal/commit/edfa63aa42c00913c3ad701c9b0eb9179bb0b3bd))
+* **deps:** update module sigs.k8s.io/controller-runtime to v0.24.1 ([#267](https://github.com/golgoth31/sreportal/issues/267)) ([2e91e93](https://github.com/golgoth31/sreportal/commit/2e91e9350747f03245e8393ac78bf84dbc196abd))
+* **deps:** update web-misc ([#270](https://github.com/golgoth31/sreportal/issues/270)) ([b513a72](https://github.com/golgoth31/sreportal/commit/b513a72a9cefd7f3071646e6ed4ad58635011452))
+* **deps:** update web-misc ([#276](https://github.com/golgoth31/sreportal/issues/276)) ([c8ea6e6](https://github.com/golgoth31/sreportal/commit/c8ea6e65d36b5c92b78080febb4fe4e15c8aaec4))
+* **deps:** update web-misc ([#281](https://github.com/golgoth31/sreportal/issues/281)) ([6441735](https://github.com/golgoth31/sreportal/commit/644173505864580f854152aff612da0db492b5cf))
+* **deps:** update web-misc ([#290](https://github.com/golgoth31/sreportal/issues/290)) ([536dfbb](https://github.com/golgoth31/sreportal/commit/536dfbb09cded661017dccb47fe9d035f6bc5f79))
+* **imageinventory:** deterministic ordering for injected containers ([#258](https://github.com/golgoth31/sreportal/issues/258)) ([4dfe9c0](https://github.com/golgoth31/sreportal/commit/4dfe9c0ec40fb5e666e36ac9d96e07e9045240b5))
+* **imageregistry:** skip status patch on no-op reconciles ([#260](https://github.com/golgoth31/sreportal/issues/260)) ([52c0b2a](https://github.com/golgoth31/sreportal/commit/52c0b2ac222cb88451ec6db9c477019a56316164))
+* **networkflowdiscovery:** restrict list to declared namespaces ([#259](https://github.com/golgoth31/sreportal/issues/259)) ([aa6d556](https://github.com/golgoth31/sreportal/commit/aa6d556219d9823c4feeeab4a6fb4e63ef36fc9b))
+* **release:** add missing metrics import and propagate delete errors ([903dca7](https://github.com/golgoth31/sreportal/commit/903dca727b79aa7f0c32f9f9aadd23ff68bb4886))
+* **web:** migrate calendar usage to react-day-picker v10 API ([29556c4](https://github.com/golgoth31/sreportal/commit/29556c4f3ca9b82f4679087c71a0eee00050dd27))
+
 ## [1.34.2](https://github.com/golgoth31/sreportal/compare/v1.34.1...v1.34.2) (2026-05-08)
 
 
