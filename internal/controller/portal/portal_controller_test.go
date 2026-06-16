@@ -79,7 +79,7 @@ var _ = Describe("Portal Controller", func() {
 		})
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
-			controllerReconciler := NewPortalReconciler(k8sClient, k8sClient.Scheme(), remoteclient.NewCache())
+			controllerReconciler := NewPortalReconciler(k8sClient, k8sClient.Scheme(), remoteclient.NewCache(), nil)
 
 			Eventually(func(g Gomega) {
 				_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -119,7 +119,7 @@ var _ = Describe("Portal Controller", func() {
 
 		It("should clear FQDN read store entries and delete DNSRecords", func() {
 			store := dnsreadstore.NewFQDNStore()
-			controllerReconciler := NewPortalReconciler(k8sClient, k8sClient.Scheme(), remoteclient.NewCache())
+			controllerReconciler := NewPortalReconciler(k8sClient, k8sClient.Scheme(), remoteclient.NewCache(), nil)
 			controllerReconciler.SetFQDNWriter(store)
 
 			By("creating a portal with DNS enabled")
@@ -193,7 +193,7 @@ var _ = Describe("Portal Controller", func() {
 		})
 
 		It("should allow portal reconcile to succeed after DNS is re-enabled", func() {
-			portalReconciler := NewPortalReconciler(k8sClient, k8sClient.Scheme(), remoteclient.NewCache())
+			portalReconciler := NewPortalReconciler(k8sClient, k8sClient.Scheme(), remoteclient.NewCache(), nil)
 
 			By("creating a portal with DNS disabled")
 			dnsDisabled := false
@@ -259,7 +259,7 @@ var _ = Describe("Portal Controller", func() {
 
 		It("should flush read store entries and preserve Release CRs", func() {
 			store := releasereadstore.NewReleaseStore()
-			portalReconciler := NewPortalReconciler(k8sClient, k8sClient.Scheme(), remoteclient.NewCache())
+			portalReconciler := NewPortalReconciler(k8sClient, k8sClient.Scheme(), remoteclient.NewCache(), nil)
 			portalReconciler.SetReleaseWriter(store)
 
 			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.Portal{
@@ -329,7 +329,7 @@ var _ = Describe("Portal Controller", func() {
 
 		It("should purge read store and delete NFD CRs", func() {
 			store := netpolreadstore.NewFlowGraphStore()
-			portalReconciler := NewPortalReconciler(k8sClient, k8sClient.Scheme(), remoteclient.NewCache())
+			portalReconciler := NewPortalReconciler(k8sClient, k8sClient.Scheme(), remoteclient.NewCache(), nil)
 			portalReconciler.SetFlowGraphWriter(store)
 
 			By("creating a portal with networkPolicy enabled (default)")
@@ -381,7 +381,7 @@ var _ = Describe("Portal Controller", func() {
 		})
 
 		It("should recreate NFD when networkPolicy is re-enabled", func() {
-			portalReconciler := NewPortalReconciler(k8sClient, k8sClient.Scheme(), remoteclient.NewCache())
+			portalReconciler := NewPortalReconciler(k8sClient, k8sClient.Scheme(), remoteclient.NewCache(), nil)
 
 			By("creating a portal with networkPolicy disabled")
 			netpolOff := false

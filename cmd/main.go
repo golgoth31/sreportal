@@ -654,6 +654,7 @@ func main() {
 		mgr.GetClient(),
 		mgr.GetScheme(),
 		remoteCache,
+		operatorConfig,
 	)
 	portalReconciler.SetPortalWriter(portalStore)
 	portalReconciler.SetFQDNWriter(fqdnStore)
