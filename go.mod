@@ -12,7 +12,7 @@ require (
 	github.com/google/go-containerregistry v0.21.5
 	github.com/labstack/echo/v5 v5.1.1
 	github.com/mark3labs/mcp-go v0.53.0
-	github.com/onsi/ginkgo/v2 v2.28.3
+	github.com/onsi/ginkgo/v2 v2.31.0
 	github.com/onsi/gomega v1.40.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
