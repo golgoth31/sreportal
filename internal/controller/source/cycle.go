@@ -18,12 +18,14 @@ package source
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/external-dns/endpoint"
 
 	sreportalv1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 	domainsource "github.com/golgoth31/sreportal/internal/domain/source"
@@ -84,6 +86,18 @@ func Cycle(
 				continue
 			}
 			for _, ep := range eps {
+				// Most resolvers don't set the external-dns "resource" label
+				// themselves; fill it in here from the provenance we already
+				// have (kind/namespace/name) so DNSRecordEntry.OriginRef has
+				// something to carry downstream. A resolver-set value (e.g.
+				// crossplanescalewayrecord, which uses the K8s Kind rather
+				// than the registry.SourceType) takes precedence.
+				if ep.Labels == nil {
+					ep.Labels = endpoint.NewLabels()
+				}
+				if _, ok := ep.Labels[endpoint.ResourceLabelKey]; !ok {
+					ep.Labels[endpoint.ResourceLabelKey] = fmt.Sprintf("%s/%s/%s", kind, obj.GetNamespace(), obj.GetName())
+				}
 				entries = append(entries, domainsource.EnrichedEndpoint{
 					Endpoint:          ep,
 					Kind:              kind,
