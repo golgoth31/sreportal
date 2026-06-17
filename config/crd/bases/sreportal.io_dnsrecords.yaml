@@ -275,6 +275,12 @@ spec:
                       type: string
                     group:
                       type: string
+                    originRef:
+                      description: |-
+                        originRef identifies the source Kubernetes resource that produced this
+                        entry, in "kind/namespace/name" form (the external-dns "resource" label).
+                        Set by the DNS controller for origin=auto entries; empty for manual.
+                      type: string
                     recordType:
                       default: A
                       enum:

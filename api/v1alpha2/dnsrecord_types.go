@@ -65,6 +65,12 @@ type DNSRecordEntry struct {
 
 	// +optional
 	Targets []string `json:"targets,omitempty"`
+
+	// originRef identifies the source Kubernetes resource that produced this
+	// entry, in "kind/namespace/name" form (the external-dns "resource" label).
+	// Set by the DNS controller for origin=auto entries; empty for manual.
+	// +optional
+	OriginRef string `json:"originRef,omitempty"`
 }
 
 // DNSRecordStatus defines the observed state of DNSRecord (v1alpha2).
