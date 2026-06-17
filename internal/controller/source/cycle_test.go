@@ -25,7 +25,10 @@ import (
 	svcsrc "github.com/golgoth31/sreportal/internal/source/service"
 )
 
-const tTeamA = "team-a"
+const (
+	tTeamA = "team-a"
+	tLBIP  = "1.2.3.4"
+)
 
 func TestCycle_ProducesServiceEndpoints(t *testing.T) {
 	scheme := runtime.NewScheme()
@@ -49,7 +52,7 @@ func TestCycle_ProducesServiceEndpoints(t *testing.T) {
 			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/hostname": "echo.example.com"},
 		},
 		Status: corev1.ServiceStatus{LoadBalancer: corev1.LoadBalancerStatus{
-			Ingress: []corev1.LoadBalancerIngress{{IP: "1.2.3.4"}},
+			Ingress: []corev1.LoadBalancerIngress{{IP: tLBIP}},
 		}},
 	}
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(dns, svc).Build()
@@ -90,7 +93,7 @@ func TestCycle_SetsResourceLabelWhenResolverOmitsIt(t *testing.T) {
 			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/hostname": "echo.example.com"},
 		},
 		Status: corev1.ServiceStatus{LoadBalancer: corev1.LoadBalancerStatus{
-			Ingress: []corev1.LoadBalancerIngress{{IP: "1.2.3.4"}},
+			Ingress: []corev1.LoadBalancerIngress{{IP: tLBIP}},
 		}},
 	}
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(dns, svc).Build()
@@ -253,7 +256,7 @@ func (r *fakeErrorResolver) ResolveObject(_ context.Context, obj client.Object) 
 		return nil, r.resolveErr
 	}
 	return []*endpoint.Endpoint{
-		endpoint.NewEndpoint(obj.GetName()+".example.com", endpoint.RecordTypeA, "1.2.3.4"),
+		endpoint.NewEndpoint(obj.GetName()+".example.com", endpoint.RecordTypeA, tLBIP),
 	}, nil
 }
 
@@ -282,7 +285,7 @@ func TestCycle_PartialResolveError(t *testing.T) {
 	goodSvc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{Name: "good", Namespace: "ns"},
 		Status: corev1.ServiceStatus{LoadBalancer: corev1.LoadBalancerStatus{
-			Ingress: []corev1.LoadBalancerIngress{{IP: "1.2.3.4"}},
+			Ingress: []corev1.LoadBalancerIngress{{IP: tLBIP}},
 		}},
 	}
 	badSvc := &corev1.Service{
