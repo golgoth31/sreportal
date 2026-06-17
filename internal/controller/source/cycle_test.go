@@ -25,7 +25,10 @@ import (
 	svcsrc "github.com/golgoth31/sreportal/internal/source/service"
 )
 
-const tTeamA = "team-a"
+const (
+	tTeamA = "team-a"
+	tLBIP  = "1.2.3.4"
+)
 
 func TestCycle_ProducesServiceEndpoints(t *testing.T) {
 	scheme := runtime.NewScheme()
@@ -49,7 +52,7 @@ func TestCycle_ProducesServiceEndpoints(t *testing.T) {
 			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/hostname": "echo.example.com"},
 		},
 		Status: corev1.ServiceStatus{LoadBalancer: corev1.LoadBalancerStatus{
-			Ingress: []corev1.LoadBalancerIngress{{IP: "1.2.3.4"}},
+			Ingress: []corev1.LoadBalancerIngress{{IP: tLBIP}},
 		}},
 	}
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(dns, svc).Build()
@@ -62,6 +65,47 @@ func TestCycle_ProducesServiceEndpoints(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, got, 1)
 	require.Equal(t, "echo.example.com", got[0].Endpoint.DNSName)
+}
+
+// TestCycle_SetsResourceLabelWhenResolverOmitsIt verifies that Cycle fills in
+// the external-dns "resource" label (kind/namespace/name) for resolvers that
+// don't set it themselves (e.g. service, ingress) — required for
+// DNSRecordEntry.OriginRef to be carried downstream. See PR #291.
+func TestCycle_SetsResourceLabelWhenResolverOmitsIt(t *testing.T) {
+	scheme := runtime.NewScheme()
+	require.NoError(t, sreportalv1alpha2.AddToScheme(scheme))
+	require.NoError(t, corev1.AddToScheme(scheme))
+
+	dns := &sreportalv1alpha2.DNS{
+		ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: tTeamA},
+		Spec: sreportalv1alpha2.DNSSpec{
+			PortalRef: tTeamA,
+			Sources: sreportalv1alpha2.SourcesSpec{
+				Service: &sreportalv1alpha2.ServiceSourceSpec{
+					CommonSourceSpec: sreportalv1alpha2.CommonSourceSpec{Enabled: true},
+				},
+			},
+		},
+	}
+	svc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "echo", Namespace: tTeamA,
+			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/hostname": "echo.example.com"},
+		},
+		Status: corev1.ServiceStatus{LoadBalancer: corev1.LoadBalancerStatus{
+			Ingress: []corev1.LoadBalancerIngress{{IP: tLBIP}},
+		}},
+	}
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(dns, svc).Build()
+	reg := registry.NewRegistry(svcsrc.NewResolver())
+	store := rsource.NewStore()
+
+	_ = srccontrol.Cycle(context.Background(), c, reg, store, nil)
+	got, err := store.Lookup(svcsrc.SourceTypeService, tTeamA, "")
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	require.Equal(t, "service/team-a/echo", got[0].Endpoint.Labels[endpoint.ResourceLabelKey],
+		"resource label must be set so DNSRecordEntry.OriginRef is populated")
 }
 
 func TestCycle_DeletesKindsNoLongerEnabled(t *testing.T) {
@@ -212,7 +256,7 @@ func (r *fakeErrorResolver) ResolveObject(_ context.Context, obj client.Object) 
 		return nil, r.resolveErr
 	}
 	return []*endpoint.Endpoint{
-		endpoint.NewEndpoint(obj.GetName()+".example.com", endpoint.RecordTypeA, "1.2.3.4"),
+		endpoint.NewEndpoint(obj.GetName()+".example.com", endpoint.RecordTypeA, tLBIP),
 	}, nil
 }
 
@@ -241,7 +285,7 @@ func TestCycle_PartialResolveError(t *testing.T) {
 	goodSvc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{Name: "good", Namespace: "ns"},
 		Status: corev1.ServiceStatus{LoadBalancer: corev1.LoadBalancerStatus{
-			Ingress: []corev1.LoadBalancerIngress{{IP: "1.2.3.4"}},
+			Ingress: []corev1.LoadBalancerIngress{{IP: tLBIP}},
 		}},
 	}
 	badSvc := &corev1.Service{
