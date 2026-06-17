@@ -7,6 +7,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/external-dns/endpoint"
 
 	v1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 	"github.com/golgoth31/sreportal/internal/adapter"
@@ -53,6 +54,15 @@ func (h *MaterialiseEntriesHandler) Handle(ctx context.Context, rc *reconciler.R
 		var labels map[string]string
 		if e.Group != "" {
 			labels = map[string]string{"sreportal.io/group": e.Group}
+		}
+		// Re-inject the source resource (kind/namespace/name) into the external-dns
+		// "resource" label so the adapter can derive FQDNView.OriginRef. Excluded
+		// from the endpoints hash, so it never causes reconcile churn.
+		if e.OriginRef != "" {
+			if labels == nil {
+				labels = map[string]string{}
+			}
+			labels[endpoint.ResourceLabelKey] = e.OriginRef
 		}
 
 		endpoints = append(endpoints, v1alpha2.EndpointStatus{

@@ -40,9 +40,10 @@ import (
 )
 
 const (
-	upsertTestNS1     = "ns1"
-	upsertTestRecord  = "d-service"
-	upsertTestTargetA = "1.1.1.1"
+	upsertTestNS1       = "ns1"
+	upsertTestRecord    = "d-service"
+	upsertTestRecordIng = "d-ingress"
+	upsertTestTargetA   = "1.1.1.1"
 )
 
 func TestUpsertDNSRecords_CreatesAndDeletes(t *testing.T) {
@@ -55,7 +56,7 @@ func TestUpsertDNSRecords_CreatesAndDeletes(t *testing.T) {
 	}
 	existing := &sreportalv1alpha2.DNSRecord{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "d-ingress", Namespace: upsertTestNS1,
+			Name: upsertTestRecordIng, Namespace: upsertTestNS1,
 			OwnerReferences: []metav1.OwnerReference{{
 				APIVersion: sreportalv1alpha2.GroupVersion.String(),
 				Kind:       "DNS",
@@ -98,7 +99,7 @@ func TestUpsertDNSRecords_CreatesAndDeletes(t *testing.T) {
 	require.Equal(t, []string{upsertTestTargetA}, created.Spec.Entries[0].Targets)
 
 	var gone sreportalv1alpha2.DNSRecord
-	err := c.Get(context.Background(), types.NamespacedName{Namespace: upsertTestNS1, Name: "d-ingress"}, &gone)
+	err := c.Get(context.Background(), types.NamespacedName{Namespace: upsertTestNS1, Name: upsertTestRecordIng}, &gone)
 	require.True(t, apierrors.IsNotFound(err), "expected d-ingress to be deleted, got err=%v", err)
 }
 
@@ -379,4 +380,100 @@ func TestUpsertDNSRecordsHandler_NoOpWhenUnchanged(t *testing.T) {
 	require.NoError(t, c.Get(context.Background(), key, &second))
 	require.Equal(t, firstGen, second.Generation, "generation must not bump on no-op upsert")
 	require.Equal(t, firstRV, second.ResourceVersion, "no write expected when content is identical")
+}
+
+// TestUpsertDNSRecordsHandler_PropagatesOriginRef verifies that the external-dns
+// "resource" label on a kept endpoint is carried into the projected
+// DNSRecordEntry.OriginRef so the origin survives the spec.entries hop.
+func TestUpsertDNSRecordsHandler_PropagatesOriginRef(t *testing.T) {
+	scheme := runtime.NewScheme()
+	require.NoError(t, sreportalv1alpha2.AddToScheme(scheme))
+
+	dns := &sreportalv1alpha2.DNS{
+		ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: upsertTestNS1, UID: "u1"},
+		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: "p"},
+	}
+	c := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithStatusSubresource(&sreportalv1alpha2.DNSRecord{}).
+		WithObjects(dns).
+		Build()
+
+	ep := endpoint.NewEndpoint("a.example.com", "A", upsertTestTargetA).
+		WithLabel(endpoint.ResourceLabelKey, "service/ns1/budget-controls")
+
+	h := &dnschain.UpsertDNSRecordsHandler{Client: c}
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{
+		Resource: dns,
+		Data: dnschain.ChainData{
+			KeptEndpointsByKind: map[registry.SourceType][]*endpoint.Endpoint{
+				service.SourceTypeService: {ep},
+			},
+		},
+	}
+	require.NoError(t, h.Handle(context.Background(), rc))
+
+	var created sreportalv1alpha2.DNSRecord
+	require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: upsertTestNS1, Name: upsertTestRecord}, &created))
+	require.Len(t, created.Spec.Entries, 1)
+	require.Equal(t, "service/ns1/budget-controls", created.Spec.Entries[0].OriginRef)
+}
+
+// TestUpsertDNSRecordsHandler_OriginRefFollowsPriority verifies the OriginRef
+// carried into spec.entries is the one of the source that wins source priority:
+// IntraDNSDedup keeps the higher-priority kind's endpoint (with its resource
+// label), so the projected entry's OriginRef is that winner's resource.
+func TestUpsertDNSRecordsHandler_OriginRefFollowsPriority(t *testing.T) {
+	scheme := runtime.NewScheme()
+	require.NoError(t, sreportalv1alpha2.AddToScheme(scheme))
+
+	dns := &sreportalv1alpha2.DNS{
+		ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: upsertTestNS1, UID: "u1"},
+		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: "p"},
+	}
+	c := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithStatusSubresource(&sreportalv1alpha2.DNSRecord{}).
+		WithObjects(dns).
+		Build()
+
+	// Same FQDN produced by both ingress and service, each with its own origin.
+	// Priority: ingress before service -> ingress wins.
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{
+		Resource: dns,
+		Data: dnschain.ChainData{
+			PriorityOrder: []registry.SourceType{ingress.SourceTypeIngress, service.SourceTypeService},
+			EndpointsByKind: map[registry.SourceType][]*endpoint.Endpoint{
+				ingress.SourceTypeIngress: {
+					endpoint.NewEndpoint("shared.example.com", "A", upsertTestTargetA).
+						WithLabel(endpoint.ResourceLabelKey, "ingress/ns1/shared-ing"),
+				},
+				service.SourceTypeService: {
+					endpoint.NewEndpoint("shared.example.com", "A", "2.2.2.2").
+						WithLabel(endpoint.ResourceLabelKey, "service/ns1/shared-svc"),
+				},
+			},
+		},
+	}
+
+	require.NoError(t, (&dnschain.IntraDNSDedupHandler{}).Handle(context.Background(), rc))
+	require.NoError(t, (&dnschain.UpsertDNSRecordsHandler{Client: c}).Handle(context.Background(), rc))
+
+	// Winner (ingress) carries the FQDN with the ingress origin.
+	var ingRec sreportalv1alpha2.DNSRecord
+	require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: upsertTestNS1, Name: upsertTestRecordIng}, &ingRec))
+	require.Len(t, ingRec.Spec.Entries, 1)
+	require.Equal(t, "shared.example.com", ingRec.Spec.Entries[0].FQDN)
+	require.Equal(t, "ingress/ns1/shared-ing", ingRec.Spec.Entries[0].OriginRef)
+
+	// Loser (service) record must not contain the deduped FQDN.
+	var svcRec sreportalv1alpha2.DNSRecord
+	err := c.Get(context.Background(), types.NamespacedName{Namespace: upsertTestNS1, Name: upsertTestRecord}, &svcRec)
+	if err == nil {
+		for _, e := range svcRec.Spec.Entries {
+			require.NotEqual(t, "shared.example.com", e.FQDN, "deduped FQDN must not appear in the lower-priority record")
+		}
+	} else {
+		require.True(t, apierrors.IsNotFound(err))
+	}
 }

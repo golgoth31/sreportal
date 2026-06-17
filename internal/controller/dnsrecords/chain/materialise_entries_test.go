@@ -25,8 +25,8 @@ func TestMaterialiseEntriesHandler_ConvertEntriesToEndpoints(t *testing.T) {
 			Origin:    v1alpha2.DNSRecordOriginManual,
 			PortalRef: tPortalMain,
 			Entries: []v1alpha2.DNSRecordEntry{
-				{FQDN: "api.example.com", Group: "APIs", RecordType: "A", Targets: []string{tIP1234}},
-				{FQDN: "graphql.example.com", Group: "APIs"},
+				{FQDN: "api.example.com", Group: tGroupAPIs, RecordType: "A", Targets: []string{tIP1234}},
+				{FQDN: "graphql.example.com", Group: tGroupAPIs},
 				{FQDN: "health.example.com"},
 			},
 		},
@@ -47,7 +47,7 @@ func TestMaterialiseEntriesHandler_ConvertEntriesToEndpoints(t *testing.T) {
 	g.Expect(record.Status.Endpoints[1].DNSName).To(Equal("graphql.example.com"))
 	g.Expect(record.Status.Endpoints[1].RecordType).To(Equal("A")) // default
 	g.Expect(record.Status.Endpoints[0].LastSeen.IsZero()).To(BeFalse())
-	g.Expect(record.Status.Endpoints[0].Labels["sreportal.io/group"]).To(Equal("APIs"))
+	g.Expect(record.Status.Endpoints[0].Labels["sreportal.io/group"]).To(Equal(tGroupAPIs))
 	g.Expect(record.Status.Endpoints[2].Labels).To(BeNil())
 	g.Expect(record.Status.EndpointsHash).NotTo(BeEmpty())
 }
@@ -168,7 +168,7 @@ func TestMaterialiseEntriesHandler_Idempotent(t *testing.T) {
 			Origin:    v1alpha2.DNSRecordOriginManual,
 			PortalRef: tPortalMain,
 			Entries: []v1alpha2.DNSRecordEntry{
-				{FQDN: "a.example.com", RecordType: "A", Targets: []string{tIP1234}},
+				{FQDN: tFQDNA, RecordType: "A", Targets: []string{tIP1234}},
 				{FQDN: "b.example.com", RecordType: "A", Targets: []string{"5.6.7.8"}},
 			},
 		},
@@ -180,6 +180,51 @@ func TestMaterialiseEntriesHandler_Idempotent(t *testing.T) {
 
 	g.Expect(h.Handle(context.Background(), rc)).To(Succeed())
 	g.Expect(record.Status.Endpoints).To(HaveLen(2))
-	g.Expect(record.Status.Endpoints[0].DNSName).To(Equal("a.example.com"))
+	g.Expect(record.Status.Endpoints[0].DNSName).To(Equal(tFQDNA))
 	g.Expect(record.Status.Endpoints[1].DNSName).To(Equal("b.example.com"))
+}
+
+// TestMaterialiseEntriesHandler_ReinjectsOriginRef verifies that an entry's
+// OriginRef is re-injected into the status endpoint's external-dns "resource"
+// label, so the adapter can derive FQDNView.OriginRef downstream. The hash
+// excludes the resource label, so an OriginRef-only change must not churn it.
+func TestMaterialiseEntriesHandler_ReinjectsOriginRef(t *testing.T) {
+	g := NewWithT(t)
+
+	withOrigin := &v1alpha2.DNSRecord{
+		ObjectMeta: metav1.ObjectMeta{Name: "auto-origin", Namespace: tNsDefault},
+		Spec: v1alpha2.DNSRecordSpec{
+			Origin:     v1alpha2.DNSRecordOriginAuto,
+			SourceType: tSrcService,
+			PortalRef:  tPortalMain,
+			Entries: []v1alpha2.DNSRecordEntry{
+				{FQDN: tFQDNA, Group: tGroupAPIs, RecordType: "A", Targets: []string{tIP1234}, OriginRef: "service/ns1/budget-controls"},
+			},
+		},
+	}
+	rc := &reconciler.ReconcileContext[*v1alpha2.DNSRecord, chain.ChainData]{Resource: withOrigin}
+	h := chain.NewMaterialiseEntriesHandler(nil)
+	g.Expect(h.Handle(context.Background(), rc)).To(Succeed())
+	g.Expect(withOrigin.Status.Endpoints).To(HaveLen(1))
+	g.Expect(withOrigin.Status.Endpoints[0].Labels["resource"]).To(Equal("service/ns1/budget-controls"))
+	g.Expect(withOrigin.Status.Endpoints[0].Labels["sreportal.io/group"]).To(Equal(tGroupAPIs))
+	hashWithOrigin := withOrigin.Status.EndpointsHash
+
+	// Same entry without OriginRef: the hash must be identical (resource label
+	// is excluded from the hash), and no resource label is set.
+	noOrigin := &v1alpha2.DNSRecord{
+		ObjectMeta: metav1.ObjectMeta{Name: "auto-noorigin", Namespace: tNsDefault},
+		Spec: v1alpha2.DNSRecordSpec{
+			Origin:     v1alpha2.DNSRecordOriginAuto,
+			SourceType: tSrcService,
+			PortalRef:  tPortalMain,
+			Entries: []v1alpha2.DNSRecordEntry{
+				{FQDN: tFQDNA, Group: tGroupAPIs, RecordType: "A", Targets: []string{tIP1234}},
+			},
+		},
+	}
+	rc2 := &reconciler.ReconcileContext[*v1alpha2.DNSRecord, chain.ChainData]{Resource: noOrigin}
+	g.Expect(h.Handle(context.Background(), rc2)).To(Succeed())
+	g.Expect(noOrigin.Status.Endpoints[0].Labels).NotTo(HaveKey("resource"))
+	g.Expect(noOrigin.Status.EndpointsHash).To(Equal(hashWithOrigin), "OriginRef must not affect the endpoints hash")
 }

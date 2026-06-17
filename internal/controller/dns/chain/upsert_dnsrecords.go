@@ -119,6 +119,14 @@ func endpointsToEntries(eps []*endpoint.Endpoint) []sreportalv1alpha2.DNSRecordE
 			if g, gok := e.Labels["sreportal.io/group"]; gok {
 				entry.Group = g
 			}
+			// Carry the external-dns "resource" label (kind/namespace/name) so
+			// the origin survives the spec.entries hop and the FQDN card can
+			// display it. The upstream IntraDNSDedupHandler already collapsed
+			// each (fqdn, recordType) to a single endpoint — the priority
+			// winner — so this is unambiguously that winner's resource.
+			if r, rok := e.Labels[endpoint.ResourceLabelKey]; rok {
+				entry.OriginRef = r
+			}
 			byKey[k] = entry
 		}
 		entry.Targets = append(entry.Targets, e.Targets...)

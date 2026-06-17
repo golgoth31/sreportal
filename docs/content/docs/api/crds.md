@@ -1455,6 +1455,7 @@ _Appears in:_
 | `description` _string_ |   |   |   |
 | `recordType` _string_ |   |   | Enum: [A AAAA CNAME TXT] |
 | `targets` _string array_ |   |   |   |
+| `originRef` _string_ | originRef identifies the source Kubernetes resource that produced this entry, in "kind/namespace/name" form (the external-dns "resource" label). Set by the DNS controller for origin=auto entries; empty for manual. |   |   |
 
 
 
