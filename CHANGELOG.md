@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.35.2](https://github.com/golgoth31/sreportal/compare/v1.35.1...v1.35.2) (2026-06-17)
+
+
+### Bug Fixes
+
+* **deps:** update prometheus-go to v0.69.0 ([#288](https://github.com/golgoth31/sreportal/issues/288)) ([e60ac52](https://github.com/golgoth31/sreportal/commit/e60ac52cf1bdc591e442cf2e347ba2f60de0b69c))
+* **deps:** update web-react to v8 ([#295](https://github.com/golgoth31/sreportal/issues/295)) ([b83587d](https://github.com/golgoth31/sreportal/commit/b83587d79a926226cc60a9b8f27b71ea644b4ce7))
+* **source:** set resource label for all source kinds so OriginRef updates ([#296](https://github.com/golgoth31/sreportal/issues/296)) ([7bfff21](https://github.com/golgoth31/sreportal/commit/7bfff21d12006e6d148a241b2bd4afc453ad416c))
+
 ## [1.35.1](https://github.com/golgoth31/sreportal/compare/v1.35.0...v1.35.1) (2026-06-17)
 
 
