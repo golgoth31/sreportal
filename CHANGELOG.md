@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.35.1](https://github.com/golgoth31/sreportal/compare/v1.35.0...v1.35.1) (2026-06-17)
+
+
+### Bug Fixes
+
+* **dns:** restore source origin on auto FQDN cards ([#291](https://github.com/golgoth31/sreportal/issues/291)) ([249390f](https://github.com/golgoth31/sreportal/commit/249390f4775178db021edc1b1612d5c030e6fb1b))
+
 ## [1.35.0](https://github.com/golgoth31/sreportal/compare/v1.34.2...v1.35.0) (2026-06-16)
 
 
