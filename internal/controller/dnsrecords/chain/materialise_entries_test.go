@@ -25,8 +25,8 @@ func TestMaterialiseEntriesHandler_ConvertEntriesToEndpoints(t *testing.T) {
 			Origin:    v1alpha2.DNSRecordOriginManual,
 			PortalRef: tPortalMain,
 			Entries: []v1alpha2.DNSRecordEntry{
-				{FQDN: "api.example.com", Group: "APIs", RecordType: "A", Targets: []string{tIP1234}},
-				{FQDN: "graphql.example.com", Group: "APIs"},
+				{FQDN: "api.example.com", Group: tGroupAPIs, RecordType: "A", Targets: []string{tIP1234}},
+				{FQDN: "graphql.example.com", Group: tGroupAPIs},
 				{FQDN: "health.example.com"},
 			},
 		},
@@ -47,7 +47,7 @@ func TestMaterialiseEntriesHandler_ConvertEntriesToEndpoints(t *testing.T) {
 	g.Expect(record.Status.Endpoints[1].DNSName).To(Equal("graphql.example.com"))
 	g.Expect(record.Status.Endpoints[1].RecordType).To(Equal("A")) // default
 	g.Expect(record.Status.Endpoints[0].LastSeen.IsZero()).To(BeFalse())
-	g.Expect(record.Status.Endpoints[0].Labels["sreportal.io/group"]).To(Equal("APIs"))
+	g.Expect(record.Status.Endpoints[0].Labels["sreportal.io/group"]).To(Equal(tGroupAPIs))
 	g.Expect(record.Status.Endpoints[2].Labels).To(BeNil())
 	g.Expect(record.Status.EndpointsHash).NotTo(BeEmpty())
 }
@@ -168,7 +168,7 @@ func TestMaterialiseEntriesHandler_Idempotent(t *testing.T) {
 			Origin:    v1alpha2.DNSRecordOriginManual,
 			PortalRef: tPortalMain,
 			Entries: []v1alpha2.DNSRecordEntry{
-				{FQDN: "a.example.com", RecordType: "A", Targets: []string{tIP1234}},
+				{FQDN: tFQDNA, RecordType: "A", Targets: []string{tIP1234}},
 				{FQDN: "b.example.com", RecordType: "A", Targets: []string{"5.6.7.8"}},
 			},
 		},
@@ -180,7 +180,7 @@ func TestMaterialiseEntriesHandler_Idempotent(t *testing.T) {
 
 	g.Expect(h.Handle(context.Background(), rc)).To(Succeed())
 	g.Expect(record.Status.Endpoints).To(HaveLen(2))
-	g.Expect(record.Status.Endpoints[0].DNSName).To(Equal("a.example.com"))
+	g.Expect(record.Status.Endpoints[0].DNSName).To(Equal(tFQDNA))
 	g.Expect(record.Status.Endpoints[1].DNSName).To(Equal("b.example.com"))
 }
 
@@ -195,10 +195,10 @@ func TestMaterialiseEntriesHandler_ReinjectsOriginRef(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "auto-origin", Namespace: tNsDefault},
 		Spec: v1alpha2.DNSRecordSpec{
 			Origin:     v1alpha2.DNSRecordOriginAuto,
-			SourceType: "service",
+			SourceType: tSrcService,
 			PortalRef:  tPortalMain,
 			Entries: []v1alpha2.DNSRecordEntry{
-				{FQDN: "a.example.com", Group: "APIs", RecordType: "A", Targets: []string{tIP1234}, OriginRef: "service/ns1/budget-controls"},
+				{FQDN: tFQDNA, Group: tGroupAPIs, RecordType: "A", Targets: []string{tIP1234}, OriginRef: "service/ns1/budget-controls"},
 			},
 		},
 	}
@@ -207,7 +207,7 @@ func TestMaterialiseEntriesHandler_ReinjectsOriginRef(t *testing.T) {
 	g.Expect(h.Handle(context.Background(), rc)).To(Succeed())
 	g.Expect(withOrigin.Status.Endpoints).To(HaveLen(1))
 	g.Expect(withOrigin.Status.Endpoints[0].Labels["resource"]).To(Equal("service/ns1/budget-controls"))
-	g.Expect(withOrigin.Status.Endpoints[0].Labels["sreportal.io/group"]).To(Equal("APIs"))
+	g.Expect(withOrigin.Status.Endpoints[0].Labels["sreportal.io/group"]).To(Equal(tGroupAPIs))
 	hashWithOrigin := withOrigin.Status.EndpointsHash
 
 	// Same entry without OriginRef: the hash must be identical (resource label
@@ -216,10 +216,10 @@ func TestMaterialiseEntriesHandler_ReinjectsOriginRef(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "auto-noorigin", Namespace: tNsDefault},
 		Spec: v1alpha2.DNSRecordSpec{
 			Origin:     v1alpha2.DNSRecordOriginAuto,
-			SourceType: "service",
+			SourceType: tSrcService,
 			PortalRef:  tPortalMain,
 			Entries: []v1alpha2.DNSRecordEntry{
-				{FQDN: "a.example.com", Group: "APIs", RecordType: "A", Targets: []string{tIP1234}},
+				{FQDN: tFQDNA, Group: tGroupAPIs, RecordType: "A", Targets: []string{tIP1234}},
 			},
 		},
 	}

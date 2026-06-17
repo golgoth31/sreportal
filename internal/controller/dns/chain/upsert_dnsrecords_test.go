@@ -40,9 +40,10 @@ import (
 )
 
 const (
-	upsertTestNS1     = "ns1"
-	upsertTestRecord  = "d-service"
-	upsertTestTargetA = "1.1.1.1"
+	upsertTestNS1       = "ns1"
+	upsertTestRecord    = "d-service"
+	upsertTestRecordIng = "d-ingress"
+	upsertTestTargetA   = "1.1.1.1"
 )
 
 func TestUpsertDNSRecords_CreatesAndDeletes(t *testing.T) {
@@ -55,7 +56,7 @@ func TestUpsertDNSRecords_CreatesAndDeletes(t *testing.T) {
 	}
 	existing := &sreportalv1alpha2.DNSRecord{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "d-ingress", Namespace: upsertTestNS1,
+			Name: upsertTestRecordIng, Namespace: upsertTestNS1,
 			OwnerReferences: []metav1.OwnerReference{{
 				APIVersion: sreportalv1alpha2.GroupVersion.String(),
 				Kind:       "DNS",
@@ -98,7 +99,7 @@ func TestUpsertDNSRecords_CreatesAndDeletes(t *testing.T) {
 	require.Equal(t, []string{upsertTestTargetA}, created.Spec.Entries[0].Targets)
 
 	var gone sreportalv1alpha2.DNSRecord
-	err := c.Get(context.Background(), types.NamespacedName{Namespace: upsertTestNS1, Name: "d-ingress"}, &gone)
+	err := c.Get(context.Background(), types.NamespacedName{Namespace: upsertTestNS1, Name: upsertTestRecordIng}, &gone)
 	require.True(t, apierrors.IsNotFound(err), "expected d-ingress to be deleted, got err=%v", err)
 }
 
@@ -460,7 +461,7 @@ func TestUpsertDNSRecordsHandler_OriginRefFollowsPriority(t *testing.T) {
 
 	// Winner (ingress) carries the FQDN with the ingress origin.
 	var ingRec sreportalv1alpha2.DNSRecord
-	require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: upsertTestNS1, Name: "d-ingress"}, &ingRec))
+	require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: upsertTestNS1, Name: upsertTestRecordIng}, &ingRec))
 	require.Len(t, ingRec.Spec.Entries, 1)
 	require.Equal(t, "shared.example.com", ingRec.Spec.Entries[0].FQDN)
 	require.Equal(t, "ingress/ns1/shared-ing", ingRec.Spec.Entries[0].OriginRef)
