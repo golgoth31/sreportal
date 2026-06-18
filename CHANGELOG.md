@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.35.4](https://github.com/golgoth31/sreportal/compare/v1.35.3...v1.35.4) (2026-06-18)
+
+
+### Bug Fixes
+
+* **webhook:** scope v1alpha1 DNSRecord webhook to v1alpha1 requests ([#299](https://github.com/golgoth31/sreportal/issues/299)) ([b95a642](https://github.com/golgoth31/sreportal/commit/b95a64286a1c97dcced9aee2d03286d900ef8945))
+
 ## [1.35.3](https://github.com/golgoth31/sreportal/compare/v1.35.2...v1.35.3) (2026-06-18)
 
 
