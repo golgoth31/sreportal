@@ -106,10 +106,13 @@ func Cycle(
 				if _, ok := ep.Labels[endpoint.ResourceLabelKey]; !ok {
 					ep.Labels[endpoint.ResourceLabelKey] = fmt.Sprintf("%s/%s/%s", kind, obj.GetNamespace(), obj.GetName())
 				}
-				// Fold the sreportal annotations (groups, ignore, component, ...)
-				// from the source resource onto the endpoint labels so downstream
-				// grouping and ignore logic can see them. ep is freshly resolved
-				// (owned here, not yet shared via the store), so mutating it is safe.
+				// Fold the allowlisted sreportal annotations onto the endpoint
+				// labels via the shared enrichment helper. On the auto DNS path
+				// only sreportal.io/groups is consumed downstream (carried into
+				// spec.entries -> status -> UI grouping); the other allowlisted
+				// annotations ride along but are inert here. ep is freshly
+				// resolved (owned here, not yet shared via the store), so
+				// mutating it is safe.
 				adapter.EnrichEndpointLabels(ep, obj.GetAnnotations())
 				entries = append(entries, domainsource.EnrichedEndpoint{
 					Endpoint:          ep,
