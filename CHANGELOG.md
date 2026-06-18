@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.35.7](https://github.com/golgoth31/sreportal/compare/v1.35.6...v1.35.7) (2026-06-18)
+
+
+### Bug Fixes
+
+* **adapter:** warn on malformed external-dns resource label ([#305](https://github.com/golgoth31/sreportal/issues/305)) ([f618da7](https://github.com/golgoth31/sreportal/commit/f618da721384a8cc5eacfc335e0dd1fbc449fcd9))
+* **dns:** honor sreportal.io/groups annotation for auto sources ([#306](https://github.com/golgoth31/sreportal/issues/306)) ([1243f4c](https://github.com/golgoth31/sreportal/commit/1243f4c8f0b4800930248e75fd6c54650196f715))
+
 ## [1.35.6](https://github.com/golgoth31/sreportal/compare/v1.35.5...v1.35.6) (2026-06-18)
 
 
