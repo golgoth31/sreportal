@@ -161,8 +161,22 @@ func extractItems(list client.ObjectList) []client.Object {
 	}
 	out := make([]client.Object, 0, v.Len())
 	for i := 0; i < v.Len(); i++ {
-		item := v.Index(i).Addr().Interface().(client.Object)
-		out = append(out, item)
+		elem := v.Index(i)
+		// k8s core lists use value slices ([]T): take the element's address to
+		// get *T. Other generated clients (e.g. istio client-go) use pointer
+		// slices ([]*T): the element is already *T. Addr()-ing a pointer slice
+		// yields **T, which is not a client.Object and used to panic here.
+		if elem.Kind() != reflect.Ptr {
+			elem = elem.Addr()
+		}
+		obj, ok := elem.Interface().(client.Object)
+		if !ok {
+			// Defensive: every source resolver's list element is a client.Object
+			// once registered in the scheme. Skip rather than panic so a stray
+			// type can't crash the SourceReconciler runnable.
+			continue
+		}
+		out = append(out, obj)
 	}
 	return out
 }
