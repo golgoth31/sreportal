@@ -4,6 +4,7 @@ package chain
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -11,6 +12,7 @@ import (
 
 	v1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 	"github.com/golgoth31/sreportal/internal/adapter"
+	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
@@ -54,6 +56,15 @@ func (h *MaterialiseEntriesHandler) Handle(ctx context.Context, rc *reconciler.R
 		var labels map[string]string
 		if e.Group != "" {
 			labels = map[string]string{"sreportal.io/group": e.Group}
+		}
+		// Re-inject the multi-group annotation so the read-side group mapping
+		// (GroupMappingStrategy.Resolve, priority 1) projects the entry into all
+		// its groups in the UI.
+		if len(e.Groups) > 0 {
+			if labels == nil {
+				labels = map[string]string{}
+			}
+			labels[domaindns.GroupsAnnotationKey] = strings.Join(e.Groups, ",")
 		}
 		// Re-inject the source resource (kind/namespace/name) into the external-dns
 		// "resource" label so the adapter can derive FQDNView.OriginRef. Excluded

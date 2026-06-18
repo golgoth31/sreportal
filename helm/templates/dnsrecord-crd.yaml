@@ -288,6 +288,15 @@ spec:
                       type: string
                     group:
                       type: string
+                    groups:
+                      description: |-
+                        groups are the UI groups this entry belongs to (the sreportal.io/groups
+                        annotation, comma-separated). Supports multiple groups, unlike the single
+                        group field. Set by the DNS controller for origin=auto entries from the
+                        source resource annotation; may be set directly on manual entries.
+                      items:
+                        type: string
+                      type: array
                     originRef:
                       description: |-
                         originRef identifies the source Kubernetes resource that produced this
