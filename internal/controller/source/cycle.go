@@ -173,7 +173,7 @@ func extractItems(list client.ObjectList) (items []client.Object, skipped int) {
 		// get *T. Other generated clients (e.g. istio client-go) use pointer
 		// slices ([]*T): the element is already *T. Addr()-ing a pointer slice
 		// yields **T, which is not a client.Object and used to panic here.
-		if elem.Kind() != reflect.Ptr {
+		if elem.Kind() != reflect.Pointer {
 			elem = elem.Addr()
 		}
 		obj, ok := elem.Interface().(client.Object)
