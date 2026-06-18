@@ -35,11 +35,16 @@ func SetupDNSRecordWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// +kubebuilder:webhook:path=/validate-sreportal-io-v1alpha1-dnsrecord,mutating=false,failurePolicy=fail,sideEffects=None,groups=sreportal.io,resources=dnsrecords,verbs=update,versions=v1alpha1,name=vdnsrecord-v1alpha1.kb.io,admissionReviewVersions=v1
+// matchPolicy=Exact so this webhook only fires for genuine v1alpha1 requests.
+// With the default (Equivalent), the apiserver converts v1alpha2 writes to
+// v1alpha1 and routes them here too — which wrongly blocks the DNS controller's
+// own v1alpha2 record updates (conversion stamps every record with the
+// v1alpha2-spec annotation this validator keys on).
+// +kubebuilder:webhook:path=/validate-sreportal-io-v1alpha1-dnsrecord,mutating=false,failurePolicy=fail,matchPolicy=Exact,sideEffects=None,groups=sreportal.io,resources=dnsrecords,verbs=update,versions=v1alpha1,name=vdnsrecord-v1alpha1.kb.io,admissionReviewVersions=v1
 
-// DNSRecordValidator rejects updates that would silently clobber the manual
-// entries stored in the v1alpha2 spec annotation when a client edits through
-// the v1alpha1 surface.
+// DNSRecordValidator rejects updates that would silently clobber the v1alpha2-only
+// data (origin, entries) stored in the spec annotation when a client edits a
+// v1alpha2-backed record through the v1alpha1 surface.
 type DNSRecordValidator struct{}
 
 func (v *DNSRecordValidator) ValidateCreate(_ context.Context, _ *sreportalv1alpha1.DNSRecord) (admission.Warnings, error) {
@@ -50,10 +55,10 @@ func (v *DNSRecordValidator) ValidateUpdate(_ context.Context, oldObj, _ *srepor
 	if oldObj == nil {
 		return nil, nil
 	}
-	if _, manual := oldObj.Annotations[annotationV1Alpha2DNSRecordSpec]; !manual {
+	if _, backedByV2 := oldObj.Annotations[annotationV1Alpha2DNSRecordSpec]; !backedByV2 {
 		return nil, nil
 	}
-	return nil, fmt.Errorf("manual DNSRecord cannot be modified via v1alpha1; use sreportal.io/v1alpha2")
+	return nil, fmt.Errorf("DNSRecord backed by v1alpha2 cannot be modified via v1alpha1; use sreportal.io/v1alpha2")
 }
 
 func (v *DNSRecordValidator) ValidateDelete(_ context.Context, _ *sreportalv1alpha1.DNSRecord) (admission.Warnings, error) {

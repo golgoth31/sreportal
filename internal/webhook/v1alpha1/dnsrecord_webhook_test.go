@@ -45,7 +45,7 @@ var _ = Describe("DNSRecord v1alpha1 Webhook", func() {
 
 			warnings, err := validator.ValidateUpdate(context.Background(), old, newObj)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("manual DNSRecord cannot be modified via v1alpha1"))
+			Expect(err.Error()).To(ContainSubstring("DNSRecord backed by v1alpha2 cannot be modified via v1alpha1"))
 			Expect(warnings).To(BeEmpty())
 		})
 

@@ -98,6 +98,7 @@ webhooks:
       namespace: system
       path: /validate-sreportal-io-v1alpha1-dnsrecord
   failurePolicy: Fail
+  matchPolicy: Exact
   name: vdnsrecord-v1alpha1.kb.io
   rules:
   - apiGroups:
