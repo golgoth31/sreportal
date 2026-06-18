@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.35.6](https://github.com/golgoth31/sreportal/compare/v1.35.5...v1.35.6) (2026-06-18)
+
+
+### Bug Fixes
+
+* **source:** handle pointer-slice List items in extractItems ([#303](https://github.com/golgoth31/sreportal/issues/303)) ([f399d8f](https://github.com/golgoth31/sreportal/commit/f399d8f11c6f2b5e59b590c2f6aeeb2ba5786c65))
+
 ## [1.35.5](https://github.com/golgoth31/sreportal/compare/v1.35.4...v1.35.5) (2026-06-18)
 
 
