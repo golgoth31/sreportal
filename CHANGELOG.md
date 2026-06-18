@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.35.3](https://github.com/golgoth31/sreportal/compare/v1.35.2...v1.35.3) (2026-06-18)
+
+
+### Bug Fixes
+
+* **portal:** drop disabled sources from main DNS priority ([#297](https://github.com/golgoth31/sreportal/issues/297)) ([ae11b8e](https://github.com/golgoth31/sreportal/commit/ae11b8ecbd7d6704235d906883abeab30a36375d))
+
 ## [1.35.2](https://github.com/golgoth31/sreportal/compare/v1.35.1...v1.35.2) (2026-06-17)
 
 
