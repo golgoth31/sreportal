@@ -19,6 +19,7 @@ package adapter
 import (
 	"maps"
 	"sort"
+	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/external-dns/endpoint"
@@ -27,6 +28,7 @@ import (
 	v1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 	"github.com/golgoth31/sreportal/internal/config"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
+	applog "github.com/golgoth31/sreportal/internal/log"
 )
 
 const (
@@ -269,11 +271,30 @@ func extractNamespace(resource string) string {
 	return ref.Namespace()
 }
 
-// originRefFromLabel parses an external-dns resource label into an OriginResourceRef.
-// Returns nil when the label is absent or malformed.
-func originRefFromLabel(raw string) *sreportalv1alpha1.OriginResourceRef {
+// parseOriginLabel parses the external-dns "resource" label
+// (kind/namespace/name). An empty label is expected (the endpoint has no
+// originating resource) and returns ok=false silently. A non-empty but
+// unparsable label is an anomaly — it would otherwise drop the origin with no
+// trace (the FQDN card shows no source) — so it is logged at warn level.
+func parseOriginLabel(raw string) (domaindns.ResourceRef, bool) {
+	if strings.TrimSpace(raw) == "" {
+		return domaindns.ResourceRef{}, false
+	}
 	ref, err := domaindns.ParseResourceRef(raw)
 	if err != nil || ref.IsZero() {
+		applog.Default().WithName("adapter.endpoint").Warn(
+			"ignoring malformed external-dns resource label",
+			"resource", raw, "err", err)
+		return domaindns.ResourceRef{}, false
+	}
+	return ref, true
+}
+
+// originRefFromLabel parses an external-dns resource label into an OriginResourceRef.
+// Returns nil when the label is absent or malformed (malformed is logged).
+func originRefFromLabel(raw string) *sreportalv1alpha1.OriginResourceRef {
+	ref, ok := parseOriginLabel(raw)
+	if !ok {
 		return nil
 	}
 	return &sreportalv1alpha1.OriginResourceRef{
@@ -553,8 +574,8 @@ func strategyFromV2Spec(mapping *v1alpha2.GroupMappingSpec) domaindns.GroupMappi
 // originRefV2FromLabel parses an external-dns resource label into a v1alpha2.OriginResourceRef.
 // Returns nil when the label is absent or malformed.
 func originRefV2FromLabel(raw string) *v1alpha2.OriginResourceRef {
-	ref, err := domaindns.ParseResourceRef(raw)
-	if err != nil || ref.IsZero() {
+	ref, ok := parseOriginLabel(raw)
+	if !ok {
 		return nil
 	}
 	return &v1alpha2.OriginResourceRef{
