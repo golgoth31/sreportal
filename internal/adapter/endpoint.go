@@ -28,7 +28,7 @@ import (
 	v1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 	"github.com/golgoth31/sreportal/internal/config"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
-	applog "github.com/golgoth31/sreportal/internal/log"
+	"github.com/golgoth31/sreportal/internal/log"
 )
 
 const (
@@ -282,7 +282,7 @@ func parseOriginLabel(raw string) (domaindns.ResourceRef, bool) {
 	}
 	ref, err := domaindns.ParseResourceRef(raw)
 	if err != nil || ref.IsZero() {
-		applog.Default().WithName("adapter.endpoint").Warn(
+		log.Default().WithName("adapter.endpoint").Warn(
 			"ignoring malformed external-dns resource label",
 			"resource", raw, "err", err)
 		return domaindns.ResourceRef{}, false
@@ -386,6 +386,10 @@ func EndpointStatusToGroups(endpoints []sreportalv1alpha1.EndpointStatus, mappin
 		}
 
 		ns := extractNamespace(ep.Labels[endpoint.ResourceLabelKey])
+		// Parse once per endpoint (not per group): the label is identical across
+		// this endpoint's groups, so this avoids re-parsing and, for a malformed
+		// label, avoids logging once per group.
+		originRef := originRefFromLabel(ep.Labels[endpoint.ResourceLabelKey])
 		groupNames := strategy.Resolve(ep.Labels, ns)
 
 		for _, groupName := range groupNames {
@@ -413,7 +417,7 @@ func EndpointStatusToGroups(endpoints []sreportalv1alpha1.EndpointStatus, mappin
 					Targets:    ep.Targets,
 					SyncStatus: ep.SyncStatus,
 					LastSeen:   ep.LastSeen,
-					OriginRef:  originRefFromLabel(ep.Labels[endpoint.ResourceLabelKey]),
+					OriginRef:  originRef,
 				})
 			}
 		}
@@ -617,6 +621,8 @@ func EndpointStatusToGroupsV2(endpoints []v1alpha2.EndpointStatus, mapping *v1al
 		}
 
 		ns := extractNamespace(ep.Labels[endpoint.ResourceLabelKey])
+		// Parse once per endpoint (not per group): see EndpointStatusToGroups.
+		originRef := originRefV2FromLabel(ep.Labels[endpoint.ResourceLabelKey])
 		groupNames := strategy.Resolve(ep.Labels, ns)
 
 		for _, groupName := range groupNames {
@@ -643,7 +649,7 @@ func EndpointStatusToGroupsV2(endpoints []v1alpha2.EndpointStatus, mapping *v1al
 					Targets:    ep.Targets,
 					SyncStatus: ep.SyncStatus,
 					LastSeen:   ep.LastSeen,
-					OriginRef:  originRefV2FromLabel(ep.Labels[endpoint.ResourceLabelKey]),
+					OriginRef:  originRef,
 				})
 			}
 		}
