@@ -55,6 +55,13 @@ type DNSRecordEntry struct {
 	// +optional
 	Group string `json:"group,omitempty"`
 
+	// groups are the UI groups this entry belongs to (the sreportal.io/groups
+	// annotation, comma-separated). Supports multiple groups, unlike the single
+	// group field. Set by the DNS controller for origin=auto entries from the
+	// source resource annotation; may be set directly on manual entries.
+	// +optional
+	Groups []string `json:"groups,omitempty"`
+
 	// +optional
 	Description string `json:"description,omitempty"`
 

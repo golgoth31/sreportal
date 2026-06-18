@@ -42,21 +42,31 @@ type GroupMappingStrategy struct {
 	ByNamespace map[string]string
 }
 
+// SplitGroups parses a comma-separated sreportal.io/groups value into trimmed,
+// non-empty group names. Returns nil when the input is empty or whitespace-only.
+func SplitGroups(csv string) []string {
+	if csv == "" {
+		return nil
+	}
+	parts := strings.Split(csv, ",")
+	groups := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if g := strings.TrimSpace(p); g != "" {
+			groups = append(groups, g)
+		}
+	}
+	if len(groups) == 0 {
+		return nil
+	}
+	return groups
+}
+
 // Resolve returns the group names for an endpoint identified by its labels and
 // namespace. It always returns at least one element.
 func (s GroupMappingStrategy) Resolve(labels map[string]string, namespace string) []string {
 	// 1. sreportal.io/groups annotation — highest priority, comma-separated.
-	if val := labels[GroupsAnnotationKey]; val != "" {
-		parts := strings.Split(val, ",")
-		groups := make([]string, 0, len(parts))
-		for _, p := range parts {
-			if g := strings.TrimSpace(p); g != "" {
-				groups = append(groups, g)
-			}
-		}
-		if len(groups) > 0 {
-			return groups
-		}
+	if groups := SplitGroups(labels[GroupsAnnotationKey]); len(groups) > 0 {
+		return groups
 	}
 
 	// 2. Configured label key.

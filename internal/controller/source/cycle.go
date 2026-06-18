@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/external-dns/endpoint"
 
 	sreportalv1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
+	"github.com/golgoth31/sreportal/internal/adapter"
 	domainsource "github.com/golgoth31/sreportal/internal/domain/source"
 	"github.com/golgoth31/sreportal/internal/metrics"
 	sourcepkg "github.com/golgoth31/sreportal/internal/source"
@@ -105,6 +106,14 @@ func Cycle(
 				if _, ok := ep.Labels[endpoint.ResourceLabelKey]; !ok {
 					ep.Labels[endpoint.ResourceLabelKey] = fmt.Sprintf("%s/%s/%s", kind, obj.GetNamespace(), obj.GetName())
 				}
+				// Fold the allowlisted sreportal annotations onto the endpoint
+				// labels via the shared enrichment helper. On the auto DNS path
+				// only sreportal.io/groups is consumed downstream (carried into
+				// spec.entries -> status -> UI grouping); the other allowlisted
+				// annotations ride along but are inert here. ep is freshly
+				// resolved (owned here, not yet shared via the store), so
+				// mutating it is safe.
+				adapter.EnrichEndpointLabels(ep, obj.GetAnnotations())
 				entries = append(entries, domainsource.EnrichedEndpoint{
 					Endpoint:          ep,
 					Kind:              kind,

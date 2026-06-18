@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/external-dns/endpoint"
 
 	sreportalv1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
+	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 	"github.com/golgoth31/sreportal/internal/source/registry"
 )
@@ -118,6 +119,12 @@ func endpointsToEntries(eps []*endpoint.Endpoint) []sreportalv1alpha2.DNSRecordE
 			}
 			if g, gok := e.Labels["sreportal.io/group"]; gok {
 				entry.Group = g
+			}
+			// Carry the multi-group sreportal.io/groups annotation (folded onto
+			// the endpoint labels by the source cycle) so the UI grouping sees
+			// it after materialisation.
+			if g := domaindns.SplitGroups(e.Labels[domaindns.GroupsAnnotationKey]); len(g) > 0 {
+				entry.Groups = g
 			}
 			// Carry the external-dns "resource" label (kind/namespace/name) so
 			// the origin survives the spec.entries hop and the FQDN card can

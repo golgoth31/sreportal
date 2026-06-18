@@ -1452,6 +1452,7 @@ _Appears in:_
 | --- | --- | --- | --- |
 | `fqdn` _string_ |   |   | Pattern: `^([a-zA-Z0-9]([a-zA-Z0-9-]\{0,61\}[a-zA-Z0-9])?\.)+[a-zA-Z]\{2,\}$` |
 | `group` _string_ |   |   |   |
+| `groups` _string array_ | groups are the UI groups this entry belongs to (the sreportal.io/groups annotation, comma-separated). Supports multiple groups, unlike the single group field. Set by the DNS controller for origin=auto entries from the source resource annotation; may be set directly on manual entries. |   |   |
 | `description` _string_ |   |   |   |
 | `recordType` _string_ |   |   | Enum: [A AAAA CNAME TXT] |
 | `targets` _string array_ |   |   |   |
