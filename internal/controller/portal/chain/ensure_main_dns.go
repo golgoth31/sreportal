@@ -77,7 +77,7 @@ func NewEnsureMainDNSHandler(c client.Client, scheme *runtime.Scheme, cfg *confi
 		// which are silently filtered out to satisfy the DNS webhook. Logged
 		// once at startup since the config is resolved at construction time.
 		ctrl.Log.WithName("ensure-main-dns").Info(
-			"dropped legacy spec.sources.priority entries for sources that are not enabled",
+			"dropped legacy spec.sources.priority entries for disabled or unknown sources",
 			"dropped", droppedPriority)
 	}
 	return &EnsureMainDNSHandler{

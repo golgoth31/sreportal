@@ -136,6 +136,27 @@ func TestEnsureMainDNS_FiltersDisabledSourcesFromPriority(t *testing.T) {
 		"disabled dnsendpoint must be filtered from priority, enabled order preserved")
 }
 
+// When every priority entry references a disabled or unknown source, the
+// resulting priority is empty (still webhook-valid) — the DNS is created, not
+// rejected. Guards the boundary where filtering goes from "trim" to "empty".
+func TestEnsureMainDNS_AllPriorityEntriesDropped(t *testing.T) {
+	scheme, cli := newDNSSchemeAndClient(t)
+	cfg := &config.OperatorConfig{
+		Sources: config.SourcesConfig{
+			Service:  &config.ServiceConfig{Enabled: true}, // enabled, but not in priority
+			Priority: []string{"dnsendpoint", "ingres"},    // disabled + typo → all dropped
+		},
+	}
+	h := chain.NewEnsureMainDNSHandler(cli, scheme, cfg)
+
+	handle(t, h, mainPortal())
+
+	var dns sreportalv1alpha2.DNS
+	require.NoError(t, cli.Get(context.Background(), types.NamespacedName{Name: tPortalMain, Namespace: nsDefault}, &dns))
+	require.Empty(t, dns.Spec.Sources.Priority, "priority of only-disabled/unknown sources must end empty")
+	require.NotNil(t, dns.Spec.Sources.Service, "enabled source still mapped")
+}
+
 // Existing cluster: a DNS CR converted from v1alpha1 (empty sources, no marker,
 // arbitrary name) gets backfilled and marked.
 func TestEnsureMainDNS_BackfillsConvertedDNS(t *testing.T) {
