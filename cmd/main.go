@@ -30,6 +30,7 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	istionetworkingv1 "istio.io/client-go/pkg/apis/networking/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -44,6 +45,8 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	externaldnsv1alpha1 "sigs.k8s.io/external-dns/apis/v1alpha1"
+	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gwapiv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"sigs.k8s.io/external-dns/source/annotations"
 
@@ -120,6 +123,13 @@ func init() {
 
 	utilruntime.Must(sreportalv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(sreportalv1alpha2.AddToScheme(scheme))
+
+	// External source types listed by the DNS source resolvers. Without these
+	// the SourceReconciler's List fails client-side ("no kind is registered for
+	// the type ...") whenever the matching source is enabled on a DNS CR.
+	utilruntime.Must(istionetworkingv1.AddToScheme(scheme)) // Istio Gateway, VirtualService
+	utilruntime.Must(gwapiv1.Install(scheme))               // Gateway API HTTPRoute, GRPCRoute
+	utilruntime.Must(gwapiv1alpha2.Install(scheme))         // Gateway API TCPRoute, TLSRoute, UDPRoute
 	// +kubebuilder:scaffold:scheme
 }
 
