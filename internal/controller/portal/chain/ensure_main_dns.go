@@ -24,6 +24,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -70,7 +71,15 @@ type EnsureMainDNSHandler struct {
 // (optional) legacy operator config and returns a handler that applies it to the
 // main portal's DNS CR.
 func NewEnsureMainDNSHandler(c client.Client, scheme *runtime.Scheme, cfg *config.OperatorConfig) *EnsureMainDNSHandler {
-	sources, groupMapping, reconciliation := resolveDesiredDNSConfig(cfg)
+	sources, groupMapping, reconciliation, droppedPriority := resolveDesiredDNSConfig(cfg)
+	if len(droppedPriority) > 0 {
+		// Surface stale/typo'd legacy priority entries (sources not enabled),
+		// which are silently filtered out to satisfy the DNS webhook. Logged
+		// once at startup since the config is resolved at construction time.
+		ctrl.Log.WithName("ensure-main-dns").Info(
+			"dropped legacy spec.sources.priority entries for sources that are not enabled",
+			"dropped", droppedPriority)
+	}
 	return &EnsureMainDNSHandler{
 		client:         c,
 		scheme:         scheme,
@@ -205,15 +214,19 @@ func resolveDesiredDNSConfig(cfg *config.OperatorConfig) (
 	sreportalv1alpha2.SourcesSpec,
 	sreportalv1alpha2.GroupMappingSpec,
 	sreportalv1alpha2.ReconciliationSpec,
+	[]string, // priority entries dropped because their source is not enabled
 ) {
 	if cfg != nil && hasLegacySources(&cfg.Sources) {
-		return mapLegacySources(&cfg.Sources),
+		sources, dropped := mapLegacySources(&cfg.Sources)
+		return sources,
 			mapLegacyGroupMapping(&cfg.GroupMapping),
-			mapLegacyReconciliation(&cfg.Reconciliation)
+			mapLegacyReconciliation(&cfg.Reconciliation),
+			dropped
 	}
 	return sreportalv1alpha2.DefaultSourcesSpec(),
 		sreportalv1alpha2.DefaultGroupMappingSpec(),
-		sreportalv1alpha2.DefaultReconciliationSpec()
+		sreportalv1alpha2.DefaultReconciliationSpec(),
+		nil
 }
 
 // hasLegacySources reports whether the legacy config explicitly carried any
@@ -237,7 +250,10 @@ func hasLegacySources(s *config.SourcesConfig) bool {
 // v1alpha2 SourcesSpec. A few advanced external-dns knobs present in the legacy
 // schema have no v1alpha2 field (e.g. resolveLoadBalancerHostname,
 // ignoreIngressTlsSpec) and are intentionally dropped.
-func mapLegacySources(s *config.SourcesConfig) sreportalv1alpha2.SourcesSpec {
+// It also returns the priority entries dropped because their source is not
+// enabled, so the caller can surface them (they usually signal a stale legacy
+// config or a typo).
+func mapLegacySources(s *config.SourcesConfig) (sreportalv1alpha2.SourcesSpec, []string) {
 	out := sreportalv1alpha2.SourcesSpec{}
 	if c := s.Service; c != nil {
 		out.Service = &sreportalv1alpha2.ServiceSourceSpec{
@@ -282,6 +298,7 @@ func mapLegacySources(s *config.SourcesConfig) sreportalv1alpha2.SourcesSpec {
 			ClusterScoped: c.ClusterScoped,
 		}
 	}
+	var dropped []string
 	if len(s.Priority) > 0 {
 		// Keep only priority entries whose source is actually enabled: legacy
 		// configs often list a full order including disabled sources, and the
@@ -292,10 +309,12 @@ func mapLegacySources(s *config.SourcesConfig) sreportalv1alpha2.SourcesSpec {
 		for _, p := range s.Priority {
 			if enabled[registry.SourceType(p)] {
 				out.Priority = append(out.Priority, sreportalv1alpha2.SourceType(p))
+			} else {
+				dropped = append(dropped, p)
 			}
 		}
 	}
-	return out
+	return out, dropped
 }
 
 func mapGatewayRoute(c *config.GatewayRouteConfig) *sreportalv1alpha2.GatewayRouteSourceSpec {
