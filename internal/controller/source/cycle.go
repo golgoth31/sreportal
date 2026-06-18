@@ -74,7 +74,14 @@ func Cycle(
 			metrics.SourceErrorsTotal.WithLabelValues(string(kind)).Inc()
 			continue
 		}
-		items := extractItems(list)
+		items, skipped := extractItems(list)
+		if skipped > 0 {
+			// Should never happen for registered source types; surface it rather
+			// than silently shrink discovery (which would also skew the
+			// atomic-wipe guard below).
+			logger.Error(nil, "skipped list elements that are not client.Object",
+				"kind", kind, "skipped", skipped)
+		}
 		entries := make([]domainsource.EnrichedEndpoint, 0, len(items))
 		resolveErrs := 0
 		for _, obj := range items {
@@ -154,10 +161,10 @@ func computeEnabledKinds(ctx context.Context, c client.Client) (map[registry.Sou
 }
 
 // extractItems extracts client.Object slice from any *List via reflection.
-func extractItems(list client.ObjectList) []client.Object {
+func extractItems(list client.ObjectList) (items []client.Object, skipped int) {
 	v := reflect.ValueOf(list).Elem().FieldByName("Items")
 	if !v.IsValid() || v.Kind() != reflect.Slice {
-		return nil
+		return nil, 0
 	}
 	out := make([]client.Object, 0, v.Len())
 	for i := 0; i < v.Len(); i++ {
@@ -173,10 +180,12 @@ func extractItems(list client.ObjectList) []client.Object {
 		if !ok {
 			// Defensive: every source resolver's list element is a client.Object
 			// once registered in the scheme. Skip rather than panic so a stray
-			// type can't crash the SourceReconciler runnable.
+			// type can't crash the SourceReconciler runnable; the caller logs
+			// any skips.
+			skipped++
 			continue
 		}
 		out = append(out, obj)
 	}
-	return out
+	return out, skipped
 }

@@ -30,9 +30,9 @@ func TestExtractItems_ValueSlice(t *testing.T) {
 		{ObjectMeta: metav1.ObjectMeta{Name: "a"}},
 		{ObjectMeta: metav1.ObjectMeta{Name: "b"}},
 	}}
-	got := extractItems(list)
-	if len(got) != 2 {
-		t.Fatalf("want 2 items, got %d", len(got))
+	got, skipped := extractItems(list)
+	if len(got) != 2 || skipped != 0 {
+		t.Fatalf("want 2 items 0 skipped, got %d items %d skipped", len(got), skipped)
 	}
 	if got[0].GetName() != "a" || got[1].GetName() != "b" {
 		t.Fatalf("unexpected names: %q, %q", got[0].GetName(), got[1].GetName())
@@ -46,9 +46,9 @@ func TestExtractItems_PointerSlice(t *testing.T) {
 	list := &istionetworkingv1.GatewayList{Items: []*istionetworkingv1.Gateway{
 		{ObjectMeta: metav1.ObjectMeta{Name: "gw"}},
 	}}
-	got := extractItems(list)
-	if len(got) != 1 {
-		t.Fatalf("want 1 item, got %d", len(got))
+	got, skipped := extractItems(list)
+	if len(got) != 1 || skipped != 0 {
+		t.Fatalf("want 1 item 0 skipped, got %d items %d skipped", len(got), skipped)
 	}
 	if got[0].GetName() != "gw" {
 		t.Fatalf("unexpected name: %q", got[0].GetName())
@@ -57,7 +57,7 @@ func TestExtractItems_PointerSlice(t *testing.T) {
 
 // TestExtractItems_NoItemsField returns nil rather than panicking.
 func TestExtractItems_NoItemsField(t *testing.T) {
-	if got := extractItems(&corev1.ServiceList{}); len(got) != 0 {
+	if got, _ := extractItems(&corev1.ServiceList{}); len(got) != 0 {
 		t.Fatalf("want empty for no items, got %d", len(got))
 	}
 }
