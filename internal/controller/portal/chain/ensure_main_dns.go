@@ -33,6 +33,8 @@ import (
 	portalfeatures "github.com/golgoth31/sreportal/internal/controller/portal/features"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/reconciler"
+	sourcepkg "github.com/golgoth31/sreportal/internal/source"
+	"github.com/golgoth31/sreportal/internal/source/registry"
 )
 
 // annotationSourcesMigrated marks a DNS CR whose source configuration has been
@@ -281,9 +283,16 @@ func mapLegacySources(s *config.SourcesConfig) sreportalv1alpha2.SourcesSpec {
 		}
 	}
 	if len(s.Priority) > 0 {
+		// Keep only priority entries whose source is actually enabled: legacy
+		// configs often list a full order including disabled sources, and the
+		// v1alpha2 DNS webhook rejects priority entries for disabled sources.
+		// EnabledKindsFromSpec uses the same criteria as that webhook check.
+		enabled := sourcepkg.EnabledKindsFromSpec(&out)
 		out.Priority = make([]sreportalv1alpha2.SourceType, 0, len(s.Priority))
 		for _, p := range s.Priority {
-			out.Priority = append(out.Priority, sreportalv1alpha2.SourceType(p))
+			if enabled[registry.SourceType(p)] {
+				out.Priority = append(out.Priority, sreportalv1alpha2.SourceType(p))
+			}
 		}
 	}
 	return out

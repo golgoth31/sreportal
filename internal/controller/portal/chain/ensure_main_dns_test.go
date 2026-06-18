@@ -111,6 +111,31 @@ func TestEnsureMainDNS_UsesLegacyConfigWhenLoaded(t *testing.T) {
 	require.Nil(t, dns.Spec.Sources.GatewayHTTPRoute)
 }
 
+// Legacy configs often list a full priority order including sources that are
+// not enabled. The v1alpha2 DNS webhook rejects priority entries for disabled
+// sources, so the mapper must drop them — keeping the order of the enabled ones.
+func TestEnsureMainDNS_FiltersDisabledSourcesFromPriority(t *testing.T) {
+	scheme, cli := newDNSSchemeAndClient(t)
+	cfg := &config.OperatorConfig{
+		Sources: config.SourcesConfig{
+			Service:     &config.ServiceConfig{Enabled: true},
+			Ingress:     &config.IngressConfig{Enabled: true},
+			DNSEndpoint: &config.DNSEndpointConfig{Enabled: false}, // listed but disabled
+			Priority:    []string{"ingress", "dnsendpoint", "service"},
+		},
+	}
+	h := chain.NewEnsureMainDNSHandler(cli, scheme, cfg)
+
+	handle(t, h, mainPortal())
+
+	var dns sreportalv1alpha2.DNS
+	require.NoError(t, cli.Get(context.Background(), types.NamespacedName{Name: tPortalMain, Namespace: nsDefault}, &dns))
+	require.Equal(t,
+		[]sreportalv1alpha2.SourceType{sreportalv1alpha2.SourceTypeIngress, sreportalv1alpha2.SourceTypeService},
+		dns.Spec.Sources.Priority,
+		"disabled dnsendpoint must be filtered from priority, enabled order preserved")
+}
+
 // Existing cluster: a DNS CR converted from v1alpha1 (empty sources, no marker,
 // arbitrary name) gets backfilled and marked.
 func TestEnsureMainDNS_BackfillsConvertedDNS(t *testing.T) {
