@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.35.5](https://github.com/golgoth31/sreportal/compare/v1.35.4...v1.35.5) (2026-06-18)
+
+
+### Bug Fixes
+
+* **scheme:** register Istio and Gateway API source types ([#301](https://github.com/golgoth31/sreportal/issues/301)) ([5ea5c5f](https://github.com/golgoth31/sreportal/commit/5ea5c5fb1eb2968e5228f7209b69914fc7d46505))
+
 ## [1.35.4](https://github.com/golgoth31/sreportal/compare/v1.35.3...v1.35.4) (2026-06-18)
 
 
