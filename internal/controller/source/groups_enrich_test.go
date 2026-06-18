@@ -17,6 +17,8 @@ import (
 	svcsrc "github.com/golgoth31/sreportal/internal/source/service"
 )
 
+const grpHostnameAnno = "external-dns.alpha.kubernetes.io/hostname"
+
 // TestCycle_FoldsGroupsAnnotationOntoEndpoint verifies the source cycle copies
 // the sreportal.io/groups annotation from the resource onto the endpoint labels
 // (via adapter.EnrichEndpointLabels), so downstream grouping can see it.
@@ -40,8 +42,8 @@ func TestCycle_FoldsGroupsAnnotationOntoEndpoint(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "grpsvc", Namespace: tTeamA,
 			Annotations: map[string]string{
-				"external-dns.alpha.kubernetes.io/hostname": "grpsvc.example.com",
-				"sreportal.io/groups":                       "Team A, Shared",
+				grpHostnameAnno:       "grpsvc.example.com",
+				"sreportal.io/groups": "Team A, Shared",
 			},
 		},
 		Status: corev1.ServiceStatus{LoadBalancer: corev1.LoadBalancerStatus{
