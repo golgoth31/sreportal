@@ -38,9 +38,9 @@ func TestCycle_FoldsGroupsAnnotationOntoEndpoint(t *testing.T) {
 	}
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "echo", Namespace: tTeamA,
+			Name: "grpsvc", Namespace: tTeamA,
 			Annotations: map[string]string{
-				"external-dns.alpha.kubernetes.io/hostname": "echo.example.com",
+				"external-dns.alpha.kubernetes.io/hostname": "grpsvc.example.com",
 				"sreportal.io/groups":                       "Team A, Shared",
 			},
 		},
