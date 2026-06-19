@@ -30,6 +30,12 @@ type SourceEndpointReader interface {
 	// namespace ("" = all namespaces) and labelFilter ("" = match-all,
 	// labels.Selector syntax). An invalid labelFilter returns an error.
 	Lookup(kind registry.SourceType, namespace, labelFilter string) ([]EnrichedEndpoint, error)
+	// Ready reports whether the producer has applied at least one successful
+	// collection for kind (i.e. ReplaceKind has been called). The read side uses
+	// it to avoid purging persisted DNSRecords for a kind whose source has not
+	// synced yet — e.g. right after a controller restart, when the in-memory
+	// store is empty but the DNSRecord CRs still exist.
+	Ready(kind registry.SourceType) bool
 }
 
 // SourceEndpointWriter is the write-side contract, used by the
@@ -40,4 +46,8 @@ type SourceEndpointWriter interface {
 	// DeleteKind removes all entries for a kind (used when the kind becomes
 	// unused cluster-wide).
 	DeleteKind(kind registry.SourceType)
+	// CountKind returns the number of entries currently stored for a kind.
+	// Used by the producer's anti-collapse guard to compare a freshly collected
+	// count against the last good state before overwriting it.
+	CountKind(kind registry.SourceType) int
 }

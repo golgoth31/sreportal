@@ -66,8 +66,15 @@ func (h *LookupSourcesHandler) Handle(_ context.Context, rc *reconciler.Reconcil
 	enabled := sourcepkg.EnabledKindsFromSpec(&dns.Spec.Sources)
 	rc.Data.EndpointsByKind = make(map[registry.SourceType][]*endpoint.Endpoint, len(enabled))
 	rc.Data.PriorityOrder = orderedKinds(dns, enabled)
+	rc.Data.PreserveKinds = make(map[registry.SourceType]bool, len(enabled))
 
 	for _, kind := range rc.Data.PriorityOrder {
+		// A kind whose source has not synced yet (store not ready) must not have
+		// its existing DNSRecords purged downstream — its empty lookup means
+		// "not ready", not "empty". See ChainData.PreserveKinds.
+		if !h.Source.Ready(kind) {
+			rc.Data.PreserveKinds[kind] = true
+		}
 		ns, lbl := effectiveFilter(dns, kind)
 		entries, err := h.Source.Lookup(kind, ns, lbl)
 		if err != nil {

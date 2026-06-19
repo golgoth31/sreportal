@@ -53,6 +53,9 @@ func (s staticSourceReader) Lookup(kind registry.SourceType, _, _ string) ([]dom
 	return s.eps, nil
 }
 
+// Ready reports true: the static reader always has authoritative data.
+func (s staticSourceReader) Ready(_ registry.SourceType) bool { return true }
+
 var _ = Describe("DNS → DNSRecord E2E flow", func() {
 	const (
 		timeout  = time.Second * 15
