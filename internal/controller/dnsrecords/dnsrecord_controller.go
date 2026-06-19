@@ -232,6 +232,8 @@ func syncStatusChangedPredicate() predicate.Predicate {
 			oldR, ok1 := e.ObjectOld.(*v1alpha2.DNSRecord)
 			newR, ok2 := e.ObjectNew.(*v1alpha2.DNSRecord)
 			if !ok1 || !ok2 {
+				// Unreachable on a typed For(&DNSRecord{}) watch; a non-DNSRecord
+				// here is a controller-runtime invariant violation. Don't enqueue.
 				return false
 			}
 			return syncStatusDiffers(oldR.Status.Endpoints, newR.Status.Endpoints)

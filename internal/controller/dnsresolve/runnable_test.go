@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	v1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
+	portalfeatures "github.com/golgoth31/sreportal/internal/controller/portal/features"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 )
 
@@ -109,4 +110,36 @@ func TestRunnable_ForceRetainedUntilMaterialised(t *testing.T) {
 	_, retained := r.forced["ns/r"]
 	r.mu.Unlock()
 	require.True(t, retained, "force must be retained while endpoints are not materialised")
+}
+
+// TestRunnable_HonorsDisableDNSCheck verifies that when the governing DNS CR has
+// spec.reconciliation.disableDNSCheck set, the Runnable skips resolution and
+// leaves SyncStatus untouched.
+func TestRunnable_HonorsDisableDNSCheck(t *testing.T) {
+	scheme := runtime.NewScheme()
+	require.NoError(t, v1alpha2.AddToScheme(scheme))
+
+	dns := &v1alpha2.DNS{
+		ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "ns"},
+		Spec: v1alpha2.DNSSpec{
+			PortalRef:      "p",
+			Reconciliation: v1alpha2.ReconciliationSpec{DisableDNSCheck: true},
+		},
+	}
+	rec := recordWithEndpoint() // portalRef "p", ns "ns", endpoint unresolved
+	c := fake.NewClientBuilder().WithScheme(scheme).
+		WithStatusSubresource(&v1alpha2.DNSRecord{}).
+		WithObjects(dns, rec).
+		WithIndex(&v1alpha2.DNS{}, portalfeatures.FieldIndexPortalRef, func(o client.Object) []string {
+			return []string{o.(*v1alpha2.DNS).Spec.PortalRef}
+		}).Build()
+	r := New(c, stubResolver{addrs: []string{testTargetIP}})
+
+	r.Force("ns/r")
+	require.NoError(t, r.tick(context.Background()))
+
+	var got v1alpha2.DNSRecord
+	require.NoError(t, c.Get(context.Background(), client.ObjectKeyFromObject(rec), &got))
+	require.Empty(t, string(got.Status.Endpoints[0].SyncStatus),
+		"resolution must be skipped when disableDNSCheck is set")
 }

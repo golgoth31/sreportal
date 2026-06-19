@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	v1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
+	dnschain "github.com/golgoth31/sreportal/internal/controller/dnsrecords/chain"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 )
 
@@ -88,19 +89,28 @@ func (r *Runnable) tick(ctx context.Context) error {
 	}
 	r.sched.Sync(listKeys(list.Items))
 
+	present := make(map[string]struct{}, len(list.Items))
+	for i := range list.Items {
+		present[list.Items[i].Namespace+"/"+list.Items[i].Name] = struct{}{}
+	}
+
 	r.mu.Lock()
 	pending := r.forced
 	r.forced = map[string]struct{}{}
 	r.mu.Unlock()
 	var retained []string
 	for rk := range pending {
+		if _, exists := present[rk]; !exists {
+			continue // record deleted before its endpoints materialised: drop the force
+		}
 		if r.sched.ForceRecord(rk) == 0 {
-			// No tracked keys yet (endpoints not materialised / cache lag):
+			// Record exists but endpoints aren't materialised yet (cache lag):
 			// keep the request so a later tick honours it once they appear.
 			retained = append(retained, rk)
 		}
 	}
 	if len(retained) > 0 {
+		logger.V(1).Info("force retained; endpoints not materialised yet", "records", retained)
 		r.mu.Lock()
 		for _, rk := range retained {
 			r.forced[rk] = struct{}{}
@@ -120,6 +130,15 @@ func (r *Runnable) tick(ctx context.Context) error {
 		rec := recordFromList(list.Items, rk)
 		if rec == nil {
 			logger.V(1).Info("due key has no matching record; skipping", "record", rk)
+			continue
+		}
+		// Honour spec.reconciliation.disableDNSCheck on the governing DNS CR
+		// (operators with no outbound DNS). Reschedule so we don't re-list every
+		// tick; a config change re-enqueues via the reconcile Force path.
+		if dnschain.DNSCheckDisabled(ctx, r.Client, rec) {
+			for _, k := range keys {
+				r.sched.Reschedule(k)
+			}
 			continue
 		}
 		if err := r.resolveRecord(ctx, rec, keys); err != nil {

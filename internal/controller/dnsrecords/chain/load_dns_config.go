@@ -71,6 +71,32 @@ func (h *LoadDNSConfigHandler) Handle(ctx context.Context, rc *reconciler.Reconc
 	return nil
 }
 
+// DNSCheckDisabled reports whether the DNS CR governing record has DNS
+// resolution disabled (spec.reconciliation.disableDNSCheck), mirroring the DNS
+// selection used by LoadDNSConfigHandler. Returns false when no DNS matches or
+// on a list error (fail open to resolution). Used by the async dnsresolve
+// Runnable, which doesn't run the chain.
+func DNSCheckDisabled(ctx context.Context, c client.Client, record *v1alpha2.DNSRecord) bool {
+	if record.Spec.PortalRef == "" {
+		return false
+	}
+	var list v1alpha2.DNSList
+	if err := c.List(ctx, &list,
+		client.InNamespace(record.Namespace),
+		client.MatchingFields{portalfeatures.FieldIndexPortalRef: record.Spec.PortalRef},
+	); err != nil || len(list.Items) == 0 {
+		return false
+	}
+	owner := ""
+	for _, or := range record.OwnerReferences {
+		if or.Controller != nil && *or.Controller && or.Kind == "DNS" {
+			owner = or.Name
+			break
+		}
+	}
+	return selectDNS(list.Items, owner).Spec.Reconciliation.DisableDNSCheck
+}
+
 // selectDNS deterministically picks one DNS from a non-empty list. If ownerName
 // matches one of the items it wins; otherwise the item with the lowest name.
 func selectDNS(items []v1alpha2.DNS, ownerName string) *v1alpha2.DNS {
