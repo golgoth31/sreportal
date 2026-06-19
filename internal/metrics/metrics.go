@@ -35,6 +35,7 @@ const (
 	subsystemImageRegistry = "imageregistry"
 	subsystemDNS           = "dns"
 
+	labelKind       = "kind"
 	labelPortal     = "portal"
 	labelServer     = "server"
 	labelSourceType = "source_type"
@@ -167,7 +168,49 @@ var (
 			Name:      "kind_active",
 			Help:      "1 when at least one DNS CR enables this source kind, 0 otherwise.",
 		},
-		[]string{"kind"},
+		[]string{labelKind},
+	)
+
+	// SourceDropGuardTriggered counts how many times the producer's
+	// anti-collapse guard refused to overwrite a kind's cached endpoints because
+	// a fresh collection returned zero while the previous state was non-empty
+	// (a likely transient discovery failure). A non-zero rate is an alert signal.
+	SourceDropGuardTriggered = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: subsystemSource,
+			Name:      "drop_guard_triggered_total",
+			Help:      "Total times the anti-collapse guard preserved previous endpoints instead of applying an empty collection, per source kind.",
+		},
+		[]string{labelKind},
+	)
+
+	// SourceLastSuccessfulSync is the Unix timestamp (seconds) of the last
+	// successful endpoint collection that was applied to the store, per kind.
+	SourceLastSuccessfulSync = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: subsystemSource,
+			Name:      "last_successful_sync_timestamp_seconds",
+			Help:      "Unix timestamp of the last successful endpoint collection applied to the store, per source kind.",
+		},
+		[]string{labelKind},
+	)
+
+	// SourceEnrichmentFailures counts endpoints that were kept WITHOUT their
+	// source-object metadata (labels/annotations, incl. sreportal.io/groups)
+	// because the re-fetch from the cache failed or the external-dns "resource"
+	// label was malformed. The endpoint is never dropped (§6), but a non-zero
+	// rate means some FQDNs are published without group/origin metadata —
+	// alert on it. reason: "fetch" (re-fetch error) or "label" (malformed ref).
+	SourceEnrichmentFailures = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: subsystemSource,
+			Name:      "enrichment_failures_total",
+			Help:      "Total endpoints kept without source metadata due to a re-fetch error or malformed resource label, per kind and reason.",
+		},
+		[]string{labelKind, "reason"},
 	)
 
 	// DNSTargetsConflictTotal counts target conflicts observed by the FQDN
@@ -562,6 +605,9 @@ func init() {
 		SourceSkippedUpdates,
 		SourceNotifyDropped,
 		SourceKindActive,
+		SourceDropGuardTriggered,
+		SourceLastSuccessfulSync,
+		SourceEnrichmentFailures,
 		// DNS conflicts
 		DNSTargetsConflictTotal,
 		// DNS readstore

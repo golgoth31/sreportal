@@ -31,10 +31,12 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	istionetworkingv1 "istio.io/client-go/pkg/apis/networking/v1"
+	istioclientset "istio.io/client-go/pkg/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -93,6 +95,7 @@ import (
 	"github.com/golgoth31/sreportal/internal/slackclient"
 	"github.com/golgoth31/sreportal/internal/source/crossplanescalewayrecord"
 	"github.com/golgoth31/sreportal/internal/source/dnsendpoint"
+	"github.com/golgoth31/sreportal/internal/source/externaldns"
 	"github.com/golgoth31/sreportal/internal/source/gatewaygrpcroute"
 	"github.com/golgoth31/sreportal/internal/source/gatewayhttproute"
 	"github.com/golgoth31/sreportal/internal/source/gatewaytcproute"
@@ -600,10 +603,29 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Build a native external-dns source Provider for the kinds it handles
+	// (ingress, service, istio-gateway): full extraction from spec.rules/tls,
+	// every service type and gateway servers — the regression #274 dropped by
+	// replacing the external-dns sources with annotation-only resolvers. The
+	// external-dns library consumes a client-go clientset and an istio clientset
+	// (not the controller-runtime client).
+	kubeClientset, err := kubernetes.NewForConfig(mgr.GetConfig())
+	if err != nil {
+		setupLog.Error(err, "unable to build kubernetes clientset for external-dns sources")
+		os.Exit(1)
+	}
+	istioClientset, err := istioclientset.NewForConfig(mgr.GetConfig())
+	if err != nil {
+		setupLog.Error(err, "unable to build istio clientset for external-dns sources")
+		os.Exit(1)
+	}
+	sourceProvider := externaldns.NewProvider(kubeClientset, istioClientset)
+
 	if err := mgr.Add(&sourcectrl.SourceReconciler{
 		Client:   mgr.GetClient(),
 		Registry: sourceRegistry,
 		Store:    sourceStore,
+		Provider: sourceProvider,
 		Interval: operatorConfig.Reconciliation.Interval.Duration(),
 	}); err != nil {
 		setupLog.Error(err, "unable to set up SourceReconciler")

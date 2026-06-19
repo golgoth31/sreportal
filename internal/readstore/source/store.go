@@ -47,6 +47,18 @@ func (s *Store) DeleteKind(kind registry.SourceType) {
 	s.mu.Unlock()
 }
 
+// CountKind returns the total number of entries stored for a kind across all
+// namespaces (0 if the kind is absent).
+func (s *Store) CountKind(kind registry.SourceType) int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	n := 0
+	for _, bucket := range s.byKind[kind] {
+		n += len(bucket)
+	}
+	return n
+}
+
 // Lookup returns enriched endpoints for kind/namespace/labelFilter.
 // namespace "" matches all namespaces; labelFilter "" matches all labels.
 func (s *Store) Lookup(kind registry.SourceType, namespace, labelFilter string) ([]domainsource.EnrichedEndpoint, error) {

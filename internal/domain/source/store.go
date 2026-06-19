@@ -40,4 +40,8 @@ type SourceEndpointWriter interface {
 	// DeleteKind removes all entries for a kind (used when the kind becomes
 	// unused cluster-wide).
 	DeleteKind(kind registry.SourceType)
+	// CountKind returns the number of entries currently stored for a kind.
+	// Used by the producer's anti-collapse guard to compare a freshly collected
+	// count against the last good state before overwriting it.
+	CountKind(kind registry.SourceType) int
 }

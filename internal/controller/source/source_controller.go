@@ -25,6 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	domainsource "github.com/golgoth31/sreportal/internal/domain/source"
+	"github.com/golgoth31/sreportal/internal/source/externaldns"
 	"github.com/golgoth31/sreportal/internal/source/registry"
 )
 
@@ -36,6 +37,11 @@ type SourceReconciler struct {
 	Store    domainsource.SourceEndpointWriter
 	Interval time.Duration
 
+	// Provider, when set, discovers the kinds it natively handles (ingress,
+	// service, istio-gateway) through the external-dns source library. Nil falls
+	// back to the registered resolvers for every kind.
+	Provider *externaldns.Provider
+
 	previousKinds map[registry.SourceType]bool
 }
 
@@ -45,7 +51,7 @@ var _ manager.Runnable = (*SourceReconciler)(nil)
 // kind-set from non-remote DNS CRs and refreshes the SourceEndpointStore.
 func (r *SourceReconciler) Start(ctx context.Context) error {
 	logger := log.FromContext(ctx).WithName("source.reconciler")
-	r.previousKinds = Cycle(ctx, r.Client, r.Registry, r.Store, r.previousKinds)
+	r.previousKinds = Cycle(ctx, r.Client, r.Registry, r.Provider, r.Store, r.previousKinds)
 	t := time.NewTicker(r.Interval)
 	defer t.Stop()
 	for {
@@ -53,7 +59,7 @@ func (r *SourceReconciler) Start(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-t.C:
-			r.previousKinds = Cycle(ctx, r.Client, r.Registry, r.Store, r.previousKinds)
+			r.previousKinds = Cycle(ctx, r.Client, r.Registry, r.Provider, r.Store, r.previousKinds)
 			logger.V(2).Info("cycle complete", "kinds", len(r.previousKinds))
 		}
 	}

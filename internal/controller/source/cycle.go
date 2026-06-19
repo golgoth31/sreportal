@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/go-logr/logr"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,6 +33,7 @@ import (
 	domainsource "github.com/golgoth31/sreportal/internal/domain/source"
 	"github.com/golgoth31/sreportal/internal/metrics"
 	sourcepkg "github.com/golgoth31/sreportal/internal/source"
+	"github.com/golgoth31/sreportal/internal/source/externaldns"
 	"github.com/golgoth31/sreportal/internal/source/registry"
 )
 
@@ -39,22 +41,40 @@ import (
 // Caller (Start) is responsible for the time.Ticker. Cycle is idempotent and
 // safe to call sequentially from a single goroutine; concurrent invocations
 // against the same store are NOT supported.
+//
+// When provider is non-nil, kinds it natively handles (ingress, service,
+// istio-gateway) are discovered through the external-dns source library — full
+// extraction from spec.rules/tls, every service type, gateway servers — instead
+// of the hand-rolled resolvers (which stay registered for the remaining kinds).
+// Pass nil to use the resolver path for every kind.
 func Cycle(
 	ctx context.Context,
 	c client.Client,
 	reg *registry.Registry,
+	provider *externaldns.Provider,
 	store domainsource.SourceEndpointWriter,
 	prev map[registry.SourceType]bool,
 ) map[registry.SourceType]bool {
 	logger := log.FromContext(ctx).WithName("source.cycle")
 
-	enabled, err := computeEnabledKinds(ctx, c)
+	dnsList, err := listLocalDNS(ctx, c)
 	if err != nil {
-		logger.Error(err, "failed to compute enabled kinds; skipping cycle")
+		logger.Error(err, "failed to list DNS CRs; skipping cycle")
 		return prev
+	}
+	enabled := enabledKindsFromDNS(dnsList)
+	var effCfgs map[registry.SourceType]*externaldns.EffectiveConfig
+	if provider != nil {
+		effCfgs = externaldns.BuildEffectiveConfigs(dnsList)
 	}
 
 	for kind := range enabled {
+		// Native external-dns path for the kinds the provider handles.
+		if provider != nil && externaldns.Handles(kind) {
+			collectNativeInto(ctx, c, provider, store, kind, effCfgs[kind], logger)
+			continue
+		}
+
 		resolver, ok := reg.Get(kind)
 		if !ok {
 			logger.Info("no resolver registered", "kind", kind)
@@ -142,6 +162,11 @@ func Cycle(
 	for k := range prev {
 		if !enabled[k] {
 			store.DeleteKind(k)
+			if provider != nil && externaldns.Handles(k) {
+				// Stop the native source's long-lived informer so a no-longer-used
+				// kind doesn't keep a watch open.
+				provider.Forget(k)
+			}
 			metrics.SourceEndpointsCollected.DeleteLabelValues(string(k))
 			metrics.SourceKindActive.WithLabelValues(string(k)).Set(0)
 		}
@@ -149,24 +174,75 @@ func Cycle(
 	return enabled
 }
 
-func computeEnabledKinds(ctx context.Context, c client.Client) (map[registry.SourceType]bool, error) {
+// collectNativeInto discovers a kind via the external-dns source library and
+// applies it to the store under the producer's safety invariants:
+//   - §1 conditional replace: on any collection error (including a not-yet-synced
+//     informer or an absent CRD) the previous good state is preserved.
+//   - §3 anti-collapse: a fresh empty result never overwrites a non-empty cache;
+//     it is refused, logged, and counted (likely a transient discovery failure).
+func collectNativeInto(
+	ctx context.Context,
+	c client.Client,
+	provider *externaldns.Provider,
+	store domainsource.SourceEndpointWriter,
+	kind registry.SourceType,
+	cfg *externaldns.EffectiveConfig,
+	logger logr.Logger,
+) {
+	if cfg == nil {
+		// Enabled but no effective config derived — a wiring/logic bug (the kind
+		// is in `enabled` but BuildEffectiveConfigs produced nothing). Surface it
+		// loudly; preserve the previous good state.
+		logger.Error(nil, "no effective config for native kind; preserving previous state", "kind", kind)
+		metrics.SourceErrorsTotal.WithLabelValues(string(kind)).Inc()
+		return
+	}
+	entries, err := collectNative(ctx, c, provider, kind, cfg)
+	if err != nil {
+		logger.Error(err, "native source collection failed; preserving previous state", "kind", kind)
+		metrics.SourceErrorsTotal.WithLabelValues(string(kind)).Inc()
+		return
+	}
+	if len(entries) == 0 && store.CountKind(kind) > 0 {
+		logger.Error(nil, "drop guard: refusing to replace non-empty cache with empty collection; preserving previous state",
+			"kind", kind, "prev", store.CountKind(kind))
+		metrics.SourceDropGuardTriggered.WithLabelValues(string(kind)).Inc()
+		metrics.SourceKindActive.WithLabelValues(string(kind)).Set(1)
+		return
+	}
+	store.ReplaceKind(kind, entries)
+	metrics.SourceEndpointsCollected.WithLabelValues(string(kind)).Set(float64(len(entries)))
+	metrics.SourceKindActive.WithLabelValues(string(kind)).Set(1)
+	metrics.SourceLastSuccessfulSync.WithLabelValues(string(kind)).SetToCurrentTime()
+}
+
+// listLocalDNS returns the non-remote DNS CRs that drive cluster-wide discovery.
+func listLocalDNS(ctx context.Context, c client.Client) ([]sreportalv1alpha2.DNS, error) {
 	var dnsList sreportalv1alpha2.DNSList
 	if err := c.List(ctx, &dnsList); err != nil {
 		return nil, err
 	}
-	out := map[registry.SourceType]bool{}
+	out := make([]sreportalv1alpha2.DNS, 0, len(dnsList.Items))
 	for i := range dnsList.Items {
-		d := &dnsList.Items[i]
-		if d.Spec.IsRemote {
+		if dnsList.Items[i].Spec.IsRemote {
 			continue
 		}
-		for kind, enabled := range sourcepkg.EnabledKindsFromSpec(&d.Spec.Sources) {
-			if enabled {
+		out = append(out, dnsList.Items[i])
+	}
+	return out, nil
+}
+
+// enabledKindsFromDNS unions the enabled source kinds across the given DNS CRs.
+func enabledKindsFromDNS(dnsList []sreportalv1alpha2.DNS) map[registry.SourceType]bool {
+	out := map[registry.SourceType]bool{}
+	for i := range dnsList {
+		for kind, on := range sourcepkg.EnabledKindsFromSpec(&dnsList[i].Spec.Sources) {
+			if on {
 				out[kind] = true
 			}
 		}
 	}
-	return out, nil
+	return out
 }
 
 // extractItems extracts client.Object slice from any *List via reflection.

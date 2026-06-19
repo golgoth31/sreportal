@@ -40,8 +40,8 @@ func TestCycle_FoldsGroupsAnnotationOntoEndpoint(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "grpsvc", Namespace: tTeamA,
 			Annotations: map[string]string{
-				"external-dns.alpha.kubernetes.io/hostname": "grpsvc.example.com",
-				"sreportal.io/groups":                       "Team A, Shared",
+				tHostnameAnn:          "grpsvc.example.com",
+				"sreportal.io/groups": "Team A, Shared",
 			},
 		},
 		Status: corev1.ServiceStatus{LoadBalancer: corev1.LoadBalancerStatus{
@@ -52,7 +52,7 @@ func TestCycle_FoldsGroupsAnnotationOntoEndpoint(t *testing.T) {
 	reg := registry.NewRegistry(svcsrc.NewResolver())
 	store := rsource.NewStore()
 
-	_ = srccontrol.Cycle(context.Background(), c, reg, store, nil)
+	_ = srccontrol.Cycle(context.Background(), c, reg, nil, store, nil)
 
 	got, err := store.Lookup(svcsrc.SourceTypeService, tTeamA, "")
 	require.NoError(t, err)

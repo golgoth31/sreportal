@@ -26,8 +26,9 @@ import (
 )
 
 const (
-	tTeamA = "team-a"
-	tLBIP  = "1.2.3.4"
+	tTeamA       = "team-a"
+	tLBIP        = "1.2.3.4"
+	tHostnameAnn = "external-dns.alpha.kubernetes.io/hostname"
 )
 
 func TestCycle_ProducesServiceEndpoints(t *testing.T) {
@@ -49,7 +50,7 @@ func TestCycle_ProducesServiceEndpoints(t *testing.T) {
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "echo", Namespace: tTeamA,
-			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/hostname": "echo.example.com"},
+			Annotations: map[string]string{tHostnameAnn: "echo.example.com"},
 		},
 		Status: corev1.ServiceStatus{LoadBalancer: corev1.LoadBalancerStatus{
 			Ingress: []corev1.LoadBalancerIngress{{IP: tLBIP}},
@@ -59,7 +60,7 @@ func TestCycle_ProducesServiceEndpoints(t *testing.T) {
 	reg := registry.NewRegistry(svcsrc.NewResolver())
 	store := rsource.NewStore()
 
-	prev := srccontrol.Cycle(context.Background(), c, reg, store, nil)
+	prev := srccontrol.Cycle(context.Background(), c, reg, nil, store, nil)
 	require.NotEmpty(t, prev)
 	got, err := store.Lookup(svcsrc.SourceTypeService, tTeamA, "")
 	require.NoError(t, err)
@@ -90,7 +91,7 @@ func TestCycle_SetsResourceLabelWhenResolverOmitsIt(t *testing.T) {
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "echo", Namespace: tTeamA,
-			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/hostname": "echo.example.com"},
+			Annotations: map[string]string{tHostnameAnn: "echo.example.com"},
 		},
 		Status: corev1.ServiceStatus{LoadBalancer: corev1.LoadBalancerStatus{
 			Ingress: []corev1.LoadBalancerIngress{{IP: tLBIP}},
@@ -100,7 +101,7 @@ func TestCycle_SetsResourceLabelWhenResolverOmitsIt(t *testing.T) {
 	reg := registry.NewRegistry(svcsrc.NewResolver())
 	store := rsource.NewStore()
 
-	_ = srccontrol.Cycle(context.Background(), c, reg, store, nil)
+	_ = srccontrol.Cycle(context.Background(), c, reg, nil, store, nil)
 	got, err := store.Lookup(svcsrc.SourceTypeService, tTeamA, "")
 	require.NoError(t, err)
 	require.Len(t, got, 1)
@@ -119,7 +120,7 @@ func TestCycle_DeletesKindsNoLongerEnabled(t *testing.T) {
 		{Kind: svcsrc.SourceTypeService, Namespace: "x"},
 	})
 	prev := map[registry.SourceType]bool{svcsrc.SourceTypeService: true}
-	_ = srccontrol.Cycle(context.Background(), c, reg, store, prev)
+	_ = srccontrol.Cycle(context.Background(), c, reg, nil, store, prev)
 	got, _ := store.Lookup(svcsrc.SourceTypeService, "", "")
 	require.Empty(t, got)
 }
@@ -162,7 +163,7 @@ func TestCycle_RemoteDNSSkipped(t *testing.T) {
 	reg := registry.NewRegistry(svcsrc.NewResolver())
 	store := rsource.NewStore()
 
-	next := srccontrol.Cycle(context.Background(), c, reg, store, nil)
+	next := srccontrol.Cycle(context.Background(), c, reg, nil, store, nil)
 
 	// Only the local DNS's service kind should be enabled.
 	require.True(t, next[svcsrc.SourceTypeService], "service kind must be enabled from local DNS")
@@ -227,7 +228,7 @@ func TestCycle_NoMatchError_CRDNotInstalled(t *testing.T) {
 	metrics.SourceKindActive.WithLabelValues(string(svcsrc.SourceTypeService)).Set(99)
 
 	prev := map[registry.SourceType]bool{svcsrc.SourceTypeService: true}
-	_ = srccontrol.Cycle(context.Background(), c, reg, store, prev)
+	_ = srccontrol.Cycle(context.Background(), c, reg, nil, store, prev)
 
 	// Previously cached state must be preserved — not wiped.
 	got, err := store.Lookup(svcsrc.SourceTypeService, "ns", "")
@@ -306,7 +307,7 @@ func TestCycle_PartialResolveError(t *testing.T) {
 	metrics.SourceErrorsTotal.Reset()
 	metrics.SourceKindActive.Reset()
 
-	_ = srccontrol.Cycle(context.Background(), c, reg, store, nil)
+	_ = srccontrol.Cycle(context.Background(), c, reg, nil, store, nil)
 
 	// Survivors must be in the store.
 	got, err := store.Lookup(svcsrc.SourceTypeService, "ns", "")
@@ -366,7 +367,7 @@ func TestCycle_AllObjectsFailResolve(t *testing.T) {
 	metrics.SourceErrorsTotal.Reset()
 	metrics.SourceKindActive.Reset()
 
-	_ = srccontrol.Cycle(context.Background(), c, reg, store, nil)
+	_ = srccontrol.Cycle(context.Background(), c, reg, nil, store, nil)
 
 	// Cache must NOT have been wiped — previous state preserved.
 	got, err := store.Lookup(svcsrc.SourceTypeService, "ns", "")
