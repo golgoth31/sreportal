@@ -39,6 +39,9 @@ import (
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
+// Forcer requests an out-of-band DNS re-resolution for a record key ("namespace/name").
+type Forcer interface{ Force(recordKey string) }
+
 // DNSRecordResolveInterval is the RequeueAfter applied at the end of every
 // reconcile to re-run the DNS resolution drift check. The DNSRecord chain
 // is otherwise purely event-driven on spec changes (generation bumps).
@@ -52,7 +55,7 @@ type DNSRecordReconciler struct {
 	client.Client
 	Scheme     *runtime.Scheme
 	fqdnWriter domaindns.FQDNWriter
-	resolver   domaindns.Resolver
+	forcer     Forcer
 	chain      *reconciler.Chain[*v1alpha2.DNSRecord, dnsrecordchain.ChainData]
 }
 
@@ -60,12 +63,10 @@ type DNSRecordReconciler struct {
 func NewDNSRecordReconciler(
 	c client.Client,
 	scheme *runtime.Scheme,
-	resolver domaindns.Resolver,
 ) *DNSRecordReconciler {
 	r := &DNSRecordReconciler{
-		Client:   c,
-		Scheme:   scheme,
-		resolver: resolver,
+		Client: c,
+		Scheme: scheme,
 	}
 	r.rebuildChain()
 	return r
@@ -78,12 +79,15 @@ func (r *DNSRecordReconciler) SetFQDNWriter(w domaindns.FQDNWriter) {
 	r.rebuildChain()
 }
 
+// SetForcer wires the async DNS resolver so reconciles can trigger an immediate
+// re-resolution on spec changes.
+func (r *DNSRecordReconciler) SetForcer(f Forcer) { r.forcer = f }
+
 func (r *DNSRecordReconciler) rebuildChain() {
 	r.chain = reconciler.NewChain(
 		"dnsrecord",
 		dnsrecordchain.NewLoadDNSConfigHandler(r.Client),
 		dnsrecordchain.NewMaterialiseEntriesHandler(r.Client),
-		dnsrecordchain.NewResolveDNSHandler(r.Client, r.resolver),
 		dnsrecordchain.NewProjectStoreHandler(r.fqdnWriter),
 	)
 }
@@ -197,6 +201,10 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		metrics.ReconcileTotal.WithLabelValues("dnsrecord", "error").Inc()
 		metrics.ReconcileDuration.WithLabelValues("dnsrecord", "").Observe(time.Since(start).Seconds())
 		return ctrl.Result{}, err
+	}
+
+	if r.forcer != nil {
+		r.forcer.Force(req.Namespace + "/" + req.Name)
 	}
 
 	if rc.Result.RequeueAfter == 0 {

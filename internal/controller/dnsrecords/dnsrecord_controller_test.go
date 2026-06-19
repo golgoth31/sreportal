@@ -18,7 +18,6 @@ package dnsrecords
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -35,23 +34,6 @@ import (
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 	dnsreadstore "github.com/golgoth31/sreportal/internal/readstore/dns"
 )
-
-// stubResolver is a fake dns.Resolver for testing.
-type stubResolver struct {
-	hosts map[string][]string
-}
-
-func (r *stubResolver) LookupHost(_ context.Context, fqdn string) ([]string, error) {
-	addrs, ok := r.hosts[fqdn]
-	if !ok {
-		return nil, fmt.Errorf("no such host: %s", fqdn)
-	}
-	return addrs, nil
-}
-
-func (r *stubResolver) LookupCNAME(_ context.Context, fqdn string) (string, error) {
-	return "", fmt.Errorf("no CNAME for: %s", fqdn)
-}
 
 // ensureDNS creates a v1alpha2 DNS CR named after the portal if missing.
 // disableDNSCheck mirrors the value the chain should observe per reconciliation.
@@ -145,7 +127,7 @@ var _ = Describe("DNSRecord Controller", func() {
 
 		It("should project endpoints into the FQDN read store with correct PortalRef", func() {
 			store := dnsreadstore.NewFQDNStore()
-			reconciler := NewDNSRecordReconciler(k8sClient, k8sClient.Scheme(), nil)
+			reconciler := NewDNSRecordReconciler(k8sClient, k8sClient.Scheme())
 			reconciler.SetFQDNWriter(store)
 
 			Eventually(func(g Gomega) {
@@ -173,7 +155,7 @@ var _ = Describe("DNSRecord Controller", func() {
 
 		It("should remove entries from the read store", func() {
 			store := dnsreadstore.NewFQDNStore()
-			reconciler := NewDNSRecordReconciler(k8sClient, k8sClient.Scheme(), nil)
+			reconciler := NewDNSRecordReconciler(k8sClient, k8sClient.Scheme())
 			reconciler.SetFQDNWriter(store)
 
 			By("creating and populating the DNSRecord")
@@ -216,82 +198,6 @@ var _ = Describe("DNSRecord Controller", func() {
 		})
 	})
 
-	Context("When reconciling with DNS resolution enabled", func() {
-		const recordName = "test-dnsrecord-resolve"
-		ctx := context.Background()
-
-		recordNN := types.NamespacedName{Name: recordName, Namespace: tNsDefault}
-
-		BeforeEach(func() {
-			// Ensure DNS resolution is *enabled* for the my-portal DNS CR.
-			ensureDNS(ctx, tPortalMy, false)
-
-			rec := &v1alpha2.DNSRecord{}
-			if err := k8sClient.Get(ctx, recordNN, rec); errors.IsNotFound(err) {
-				Expect(k8sClient.Create(ctx, &v1alpha2.DNSRecord{
-					ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: tNsDefault},
-					Spec: v1alpha2.DNSRecordSpec{
-						Origin:     v1alpha2.DNSRecordOriginAuto,
-						SourceType: tSrcService,
-						PortalRef:  tPortalMy,
-						Entries: []v1alpha2.DNSRecordEntry{
-							{FQDN: "resolved.example.com", RecordType: "A", Targets: []string{tIP1234}},
-							{FQDN: "missing.example.com", RecordType: "A", Targets: []string{"5.6.7.8"}},
-						},
-					},
-				})).To(Succeed())
-			}
-		})
-
-		AfterEach(func() {
-			rec := &v1alpha2.DNSRecord{}
-			if err := k8sClient.Get(ctx, recordNN, rec); err == nil {
-				Expect(k8sClient.Delete(ctx, rec)).To(Succeed())
-			}
-			// Restore default disableDNSCheck=true for other Contexts.
-			ensureDNS(ctx, tPortalMy, true)
-		})
-
-		It("should persist SyncStatus on CR and propagate to read store", func() {
-			store := dnsreadstore.NewFQDNStore()
-			resolver := &stubResolver{
-				hosts: map[string][]string{
-					"resolved.example.com": {tIP1234},
-					// missing.example.com has no entry → notavailable
-				},
-			}
-			reconciler := NewDNSRecordReconciler(k8sClient, k8sClient.Scheme(), resolver)
-			reconciler.SetFQDNWriter(store)
-
-			Eventually(func(g Gomega) {
-				_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: recordNN})
-				g.Expect(err).NotTo(HaveOccurred())
-
-				// Verify SyncStatus persisted on CR
-				var updated v1alpha2.DNSRecord
-				g.Expect(k8sClient.Get(ctx, recordNN, &updated)).To(Succeed())
-				epStatusByName := make(map[string]string)
-				for _, ep := range updated.Status.Endpoints {
-					epStatusByName[ep.DNSName] = string(ep.SyncStatus)
-				}
-				g.Expect(epStatusByName["resolved.example.com"]).To(Equal("sync"))
-				g.Expect(epStatusByName["missing.example.com"]).To(Equal("notavailable"))
-
-				// Verify SyncStatus propagated to read store
-				views, err := store.List(ctx, domaindns.FQDNFilters{Portal: tPortalMy})
-				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(views).To(HaveLen(2))
-
-				viewStatusByName := make(map[string]string)
-				for _, v := range views {
-					viewStatusByName[v.Name] = v.SyncStatus
-				}
-				g.Expect(viewStatusByName["resolved.example.com"]).To(Equal("sync"))
-				g.Expect(viewStatusByName["missing.example.com"]).To(Equal("notavailable"))
-			}, timeout, interval).Should(Succeed())
-		})
-	})
-
 	Context("When a DNSRecord has a stale or missing EndpointsHash", func() {
 		const recordName = "test-dnsrecord-hash-resync"
 		ctx := context.Background()
@@ -307,7 +213,7 @@ var _ = Describe("DNSRecord Controller", func() {
 
 		It("should correctly project spec entries into the store even when EndpointsHash is missing", func() {
 			store := dnsreadstore.NewFQDNStore()
-			reconciler := NewDNSRecordReconciler(k8sClient, k8sClient.Scheme(), nil)
+			reconciler := NewDNSRecordReconciler(k8sClient, k8sClient.Scheme())
 			reconciler.SetFQDNWriter(store)
 
 			By("creating a DNSRecord with spec entries")
@@ -346,7 +252,7 @@ var _ = Describe("DNSRecord Controller", func() {
 
 		It("should correctly project spec entries into the store even when EndpointsHash is stale", func() {
 			store := dnsreadstore.NewFQDNStore()
-			reconciler := NewDNSRecordReconciler(k8sClient, k8sClient.Scheme(), nil)
+			reconciler := NewDNSRecordReconciler(k8sClient, k8sClient.Scheme())
 			reconciler.SetFQDNWriter(store)
 
 			By("creating a DNSRecord with spec entries")
@@ -407,7 +313,7 @@ var _ = Describe("DNSRecord Controller", func() {
 
 		It("fast-outs and cleans the read store when the referenced Portal does not exist", func() {
 			store := dnsreadstore.NewFQDNStore()
-			reconciler := NewDNSRecordReconciler(k8sClient, k8sClient.Scheme(), nil)
+			reconciler := NewDNSRecordReconciler(k8sClient, k8sClient.Scheme())
 			reconciler.SetFQDNWriter(store)
 
 			By("creating an owner DNS that references a portal which doesn't exist")
@@ -492,7 +398,7 @@ var _ = Describe("DNSRecord Controller", func() {
 
 		It("should produce no entries in the read store", func() {
 			store := dnsreadstore.NewFQDNStore()
-			reconciler := NewDNSRecordReconciler(k8sClient, k8sClient.Scheme(), nil)
+			reconciler := NewDNSRecordReconciler(k8sClient, k8sClient.Scheme())
 			reconciler.SetFQDNWriter(store)
 
 			Expect(k8sClient.Create(ctx, &v1alpha2.DNSRecord{
@@ -565,7 +471,7 @@ var _ = Describe("DNSRecord Controller", func() {
 
 		It("requeues after DNSRecordResolveInterval on successful reconcile", func() {
 			store := dnsreadstore.NewFQDNStore()
-			rec := NewDNSRecordReconciler(k8sClient, k8sClient.Scheme(), nil)
+			rec := NewDNSRecordReconciler(k8sClient, k8sClient.Scheme())
 			rec.SetFQDNWriter(store)
 
 			Expect(k8sClient.Create(ctx, &v1alpha2.DNSRecord{
