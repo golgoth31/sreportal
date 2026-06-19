@@ -19,9 +19,7 @@ import (
 	"github.com/golgoth31/sreportal/internal/metrics"
 	rsource "github.com/golgoth31/sreportal/internal/readstore/source"
 	"github.com/golgoth31/sreportal/internal/source/externaldns"
-	"github.com/golgoth31/sreportal/internal/source/ingress"
 	"github.com/golgoth31/sreportal/internal/source/registry"
-	svcsrc "github.com/golgoth31/sreportal/internal/source/service"
 )
 
 const tNsDefault = "default"
@@ -64,16 +62,17 @@ func TestCycle_NativeIngressFromRules(t *testing.T) {
 	// controller-runtime client: drives DNS listing + enrichment re-fetch.
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(ingressDNS(), ing).Build()
 	// clientset feeding the external-dns ingress source.
-	provider := externaldns.NewProvider(kubefake.NewSimpleClientset(ing), nil)
+	provider := externaldns.NewProvider(kubefake.NewSimpleClientset(ing), nil, nil)
 
-	// the resolver stays registered but must NOT be consulted for ingress.
-	reg := registry.NewRegistry(svcsrc.NewResolver(), ingress.NewResolver())
+	// ingress is discovered natively by the provider; the registry only holds
+	// non-native resolvers (none needed here).
+	reg := registry.NewRegistry()
 	store := rsource.NewStore()
 
 	prev := srccontrol.Cycle(context.Background(), c, reg, provider, store, nil)
-	require.True(t, prev[ingress.SourceTypeIngress])
+	require.True(t, prev[externaldns.KindIngress])
 
-	got, err := store.Lookup(ingress.SourceTypeIngress, tNsDefault, "")
+	got, err := store.Lookup(externaldns.KindIngress, tNsDefault, "")
 	require.NoError(t, err)
 	require.Len(t, got, 1, "ingress spec.rules host must be discovered natively")
 	require.Equal(t, "app.example.com", got[0].Endpoint.DNSName)
@@ -93,24 +92,24 @@ func TestCycle_NativeDropGuard(t *testing.T) {
 
 	// No Ingress objects anywhere -> external-dns returns 0 endpoints.
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(ingressDNS()).Build()
-	provider := externaldns.NewProvider(kubefake.NewSimpleClientset(), nil)
-	reg := registry.NewRegistry(ingress.NewResolver())
+	provider := externaldns.NewProvider(kubefake.NewSimpleClientset(), nil, nil)
+	reg := registry.NewRegistry()
 	store := rsource.NewStore()
 
 	// Pre-populate a known-good cache entry that must survive the empty cycle.
-	store.ReplaceKind(ingress.SourceTypeIngress, []domainsource.EnrichedEndpoint{
-		{Kind: ingress.SourceTypeIngress, Namespace: tNsDefault, Name: "previously-good"},
+	store.ReplaceKind(externaldns.KindIngress, []domainsource.EnrichedEndpoint{
+		{Kind: externaldns.KindIngress, Namespace: tNsDefault, Name: "previously-good"},
 	})
 
 	metrics.SourceDropGuardTriggered.Reset()
 
 	_ = srccontrol.Cycle(context.Background(), c, reg, provider, store, nil)
 
-	got, err := store.Lookup(ingress.SourceTypeIngress, tNsDefault, "")
+	got, err := store.Lookup(externaldns.KindIngress, tNsDefault, "")
 	require.NoError(t, err)
 	require.Len(t, got, 1, "non-empty cache must be preserved when collection returns empty")
 	require.Equal(t, "previously-good", got[0].Name)
 
-	triggered := testutil.ToFloat64(metrics.SourceDropGuardTriggered.WithLabelValues(string(ingress.SourceTypeIngress)))
+	triggered := testutil.ToFloat64(metrics.SourceDropGuardTriggered.WithLabelValues(string(externaldns.KindIngress)))
 	require.Equal(t, float64(1), triggered, "drop guard counter must increment")
 }

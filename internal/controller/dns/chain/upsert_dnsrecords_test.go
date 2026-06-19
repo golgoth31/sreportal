@@ -33,10 +33,8 @@ import (
 	sreportalv1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 	dnschain "github.com/golgoth31/sreportal/internal/controller/dns/chain"
 	"github.com/golgoth31/sreportal/internal/reconciler"
-	"github.com/golgoth31/sreportal/internal/source/gatewayhttproute"
-	"github.com/golgoth31/sreportal/internal/source/ingress"
+	"github.com/golgoth31/sreportal/internal/source/externaldns"
 	"github.com/golgoth31/sreportal/internal/source/registry"
-	"github.com/golgoth31/sreportal/internal/source/service"
 )
 
 const (
@@ -67,7 +65,7 @@ func TestUpsertDNSRecords_CreatesAndDeletes(t *testing.T) {
 		},
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:     sreportalv1alpha2.DNSRecordOriginAuto,
-			SourceType: sreportalv1alpha2.SourceType(ingress.SourceTypeIngress),
+			SourceType: sreportalv1alpha2.SourceType(externaldns.KindIngress),
 			PortalRef:  "p",
 		},
 	}
@@ -82,7 +80,7 @@ func TestUpsertDNSRecords_CreatesAndDeletes(t *testing.T) {
 		Resource: dns,
 		Data: dnschain.ChainData{
 			KeptEndpointsByKind: map[registry.SourceType][]*endpoint.Endpoint{
-				service.SourceTypeService: {endpoint.NewEndpoint("a.example.com", "A", upsertTestTargetA)},
+				externaldns.KindService: {endpoint.NewEndpoint("a.example.com", "A", upsertTestTargetA)},
 			},
 		},
 	}
@@ -91,7 +89,7 @@ func TestUpsertDNSRecords_CreatesAndDeletes(t *testing.T) {
 	var created sreportalv1alpha2.DNSRecord
 	require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: upsertTestNS1, Name: upsertTestRecord}, &created))
 	require.Equal(t, sreportalv1alpha2.DNSRecordOriginAuto, created.Spec.Origin)
-	require.Equal(t, string(service.SourceTypeService), string(created.Spec.SourceType))
+	require.Equal(t, string(externaldns.KindService), string(created.Spec.SourceType))
 	require.Equal(t, "p", created.Spec.PortalRef)
 	require.Len(t, created.Spec.Entries, 1)
 	require.Equal(t, "a.example.com", created.Spec.Entries[0].FQDN)
@@ -129,7 +127,7 @@ func TestUpsertDNSRecords_PreservesNotReadyKind(t *testing.T) {
 		},
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:     sreportalv1alpha2.DNSRecordOriginAuto,
-			SourceType: sreportalv1alpha2.SourceType(ingress.SourceTypeIngress),
+			SourceType: sreportalv1alpha2.SourceType(externaldns.KindIngress),
 			PortalRef:  "p",
 		},
 	}
@@ -145,7 +143,7 @@ func TestUpsertDNSRecords_PreservesNotReadyKind(t *testing.T) {
 		Data: dnschain.ChainData{
 			// ingress enabled but its source hasn't synced → no endpoints, preserve.
 			KeptEndpointsByKind: map[registry.SourceType][]*endpoint.Endpoint{},
-			PreserveKinds:       map[registry.SourceType]bool{ingress.SourceTypeIngress: true},
+			PreserveKinds:       map[registry.SourceType]bool{externaldns.KindIngress: true},
 		},
 	}
 	require.NoError(t, h.Handle(context.Background(), rc))
@@ -179,13 +177,13 @@ func TestUpsertDNSRecordsHandler_MultipleKinds(t *testing.T) {
 		Resource: dns,
 		Data: dnschain.ChainData{
 			KeptEndpointsByKind: map[registry.SourceType][]*endpoint.Endpoint{
-				service.SourceTypeService: {
+				externaldns.KindService: {
 					endpoint.NewEndpoint("svc.example.com", "A", upsertTestTargetA),
 				},
-				ingress.SourceTypeIngress: {
+				externaldns.KindIngress: {
 					endpoint.NewEndpoint("ing.example.com", "A", "2.2.2.2"),
 				},
-				gatewayhttproute.SourceTypeGatewayHTTPRoute: {
+				externaldns.KindGatewayHTTPRoute: {
 					endpoint.NewEndpoint("gw.example.com", "A", "3.3.3.3"),
 				},
 			},
@@ -211,9 +209,9 @@ func TestUpsertDNSRecordsHandler_MultipleKinds(t *testing.T) {
 		target  string
 	}
 	cases := []kindExpect{
-		{service.SourceTypeService, "svc.example.com", "1.1.1.1"},
-		{ingress.SourceTypeIngress, "ing.example.com", "2.2.2.2"},
-		{gatewayhttproute.SourceTypeGatewayHTTPRoute, "gw.example.com", "3.3.3.3"},
+		{externaldns.KindService, "svc.example.com", "1.1.1.1"},
+		{externaldns.KindIngress, "ing.example.com", "2.2.2.2"},
+		{externaldns.KindGatewayHTTPRoute, "gw.example.com", "3.3.3.3"},
 	}
 
 	for _, tc := range cases {
@@ -266,7 +264,7 @@ func TestUpsertDNSRecordsHandler_DualStack(t *testing.T) {
 		Resource: dns,
 		Data: dnschain.ChainData{
 			KeptEndpointsByKind: map[registry.SourceType][]*endpoint.Endpoint{
-				service.SourceTypeService: {
+				externaldns.KindService: {
 					endpoint.NewEndpoint("dual.example.com", "A", "1.2.3.4"),
 					endpoint.NewEndpoint("dual.example.com", "AAAA", "::1"),
 				},
@@ -313,7 +311,7 @@ func TestUpsertDNSRecordsHandler_DeterministicOrder(t *testing.T) {
 			Resource: dns,
 			Data: dnschain.ChainData{
 				KeptEndpointsByKind: map[registry.SourceType][]*endpoint.Endpoint{
-					service.SourceTypeService: eps,
+					externaldns.KindService: eps,
 				},
 			},
 		}
@@ -374,7 +372,7 @@ func TestUpsertDNSRecordsHandler_DedupSameKey(t *testing.T) {
 		Resource: dns,
 		Data: dnschain.ChainData{
 			KeptEndpointsByKind: map[registry.SourceType][]*endpoint.Endpoint{
-				service.SourceTypeService: {
+				externaldns.KindService: {
 					endpoint.NewEndpoint("dup.example.com", "A", "2.2.2.2"),
 					endpoint.NewEndpoint("dup.example.com", "A", upsertTestTargetA),
 				},
@@ -413,7 +411,7 @@ func TestUpsertDNSRecordsHandler_NoOpWhenUnchanged(t *testing.T) {
 			Resource: dns,
 			Data: dnschain.ChainData{
 				KeptEndpointsByKind: map[registry.SourceType][]*endpoint.Endpoint{
-					service.SourceTypeService: {endpoint.NewEndpoint("a.example.com", "A", upsertTestTargetA)},
+					externaldns.KindService: {endpoint.NewEndpoint("a.example.com", "A", upsertTestTargetA)},
 				},
 			},
 		}
@@ -460,7 +458,7 @@ func TestUpsertDNSRecordsHandler_PropagatesOriginRef(t *testing.T) {
 		Resource: dns,
 		Data: dnschain.ChainData{
 			KeptEndpointsByKind: map[registry.SourceType][]*endpoint.Endpoint{
-				service.SourceTypeService: {ep},
+				externaldns.KindService: {ep},
 			},
 		},
 	}
@@ -495,13 +493,13 @@ func TestUpsertDNSRecordsHandler_OriginRefFollowsPriority(t *testing.T) {
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{
 		Resource: dns,
 		Data: dnschain.ChainData{
-			PriorityOrder: []registry.SourceType{ingress.SourceTypeIngress, service.SourceTypeService},
+			PriorityOrder: []registry.SourceType{externaldns.KindIngress, externaldns.KindService},
 			EndpointsByKind: map[registry.SourceType][]*endpoint.Endpoint{
-				ingress.SourceTypeIngress: {
+				externaldns.KindIngress: {
 					endpoint.NewEndpoint("shared.example.com", "A", upsertTestTargetA).
 						WithLabel(endpoint.ResourceLabelKey, "ingress/ns1/shared-ing"),
 				},
-				service.SourceTypeService: {
+				externaldns.KindService: {
 					endpoint.NewEndpoint("shared.example.com", "A", "2.2.2.2").
 						WithLabel(endpoint.ResourceLabelKey, "service/ns1/shared-svc"),
 				},

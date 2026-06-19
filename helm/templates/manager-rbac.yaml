@@ -60,6 +60,14 @@ rules:
   - list
   - watch
 - apiGroups:
+  - externaldns.k8s.io
+  resources:
+  - dnsendpoints/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
   - gateway.networking.k8s.io
   resources:
   - gateways

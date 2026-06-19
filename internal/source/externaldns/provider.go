@@ -25,6 +25,7 @@ import (
 
 	istioclient "istio.io/client-go/pkg/clientset/versioned"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/external-dns/endpoint"
 	externaldnssource "sigs.k8s.io/external-dns/source"
@@ -54,11 +55,17 @@ type builtSource struct {
 	buildErr error         // set before done is closed
 }
 
-// The native external-dns ServiceSource builds EndpointSlice + Pod informers
-// when ClusterIP/NodePort are in scope, and a Node informer for NodePort —
-// beyond the services/pods the hand-rolled resolvers needed. Grant those reads.
+// RBAC for every resource the native external-dns sources read. These markers
+// are the single source of truth now that the hand-rolled resolvers are gone.
+// The ServiceSource additionally builds EndpointSlice/Pod/Node informers for
+// ClusterIP/NodePort scopes.
+// +kubebuilder:rbac:groups="",resources=services;pods;nodes,verbs=get;list;watch
 // +kubebuilder:rbac:groups=discovery.k8s.io,resources=endpointslices,verbs=get;list;watch
-// +kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch
+// +kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch
+// +kubebuilder:rbac:groups=networking.istio.io,resources=gateways;virtualservices,verbs=get;list;watch
+// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways;httproutes;grpcroutes;tcproutes;tlsroutes;udproutes,verbs=get;list;watch
+// +kubebuilder:rbac:groups=externaldns.k8s.io,resources=dnsendpoints,verbs=get;list;watch
+// +kubebuilder:rbac:groups=externaldns.k8s.io,resources=dnsendpoints/status,verbs=get;update;patch
 
 // Provider builds and memoizes native external-dns sources, one per kind.
 //
@@ -73,22 +80,28 @@ type builtSource struct {
 // RBAC, absent CRD) therefore never hangs the single-goroutine SourceReconciler
 // nor the other kinds — it surfaces ErrSourceNotReady and is retried.
 type Provider struct {
-	kube      kubernetes.Interface
-	istio     istioclient.Interface
-	buildWait time.Duration
+	kube       kubernetes.Interface
+	istio      istioclient.Interface
+	restConfig *rest.Config
+	clientGen  externaldnssource.ClientGenerator
+	buildWait  time.Duration
 
 	mu    sync.Mutex
 	built map[registry.SourceType]*builtSource
 }
 
-// NewProvider returns a Provider. istio may be nil if the istio-gateway source
-// is never requested.
-func NewProvider(kube kubernetes.Interface, istio istioclient.Interface) *Provider {
+// NewProvider returns a Provider. istio may be nil if no istio source is
+// requested; restConfig may be nil if no gateway-api route or DNSEndpoint
+// (CRD) source is requested — those builds then fail (preserved + retried),
+// they don't panic.
+func NewProvider(kube kubernetes.Interface, istio istioclient.Interface, restConfig *rest.Config) *Provider {
 	return &Provider{
-		kube:      kube,
-		istio:     istio,
-		buildWait: defaultBuildWait,
-		built:     map[registry.SourceType]*builtSource{},
+		kube:       kube,
+		istio:      istio,
+		restConfig: restConfig,
+		clientGen:  &clientGen{restConfig: restConfig, kube: kube, istio: istio},
+		buildWait:  defaultBuildWait,
+		built:      map[registry.SourceType]*builtSource{},
 	}
 }
 
@@ -215,6 +228,26 @@ func (p *Provider) build(ctx context.Context, kind registry.SourceType, cfg *ext
 			return nil, fmt.Errorf("istio client not configured")
 		}
 		return externaldnssource.NewIstioGatewaySource(ctx, p.kube, p.istio, cfg)
+	case KindIstioVirtualService:
+		if p.istio == nil {
+			return nil, fmt.Errorf("istio client not configured")
+		}
+		return externaldnssource.NewIstioVirtualServiceSource(ctx, p.kube, p.istio, cfg)
+	case KindGatewayHTTPRoute:
+		return externaldnssource.NewGatewayHTTPRouteSource(ctx, p.clientGen, cfg)
+	case KindGatewayGRPCRoute:
+		return externaldnssource.NewGatewayGRPCRouteSource(ctx, p.clientGen, cfg)
+	case KindGatewayTCPRoute:
+		return externaldnssource.NewGatewayTCPRouteSource(ctx, p.clientGen, cfg)
+	case KindGatewayTLSRoute:
+		return externaldnssource.NewGatewayTLSRouteSource(ctx, p.clientGen, cfg)
+	case KindGatewayUDPRoute:
+		return externaldnssource.NewGatewayUDPRouteSource(ctx, p.clientGen, cfg)
+	case KindDNSEndpoint:
+		if p.restConfig == nil {
+			return nil, fmt.Errorf("rest config not configured")
+		}
+		return externaldnssource.NewCRDSource(ctx, p.restConfig, cfg)
 	default:
 		return nil, fmt.Errorf("externaldns: unsupported kind %q", kind)
 	}

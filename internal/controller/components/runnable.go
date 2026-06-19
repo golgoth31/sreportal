@@ -36,7 +36,6 @@ import (
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/adapter"
 	domainsource "github.com/golgoth31/sreportal/internal/domain/source"
-	"github.com/golgoth31/sreportal/internal/source/registry"
 	"github.com/golgoth31/sreportal/internal/statuspage"
 )
 
@@ -69,7 +68,6 @@ type Reconciler struct {
 	Client   client.Client
 	Scheme   *runtime.Scheme
 	Reader   domainsource.SourceEndpointReader
-	Registry *registry.Registry
 	Interval time.Duration
 }
 
@@ -112,8 +110,7 @@ func (r *Reconciler) cycle(ctx context.Context) {
 	seen := make(map[dedupeKey]struct{})
 	var requests []componentRequest
 
-	for _, resolver := range r.Registry.Resolvers() {
-		kind := resolver.Type()
+	for _, kind := range r.Reader.Kinds() {
 		entries, err := r.Reader.Lookup(kind, "", "")
 		if err != nil {
 			logger.Error(err, "lookup failed", "kind", kind)

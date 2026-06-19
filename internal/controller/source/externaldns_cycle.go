@@ -25,7 +25,10 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	externaldnsv1alpha1 "sigs.k8s.io/external-dns/apis/v1alpha1"
 	"sigs.k8s.io/external-dns/endpoint"
+	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gwapiv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"github.com/golgoth31/sreportal/internal/adapter"
 	domainsource "github.com/golgoth31/sreportal/internal/domain/source"
@@ -142,6 +145,20 @@ func newNativeObject(kind registry.SourceType) client.Object {
 		return &networkingv1.Ingress{}
 	case externaldns.KindIstioGateway:
 		return &istionetworkingv1.Gateway{}
+	case externaldns.KindIstioVirtualService:
+		return &istionetworkingv1.VirtualService{}
+	case externaldns.KindGatewayHTTPRoute:
+		return &gwapiv1.HTTPRoute{}
+	case externaldns.KindGatewayGRPCRoute:
+		return &gwapiv1.GRPCRoute{}
+	case externaldns.KindGatewayTCPRoute:
+		return &gwapiv1alpha2.TCPRoute{}
+	case externaldns.KindGatewayTLSRoute:
+		return &gwapiv1alpha2.TLSRoute{}
+	case externaldns.KindGatewayUDPRoute:
+		return &gwapiv1alpha2.UDPRoute{}
+	case externaldns.KindDNSEndpoint:
+		return &externaldnsv1alpha1.DNSEndpoint{}
 	}
 	return nil
 }

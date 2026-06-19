@@ -19,17 +19,8 @@ package source
 import (
 	sreportalv1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 	"github.com/golgoth31/sreportal/internal/source/crossplanescalewayrecord"
-	"github.com/golgoth31/sreportal/internal/source/dnsendpoint"
-	"github.com/golgoth31/sreportal/internal/source/gatewaygrpcroute"
-	"github.com/golgoth31/sreportal/internal/source/gatewayhttproute"
-	"github.com/golgoth31/sreportal/internal/source/gatewaytcproute"
-	"github.com/golgoth31/sreportal/internal/source/gatewaytlsroute"
-	"github.com/golgoth31/sreportal/internal/source/gatewayudproute"
-	"github.com/golgoth31/sreportal/internal/source/ingress"
-	"github.com/golgoth31/sreportal/internal/source/istiogateway"
-	"github.com/golgoth31/sreportal/internal/source/istiovirtualservice"
+	"github.com/golgoth31/sreportal/internal/source/externaldns"
 	"github.com/golgoth31/sreportal/internal/source/registry"
-	"github.com/golgoth31/sreportal/internal/source/service"
 )
 
 // EnabledKindsFromSpec maps DNS.spec.sources to (SourceType -> enabled).
@@ -40,34 +31,34 @@ func EnabledKindsFromSpec(s *sreportalv1alpha2.SourcesSpec) map[registry.SourceT
 		return out
 	}
 	if s.Service != nil && s.Service.Enabled {
-		out[service.SourceTypeService] = true
+		out[externaldns.KindService] = true
 	}
 	if s.Ingress != nil && s.Ingress.Enabled {
-		out[ingress.SourceTypeIngress] = true
+		out[externaldns.KindIngress] = true
 	}
 	if s.DNSEndpoint != nil && s.DNSEndpoint.Enabled {
-		out[dnsendpoint.SourceTypeDNSEndpoint] = true
+		out[externaldns.KindDNSEndpoint] = true
 	}
 	if s.IstioGateway != nil && s.IstioGateway.Enabled {
-		out[istiogateway.SourceTypeIstioGateway] = true
+		out[externaldns.KindIstioGateway] = true
 	}
 	if s.IstioVirtualService != nil && s.IstioVirtualService.Enabled {
-		out[istiovirtualservice.SourceTypeIstioVirtualService] = true
+		out[externaldns.KindIstioVirtualService] = true
 	}
 	if s.GatewayHTTPRoute != nil && s.GatewayHTTPRoute.Enabled {
-		out[gatewayhttproute.SourceTypeGatewayHTTPRoute] = true
+		out[externaldns.KindGatewayHTTPRoute] = true
 	}
 	if s.GatewayGRPCRoute != nil && s.GatewayGRPCRoute.Enabled {
-		out[gatewaygrpcroute.SourceTypeGatewayGRPCRoute] = true
+		out[externaldns.KindGatewayGRPCRoute] = true
 	}
 	if s.GatewayTLSRoute != nil && s.GatewayTLSRoute.Enabled {
-		out[gatewaytlsroute.SourceTypeGatewayTLSRoute] = true
+		out[externaldns.KindGatewayTLSRoute] = true
 	}
 	if s.GatewayTCPRoute != nil && s.GatewayTCPRoute.Enabled {
-		out[gatewaytcproute.SourceTypeGatewayTCPRoute] = true
+		out[externaldns.KindGatewayTCPRoute] = true
 	}
 	if s.GatewayUDPRoute != nil && s.GatewayUDPRoute.Enabled {
-		out[gatewayudproute.SourceTypeGatewayUDPRoute] = true
+		out[externaldns.KindGatewayUDPRoute] = true
 	}
 	if s.CrossplaneScalewayRecord != nil && s.CrossplaneScalewayRecord.Enabled {
 		out[crossplanescalewayrecord.SourceTypeCrossplaneScalewayRecord] = true
