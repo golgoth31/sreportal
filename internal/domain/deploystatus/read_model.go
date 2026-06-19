@@ -12,9 +12,9 @@ type Entry struct {
 	DeployedRef    string
 	DefaultBranch  string
 	AheadBy        int
-	PendingCommits []Commit
-	PendingTrunc   bool
-	DeployedAt     time.Time
+	PendingCommits   []Commit
+	PendingTruncated bool
+	DeployedAt       time.Time
 	DeployRunURL   string
 	State          string // ok | behind | unresolved | error
 	Error          string
