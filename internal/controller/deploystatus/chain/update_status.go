@@ -29,9 +29,11 @@ import (
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
-// UpdateStatusHandler stamps LastCheckedAt / state / aheadBy onto each processed
-// Spec.Services entry, then updates the CR spec (via client.Update) and the
-// status counters (via client.Status().Update).
+// UpdateStatusHandler projects the computed deploy-lag results into the CR's
+// STATUS (Status.Services), preserving the status of services not re-checked
+// this cycle, and writes only via client.Status().Update. It never writes the
+// Spec — observed state belongs in Status, and writing Spec on every reconcile
+// would bump metadata.generation and re-trigger the controller (reconcile loop).
 type UpdateStatusHandler struct {
 	client client.Client
 	now    func() metav1.Time
@@ -56,37 +58,60 @@ func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 
 	cr := rc.Resource
 
-	// Index computed entries by key for O(1) lookup.
+	// Index this cycle's computed entries by key.
 	computedByKey := make(map[string]ComputedEntry, len(rc.Data.Computed))
 	for _, c := range rc.Data.Computed {
 		computedByKey[c.Key] = c
 	}
 
+	// Preserve the status of services not re-checked this cycle (keeps
+	// LastCheckedAt across cycles so SelectDue pacing works).
+	prevStatusByKey := make(map[string]sreportalv1alpha1.DeployStatusEntry, len(cr.Status.Services))
+	for _, s := range cr.Status.Services {
+		prevStatusByKey[s.Key] = s
+	}
+
 	now := h.now()
 
-	// Stamp each matching Spec.Services entry.
-	for i := range cr.Spec.Services {
-		s := &cr.Spec.Services[i]
-		c, ok := computedByKey[s.Key]
-		if !ok {
+	// Rebuild Status.Services from the controller-managed Spec.Services input:
+	// every tracked service gets a status entry — freshly computed if processed
+	// this cycle, otherwise the preserved prior status (or a bare entry).
+	statusServices := make([]sreportalv1alpha1.DeployStatusEntry, 0, len(cr.Spec.Services))
+	for _, in := range cr.Spec.Services {
+		if c, ok := computedByKey[in.Key]; ok {
+			statusServices = append(statusServices, sreportalv1alpha1.DeployStatusEntry{
+				Key:              in.Key,
+				Workload:         in.Workload,
+				Image:            in.Image,
+				SourceRepo:       c.SourceRepo,
+				DeployedRef:      in.DeployedRef,
+				DefaultBranch:    c.DefaultBranch,
+				AheadBy:          c.AheadBy,
+				PendingCommits:   toCRDCommits(c.PendingCommits),
+				PendingTruncated: c.PendingTrunc,
+				DeployRunURL:     c.DeployRunURL,
+				State:            c.State,
+				Error:            c.Error,
+				LastCheckedAt:    now,
+			})
 			continue
 		}
-		s.LastCheckedAt = now
-		s.State = c.State
-		s.AheadBy = c.AheadBy
-		s.Error = c.Error
-		s.DefaultBranch = c.DefaultBranch
-		s.DeployRunURL = c.DeployRunURL
-		s.PendingTruncated = c.PendingTrunc
-		s.PendingCommits = toCRDCommits(c.PendingCommits)
+		if prev, ok := prevStatusByKey[in.Key]; ok {
+			statusServices = append(statusServices, prev)
+			continue
+		}
+		// Tracked but never checked yet: carry identity only.
+		statusServices = append(statusServices, sreportalv1alpha1.DeployStatusEntry{
+			Key:         in.Key,
+			Workload:    in.Workload,
+			Image:       in.Image,
+			SourceRepo:  in.SourceRepo,
+			DeployedRef: in.DeployedRef,
+		})
 	}
 
-	if err := h.client.Update(ctx, cr); err != nil {
-		return fmt.Errorf("update DeployStatus spec: %w", err)
-	}
-
-	// Update status counters.
-	cr.Status.ServiceCount = len(cr.Spec.Services)
+	cr.Status.Services = statusServices
+	cr.Status.ServiceCount = len(statusServices)
 	cr.Status.ObservedGeneration = cr.Generation
 
 	if err := h.client.Status().Update(ctx, cr); err != nil {

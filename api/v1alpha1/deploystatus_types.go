@@ -92,10 +92,11 @@ type DeployStatusEntry struct {
 	// +optional
 	DeployRunURL string `json:"deployRunUrl,omitempty"`
 
-	// state is ok | behind | unresolved | error.
-	// +kubebuilder:validation:Required
+	// state is ok | behind | unresolved | error. Empty on Spec.Services input
+	// entries (controller-managed); always set on Status.Services entries.
+	// +optional
 	// +kubebuilder:validation:Enum=ok;behind;unresolved;error
-	State string `json:"state"`
+	State string `json:"state,omitempty"`
 
 	// error carries the last per-entry error message (set when state=error).
 	// +optional
@@ -146,6 +147,15 @@ type DeployStatusStatus struct {
 	// serviceCount is the total number of entries in Spec.Services.
 	// +optional
 	ServiceCount int `json:"serviceCount,omitempty"`
+
+	// services is the observed per-workload deploy status (computed deployment lag).
+	// This is the observed-state counterpart of Spec.Services and is the only place
+	// the controller writes lag results / LastCheckedAt — Spec.Services carries only
+	// the controller-managed input (workload, image, source, deployedRef).
+	// +listType=map
+	// +listMapKey=key
+	// +optional
+	Services []DeployStatusEntry `json:"services,omitempty"`
 
 	// conditions represent the current state of the DeployStatus resource.
 	// +listType=map

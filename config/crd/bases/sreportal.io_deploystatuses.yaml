@@ -143,7 +143,9 @@ spec:
                         label. Empty when unresolved.
                       type: string
                     state:
-                      description: state is ok | behind | unresolved | error.
+                      description: |-
+                        state is ok | behind | unresolved | error. Empty on Spec.Services input
+                        entries (controller-managed); always set on Status.Services entries.
                       enum:
                       - ok
                       - behind
@@ -171,7 +173,6 @@ spec:
                   required:
                   - image
                   - key
-                  - state
                   - workload
                   type: object
                 type: array
@@ -257,6 +258,122 @@ spec:
               serviceCount:
                 description: serviceCount is the total number of entries in Spec.Services.
                 type: integer
+              services:
+                description: |-
+                  services is the observed per-workload deploy status (computed deployment lag).
+                  This is the observed-state counterpart of Spec.Services and is the only place
+                  the controller writes lag results / LastCheckedAt — Spec.Services carries only
+                  the controller-managed input (workload, image, source, deployedRef).
+                items:
+                  description: DeployStatusEntry is one observed workload's deploy
+                    status.
+                  properties:
+                    aheadBy:
+                      description: aheadBy is the number of commits the default branch
+                        is ahead of deployedRef.
+                      type: integer
+                    defaultBranch:
+                      description: defaultBranch is the repo's default branch, read
+                        dynamically.
+                      type: string
+                    deployRunUrl:
+                      description: deployRunURL links to the deploy workflow run gating
+                        prod (best-effort).
+                      type: string
+                    deployedAt:
+                      description: deployedAt is the commit date of the deployed ref
+                        (proxy — not the real deploy time).
+                      format: date-time
+                      type: string
+                    deployedRef:
+                      description: deployedRef is the deployed commit SHA (OCI revision
+                        label) or git tag (semver fallback).
+                      type: string
+                    error:
+                      description: error carries the last per-entry error message
+                        (set when state=error).
+                      type: string
+                    image:
+                      description: image is the deployed image reference observed
+                        on the running Pod.
+                      minLength: 1
+                      type: string
+                    key:
+                      description: key is sha256(image|workloadKind|workloadNamespace|workloadName|container)[:16].
+                      minLength: 1
+                      type: string
+                    lastCheckedAt:
+                      description: lastCheckedAt paces re-checks (isDue); set on every
+                        attempt, success or error.
+                      format: date-time
+                      type: string
+                    pendingCommits:
+                      description: pendingCommits lists commits not yet deployed (merge
+                        commits filtered, capped at 50).
+                      items:
+                        description: DeployStatusCommit is one pending commit.
+                        properties:
+                          author:
+                            type: string
+                          date:
+                            format: date-time
+                            type: string
+                          message:
+                            type: string
+                          sha:
+                            minLength: 1
+                            type: string
+                          url:
+                            type: string
+                        required:
+                        - sha
+                        type: object
+                      type: array
+                    pendingTruncated:
+                      description: pendingTruncated is true when more than 50 commits
+                        are pending.
+                      type: boolean
+                    sourceRepo:
+                      description: sourceRepo is the git repo URL from the OCI source
+                        label. Empty when unresolved.
+                      type: string
+                    state:
+                      description: |-
+                        state is ok | behind | unresolved | error. Empty on Spec.Services input
+                        entries (controller-managed); always set on Status.Services entries.
+                      enum:
+                      - ok
+                      - behind
+                      - unresolved
+                      - error
+                      type: string
+                    workload:
+                      description: workload identifies the workload+container running
+                        the image.
+                      properties:
+                        container:
+                          type: string
+                        kind:
+                          type: string
+                        name:
+                          type: string
+                        namespace:
+                          type: string
+                      required:
+                      - container
+                      - kind
+                      - name
+                      - namespace
+                      type: object
+                  required:
+                  - image
+                  - key
+                  - workload
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - key
+                x-kubernetes-list-type: map
             type: object
         required:
         - spec

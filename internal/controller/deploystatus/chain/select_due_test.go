@@ -29,16 +29,22 @@ func TestSelectDue_SkipsRecentlyChecked(t *testing.T) {
 	now := time.Now()
 	refresh := 5 * time.Minute
 
-	svcs := []sreportalv1alpha1.DeployStatusEntry{
+	// Spec.Services carries the tracked input (identity only).
+	specSvcs := []sreportalv1alpha1.DeployStatusEntry{
+		{Key: "fresh"},
+		{Key: "stale"},
+		{Key: "never"},
+	}
+	// Status.Services carries the observed last-check timestamps.
+	statusSvcs := []sreportalv1alpha1.DeployStatusEntry{
 		// checked 1 minute ago — within the 5m interval, should be skipped
 		{Key: "fresh", LastCheckedAt: metav1.NewTime(now.Add(-time.Minute))},
 		// checked 1 hour ago — outside the interval, should be due
 		{Key: "stale", LastCheckedAt: metav1.NewTime(now.Add(-time.Hour))},
-		// never checked — always due
-		{Key: "never"},
+		// "never" has no status entry — always due
 	}
 
-	due := selectDue(svcs, refresh, now)
+	due := selectDue(specSvcs, statusSvcs, refresh, now)
 
 	gotKeys := map[string]bool{}
 	for _, d := range due {
@@ -75,7 +81,7 @@ func TestSelectDue_MapsWorkloadFields(t *testing.T) {
 		},
 	}
 
-	due := selectDue(svcs, refresh, now)
+	due := selectDue(svcs, nil, refresh, now)
 	if len(due) != 1 {
 		t.Fatalf("expected 1 due item, got %d", len(due))
 	}
@@ -99,7 +105,7 @@ func TestSelectDue_MapsWorkloadFields(t *testing.T) {
 }
 
 func TestSelectDue_EmptyServicesProducesNoDue(t *testing.T) {
-	due := selectDue(nil, 5*time.Minute, time.Now())
+	due := selectDue(nil, nil, 5*time.Minute, time.Now())
 	if len(due) != 0 {
 		t.Errorf("expected empty due list, got %d", len(due))
 	}
