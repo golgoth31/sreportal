@@ -33,6 +33,9 @@ type Config struct {
 	// InitialBackoff is the first backoff duration (doubles each retry).
 	// Default: 500ms.
 	InitialBackoff time.Duration
+	// HTTPClient overrides the HTTP client used for all requests.
+	// When nil, defaults to &http.Client{Timeout: 15s}.
+	HTTPClient *http.Client
 }
 
 // nonRetryableError wraps a 4xx HTTP error. The client stops retrying on these.
@@ -52,6 +55,9 @@ type Client struct {
 	httpClient *http.Client
 }
 
+// Compile-time interface compliance check.
+var _ forge.Client = (*Client)(nil)
+
 // NewClient returns a new GitHub Client. cfg.TokenSource must not be nil.
 func NewClient(cfg Config) *Client {
 	if cfg.BaseURL == "" {
@@ -63,9 +69,13 @@ func NewClient(cfg Config) *Client {
 	if cfg.InitialBackoff == 0 {
 		cfg.InitialBackoff = defaultInitialBackoff
 	}
+	httpClient := cfg.HTTPClient
+	if httpClient == nil {
+		httpClient = &http.Client{Timeout: defaultTimeout}
+	}
 	return &Client{
 		cfg:        cfg,
-		httpClient: &http.Client{Timeout: defaultTimeout},
+		httpClient: httpClient,
 	}
 }
 
@@ -113,6 +123,28 @@ func (c *Client) Compare(ctx context.Context, ref forge.RepoRef, base, head stri
 		Commits:   commits,
 		Truncated: truncated,
 	}, nil
+}
+
+// LatestWorkflowRun returns the URL of the most recent run of workflowFile on branch.
+// Best-effort: returns ("", nil) when not resolvable so the caller may fall back to
+// the generic CI page. Errors from the GitHub API are intentionally swallowed.
+func (c *Client) LatestWorkflowRun(ctx context.Context, ref forge.RepoRef, workflowFile, branch string) (string, error) {
+	if workflowFile == "" {
+		return "", nil
+	}
+
+	url := fmt.Sprintf("%s/repos/%s/%s/actions/workflows/%s/runs?branch=%s&per_page=1",
+		c.cfg.BaseURL, ref.Owner, ref.Repo, workflowFile, branch)
+
+	var resp apiWorkflowRunsResponse
+	if err := c.getJSON(ctx, url, &resp); err != nil {
+		// Best-effort: swallow the error, caller falls back to the CI page.
+		return "", nil
+	}
+	if len(resp.WorkflowRuns) == 0 {
+		return "", nil
+	}
+	return resp.WorkflowRuns[0].HTMLURL, nil
 }
 
 // --------------------------------------------------------------------------
@@ -238,4 +270,12 @@ type apiAuthor struct {
 
 type apiParent struct {
 	SHA string `json:"sha"`
+}
+
+type apiWorkflowRunsResponse struct {
+	WorkflowRuns []apiWorkflowRun `json:"workflow_runs"`
+}
+
+type apiWorkflowRun struct {
+	HTMLURL string `json:"html_url"`
 }

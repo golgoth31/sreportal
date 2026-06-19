@@ -59,6 +59,9 @@ type AppTokenSourceConfig struct {
 	// BaseURL overrides the GitHub API base (default: "https://api.github.com").
 	// Useful for GHES and tests.
 	BaseURL string
+	// HTTPClient overrides the HTTP client used for installation token requests.
+	// When nil, defaults to &http.Client{Timeout: 15s}.
+	HTTPClient *http.Client
 }
 
 // AppTokenSource mints a GitHub App JWT, exchanges it for an installation access
@@ -76,30 +79,31 @@ type AppTokenSource struct {
 }
 
 // NewAppTokenSource parses the PEM key and returns an AppTokenSource ready to use.
-func NewAppTokenSource(cfg AppTokenSourceConfig) *AppTokenSource {
+// Returns an error immediately if the private key PEM cannot be parsed (fail-fast at
+// operator startup rather than deferring to the first Token() call).
+func NewAppTokenSource(cfg AppTokenSourceConfig) (*AppTokenSource, error) {
 	baseURL := cfg.BaseURL
 	if baseURL == "" {
 		baseURL = "https://api.github.com"
 	}
 	key, err := parseRSAKey(cfg.PrivateKeyPEM)
 	if err != nil {
-		// Store a nil key; Token() will return the parse error on first call.
-		return &AppTokenSource{cfg: cfg, baseURL: baseURL, httpClient: &http.Client{Timeout: 15 * time.Second}}
+		return nil, fmt.Errorf("github app: parse private key: %w", err)
+	}
+	httpClient := cfg.HTTPClient
+	if httpClient == nil {
+		httpClient = &http.Client{Timeout: 15 * time.Second}
 	}
 	return &AppTokenSource{
 		cfg:        cfg,
 		privateKey: key,
-		httpClient: &http.Client{Timeout: 15 * time.Second},
+		httpClient: httpClient,
 		baseURL:    baseURL,
-	}
+	}, nil
 }
 
 // Token returns a valid installation access token, refreshing if needed.
 func (a *AppTokenSource) Token(ctx context.Context) (string, error) {
-	if a.privateKey == nil {
-		return "", fmt.Errorf("github app: invalid private key PEM")
-	}
-
 	a.mu.Lock()
 	defer a.mu.Unlock()
 

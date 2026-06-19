@@ -53,6 +53,16 @@ func TestPATTokenSource_ReturnsToken(t *testing.T) {
 	assert.Equal(t, "ghp_testtoken123", tok)
 }
 
+func TestNewAppTokenSource_FailsFastOnInvalidPEM(t *testing.T) {
+	_, err := githubclient.NewAppTokenSource(githubclient.AppTokenSourceConfig{
+		AppID:          42,
+		InstallationID: 1234,
+		PrivateKeyPEM:  "not-a-valid-pem",
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "parse private key")
+}
+
 func TestAppTokenSource_MintsAndCaches(t *testing.T) {
 	key := generateTestKey(t)
 
@@ -74,12 +84,13 @@ func TestAppTokenSource_MintsAndCaches(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	src := githubclient.NewAppTokenSource(githubclient.AppTokenSourceConfig{
+	src, err := githubclient.NewAppTokenSource(githubclient.AppTokenSourceConfig{
 		AppID:          42,
 		InstallationID: 1234,
 		PrivateKeyPEM:  encodePKCS1PEM(key),
 		BaseURL:        srv.URL,
 	})
+	require.NoError(t, err)
 
 	// First call — should mint
 	tok1, err := src.Token(context.Background())
@@ -120,12 +131,13 @@ func TestAppTokenSource_RefreshesExpiredToken(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	src := githubclient.NewAppTokenSource(githubclient.AppTokenSourceConfig{
+	src, err := githubclient.NewAppTokenSource(githubclient.AppTokenSourceConfig{
 		AppID:          42,
 		InstallationID: 1234,
 		PrivateKeyPEM:  encodePKCS1PEM(key),
 		BaseURL:        srv.URL,
 	})
+	require.NoError(t, err)
 
 	// First call — mints expired token
 	tok1, err := src.Token(context.Background())
@@ -153,12 +165,13 @@ func TestAppTokenSource_PKCS8Key(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	src := githubclient.NewAppTokenSource(githubclient.AppTokenSourceConfig{
+	src, err := githubclient.NewAppTokenSource(githubclient.AppTokenSourceConfig{
 		AppID:          42,
 		InstallationID: 1234,
 		PrivateKeyPEM:  encodePKCS8PEM(t, key),
 		BaseURL:        srv.URL,
 	})
+	require.NoError(t, err)
 
 	tok, err := src.Token(context.Background())
 	require.NoError(t, err)

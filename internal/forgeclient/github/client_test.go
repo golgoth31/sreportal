@@ -175,3 +175,73 @@ func TestCompare_Truncated(t *testing.T) {
 	// When status == "diverged", commits list may be empty but ahead_by > 0; not truncated per se.
 	assert.Equal(t, 100, result.AheadBy)
 }
+
+func TestLatestWorkflowRun_ReturnsHTMLURL(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/repos/acme/myapp/actions/workflows/deploy.yml/runs", r.URL.Path)
+		assert.Equal(t, "mybranch", r.URL.Query().Get("branch"))
+		assert.Equal(t, "1", r.URL.Query().Get("per_page"))
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"workflow_runs": []map[string]any{
+				{"html_url": "https://github.com/acme/myapp/actions/runs/12345"},
+			},
+		})
+	}))
+	defer srv.Close()
+
+	c := githubclient.NewClient(githubclient.Config{
+		TokenSource: &staticTokenSource{tok: "test-pat"},
+		BaseURL:     srv.URL,
+	})
+	got, err := c.LatestWorkflowRun(context.Background(), forge.RepoRef{Owner: "acme", Repo: "myapp"}, "deploy.yml", "mybranch")
+	require.NoError(t, err)
+	assert.Equal(t, "https://github.com/acme/myapp/actions/runs/12345", got)
+}
+
+func TestLatestWorkflowRun_EmptyWorkflowFile(t *testing.T) {
+	// No server needed — should return early without any HTTP call.
+	c := githubclient.NewClient(githubclient.Config{
+		TokenSource: &staticTokenSource{tok: "test-pat"},
+		BaseURL:     "http://127.0.0.1:0", // unreachable; call must not reach it
+	})
+	got, err := c.LatestWorkflowRun(context.Background(), forge.RepoRef{Owner: "acme", Repo: "myapp"}, "", "main")
+	require.NoError(t, err)
+	assert.Equal(t, "", got)
+}
+
+func TestLatestWorkflowRun_ServerErrorReturnsEmpty(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"message":"Not Found"}`))
+	}))
+	defer srv.Close()
+
+	c := githubclient.NewClient(githubclient.Config{
+		TokenSource:    &staticTokenSource{tok: "test-pat"},
+		BaseURL:        srv.URL,
+		MaxRetries:     0, // no retries, fail fast
+		InitialBackoff: time.Millisecond,
+	})
+	got, err := c.LatestWorkflowRun(context.Background(), forge.RepoRef{Owner: "acme", Repo: "myapp"}, "deploy.yml", "main")
+	require.NoError(t, err, "LatestWorkflowRun must swallow errors (best-effort)")
+	assert.Equal(t, "", got)
+}
+
+func TestLatestWorkflowRun_EmptyRunsReturnsEmpty(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"workflow_runs": []map[string]any{},
+		})
+	}))
+	defer srv.Close()
+
+	c := githubclient.NewClient(githubclient.Config{
+		TokenSource: &staticTokenSource{tok: "test-pat"},
+		BaseURL:     srv.URL,
+	})
+	got, err := c.LatestWorkflowRun(context.Background(), forge.RepoRef{Owner: "acme", Repo: "myapp"}, "ci.yml", "main")
+	require.NoError(t, err)
+	assert.Equal(t, "", got)
+}

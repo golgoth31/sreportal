@@ -41,4 +41,8 @@ type Client interface {
 	// Compare returns commits reachable from head but not from base (head is
 	// ahead-of base). The result may be truncated by the forge.
 	Compare(ctx context.Context, ref RepoRef, base, head string) (CompareResult, error)
+
+	// LatestWorkflowRun returns the URL of the most recent run of workflowFile on branch.
+	// Best-effort: returns ("", nil) when not resolvable (caller falls back to the CI page).
+	LatestWorkflowRun(ctx context.Context, ref RepoRef, workflowFile, branch string) (string, error)
 }
