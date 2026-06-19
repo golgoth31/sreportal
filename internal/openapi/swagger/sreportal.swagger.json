@@ -9,6 +9,9 @@
       "name": "AlertmanagerService"
     },
     {
+      "name": "DeployStatusService"
+    },
+    {
       "name": "DNSService"
     },
     {
@@ -148,6 +151,38 @@
         ],
         "tags": [
           "DNSService"
+        ]
+      }
+    },
+    "/sreportal.v1.DeployStatusService/ListDeployStatus": {
+      "post": {
+        "operationId": "DeployStatusService_ListDeployStatus",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListDeployStatusResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1ListDeployStatusRequest"
+            }
+          }
+        ],
+        "tags": [
+          "DeployStatusService"
         ]
       }
     },
@@ -1243,6 +1278,99 @@
       "type": "object",
       "title": "DeleteMaintenanceResponse is returned after deleting a maintenance"
     },
+    "v1DeployStatusCommit": {
+      "type": "object",
+      "properties": {
+        "sha": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "author": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "url": {
+          "type": "string"
+        }
+      }
+    },
+    "v1DeployStatusEntry": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "workload": {
+          "$ref": "#/definitions/v1DeployWorkloadRef"
+        },
+        "image": {
+          "type": "string"
+        },
+        "sourceRepo": {
+          "type": "string"
+        },
+        "deployedRef": {
+          "type": "string"
+        },
+        "defaultBranch": {
+          "type": "string"
+        },
+        "aheadBy": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "pendingCommits": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1DeployStatusCommit"
+          }
+        },
+        "pendingTruncated": {
+          "type": "boolean"
+        },
+        "deployedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "deployRunUrl": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
+        },
+        "lastCheckedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "v1DeployWorkloadRef": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "container": {
+          "type": "string"
+        }
+      },
+      "description": "DeployWorkloadRef identifies a workload+container. Named distinctly from the\nimage inventory's WorkloadRef to keep the deploy-status contract self-contained."
+    },
     "v1FQDN": {
       "type": "object",
       "properties": {
@@ -1584,6 +1712,35 @@
         }
       },
       "title": "ListCustomEmojisResponse contains the custom emoji mapping"
+    },
+    "v1ListDeployStatusRequest": {
+      "type": "object",
+      "properties": {
+        "portal": {
+          "type": "string",
+          "description": "portal filters to a Portal metadata.name (defaults to \"main\" if unset)."
+        },
+        "search": {
+          "type": "string",
+          "description": "search optionally filters by service/repo substring."
+        },
+        "stateFilter": {
+          "type": "string",
+          "description": "state_filter optionally filters by state (ok|behind|unresolved|error)."
+        }
+      }
+    },
+    "v1ListDeployStatusResponse": {
+      "type": "object",
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1DeployStatusEntry"
+          }
+        }
+      }
     },
     "v1ListFQDNsRequest": {
       "type": "object",

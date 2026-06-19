@@ -66,6 +66,11 @@ spec:
                     description: alerts enables alertmanager integration for this
                       portal.
                     type: boolean
+                  deployStatus:
+                    default: true
+                    description: deployStatus enables the deploy status page (per-service
+                      deployment lag) for this portal.
+                    type: boolean
                   dns:
                     default: true
                     description: dns enables DNS discovery (controllers, gRPC, MCP,
