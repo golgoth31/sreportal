@@ -30,6 +30,12 @@ type SourceEndpointReader interface {
 	// namespace ("" = all namespaces) and labelFilter ("" = match-all,
 	// labels.Selector syntax). An invalid labelFilter returns an error.
 	Lookup(kind registry.SourceType, namespace, labelFilter string) ([]EnrichedEndpoint, error)
+	// Ready reports whether the producer has applied at least one successful
+	// collection for kind (i.e. ReplaceKind has been called). The read side uses
+	// it to avoid purging persisted DNSRecords for a kind whose source has not
+	// synced yet — e.g. right after a controller restart, when the in-memory
+	// store is empty but the DNSRecord CRs still exist.
+	Ready(kind registry.SourceType) bool
 }
 
 // SourceEndpointWriter is the write-side contract, used by the

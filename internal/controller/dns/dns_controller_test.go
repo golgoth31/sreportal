@@ -41,6 +41,10 @@ func (emptySourceReader) Lookup(_ registry.SourceType, _, _ string) ([]domainsou
 	return nil, nil
 }
 
+// Ready reports true so the "not synced yet" preserve gate is a no-op for tests
+// that exercise the authoritatively-empty path.
+func (emptySourceReader) Ready(_ registry.SourceType) bool { return true }
+
 var _ = Describe("DNS Controller", func() {
 	const (
 		timeout  = time.Second * 10

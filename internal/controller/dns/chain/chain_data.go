@@ -51,4 +51,12 @@ type ChainData struct {
 	// feature disabled — controllers use this to choose between cleanup and
 	// production paths.
 	PortalDisabled bool
+
+	// PreserveKinds holds the enabled kinds whose source has not produced a
+	// successful collection yet (store not ready — e.g. just after a controller
+	// restart, before external-dns informers sync). UpsertDNSRecordsHandler must
+	// NOT delete the existing auto DNSRecord of such a kind: its empty lookup is
+	// "not synced yet", not "authoritatively empty", and deleting would purge
+	// good persisted records until the sources catch up.
+	PreserveKinds map[registry.SourceType]bool
 }

@@ -16,11 +16,17 @@ import (
 type Store struct {
 	mu     sync.RWMutex
 	byKind map[registry.SourceType]map[string][]domainsource.EnrichedEndpoint
+	// ready records kinds for which ReplaceKind has succeeded at least once, so
+	// the read side can tell "authoritatively empty" from "not synced yet".
+	ready map[registry.SourceType]bool
 }
 
 // NewStore returns an empty Store.
 func NewStore() *Store {
-	return &Store{byKind: map[registry.SourceType]map[string][]domainsource.EnrichedEndpoint{}}
+	return &Store{
+		byKind: map[registry.SourceType]map[string][]domainsource.EnrichedEndpoint{},
+		ready:  map[registry.SourceType]bool{},
+	}
 }
 
 // compile-time interface checks
@@ -37,6 +43,7 @@ func (s *Store) ReplaceKind(kind registry.SourceType, entries []domainsource.Enr
 	}
 	s.mu.Lock()
 	s.byKind[kind] = byNs
+	s.ready[kind] = true
 	s.mu.Unlock()
 }
 
@@ -44,7 +51,15 @@ func (s *Store) ReplaceKind(kind registry.SourceType, entries []domainsource.Enr
 func (s *Store) DeleteKind(kind registry.SourceType) {
 	s.mu.Lock()
 	delete(s.byKind, kind)
+	delete(s.ready, kind)
 	s.mu.Unlock()
+}
+
+// Ready reports whether ReplaceKind has succeeded at least once for kind.
+func (s *Store) Ready(kind registry.SourceType) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.ready[kind]
 }
 
 // CountKind returns the total number of entries stored for a kind across all

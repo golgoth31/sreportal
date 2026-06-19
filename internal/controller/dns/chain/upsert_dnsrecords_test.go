@@ -103,6 +103,59 @@ func TestUpsertDNSRecords_CreatesAndDeletes(t *testing.T) {
 	require.True(t, apierrors.IsNotFound(err), "expected d-ingress to be deleted, got err=%v", err)
 }
 
+// TestUpsertDNSRecords_PreservesNotReadyKind verifies the startup-purge guard:
+// an enabled kind whose source has not synced yet (PreserveKinds) keeps its
+// existing auto DNSRecord even though it produced no endpoints this cycle —
+// preventing a controller restart from wiping persisted records before the
+// external-dns sources catch up.
+func TestUpsertDNSRecords_PreservesNotReadyKind(t *testing.T) {
+	scheme := runtime.NewScheme()
+	require.NoError(t, sreportalv1alpha2.AddToScheme(scheme))
+
+	dns := &sreportalv1alpha2.DNS{
+		ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: upsertTestNS1, UID: "u1"},
+		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: "p"},
+	}
+	existing := &sreportalv1alpha2.DNSRecord{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: upsertTestRecordIng, Namespace: upsertTestNS1,
+			OwnerReferences: []metav1.OwnerReference{{
+				APIVersion: sreportalv1alpha2.GroupVersion.String(),
+				Kind:       "DNS",
+				Name:       dns.Name,
+				UID:        dns.UID,
+				Controller: ptr.To(true), //nolint:modernize // new(bool) yields false, not true
+			}},
+		},
+		Spec: sreportalv1alpha2.DNSRecordSpec{
+			Origin:     sreportalv1alpha2.DNSRecordOriginAuto,
+			SourceType: sreportalv1alpha2.SourceType(ingress.SourceTypeIngress),
+			PortalRef:  "p",
+		},
+	}
+	c := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithStatusSubresource(&sreportalv1alpha2.DNSRecord{}).
+		WithObjects(dns, existing).
+		Build()
+
+	h := &dnschain.UpsertDNSRecordsHandler{Client: c}
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{
+		Resource: dns,
+		Data: dnschain.ChainData{
+			// ingress enabled but its source hasn't synced → no endpoints, preserve.
+			KeptEndpointsByKind: map[registry.SourceType][]*endpoint.Endpoint{},
+			PreserveKinds:       map[registry.SourceType]bool{ingress.SourceTypeIngress: true},
+		},
+	}
+	require.NoError(t, h.Handle(context.Background(), rc))
+
+	var still sreportalv1alpha2.DNSRecord
+	require.NoError(t, c.Get(context.Background(),
+		types.NamespacedName{Namespace: upsertTestNS1, Name: upsertTestRecordIng}, &still),
+		"d-ingress must be preserved while its source is not ready")
+}
+
 // TestUpsertDNSRecordsHandler_MultipleKinds verifies that when ChainData
 // carries endpoints for multiple source kinds, the handler creates one DNSRecord
 // per kind (named {dnsName}-{kind}), each with the correct endpoints and

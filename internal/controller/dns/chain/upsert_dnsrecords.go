@@ -64,7 +64,15 @@ func (h *UpsertDNSRecordsHandler) Handle(ctx context.Context, rc *reconciler.Rec
 		if !ownedBy(dr, dns) || dr.Spec.Origin != sreportalv1alpha2.DNSRecordOriginAuto {
 			continue
 		}
-		if desiredKinds[registry.SourceType(dr.Spec.SourceType)] {
+		kind := registry.SourceType(dr.Spec.SourceType)
+		if desiredKinds[kind] {
+			continue
+		}
+		// Don't purge a kind whose source hasn't synced yet: its absence from
+		// desiredKinds is "not ready", not "authoritatively empty". Once the
+		// source produces a collection the kind leaves PreserveKinds and a
+		// genuinely-empty kind's stale record is reclaimed on a later cycle.
+		if rc.Data.PreserveKinds[kind] {
 			continue
 		}
 		if err := h.Client.Delete(ctx, dr); err != nil && !apierrors.IsNotFound(err) {
