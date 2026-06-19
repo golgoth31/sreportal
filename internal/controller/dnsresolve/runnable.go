@@ -23,6 +23,8 @@ import (
 	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	v1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 	dnschain "github.com/golgoth31/sreportal/internal/controller/dnsrecords/chain"
@@ -30,8 +32,11 @@ import (
 )
 
 const (
-	lookupTimeout = 2 * time.Second
-	maxConcurrent = 10
+	lookupTimeout   = 2 * time.Second
+	maxConcurrent   = 10
+	resolveInterval = 24 * time.Hour
+	schedTick       = 1 * time.Minute
+	forceDebounce   = 5 * time.Second
 )
 
 // Runnable resolves DNSRecord endpoints out-of-band and keeps both the
@@ -40,7 +45,126 @@ type Runnable struct {
 	Client     client.Client
 	Resolver   domaindns.Resolver
 	FQDNWriter domaindns.FQDNWriter
+	sched      *scheduler
+	mu         sync.Mutex
+	forced     map[string]struct{}
 }
+
+// New creates a Runnable with an initialised scheduler.
+func New(c client.Client, resolver domaindns.Resolver, w domaindns.FQDNWriter) *Runnable {
+	return &Runnable{
+		Client:     c,
+		Resolver:   resolver,
+		FQDNWriter: w,
+		sched:      newScheduler(resolveInterval, time.Now, time.Now().UnixNano()),
+		forced:     map[string]struct{}{},
+	}
+}
+
+// Force marks a record as immediately due for resolution on the next tick.
+func (r *Runnable) Force(recordKey string) {
+	r.mu.Lock()
+	r.forced[recordKey] = struct{}{}
+	r.mu.Unlock()
+}
+
+// tick performs one resolution pass: syncs the scheduler, flushes forced keys,
+// then resolves all due FQDNs.
+func (r *Runnable) tick(ctx context.Context) error {
+	logger := log.FromContext(ctx).WithName("dnsresolve")
+	var list v1alpha2.DNSRecordList
+	if err := r.Client.List(ctx, &list); err != nil {
+		return err
+	}
+	r.sched.Sync(listKeys(list.Items))
+
+	r.mu.Lock()
+	for rk := range r.forced {
+		r.sched.ForceRecord(rk)
+		delete(r.forced, rk)
+	}
+	r.mu.Unlock()
+
+	due := r.sched.Due(time.Now())
+	if len(due) == 0 {
+		return nil
+	}
+	byRecord := map[string][]FQDNKey{}
+	for _, k := range due {
+		byRecord[k.RecordKey] = append(byRecord[k.RecordKey], k)
+	}
+	for rk, keys := range byRecord {
+		rec := recordFromList(list.Items, rk)
+		if rec == nil {
+			continue
+		}
+		gm := r.groupMappingFor(ctx, rec)
+		if err := r.resolveRecord(ctx, rec, gm, keys); err != nil {
+			logger.Error(err, "resolve record failed", "record", rk)
+			continue
+		}
+		for _, k := range keys {
+			r.sched.Reschedule(k)
+		}
+	}
+	return nil
+}
+
+// Start implements manager.Runnable. It ticks on a regular interval and also
+// fires a debounced tick shortly after Force is called.
+func (r *Runnable) Start(ctx context.Context) error {
+	ticker := time.NewTicker(schedTick)
+	defer ticker.Stop()
+	debounce := time.NewTimer(forceDebounce)
+	defer debounce.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+			_ = r.tick(ctx)
+		case <-debounce.C:
+			_ = r.tick(ctx)
+			debounce.Reset(forceDebounce)
+		}
+	}
+}
+
+func listKeys(records []v1alpha2.DNSRecord) []FQDNKey {
+	var out []FQDNKey
+	for i := range records {
+		rk := records[i].Namespace + "/" + records[i].Name
+		for _, ep := range records[i].Status.Endpoints {
+			out = append(out, FQDNKey{RecordKey: rk, DNSName: ep.DNSName, RecordType: ep.RecordType})
+		}
+	}
+	return out
+}
+
+func recordFromList(records []v1alpha2.DNSRecord, recordKey string) *v1alpha2.DNSRecord {
+	for i := range records {
+		if records[i].Namespace+"/"+records[i].Name == recordKey {
+			return records[i].DeepCopy()
+		}
+	}
+	return nil
+}
+
+func (r *Runnable) groupMappingFor(ctx context.Context, rec *v1alpha2.DNSRecord) *v1alpha2.GroupMappingSpec {
+	for _, o := range rec.GetOwnerReferences() {
+		if o.Kind != "DNS" {
+			continue
+		}
+		var dns v1alpha2.DNS
+		if err := r.Client.Get(ctx, client.ObjectKey{Namespace: rec.Namespace, Name: o.Name}, &dns); err != nil {
+			return nil
+		}
+		return &dns.Spec.GroupMapping
+	}
+	return nil
+}
+
+var _ manager.Runnable = (*Runnable)(nil)
 
 // resolveRecord resolves the requested keys of rec (in parallel, bounded),
 // writes SyncStatus onto rec.Status.Endpoints (matched by DNSName+RecordType),

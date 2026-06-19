@@ -74,3 +74,26 @@ func TestResolveRecord_SetsSyncStatusAndRefreshesStore(t *testing.T) {
 	require.Len(t, w.views, 1)
 	require.Equal(t, string(domaindns.SyncStatusSync), w.views[0].SyncStatus)
 }
+
+func TestRunnable_ForceThenTickResolves(t *testing.T) {
+	scheme := runtime.NewScheme()
+	require.NoError(t, v1alpha2.AddToScheme(scheme))
+	rec := &v1alpha2.DNSRecord{
+		ObjectMeta: metav1.ObjectMeta{Name: "r", Namespace: "ns"},
+		Spec:       v1alpha2.DNSRecordSpec{PortalRef: "p"},
+		Status: v1alpha2.DNSRecordStatus{Endpoints: []v1alpha2.EndpointStatus{
+			{DNSName: "a.example.com", RecordType: "A", Targets: []string{"1.2.3.4"}, LastSeen: metav1.Now()},
+		}},
+	}
+	c := fake.NewClientBuilder().WithScheme(scheme).
+		WithStatusSubresource(&v1alpha2.DNSRecord{}).WithObjects(rec).Build()
+	w := &capWriter{}
+	r := New(c, stubResolver{addrs: []string{"1.2.3.4"}}, w)
+
+	r.Force("ns/r")
+	require.NoError(t, r.tick(context.Background()))
+
+	var got v1alpha2.DNSRecord
+	require.NoError(t, c.Get(context.Background(), client.ObjectKeyFromObject(rec), &got))
+	require.Equal(t, v1alpha2.SyncStatus(domaindns.SyncStatusSync), got.Status.Endpoints[0].SyncStatus)
+}
