@@ -64,6 +64,7 @@ import (
 	dnsctrl "github.com/golgoth31/sreportal/internal/controller/dns"
 	dnschain "github.com/golgoth31/sreportal/internal/controller/dns/chain"
 	dnsrecordsctrl "github.com/golgoth31/sreportal/internal/controller/dnsrecords"
+	dnsresolve "github.com/golgoth31/sreportal/internal/controller/dnsresolve"
 	emojictrl "github.com/golgoth31/sreportal/internal/controller/emoji"
 	imageinventoryctrl "github.com/golgoth31/sreportal/internal/controller/imageinventory"
 	imageregistryctrl "github.com/golgoth31/sreportal/internal/controller/imageregistry"
@@ -579,9 +580,14 @@ func main() {
 	dnsRecordReconciler := dnsrecordsctrl.NewDNSRecordReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),
-		dnschain.NewNetResolver(),
 	)
 	dnsRecordReconciler.SetFQDNWriter(fqdnStore)
+	dnsResolver := dnsresolve.New(mgr.GetClient(), dnschain.NewNetResolver(), fqdnStore)
+	dnsRecordReconciler.SetForcer(dnsResolver)
+	if err := mgr.Add(dnsResolver); err != nil {
+		setupLog.Error(err, "unable to add DNS resolve runnable")
+		os.Exit(1)
+	}
 	if err := dnsRecordReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "DNSRecord")
 		os.Exit(1)
