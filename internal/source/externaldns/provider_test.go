@@ -49,7 +49,7 @@ func TestProvider_IngressFromRules(t *testing.T) {
 		}},
 	}
 	kube := kubefake.NewSimpleClientset(ing)
-	p := externaldns.NewProvider(kube, nil)
+	p := externaldns.NewProvider(kube, nil, nil)
 	cfgs := externaldns.BuildEffectiveConfigs(dnsEnabling(func(s *sreportalv1alpha2.SourcesSpec) {
 		s.Ingress = &sreportalv1alpha2.IngressSourceSpec{CommonSourceSpec: sreportalv1alpha2.CommonSourceSpec{Enabled: true}}
 	}))
@@ -83,7 +83,7 @@ func TestProvider_ServiceAnnotated(t *testing.T) {
 		}},
 	}
 	kube := kubefake.NewSimpleClientset(svc)
-	p := externaldns.NewProvider(kube, nil)
+	p := externaldns.NewProvider(kube, nil, nil)
 	cfgs := externaldns.BuildEffectiveConfigs(dnsEnabling(func(s *sreportalv1alpha2.SourcesSpec) {
 		s.Service = &sreportalv1alpha2.ServiceSourceSpec{
 			CommonSourceSpec:  sreportalv1alpha2.CommonSourceSpec{Enabled: true},
@@ -110,7 +110,7 @@ func TestProvider_ServiceAnnotated(t *testing.T) {
 // istio-gateway kind without an istio client surfaces an error (so the cycle
 // preserves state) rather than panicking or silently returning nothing.
 func TestProvider_IstioGatewayWithoutIstioClient(t *testing.T) {
-	p := externaldns.NewProvider(kubefake.NewSimpleClientset(), nil) // istio == nil
+	p := externaldns.NewProvider(kubefake.NewSimpleClientset(), nil, nil) // istio == nil
 	cfgs := externaldns.BuildEffectiveConfigs(dnsEnabling(func(s *sreportalv1alpha2.SourcesSpec) {
 		s.IstioGateway = &sreportalv1alpha2.IstioGatewaySourceSpec{
 			CommonSourceSpec: sreportalv1alpha2.CommonSourceSpec{Enabled: true},

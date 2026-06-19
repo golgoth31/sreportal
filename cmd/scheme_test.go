@@ -19,30 +19,26 @@ package main
 import (
 	"testing"
 
+	istionetworkingv1 "istio.io/client-go/pkg/apis/networking/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/golgoth31/sreportal/internal/source/gatewaygrpcroute"
-	"github.com/golgoth31/sreportal/internal/source/gatewayhttproute"
-	"github.com/golgoth31/sreportal/internal/source/gatewaytcproute"
-	"github.com/golgoth31/sreportal/internal/source/gatewaytlsroute"
-	"github.com/golgoth31/sreportal/internal/source/gatewayudproute"
-	"github.com/golgoth31/sreportal/internal/source/istiogateway"
-	"github.com/golgoth31/sreportal/internal/source/istiovirtualservice"
+	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gwapiv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
-// TestSchemeRegistersExternalSourceTypes guards against the SourceReconciler
-// failing client-side ("no kind is registered for the type ...") when a source
-// backed by an external API (Istio, Gateway API) is enabled on a DNS CR. Each
-// resolver's list type must be recognized by the manager scheme built in init().
+// TestSchemeRegistersExternalSourceTypes guards against the source enrichment
+// re-fetch failing client-side ("no kind is registered for the type ...") when
+// a source backed by an external API (Istio, Gateway API) is enabled on a DNS
+// CR. Each list type the native external-dns sources rely on must be recognized
+// by the manager scheme built in init().
 func TestSchemeRegistersExternalSourceTypes(t *testing.T) {
 	lists := map[string]client.ObjectList{
-		"istio-gateway":        istiogateway.NewResolver().ObjectList(),
-		"istio-virtualservice": istiovirtualservice.NewResolver().ObjectList(),
-		"gateway-httproute":    gatewayhttproute.NewResolver().ObjectList(),
-		"gateway-grpcroute":    gatewaygrpcroute.NewResolver().ObjectList(),
-		"gateway-tcproute":     gatewaytcproute.NewResolver().ObjectList(),
-		"gateway-tlsroute":     gatewaytlsroute.NewResolver().ObjectList(),
-		"gateway-udproute":     gatewayudproute.NewResolver().ObjectList(),
+		"istio-gateway":        &istionetworkingv1.GatewayList{},
+		"istio-virtualservice": &istionetworkingv1.VirtualServiceList{},
+		"gateway-httproute":    &gwapiv1.HTTPRouteList{},
+		"gateway-grpcroute":    &gwapiv1.GRPCRouteList{},
+		"gateway-tcproute":     &gwapiv1alpha2.TCPRouteList{},
+		"gateway-tlsroute":     &gwapiv1alpha2.TLSRouteList{},
+		"gateway-udproute":     &gwapiv1alpha2.UDPRouteList{},
 	}
 	for name, list := range lists {
 		if _, _, err := scheme.ObjectKinds(list); err != nil {

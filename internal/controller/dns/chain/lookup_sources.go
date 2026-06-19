@@ -28,17 +28,8 @@ import (
 	"github.com/golgoth31/sreportal/internal/reconciler"
 	sourcepkg "github.com/golgoth31/sreportal/internal/source"
 	"github.com/golgoth31/sreportal/internal/source/crossplanescalewayrecord"
-	"github.com/golgoth31/sreportal/internal/source/dnsendpoint"
-	"github.com/golgoth31/sreportal/internal/source/gatewaygrpcroute"
-	"github.com/golgoth31/sreportal/internal/source/gatewayhttproute"
-	"github.com/golgoth31/sreportal/internal/source/gatewaytcproute"
-	"github.com/golgoth31/sreportal/internal/source/gatewaytlsroute"
-	"github.com/golgoth31/sreportal/internal/source/gatewayudproute"
-	"github.com/golgoth31/sreportal/internal/source/ingress"
-	"github.com/golgoth31/sreportal/internal/source/istiogateway"
-	"github.com/golgoth31/sreportal/internal/source/istiovirtualservice"
+	"github.com/golgoth31/sreportal/internal/source/externaldns"
 	"github.com/golgoth31/sreportal/internal/source/registry"
-	"github.com/golgoth31/sreportal/internal/source/service"
 )
 
 // LookupSourcesHandler queries the SourceEndpointStore for each enabled kind
@@ -111,15 +102,15 @@ func firstNonEmpty(a, b string) string {
 // path stays uniform.
 func perKindCommonSpec(s *sreportalv1alpha2.SourcesSpec, kind registry.SourceType) sreportalv1alpha2.CommonSourceSpec {
 	switch kind {
-	case service.SourceTypeService:
+	case externaldns.KindService:
 		if s.Service != nil {
 			return s.Service.CommonSourceSpec
 		}
-	case ingress.SourceTypeIngress:
+	case externaldns.KindIngress:
 		if s.Ingress != nil {
 			return s.Ingress.CommonSourceSpec
 		}
-	case dnsendpoint.SourceTypeDNSEndpoint:
+	case externaldns.KindDNSEndpoint:
 		if s.DNSEndpoint != nil {
 			return sreportalv1alpha2.CommonSourceSpec{
 				Enabled:     s.DNSEndpoint.Enabled,
@@ -127,31 +118,31 @@ func perKindCommonSpec(s *sreportalv1alpha2.SourcesSpec, kind registry.SourceTyp
 				LabelFilter: s.DNSEndpoint.LabelFilter,
 			}
 		}
-	case istiogateway.SourceTypeIstioGateway:
+	case externaldns.KindIstioGateway:
 		if s.IstioGateway != nil {
 			return s.IstioGateway.CommonSourceSpec
 		}
-	case istiovirtualservice.SourceTypeIstioVirtualService:
+	case externaldns.KindIstioVirtualService:
 		if s.IstioVirtualService != nil {
 			return s.IstioVirtualService.CommonSourceSpec
 		}
-	case gatewayhttproute.SourceTypeGatewayHTTPRoute:
+	case externaldns.KindGatewayHTTPRoute:
 		if s.GatewayHTTPRoute != nil {
 			return s.GatewayHTTPRoute.CommonSourceSpec
 		}
-	case gatewaygrpcroute.SourceTypeGatewayGRPCRoute:
+	case externaldns.KindGatewayGRPCRoute:
 		if s.GatewayGRPCRoute != nil {
 			return s.GatewayGRPCRoute.CommonSourceSpec
 		}
-	case gatewaytcproute.SourceTypeGatewayTCPRoute:
+	case externaldns.KindGatewayTCPRoute:
 		if s.GatewayTCPRoute != nil {
 			return s.GatewayTCPRoute.CommonSourceSpec
 		}
-	case gatewaytlsroute.SourceTypeGatewayTLSRoute:
+	case externaldns.KindGatewayTLSRoute:
 		if s.GatewayTLSRoute != nil {
 			return s.GatewayTLSRoute.CommonSourceSpec
 		}
-	case gatewayudproute.SourceTypeGatewayUDPRoute:
+	case externaldns.KindGatewayUDPRoute:
 		if s.GatewayUDPRoute != nil {
 			return s.GatewayUDPRoute.CommonSourceSpec
 		}

@@ -94,18 +94,8 @@ import (
 	"github.com/golgoth31/sreportal/internal/remoteclient"
 	"github.com/golgoth31/sreportal/internal/slackclient"
 	"github.com/golgoth31/sreportal/internal/source/crossplanescalewayrecord"
-	"github.com/golgoth31/sreportal/internal/source/dnsendpoint"
 	"github.com/golgoth31/sreportal/internal/source/externaldns"
-	"github.com/golgoth31/sreportal/internal/source/gatewaygrpcroute"
-	"github.com/golgoth31/sreportal/internal/source/gatewayhttproute"
-	"github.com/golgoth31/sreportal/internal/source/gatewaytcproute"
-	"github.com/golgoth31/sreportal/internal/source/gatewaytlsroute"
-	"github.com/golgoth31/sreportal/internal/source/gatewayudproute"
-	"github.com/golgoth31/sreportal/internal/source/ingress"
-	"github.com/golgoth31/sreportal/internal/source/istiogateway"
-	"github.com/golgoth31/sreportal/internal/source/istiovirtualservice"
 	srcregistry "github.com/golgoth31/sreportal/internal/source/registry"
-	"github.com/golgoth31/sreportal/internal/source/service"
 	statuspagesvc "github.com/golgoth31/sreportal/internal/statuspage"
 	"github.com/golgoth31/sreportal/internal/version"
 	webhookv1alpha1 "github.com/golgoth31/sreportal/internal/webhook/v1alpha1"
@@ -537,17 +527,11 @@ func main() {
 
 	// Create ReadStores: controllers write, gRPC/MCP read.
 	sourceStore := readstoresource.NewStore()
+	// Native external-dns discovery (Provider) handles ingress, service,
+	// istio-gateway/virtualservice, gateway-api routes and DNSEndpoint. Only
+	// crossplane-scaleway-record, which has no native external-dns source, keeps
+	// a hand-rolled resolver.
 	sourceRegistry := srcregistry.NewRegistry(
-		service.NewResolver(),
-		ingress.NewResolver(),
-		dnsendpoint.NewResolver(),
-		istiogateway.NewResolver(),
-		istiovirtualservice.NewResolver(),
-		gatewayhttproute.NewResolver(),
-		gatewaygrpcroute.NewResolver(),
-		gatewaytcproute.NewResolver(),
-		gatewaytlsroute.NewResolver(),
-		gatewayudproute.NewResolver(),
 		crossplanescalewayrecord.NewResolver(),
 	)
 	fqdnStore := dnsreadstore.NewFQDNStore()
@@ -619,7 +603,7 @@ func main() {
 		setupLog.Error(err, "unable to build istio clientset for external-dns sources")
 		os.Exit(1)
 	}
-	sourceProvider := externaldns.NewProvider(kubeClientset, istioClientset)
+	sourceProvider := externaldns.NewProvider(kubeClientset, istioClientset, mgr.GetConfig())
 
 	if err := mgr.Add(&sourcectrl.SourceReconciler{
 		Client:   mgr.GetClient(),
@@ -636,7 +620,6 @@ func main() {
 		Client:   mgr.GetClient(),
 		Scheme:   mgr.GetScheme(),
 		Reader:   sourceStore,
-		Registry: sourceRegistry,
 		Interval: operatorConfig.Reconciliation.Interval.Duration(),
 	}); err != nil {
 		setupLog.Error(err, "unable to add ComponentsReconciler")

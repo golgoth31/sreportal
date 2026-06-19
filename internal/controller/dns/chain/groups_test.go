@@ -14,8 +14,8 @@ import (
 	sreportalv1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 	dnschain "github.com/golgoth31/sreportal/internal/controller/dns/chain"
 	"github.com/golgoth31/sreportal/internal/reconciler"
+	"github.com/golgoth31/sreportal/internal/source/externaldns"
 	"github.com/golgoth31/sreportal/internal/source/registry"
-	"github.com/golgoth31/sreportal/internal/source/service"
 )
 
 // TestUpsertDNSRecordsHandler_PropagatesGroups verifies the multi-group
@@ -42,7 +42,7 @@ func TestUpsertDNSRecordsHandler_PropagatesGroups(t *testing.T) {
 		Resource: dns,
 		Data: dnschain.ChainData{
 			KeptEndpointsByKind: map[registry.SourceType][]*endpoint.Endpoint{
-				service.SourceTypeService: {ep},
+				externaldns.KindService: {ep},
 			},
 		},
 	}

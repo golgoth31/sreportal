@@ -34,8 +34,7 @@ import (
 	"github.com/golgoth31/sreportal/internal/adapter"
 	domainsource "github.com/golgoth31/sreportal/internal/domain/source"
 	readstoresource "github.com/golgoth31/sreportal/internal/readstore/source"
-	"github.com/golgoth31/sreportal/internal/source/registry"
-	svcsrc "github.com/golgoth31/sreportal/internal/source/service"
+	"github.com/golgoth31/sreportal/internal/source/externaldns"
 	"github.com/golgoth31/sreportal/internal/statuspage"
 )
 
@@ -72,7 +71,7 @@ func ctxWithLogger() context.Context {
 func newEnrichedEndpoint(name string, annotations map[string]string) domainsource.EnrichedEndpoint {
 	return domainsource.EnrichedEndpoint{
 		Endpoint:          &endpoint.Endpoint{DNSName: name + ".example.com"},
-		Kind:              svcsrc.SourceTypeService,
+		Kind:              externaldns.KindService,
 		Namespace:         tNsDefault,
 		Name:              name,
 		SourceAnnotations: annotations,
@@ -85,9 +84,8 @@ func TestReconciler_CreatesComponentFromAnnotations(t *testing.T) {
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
 
 	store := readstoresource.NewStore()
-	reg := registry.NewRegistry(svcsrc.NewResolver())
 
-	store.ReplaceKind(svcsrc.SourceTypeService, []domainsource.EnrichedEndpoint{
+	store.ReplaceKind(externaldns.KindService, []domainsource.EnrichedEndpoint{
 		newEnrichedEndpoint("my-svc", map[string]string{
 			adapter.ComponentAnnotationKey:            tCompName,
 			adapter.ComponentGroupAnnotationKey:       tCompGroup,
@@ -101,7 +99,6 @@ func TestReconciler_CreatesComponentFromAnnotations(t *testing.T) {
 		Client:   c,
 		Scheme:   scheme,
 		Reader:   store,
-		Registry: reg,
 		Interval: time.Minute,
 	}
 
@@ -155,9 +152,8 @@ func TestReconciler_UpdatesComponentMetadataButNotStatus(t *testing.T) {
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal, existing).Build()
 
 	store := readstoresource.NewStore()
-	reg := registry.NewRegistry(svcsrc.NewResolver())
 
-	store.ReplaceKind(svcsrc.SourceTypeService, []domainsource.EnrichedEndpoint{
+	store.ReplaceKind(externaldns.KindService, []domainsource.EnrichedEndpoint{
 		newEnrichedEndpoint("my-svc", map[string]string{
 			adapter.ComponentAnnotationKey:            tCompName,
 			adapter.ComponentGroupAnnotationKey:       "New Group",
@@ -171,7 +167,6 @@ func TestReconciler_UpdatesComponentMetadataButNotStatus(t *testing.T) {
 		Client:   c,
 		Scheme:   scheme,
 		Reader:   store,
-		Registry: reg,
 		Interval: time.Minute,
 	}
 
@@ -213,15 +208,13 @@ func TestReconciler_DeletesOrphanedComponent(t *testing.T) {
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal, orphan).Build()
 
 	store := readstoresource.NewStore()
-	reg := registry.NewRegistry(svcsrc.NewResolver())
 	// No entries in the store — orphan should be deleted.
-	store.ReplaceKind(svcsrc.SourceTypeService, nil)
+	store.ReplaceKind(externaldns.KindService, nil)
 
 	r := &Reconciler{
 		Client:   c,
 		Scheme:   scheme,
 		Reader:   store,
-		Registry: reg,
 		Interval: time.Minute,
 	}
 
@@ -239,9 +232,8 @@ func TestReconciler_SkipsWhenStatusPageDisabled(t *testing.T) {
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
 
 	store := readstoresource.NewStore()
-	reg := registry.NewRegistry(svcsrc.NewResolver())
 
-	store.ReplaceKind(svcsrc.SourceTypeService, []domainsource.EnrichedEndpoint{
+	store.ReplaceKind(externaldns.KindService, []domainsource.EnrichedEndpoint{
 		newEnrichedEndpoint("my-svc", map[string]string{
 			adapter.ComponentAnnotationKey: "API",
 			adapter.PortalAnnotationKey:    tPortalMain,
@@ -252,7 +244,6 @@ func TestReconciler_SkipsWhenStatusPageDisabled(t *testing.T) {
 		Client:   c,
 		Scheme:   scheme,
 		Reader:   store,
-		Registry: reg,
 		Interval: time.Minute,
 	}
 
@@ -270,10 +261,9 @@ func TestReconciler_RoutesUnannotatedToMain(t *testing.T) {
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
 
 	store := readstoresource.NewStore()
-	reg := registry.NewRegistry(svcsrc.NewResolver())
 
 	// No portal annotation — should route to main.
-	store.ReplaceKind(svcsrc.SourceTypeService, []domainsource.EnrichedEndpoint{
+	store.ReplaceKind(externaldns.KindService, []domainsource.EnrichedEndpoint{
 		newEnrichedEndpoint("my-svc", map[string]string{
 			adapter.ComponentAnnotationKey: tCompName,
 			// No PortalAnnotationKey — routes to main.
@@ -284,7 +274,6 @@ func TestReconciler_RoutesUnannotatedToMain(t *testing.T) {
 		Client:   c,
 		Scheme:   scheme,
 		Reader:   store,
-		Registry: reg,
 		Interval: time.Minute,
 	}
 
@@ -304,10 +293,9 @@ func TestReconciler_DedupesByPortalAndDisplayName(t *testing.T) {
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
 
 	store := readstoresource.NewStore()
-	reg := registry.NewRegistry(svcsrc.NewResolver())
 
 	// Two endpoints with the same component DisplayName + same portal.
-	store.ReplaceKind(svcsrc.SourceTypeService, []domainsource.EnrichedEndpoint{
+	store.ReplaceKind(externaldns.KindService, []domainsource.EnrichedEndpoint{
 		newEnrichedEndpoint("svc-1", map[string]string{
 			adapter.ComponentAnnotationKey: tCompName,
 			adapter.PortalAnnotationKey:    tPortalMain,
@@ -322,7 +310,6 @@ func TestReconciler_DedupesByPortalAndDisplayName(t *testing.T) {
 		Client:   c,
 		Scheme:   scheme,
 		Reader:   store,
-		Registry: reg,
 		Interval: time.Minute,
 	}
 

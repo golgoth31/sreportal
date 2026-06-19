@@ -27,14 +27,14 @@ import (
 	dnschain "github.com/golgoth31/sreportal/internal/controller/dns/chain"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 	"github.com/golgoth31/sreportal/internal/reconciler"
+	"github.com/golgoth31/sreportal/internal/source/externaldns"
 	"github.com/golgoth31/sreportal/internal/source/registry"
-	"github.com/golgoth31/sreportal/internal/source/service"
 )
 
 // chainDataWithEnabledKind builds ChainData with one enabled source kind so
 // SourcesStatusHandler emits Status=True instead of Unknown.
 func chainDataWithEnabledKind() dnschain.ChainData {
-	return dnschain.ChainData{PriorityOrder: []registry.SourceType{service.SourceTypeService}}
+	return dnschain.ChainData{PriorityOrder: []registry.SourceType{externaldns.KindService}}
 }
 
 type fakeConflicts struct{ events []domaindns.ConflictEvent }

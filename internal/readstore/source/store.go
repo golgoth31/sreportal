@@ -4,6 +4,7 @@ package source
 
 import (
 	"maps"
+	"slices"
 	"sync"
 
 	"k8s.io/apimachinery/pkg/labels"
@@ -60,6 +61,18 @@ func (s *Store) Ready(kind registry.SourceType) bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.ready[kind]
+}
+
+// Kinds returns the kinds present in the store, sorted for determinism.
+func (s *Store) Kinds() []registry.SourceType {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := make([]registry.SourceType, 0, len(s.byKind))
+	for k := range s.byKind {
+		out = append(out, k)
+	}
+	slices.Sort(out)
+	return out
 }
 
 // CountKind returns the total number of entries stored for a kind across all

@@ -34,8 +34,8 @@ import (
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 	domainsource "github.com/golgoth31/sreportal/internal/domain/source"
 	dnsreadstore "github.com/golgoth31/sreportal/internal/readstore/dns"
+	"github.com/golgoth31/sreportal/internal/source/externaldns"
 	"github.com/golgoth31/sreportal/internal/source/registry"
-	"github.com/golgoth31/sreportal/internal/source/service"
 )
 
 // staticSourceReader returns a fixed slice of EnrichedEndpoints for the
@@ -55,6 +55,8 @@ func (s staticSourceReader) Lookup(kind registry.SourceType, _, _ string) ([]dom
 
 // Ready reports true: the static reader always has authoritative data.
 func (s staticSourceReader) Ready(_ registry.SourceType) bool { return true }
+
+func (s staticSourceReader) Kinds() []registry.SourceType { return []registry.SourceType{s.kind} }
 
 var _ = Describe("DNS → DNSRecord E2E flow", func() {
 	const (
@@ -127,14 +129,14 @@ var _ = Describe("DNS → DNSRecord E2E flow", func() {
 
 		By("wiring a DNS reconciler with a static source reader that yields one endpoint")
 		sourceReader := staticSourceReader{
-			kind: service.SourceTypeService,
+			kind: externaldns.KindService,
 			eps: []domainsource.EnrichedEndpoint{{
 				Endpoint: &endpoint.Endpoint{
 					DNSName:    fqdn,
 					RecordType: "A",
 					Targets:    endpoint.Targets{target},
 				},
-				Kind: service.SourceTypeService,
+				Kind: externaldns.KindService,
 			}},
 		}
 		dnsRec := NewDNSReconciler(k8sClient, k8sClient.Scheme(), sourceReader, nil)
@@ -148,7 +150,7 @@ var _ = Describe("DNS → DNSRecord E2E flow", func() {
 			g.Expect(k8sClient.Get(ctx, recordNN, &rec)).To(Succeed())
 			g.Expect(rec.Spec.Origin).To(Equal(v1alpha2.DNSRecordOriginAuto))
 			g.Expect(rec.Spec.PortalRef).To(Equal(portalName))
-			g.Expect(string(rec.Spec.SourceType)).To(Equal(string(service.SourceTypeService)))
+			g.Expect(string(rec.Spec.SourceType)).To(Equal(string(externaldns.KindService)))
 			g.Expect(rec.Spec.Entries).To(HaveLen(1))
 			g.Expect(rec.Spec.Entries[0].FQDN).To(Equal(fqdn))
 			g.Expect(rec.Spec.Entries[0].Targets).To(ConsistOf(target))

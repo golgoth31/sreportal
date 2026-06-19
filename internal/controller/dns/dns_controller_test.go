@@ -45,6 +45,8 @@ func (emptySourceReader) Lookup(_ registry.SourceType, _, _ string) ([]domainsou
 // that exercise the authoritatively-empty path.
 func (emptySourceReader) Ready(_ registry.SourceType) bool { return true }
 
+func (emptySourceReader) Kinds() []registry.SourceType { return nil }
+
 var _ = Describe("DNS Controller", func() {
 	const (
 		timeout  = time.Second * 10

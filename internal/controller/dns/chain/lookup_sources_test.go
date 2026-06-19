@@ -30,11 +30,8 @@ import (
 	rsource "github.com/golgoth31/sreportal/internal/readstore/source"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 	"github.com/golgoth31/sreportal/internal/source/crossplanescalewayrecord"
-	"github.com/golgoth31/sreportal/internal/source/dnsendpoint"
-	gwhttp "github.com/golgoth31/sreportal/internal/source/gatewayhttproute"
-	"github.com/golgoth31/sreportal/internal/source/ingress"
+	"github.com/golgoth31/sreportal/internal/source/externaldns"
 	"github.com/golgoth31/sreportal/internal/source/registry"
-	"github.com/golgoth31/sreportal/internal/source/service"
 )
 
 const (
@@ -44,10 +41,10 @@ const (
 
 func TestLookupSourcesHandler_FiltersByNamespaceAndLabel(t *testing.T) {
 	store := rsource.NewStore()
-	store.ReplaceKind(service.SourceTypeService, []domainsource.EnrichedEndpoint{
-		{Endpoint: endpoint.NewEndpoint("a.example.com", "A", "1.1.1.1"), Kind: service.SourceTypeService, Namespace: tNS1, SourceLabels: map[string]string{"team": "a"}},
-		{Endpoint: endpoint.NewEndpoint("b.example.com", "A", "2.2.2.2"), Kind: service.SourceTypeService, Namespace: tNS1, SourceLabels: map[string]string{"team": "b"}},
-		{Endpoint: endpoint.NewEndpoint("c.example.com", "A", "3.3.3.3"), Kind: service.SourceTypeService, Namespace: "ns2"},
+	store.ReplaceKind(externaldns.KindService, []domainsource.EnrichedEndpoint{
+		{Endpoint: endpoint.NewEndpoint("a.example.com", "A", "1.1.1.1"), Kind: externaldns.KindService, Namespace: tNS1, SourceLabels: map[string]string{"team": "a"}},
+		{Endpoint: endpoint.NewEndpoint("b.example.com", "A", "2.2.2.2"), Kind: externaldns.KindService, Namespace: tNS1, SourceLabels: map[string]string{"team": "b"}},
+		{Endpoint: endpoint.NewEndpoint("c.example.com", "A", "3.3.3.3"), Kind: externaldns.KindService, Namespace: "ns2"},
 	})
 
 	h := &dnschain.LookupSourcesHandler{Source: store}
@@ -66,16 +63,16 @@ func TestLookupSourcesHandler_FiltersByNamespaceAndLabel(t *testing.T) {
 		Data: dnschain.ChainData{},
 	}
 	require.NoError(t, h.Handle(context.Background(), rc))
-	got := rc.Data.EndpointsByKind[service.SourceTypeService]
+	got := rc.Data.EndpointsByKind[externaldns.KindService]
 	require.Len(t, got, 1)
 	require.Equal(t, "a.example.com", got[0].DNSName)
 }
 
 func TestLookupSourcesHandler_PerKindOverridesDefaults(t *testing.T) {
 	store := rsource.NewStore()
-	store.ReplaceKind(ingress.SourceTypeIngress, []domainsource.EnrichedEndpoint{
-		{Endpoint: endpoint.NewEndpoint("ing.example.com", "A", "9.9.9.9"), Kind: ingress.SourceTypeIngress, Namespace: "perKind"},
-		{Endpoint: endpoint.NewEndpoint("ing-default.example.com", "A", "9.9.9.9"), Kind: ingress.SourceTypeIngress, Namespace: "defaultNS"},
+	store.ReplaceKind(externaldns.KindIngress, []domainsource.EnrichedEndpoint{
+		{Endpoint: endpoint.NewEndpoint("ing.example.com", "A", "9.9.9.9"), Kind: externaldns.KindIngress, Namespace: "perKind"},
+		{Endpoint: endpoint.NewEndpoint("ing-default.example.com", "A", "9.9.9.9"), Kind: externaldns.KindIngress, Namespace: "defaultNS"},
 	})
 
 	h := &dnschain.LookupSourcesHandler{Source: store}
@@ -94,21 +91,21 @@ func TestLookupSourcesHandler_PerKindOverridesDefaults(t *testing.T) {
 		Data: dnschain.ChainData{},
 	}
 	require.NoError(t, h.Handle(context.Background(), rc))
-	got := rc.Data.EndpointsByKind[ingress.SourceTypeIngress]
+	got := rc.Data.EndpointsByKind[externaldns.KindIngress]
 	require.Len(t, got, 1)
 	require.Equal(t, "ing.example.com", got[0].DNSName)
 }
 
 func TestLookupSourcesHandler_PriorityOrder(t *testing.T) {
 	store := rsource.NewStore()
-	store.ReplaceKind(service.SourceTypeService, []domainsource.EnrichedEndpoint{
-		{Endpoint: endpoint.NewEndpoint("a.example.com", "A", "1.1.1.1"), Kind: service.SourceTypeService, Namespace: "ns"},
+	store.ReplaceKind(externaldns.KindService, []domainsource.EnrichedEndpoint{
+		{Endpoint: endpoint.NewEndpoint("a.example.com", "A", "1.1.1.1"), Kind: externaldns.KindService, Namespace: "ns"},
 	})
-	store.ReplaceKind(ingress.SourceTypeIngress, []domainsource.EnrichedEndpoint{
-		{Endpoint: endpoint.NewEndpoint("b.example.com", "A", "2.2.2.2"), Kind: ingress.SourceTypeIngress, Namespace: "ns"},
+	store.ReplaceKind(externaldns.KindIngress, []domainsource.EnrichedEndpoint{
+		{Endpoint: endpoint.NewEndpoint("b.example.com", "A", "2.2.2.2"), Kind: externaldns.KindIngress, Namespace: "ns"},
 	})
-	store.ReplaceKind(gwhttp.SourceTypeGatewayHTTPRoute, []domainsource.EnrichedEndpoint{
-		{Endpoint: endpoint.NewEndpoint("c.example.com", "A", "3.3.3.3"), Kind: gwhttp.SourceTypeGatewayHTTPRoute, Namespace: "ns"},
+	store.ReplaceKind(externaldns.KindGatewayHTTPRoute, []domainsource.EnrichedEndpoint{
+		{Endpoint: endpoint.NewEndpoint("c.example.com", "A", "3.3.3.3"), Kind: externaldns.KindGatewayHTTPRoute, Namespace: "ns"},
 	})
 
 	h := &dnschain.LookupSourcesHandler{Source: store}
@@ -135,9 +132,9 @@ func TestLookupSourcesHandler_PriorityOrder(t *testing.T) {
 	require.NoError(t, h.Handle(context.Background(), rc))
 	require.Equal(t,
 		[]registry.SourceType{
-			gwhttp.SourceTypeGatewayHTTPRoute,
-			service.SourceTypeService,
-			ingress.SourceTypeIngress,
+			externaldns.KindGatewayHTTPRoute,
+			externaldns.KindService,
+			externaldns.KindIngress,
 		},
 		rc.Data.PriorityOrder,
 	)
@@ -145,18 +142,18 @@ func TestLookupSourcesHandler_PriorityOrder(t *testing.T) {
 
 // TestLookupSourcesHandler_DNSEndpoint verifies that when DNSEndpoint is
 // enabled in DNSSpec.Sources, the handler looks up endpoints from the store
-// and places them in EndpointsByKind under the dnsendpoint.SourceTypeDNSEndpoint key.
+// and places them in EndpointsByKind under the externaldns.KindDNSEndpoint key.
 func TestLookupSourcesHandler_DNSEndpoint(t *testing.T) {
 	store := rsource.NewStore()
-	store.ReplaceKind(dnsendpoint.SourceTypeDNSEndpoint, []domainsource.EnrichedEndpoint{
+	store.ReplaceKind(externaldns.KindDNSEndpoint, []domainsource.EnrichedEndpoint{
 		{
 			Endpoint:  endpoint.NewEndpoint("a.example.com", endpoint.RecordTypeA, "1.2.3.4"),
-			Kind:      dnsendpoint.SourceTypeDNSEndpoint,
+			Kind:      externaldns.KindDNSEndpoint,
 			Namespace: "ns",
 		},
 		{
 			Endpoint:  endpoint.NewEndpoint("b.example.com", endpoint.RecordTypeCNAME, "lb.example.com"),
-			Kind:      dnsendpoint.SourceTypeDNSEndpoint,
+			Kind:      externaldns.KindDNSEndpoint,
 			Namespace: "ns",
 		},
 	})
@@ -178,7 +175,7 @@ func TestLookupSourcesHandler_DNSEndpoint(t *testing.T) {
 		Data: dnschain.ChainData{},
 	}
 	require.NoError(t, h.Handle(context.Background(), rc))
-	got := rc.Data.EndpointsByKind[dnsendpoint.SourceTypeDNSEndpoint]
+	got := rc.Data.EndpointsByKind[externaldns.KindDNSEndpoint]
 	require.Len(t, got, 2)
 	names := map[string]bool{}
 	for _, ep := range got {
@@ -186,7 +183,7 @@ func TestLookupSourcesHandler_DNSEndpoint(t *testing.T) {
 	}
 	require.True(t, names["a.example.com"], "expected a.example.com")
 	require.True(t, names["b.example.com"], "expected b.example.com")
-	require.Contains(t, rc.Data.PriorityOrder, dnsendpoint.SourceTypeDNSEndpoint)
+	require.Contains(t, rc.Data.PriorityOrder, externaldns.KindDNSEndpoint)
 }
 
 // TestLookupSourcesHandler_CrossplaneScalewayRecord verifies that when
@@ -231,8 +228,8 @@ func TestLookupSourcesHandler_CrossplaneScalewayRecord(t *testing.T) {
 
 func TestLookupSourcesHandler_InvalidLabelSelectorReturnsError(t *testing.T) {
 	store := rsource.NewStore()
-	store.ReplaceKind(service.SourceTypeService, []domainsource.EnrichedEndpoint{
-		{Endpoint: endpoint.NewEndpoint("a.example.com", "A", "1.1.1.1"), Kind: service.SourceTypeService, Namespace: "ns"},
+	store.ReplaceKind(externaldns.KindService, []domainsource.EnrichedEndpoint{
+		{Endpoint: endpoint.NewEndpoint("a.example.com", "A", "1.1.1.1"), Kind: externaldns.KindService, Namespace: "ns"},
 	})
 
 	h := &dnschain.LookupSourcesHandler{Source: store}

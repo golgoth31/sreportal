@@ -36,6 +36,12 @@ type SourceEndpointReader interface {
 	// synced yet — e.g. right after a controller restart, when the in-memory
 	// store is empty but the DNSRecord CRs still exist.
 	Ready(kind registry.SourceType) bool
+	// Kinds returns the source kinds currently present in the store (those a
+	// producer has collected at least once), in deterministic order. Consumers
+	// enumerate kinds from here rather than from a resolver registry, so the
+	// read side is agnostic to how a kind is discovered (native external-dns or
+	// hand-rolled resolver).
+	Kinds() []registry.SourceType
 }
 
 // SourceEndpointWriter is the write-side contract, used by the

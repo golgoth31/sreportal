@@ -26,19 +26,18 @@ import (
 	sreportalv1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 	dnschain "github.com/golgoth31/sreportal/internal/controller/dns/chain"
 	"github.com/golgoth31/sreportal/internal/reconciler"
-	"github.com/golgoth31/sreportal/internal/source/ingress"
+	"github.com/golgoth31/sreportal/internal/source/externaldns"
 	"github.com/golgoth31/sreportal/internal/source/registry"
-	"github.com/golgoth31/sreportal/internal/source/service"
 )
 
 func TestIntraDNSDedup_FirstKindWins(t *testing.T) {
 	h := &dnschain.IntraDNSDedupHandler{}
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{
 		Data: dnschain.ChainData{
-			PriorityOrder: []registry.SourceType{service.SourceTypeService, ingress.SourceTypeIngress},
+			PriorityOrder: []registry.SourceType{externaldns.KindService, externaldns.KindIngress},
 			EndpointsByKind: map[registry.SourceType][]*endpoint.Endpoint{
-				service.SourceTypeService: {endpoint.NewEndpoint("a.example.com", "A", "1.1.1.1")},
-				ingress.SourceTypeIngress: {
+				externaldns.KindService: {endpoint.NewEndpoint("a.example.com", "A", "1.1.1.1")},
+				externaldns.KindIngress: {
 					endpoint.NewEndpoint("a.example.com", "A", "2.2.2.2"),
 					endpoint.NewEndpoint("b.example.com", "A", "3.3.3.3"),
 				},
@@ -46,10 +45,10 @@ func TestIntraDNSDedup_FirstKindWins(t *testing.T) {
 		},
 	}
 	require.NoError(t, h.Handle(context.Background(), rc))
-	require.Len(t, rc.Data.KeptEndpointsByKind[service.SourceTypeService], 1)
-	require.Equal(t, "a.example.com", rc.Data.KeptEndpointsByKind[service.SourceTypeService][0].DNSName)
-	require.Len(t, rc.Data.KeptEndpointsByKind[ingress.SourceTypeIngress], 1)
-	require.Equal(t, "b.example.com", rc.Data.KeptEndpointsByKind[ingress.SourceTypeIngress][0].DNSName)
+	require.Len(t, rc.Data.KeptEndpointsByKind[externaldns.KindService], 1)
+	require.Equal(t, "a.example.com", rc.Data.KeptEndpointsByKind[externaldns.KindService][0].DNSName)
+	require.Len(t, rc.Data.KeptEndpointsByKind[externaldns.KindIngress], 1)
+	require.Equal(t, "b.example.com", rc.Data.KeptEndpointsByKind[externaldns.KindIngress][0].DNSName)
 }
 
 // TestIntraDNSDedup_CrossRecordTypeOwnership verifies FQDN-level priority: a
@@ -60,17 +59,17 @@ func TestIntraDNSDedup_CrossRecordTypeOwnership(t *testing.T) {
 	h := &dnschain.IntraDNSDedupHandler{}
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{
 		Data: dnschain.ChainData{
-			PriorityOrder: []registry.SourceType{ingress.SourceTypeIngress, service.SourceTypeService},
+			PriorityOrder: []registry.SourceType{externaldns.KindIngress, externaldns.KindService},
 			EndpointsByKind: map[registry.SourceType][]*endpoint.Endpoint{
-				ingress.SourceTypeIngress: {endpoint.NewEndpoint("app.example.com", "A", "1.1.1.1")},
-				service.SourceTypeService: {endpoint.NewEndpoint("app.example.com", "CNAME", "lb.example.net")},
+				externaldns.KindIngress: {endpoint.NewEndpoint("app.example.com", "A", "1.1.1.1")},
+				externaldns.KindService: {endpoint.NewEndpoint("app.example.com", "CNAME", "lb.example.net")},
 			},
 		},
 	}
 	require.NoError(t, h.Handle(context.Background(), rc))
-	require.Len(t, rc.Data.KeptEndpointsByKind[ingress.SourceTypeIngress], 1)
-	require.Equal(t, "A", rc.Data.KeptEndpointsByKind[ingress.SourceTypeIngress][0].RecordType)
-	require.Empty(t, rc.Data.KeptEndpointsByKind[service.SourceTypeService],
+	require.Len(t, rc.Data.KeptEndpointsByKind[externaldns.KindIngress], 1)
+	require.Equal(t, "A", rc.Data.KeptEndpointsByKind[externaldns.KindIngress][0].RecordType)
+	require.Empty(t, rc.Data.KeptEndpointsByKind[externaldns.KindService],
 		"lower-priority kind must not contribute a CNAME for an FQDN owned by ingress")
 }
 
@@ -81,18 +80,18 @@ func TestIntraDNSDedup_KeepsMultiRecordTypeFromWinner(t *testing.T) {
 	h := &dnschain.IntraDNSDedupHandler{}
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{
 		Data: dnschain.ChainData{
-			PriorityOrder: []registry.SourceType{ingress.SourceTypeIngress, service.SourceTypeService},
+			PriorityOrder: []registry.SourceType{externaldns.KindIngress, externaldns.KindService},
 			EndpointsByKind: map[registry.SourceType][]*endpoint.Endpoint{
-				ingress.SourceTypeIngress: {
+				externaldns.KindIngress: {
 					endpoint.NewEndpoint("app.example.com", "A", "1.1.1.1"),
 					endpoint.NewEndpoint("app.example.com", "AAAA", "2001:db8::1"),
 				},
-				service.SourceTypeService: {endpoint.NewEndpoint("app.example.com", "A", "9.9.9.9")},
+				externaldns.KindService: {endpoint.NewEndpoint("app.example.com", "A", "9.9.9.9")},
 			},
 		},
 	}
 	require.NoError(t, h.Handle(context.Background(), rc))
-	require.Len(t, rc.Data.KeptEndpointsByKind[ingress.SourceTypeIngress], 2,
+	require.Len(t, rc.Data.KeptEndpointsByKind[externaldns.KindIngress], 2,
 		"winning kind keeps both A and AAAA for the same FQDN")
-	require.Empty(t, rc.Data.KeptEndpointsByKind[service.SourceTypeService])
+	require.Empty(t, rc.Data.KeptEndpointsByKind[externaldns.KindService])
 }

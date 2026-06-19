@@ -43,11 +43,12 @@ import (
 // safe to call sequentially from a single goroutine; concurrent invocations
 // against the same store are NOT supported.
 //
-// When provider is non-nil, kinds it natively handles (ingress, service,
-// istio-gateway) are discovered through the external-dns source library — full
-// extraction from spec.rules/tls, every service type, gateway servers — instead
-// of the hand-rolled resolvers (which stay registered for the remaining kinds).
-// Pass nil to use the resolver path for every kind.
+// When provider is non-nil, every kind it natively handles (see
+// externaldns.Handles — ingress, service, istio gateway/virtualservice, the
+// gateway-api routes and DNSEndpoint) is discovered through the external-dns
+// source library instead of a hand-rolled resolver. The registry only serves
+// the remaining kinds (crossplane-scaleway-record). Pass nil to use the
+// resolver path for every kind.
 func Cycle(
 	ctx context.Context,
 	c client.Client,
