@@ -26,31 +26,38 @@ import (
 	"github.com/golgoth31/sreportal/internal/source/registry"
 )
 
-// IntraDNSDedupHandler drops endpoints whose FQDN was already produced by a
-// higher-priority kind earlier in the iteration order.
+// IntraDNSDedupHandler enforces source priority at the FQDN level: the first
+// (highest-priority) kind to produce a given FQDN owns it, and lower-priority
+// kinds contribute nothing for that name.
 type IntraDNSDedupHandler struct{}
 
-// dedupKey matches the FQDNStore identity ({Name, RecordType}) so endpoints
-// for the same FQDN but different record types (e.g. A vs AAAA) don't shadow
-// each other at this stage.
-type dedupKey struct {
-	name       string
-	recordType string
-}
-
 // Handle implements reconciler.Handler.
+//
+// Ownership is keyed on the FQDN (DNSName) alone, not (name, recordType): once
+// a higher-priority kind claims a name, every endpoint for that name from a
+// lower-priority kind is dropped — even a different record type. Two sources
+// disagreeing on the same FQDN (e.g. ingress→A vs an ExternalName service→CNAME)
+// is exactly the conflict priority exists to resolve; keeping both would surface
+// the same FQDN twice in the UI and emit conflicting records.
+//
+// Multiple record types from the SAME (winning) kind are preserved — a kind
+// that publishes A and AAAA for one FQDN keeps both, because ownership is
+// compared against the claiming kind, not re-checked per record type.
 func (*IntraDNSDedupHandler) Handle(_ context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha2.DNS, ChainData]) error {
-	seen := map[dedupKey]struct{}{}
+	ownerByName := map[string]registry.SourceType{}
 	kept := make(map[registry.SourceType][]*endpoint.Endpoint, len(rc.Data.EndpointsByKind))
 	for _, kind := range rc.Data.PriorityOrder {
 		eps := rc.Data.EndpointsByKind[kind]
 		out := make([]*endpoint.Endpoint, 0, len(eps))
 		for _, e := range eps {
-			k := dedupKey{name: e.DNSName, recordType: e.RecordType}
-			if _, dup := seen[k]; dup {
+			owner, claimed := ownerByName[e.DNSName]
+			if claimed && owner != kind {
+				// Owned by a higher-priority kind — drop regardless of record type.
 				continue
 			}
-			seen[k] = struct{}{}
+			if !claimed {
+				ownerByName[e.DNSName] = kind
+			}
 			out = append(out, e)
 		}
 		kept[kind] = out

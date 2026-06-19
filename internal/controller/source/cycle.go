@@ -18,6 +18,7 @@ package source
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -199,6 +200,12 @@ func collectNativeInto(
 	}
 	entries, err := collectNative(ctx, c, provider, kind, cfg)
 	if err != nil {
+		if errors.Is(err, externaldns.ErrSourceNotReady) {
+			// Normal during the initial cache sync — not a failure. Preserve the
+			// previous good state and retry next cycle; don't count it as an error.
+			logger.Info("source not ready yet (cache syncing); preserving previous state", "kind", kind)
+			return
+		}
 		logger.Error(err, "native source collection failed; preserving previous state", "kind", kind)
 		metrics.SourceErrorsTotal.WithLabelValues(string(kind)).Inc()
 		return

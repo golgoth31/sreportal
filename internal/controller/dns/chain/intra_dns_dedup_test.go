@@ -51,3 +51,48 @@ func TestIntraDNSDedup_FirstKindWins(t *testing.T) {
 	require.Len(t, rc.Data.KeptEndpointsByKind[ingress.SourceTypeIngress], 1)
 	require.Equal(t, "b.example.com", rc.Data.KeptEndpointsByKind[ingress.SourceTypeIngress][0].DNSName)
 }
+
+// TestIntraDNSDedup_CrossRecordTypeOwnership verifies FQDN-level priority: a
+// lower-priority kind contributing the same FQDN with a DIFFERENT record type
+// (ingress→A vs ExternalName service→CNAME) is dropped entirely, not kept
+// alongside the winner.
+func TestIntraDNSDedup_CrossRecordTypeOwnership(t *testing.T) {
+	h := &dnschain.IntraDNSDedupHandler{}
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{
+		Data: dnschain.ChainData{
+			PriorityOrder: []registry.SourceType{ingress.SourceTypeIngress, service.SourceTypeService},
+			EndpointsByKind: map[registry.SourceType][]*endpoint.Endpoint{
+				ingress.SourceTypeIngress: {endpoint.NewEndpoint("app.example.com", "A", "1.1.1.1")},
+				service.SourceTypeService: {endpoint.NewEndpoint("app.example.com", "CNAME", "lb.example.net")},
+			},
+		},
+	}
+	require.NoError(t, h.Handle(context.Background(), rc))
+	require.Len(t, rc.Data.KeptEndpointsByKind[ingress.SourceTypeIngress], 1)
+	require.Equal(t, "A", rc.Data.KeptEndpointsByKind[ingress.SourceTypeIngress][0].RecordType)
+	require.Empty(t, rc.Data.KeptEndpointsByKind[service.SourceTypeService],
+		"lower-priority kind must not contribute a CNAME for an FQDN owned by ingress")
+}
+
+// TestIntraDNSDedup_KeepsMultiRecordTypeFromWinner verifies the winning kind
+// keeps all its record types for one FQDN (dual-stack A + AAAA), while a
+// lower-priority kind is still excluded for that name.
+func TestIntraDNSDedup_KeepsMultiRecordTypeFromWinner(t *testing.T) {
+	h := &dnschain.IntraDNSDedupHandler{}
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{
+		Data: dnschain.ChainData{
+			PriorityOrder: []registry.SourceType{ingress.SourceTypeIngress, service.SourceTypeService},
+			EndpointsByKind: map[registry.SourceType][]*endpoint.Endpoint{
+				ingress.SourceTypeIngress: {
+					endpoint.NewEndpoint("app.example.com", "A", "1.1.1.1"),
+					endpoint.NewEndpoint("app.example.com", "AAAA", "2001:db8::1"),
+				},
+				service.SourceTypeService: {endpoint.NewEndpoint("app.example.com", "A", "9.9.9.9")},
+			},
+		},
+	}
+	require.NoError(t, h.Handle(context.Background(), rc))
+	require.Len(t, rc.Data.KeptEndpointsByKind[ingress.SourceTypeIngress], 2,
+		"winning kind keeps both A and AAAA for the same FQDN")
+	require.Empty(t, rc.Data.KeptEndpointsByKind[service.SourceTypeService])
+}
