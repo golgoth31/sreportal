@@ -21,8 +21,8 @@ import (
 	"time"
 )
 
-func tk(record, fqdn, rt string) FQDNKey {
-	return FQDNKey{RecordKey: record, DNSName: fqdn, RecordType: rt}
+func tk(record, fqdn string) FQDNKey {
+	return FQDNKey{RecordKey: record, DNSName: fqdn, RecordType: "A"}
 }
 
 func TestScheduler_SyncSpreadsAcrossInterval(t *testing.T) {
@@ -30,7 +30,7 @@ func TestScheduler_SyncSpreadsAcrossInterval(t *testing.T) {
 	s := newScheduler(24*time.Hour, func() time.Time { return base }, 1)
 	keys := make([]FQDNKey, 200)
 	for i := range keys {
-		keys[i] = tk("ns/r", "h-"+time.Duration(i).String(), "A")
+		keys[i] = tk("ns/r", "h-"+time.Duration(i).String())
 	}
 	s.Sync(keys)
 	if due := s.Due(base); len(due) != 0 {
@@ -44,7 +44,7 @@ func TestScheduler_SyncSpreadsAcrossInterval(t *testing.T) {
 func TestScheduler_RescheduleMovesNextOut(t *testing.T) {
 	base := time.Unix(1_000_000, 0)
 	s := newScheduler(24*time.Hour, func() time.Time { return base }, 1)
-	k := tk("ns/r", "a.example.com", "A")
+	k := tk("ns/r", "a.example.com")
 	s.Sync([]FQDNKey{k})
 	s.Reschedule(k)
 	if due := s.Due(base.Add(24 * time.Hour)); len(due) != 0 {
@@ -58,9 +58,9 @@ func TestScheduler_RescheduleMovesNextOut(t *testing.T) {
 func TestScheduler_ForceRecordMakesAllRecordKeysDue(t *testing.T) {
 	base := time.Unix(1_000_000, 0)
 	s := newScheduler(24*time.Hour, func() time.Time { return base }, 1)
-	a := tk("ns/r", "a", "A")
-	b := tk("ns/r", "b", "A")
-	other := tk("ns/other", "c", "A")
+	a := tk("ns/r", "a")
+	b := tk("ns/r", "b")
+	other := tk("ns/other", "c")
 	s.Sync([]FQDNKey{a, b, other})
 	s.ForceRecord("ns/r")
 	if due := s.Due(base); len(due) != 2 {
@@ -71,8 +71,8 @@ func TestScheduler_ForceRecordMakesAllRecordKeysDue(t *testing.T) {
 func TestScheduler_SyncDropsRemovedKeys(t *testing.T) {
 	base := time.Unix(1_000_000, 0)
 	s := newScheduler(24*time.Hour, func() time.Time { return base }, 1)
-	a := tk("ns/r", "a", "A")
-	b := tk("ns/r", "b", "A")
+	a := tk("ns/r", "a")
+	b := tk("ns/r", "b")
 	s.Sync([]FQDNKey{a, b})
 	s.Sync([]FQDNKey{a})
 	s.ForceRecord("ns/r")

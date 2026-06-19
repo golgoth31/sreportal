@@ -45,7 +45,7 @@ type scheduler struct {
 	next     map[FQDNKey]time.Time
 }
 
-func newScheduler(interval time.Duration, now func() time.Time, seed int64) *scheduler {
+func newScheduler(interval time.Duration, now func() time.Time, seed int64) *scheduler { //nolint:unparam // interval is a deliberate knob (tests + future config); prod passes resolveInterval
 	return &scheduler{
 		interval: interval,
 		now:      now,

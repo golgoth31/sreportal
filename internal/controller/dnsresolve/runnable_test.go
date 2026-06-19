@@ -30,6 +30,11 @@ import (
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 )
 
+const (
+	testTargetIP = "1.2.3.4"
+	testFQDN     = "a.example.com"
+)
+
 type stubResolver struct{ addrs []string }
 
 func (s stubResolver) LookupHost(_ context.Context, _ string) ([]string, error) {
@@ -56,16 +61,16 @@ func TestResolveRecord_SetsSyncStatusAndRefreshesStore(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "r", Namespace: "ns"},
 		Spec:       v1alpha2.DNSRecordSpec{PortalRef: "p", SourceType: "ingress"},
 		Status: v1alpha2.DNSRecordStatus{Endpoints: []v1alpha2.EndpointStatus{
-			{DNSName: "a.example.com", RecordType: "A", Targets: []string{"1.2.3.4"}, LastSeen: metav1.Now()},
+			{DNSName: testFQDN, RecordType: "A", Targets: []string{testTargetIP}, LastSeen: metav1.Now()},
 		}},
 	}
 	c := fake.NewClientBuilder().WithScheme(scheme).
 		WithStatusSubresource(&v1alpha2.DNSRecord{}).WithObjects(rec).Build()
 	w := &capWriter{}
 
-	r := &Runnable{Client: c, Resolver: stubResolver{addrs: []string{"1.2.3.4"}}, FQDNWriter: w}
+	r := &Runnable{Client: c, Resolver: stubResolver{addrs: []string{testTargetIP}}, FQDNWriter: w}
 	require.NoError(t, r.resolveRecord(context.Background(), rec, nil, []FQDNKey{
-		{RecordKey: "ns/r", DNSName: "a.example.com", RecordType: "A"},
+		{RecordKey: "ns/r", DNSName: testFQDN, RecordType: "A"},
 	}))
 
 	var got v1alpha2.DNSRecord
@@ -82,13 +87,13 @@ func TestRunnable_ForceThenTickResolves(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "r", Namespace: "ns"},
 		Spec:       v1alpha2.DNSRecordSpec{PortalRef: "p"},
 		Status: v1alpha2.DNSRecordStatus{Endpoints: []v1alpha2.EndpointStatus{
-			{DNSName: "a.example.com", RecordType: "A", Targets: []string{"1.2.3.4"}, LastSeen: metav1.Now()},
+			{DNSName: testFQDN, RecordType: "A", Targets: []string{testTargetIP}, LastSeen: metav1.Now()},
 		}},
 	}
 	c := fake.NewClientBuilder().WithScheme(scheme).
 		WithStatusSubresource(&v1alpha2.DNSRecord{}).WithObjects(rec).Build()
 	w := &capWriter{}
-	r := New(c, stubResolver{addrs: []string{"1.2.3.4"}}, w)
+	r := New(c, stubResolver{addrs: []string{testTargetIP}}, w)
 
 	r.Force("ns/r")
 	require.NoError(t, r.tick(context.Background()))
