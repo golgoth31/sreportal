@@ -582,7 +582,7 @@ func main() {
 		mgr.GetScheme(),
 	)
 	dnsRecordReconciler.SetFQDNWriter(fqdnStore)
-	dnsResolver := dnsresolve.New(mgr.GetClient(), dnschain.NewNetResolver(), fqdnStore)
+	dnsResolver := dnsresolve.New(mgr.GetClient(), dnschain.NewNetResolver())
 	dnsRecordReconciler.SetForcer(dnsResolver)
 	if err := mgr.Add(dnsResolver); err != nil {
 		setupLog.Error(err, "unable to add DNS resolve runnable")

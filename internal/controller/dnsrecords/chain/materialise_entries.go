@@ -44,6 +44,15 @@ func (h *MaterialiseEntriesHandler) Handle(ctx context.Context, rc *reconciler.R
 	record := rc.Resource
 	base := record.DeepCopy()
 
+	// Preserve the last-known SyncStatus per (DNSName, RecordType): DNS
+	// resolution runs asynchronously in the dnsresolve Runnable, not here, so
+	// rebuilding endpoints must not blank a status the Runnable already set
+	// (otherwise every reconcile would briefly wipe the UI's sync state).
+	prevSync := make(map[string]v1alpha2.SyncStatus, len(record.Status.Endpoints))
+	for _, ep := range record.Status.Endpoints {
+		prevSync[ep.DNSName+"|"+ep.RecordType] = ep.SyncStatus
+	}
+
 	now := metav1.Now()
 	endpoints := make([]v1alpha2.EndpointStatus, 0, len(record.Spec.Entries))
 
@@ -82,6 +91,7 @@ func (h *MaterialiseEntriesHandler) Handle(ctx context.Context, rc *reconciler.R
 			Targets:    e.Targets,
 			Labels:     labels,
 			LastSeen:   now,
+			SyncStatus: prevSync[e.FQDN+"|"+rt],
 		})
 	}
 

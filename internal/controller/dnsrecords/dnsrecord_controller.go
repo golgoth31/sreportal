@@ -26,6 +26,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
@@ -222,6 +223,40 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	return rc.Result, nil
 }
 
+// syncStatusChangedPredicate triggers reconciliation when a DNSRecord's
+// endpoint SyncStatus changes (e.g. an async resolution patch from the
+// dnsresolve Runnable), even though the generation is unchanged.
+func syncStatusChangedPredicate() predicate.Predicate {
+	return predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			oldR, ok1 := e.ObjectOld.(*v1alpha2.DNSRecord)
+			newR, ok2 := e.ObjectNew.(*v1alpha2.DNSRecord)
+			if !ok1 || !ok2 {
+				return false
+			}
+			return syncStatusDiffers(oldR.Status.Endpoints, newR.Status.Endpoints)
+		},
+	}
+}
+
+// syncStatusDiffers reports whether any endpoint's SyncStatus differs between
+// the two slices, keyed by (DNSName, RecordType) so reordering is ignored.
+func syncStatusDiffers(before, after []v1alpha2.EndpointStatus) bool {
+	if len(before) != len(after) {
+		return true
+	}
+	prev := make(map[string]v1alpha2.SyncStatus, len(before))
+	for _, ep := range before {
+		prev[ep.DNSName+"|"+ep.RecordType] = ep.SyncStatus
+	}
+	for _, ep := range after {
+		if prev[ep.DNSName+"|"+ep.RecordType] != ep.SyncStatus {
+			return true
+		}
+	}
+	return false
+}
+
 // SetupWithManager sets up the controller with the Manager.
 //
 // The field index on v1alpha2.DNSRecord spec.portalRef is registered by
@@ -230,7 +265,14 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 // v1alpha2.DNS (config changes) to enqueue affected DNSRecord resources.
 func (r *DNSRecordReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha2.DNSRecord{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&v1alpha2.DNSRecord{}, builder.WithPredicates(predicate.Or(
+			// Spec changes (entries) — generation bumps.
+			predicate.GenerationChangedPredicate{},
+			// Async DNS resolution patches status.Endpoints[].SyncStatus without a
+			// generation bump; re-reconcile so ProjectStoreHandler re-projects the
+			// new SyncStatus to the read store (the single read-store writer).
+			syncStatusChangedPredicate(),
+		))).
 		Watches(
 			&sreportalv1alpha1.Portal{},
 			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []ctrl.Request {

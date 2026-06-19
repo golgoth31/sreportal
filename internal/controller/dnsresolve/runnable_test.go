@@ -37,63 +37,50 @@ const (
 
 type stubResolver struct{ addrs []string }
 
-func (s stubResolver) LookupHost(_ context.Context, _ string) ([]string, error) {
-	return s.addrs, nil
-}
-func (s stubResolver) LookupCNAME(_ context.Context, _ string) (string, error) {
-	return "", nil
-}
+func (s stubResolver) LookupHost(context.Context, string) ([]string, error) { return s.addrs, nil }
+func (s stubResolver) LookupCNAME(context.Context, string) (string, error)  { return "", nil }
 
-type capWriter struct{ views []domaindns.FQDNView }
-
-func (w *capWriter) Replace(_ context.Context, _, _ string, fqdns []domaindns.FQDNView) error {
-	w.views = fqdns
-	return nil
-}
-func (w *capWriter) Delete(_ context.Context, _ string) error { return nil }
-func (w *capWriter) AnnotateOwner(_, _, _ string)             {}
-
-func TestResolveRecord_SetsSyncStatusAndRefreshesStore(t *testing.T) {
-	scheme := runtime.NewScheme()
-	require.NoError(t, v1alpha2.AddToScheme(scheme))
-
-	rec := &v1alpha2.DNSRecord{
+func recordWithEndpoint() *v1alpha2.DNSRecord {
+	return &v1alpha2.DNSRecord{
 		ObjectMeta: metav1.ObjectMeta{Name: "r", Namespace: "ns"},
 		Spec:       v1alpha2.DNSRecordSpec{PortalRef: "p", SourceType: "ingress"},
 		Status: v1alpha2.DNSRecordStatus{Endpoints: []v1alpha2.EndpointStatus{
 			{DNSName: testFQDN, RecordType: "A", Targets: []string{testTargetIP}, LastSeen: metav1.Now()},
 		}},
 	}
-	c := fake.NewClientBuilder().WithScheme(scheme).
-		WithStatusSubresource(&v1alpha2.DNSRecord{}).WithObjects(rec).Build()
-	w := &capWriter{}
+}
 
-	r := &Runnable{Client: c, Resolver: stubResolver{addrs: []string{testTargetIP}}, FQDNWriter: w}
-	require.NoError(t, r.resolveRecord(context.Background(), rec, nil, []FQDNKey{
+func newTestClient(t *testing.T, rec *v1alpha2.DNSRecord) client.Client {
+	t.Helper()
+	scheme := runtime.NewScheme()
+	require.NoError(t, v1alpha2.AddToScheme(scheme))
+	return fake.NewClientBuilder().WithScheme(scheme).
+		WithStatusSubresource(&v1alpha2.DNSRecord{}).WithObjects(rec).Build()
+}
+
+// TestResolveRecord_SetsSyncStatus verifies resolveRecord resolves the endpoint
+// and patches the DNSRecord status (it does NOT touch the read store — that
+// stays the reconcile's job).
+func TestResolveRecord_SetsSyncStatus(t *testing.T) {
+	rec := recordWithEndpoint()
+	c := newTestClient(t, rec)
+
+	r := &Runnable{Client: c, Resolver: stubResolver{addrs: []string{testTargetIP}}}
+	require.NoError(t, r.resolveRecord(context.Background(), rec, []FQDNKey{
 		{RecordKey: "ns/r", DNSName: testFQDN, RecordType: "A"},
 	}))
 
 	var got v1alpha2.DNSRecord
 	require.NoError(t, c.Get(context.Background(), client.ObjectKeyFromObject(rec), &got))
 	require.Equal(t, v1alpha2.SyncStatus(domaindns.SyncStatusSync), got.Status.Endpoints[0].SyncStatus)
-	require.Len(t, w.views, 1)
-	require.Equal(t, string(domaindns.SyncStatusSync), w.views[0].SyncStatus)
 }
 
+// TestRunnable_ForceThenTickResolves verifies a forced record is resolved on the
+// next tick and its status patched.
 func TestRunnable_ForceThenTickResolves(t *testing.T) {
-	scheme := runtime.NewScheme()
-	require.NoError(t, v1alpha2.AddToScheme(scheme))
-	rec := &v1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Name: "r", Namespace: "ns"},
-		Spec:       v1alpha2.DNSRecordSpec{PortalRef: "p"},
-		Status: v1alpha2.DNSRecordStatus{Endpoints: []v1alpha2.EndpointStatus{
-			{DNSName: testFQDN, RecordType: "A", Targets: []string{testTargetIP}, LastSeen: metav1.Now()},
-		}},
-	}
-	c := fake.NewClientBuilder().WithScheme(scheme).
-		WithStatusSubresource(&v1alpha2.DNSRecord{}).WithObjects(rec).Build()
-	w := &capWriter{}
-	r := New(c, stubResolver{addrs: []string{testTargetIP}}, w)
+	rec := recordWithEndpoint()
+	c := newTestClient(t, rec)
+	r := New(c, stubResolver{addrs: []string{testTargetIP}})
 
 	r.Force("ns/r")
 	require.NoError(t, r.tick(context.Background()))
@@ -101,4 +88,25 @@ func TestRunnable_ForceThenTickResolves(t *testing.T) {
 	var got v1alpha2.DNSRecord
 	require.NoError(t, c.Get(context.Background(), client.ObjectKeyFromObject(rec), &got))
 	require.Equal(t, v1alpha2.SyncStatus(domaindns.SyncStatusSync), got.Status.Endpoints[0].SyncStatus)
+}
+
+// TestRunnable_ForceRetainedUntilMaterialised verifies that forcing a record
+// whose endpoints aren't materialised yet retains the request (so it isn't
+// silently lost) until a later tick where they exist.
+func TestRunnable_ForceRetainedUntilMaterialised(t *testing.T) {
+	// Record exists but has NO status endpoints yet.
+	rec := &v1alpha2.DNSRecord{
+		ObjectMeta: metav1.ObjectMeta{Name: "r", Namespace: "ns"},
+		Spec:       v1alpha2.DNSRecordSpec{PortalRef: "p"},
+	}
+	c := newTestClient(t, rec)
+	r := New(c, stubResolver{addrs: []string{testTargetIP}})
+
+	r.Force("ns/r")
+	require.NoError(t, r.tick(context.Background())) // no endpoints -> nothing resolved, force retained
+
+	r.mu.Lock()
+	_, retained := r.forced["ns/r"]
+	r.mu.Unlock()
+	require.True(t, retained, "force must be retained while endpoints are not materialised")
 }

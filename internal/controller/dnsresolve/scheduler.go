@@ -99,14 +99,18 @@ func (s *scheduler) Reschedule(k FQDNKey) {
 	}
 }
 
-// ForceRecord makes every tracked key of a record immediately due.
-func (s *scheduler) ForceRecord(recordKey string) {
+// ForceRecord makes every tracked key of a record immediately due and returns
+// how many keys it matched (0 means the record has no tracked endpoints yet).
+func (s *scheduler) ForceRecord(recordKey string) int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	now := s.now()
+	matched := 0
 	for k := range s.next {
 		if k.RecordKey == recordKey {
 			s.next[k] = now.Add(-time.Nanosecond)
+			matched++
 		}
 	}
+	return matched
 }
