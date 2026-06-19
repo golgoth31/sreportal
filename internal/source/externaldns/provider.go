@@ -160,6 +160,12 @@ func (p *Provider) Endpoints(parent context.Context, kind registry.SourceType, c
 // releases it.
 func (p *Provider) finalizeLocked(kind registry.SourceType, bs *builtSource, parent context.Context) ([]*endpoint.Endpoint, error) {
 	if bs.buildErr != nil {
+		// Cancel the build's context: the external-dns constructors call
+		// informerFactory.Start BEFORE WaitForCacheSync, so a sync failure leaves
+		// informer goroutines/watches running on srcCtx. Without this they'd leak
+		// and re-accumulate every cycle for a kind that keeps failing (e.g. an
+		// absent gateway-api / DNSEndpoint CRD). cancel is idempotent.
+		bs.cancel()
 		// Drop so the next cycle retries (e.g. once the CRD/RBAC appears), but
 		// only if this entry is still the current one.
 		if p.built[kind] == bs {
@@ -191,9 +197,10 @@ func (p *Provider) runBuild(ctx context.Context, kind registry.SourceType, cfg *
 	if p.built[kind] == bs {
 		bs.src = src
 		bs.buildErr = err
-	} else if err == nil {
+	} else {
 		// Superseded (config changed) or forgotten while building: tear down the
-		// informer we just created so it doesn't leak.
+		// informer/context we just created so it doesn't leak. cancel is
+		// idempotent (the supersede/forget path may have already called it).
 		bs.cancel()
 	}
 	p.mu.Unlock()
