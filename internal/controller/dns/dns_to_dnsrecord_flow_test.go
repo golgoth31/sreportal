@@ -169,7 +169,7 @@ var _ = Describe("DNS → DNSRecord E2E flow", func() {
 
 		By("reconciling the DNSRecord — MaterialiseEntriesHandler + ProjectStoreHandler populate the read store")
 		store := dnsreadstore.NewFQDNStore()
-		recRec := dnsrecords.NewDNSRecordReconciler(k8sClient, k8sClient.Scheme(), nil)
+		recRec := dnsrecords.NewDNSRecordReconciler(k8sClient, k8sClient.Scheme())
 		recRec.SetFQDNWriter(store)
 
 		Eventually(func(g Gomega) {
