@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.36.0](https://github.com/golgoth31/sreportal/compare/v1.35.7...v1.36.0) (2026-06-20)
+
+
+### Features
+
+* **dnsresolve:** asynchronous DNS resolution off the reconcile hot path ([#311](https://github.com/golgoth31/sreportal/issues/311)) ([bd567dc](https://github.com/golgoth31/sreportal/commit/bd567dcbe6ebd1f610ecb8ab7b3092fb097a236e))
+* **source:** migrate remaining kinds to native external-dns + cleanup ([#310](https://github.com/golgoth31/sreportal/issues/310)) ([a10c653](https://github.com/golgoth31/sreportal/commit/a10c6531d0e876586411637978d4d87081a8f1ba))
+
+
+### Bug Fixes
+
+* **source:** restore native external-dns discovery (194→5 regression) ([#308](https://github.com/golgoth31/sreportal/issues/308)) ([26fac70](https://github.com/golgoth31/sreportal/commit/26fac70b3b5bc43378c1df591313a9119adc5e42))
+
 ## [1.35.7](https://github.com/golgoth31/sreportal/compare/v1.35.6...v1.35.7) (2026-06-18)
 
 
