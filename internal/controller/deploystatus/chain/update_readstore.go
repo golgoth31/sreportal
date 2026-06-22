@@ -21,13 +21,19 @@ import (
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	dom "github.com/golgoth31/sreportal/internal/domain/deploystatus"
-	"github.com/golgoth31/sreportal/internal/domain/forge"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/reconciler"
 )
 
-// UpdateReadStoreHandler projects computed entries into the deploy-status read store,
-// replacing the previous contribution for this (portalRef, namespace).
+// UpdateReadStoreHandler projects the CR's full Status.Services into the
+// deploy-status read store, replacing the previous contribution for this
+// (portalRef, namespace).
+//
+// It deliberately reads from Status.Services (the complete, just-updated set —
+// UpdateStatusHandler runs immediately before it in the chain) rather than from
+// this cycle's computed (due) subset. This way a partial cycle still publishes
+// the full set, and a "nothing due" cycle re-publishes the existing full Status
+// (self-healing) instead of wiping the read store.
 type UpdateReadStoreHandler struct {
 	store dom.Writer
 }
@@ -41,21 +47,10 @@ func NewUpdateReadStoreHandler(store dom.Writer) *UpdateReadStoreHandler {
 func (h *UpdateReadStoreHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha1.DeployStatus, ChainData]) error {
 	logger := log.FromContext(ctx).WithName("update-readstore")
 
-	entries := make([]dom.Entry, 0, len(rc.Data.Computed))
-	for _, c := range rc.Data.Computed {
-		entries = append(entries, dom.Entry{
-			Key:              c.Key,
-			Image:            c.Image,
-			SourceRepo:       c.SourceRepo,
-			DeployedRef:      c.DeployedRef,
-			DefaultBranch:    c.DefaultBranch,
-			AheadBy:          c.AheadBy,
-			PendingCommits:   toDomCommits(c.PendingCommits),
-			PendingTruncated: c.PendingTrunc,
-			DeployRunURL:     c.DeployRunURL,
-			State:            c.State,
-			Error:            c.Error,
-		})
+	services := rc.Resource.Status.Services
+	entries := make([]dom.Entry, 0, len(services))
+	for i := range services {
+		entries = append(entries, statusEntryToDom(&services[i]))
 	}
 
 	spec := rc.Resource.Spec
@@ -68,20 +63,45 @@ func (h *UpdateReadStoreHandler) Handle(ctx context.Context, rc *reconciler.Reco
 	return nil
 }
 
-// toDomCommits maps forge.Commit slice to domain deploystatus.Commit slice.
-// Key field mapping: forge.Commit.SHA → dom.Commit.Sha (forge uses uppercase SHA,
-// the domain read model uses lowercase Sha to match the CRD JSON tag).
-func toDomCommits(commits []forge.Commit) []dom.Commit {
+// statusEntryToDom maps a CRD DeployStatusEntry (Status.Services) to the
+// read-model dom.Entry, mapping every field.
+func statusEntryToDom(s *sreportalv1alpha1.DeployStatusEntry) dom.Entry {
+	return dom.Entry{
+		Key: s.Key,
+		Workload: dom.WorkloadRef{
+			Kind:      s.Workload.Kind,
+			Namespace: s.Workload.Namespace,
+			Name:      s.Workload.Name,
+			Container: s.Workload.Container,
+		},
+		Image:            s.Image,
+		SourceRepo:       s.SourceRepo,
+		DeployedRef:      s.DeployedRef,
+		DefaultBranch:    s.DefaultBranch,
+		AheadBy:          s.AheadBy,
+		PendingCommits:   crdCommitsToDom(s.PendingCommits),
+		PendingTruncated: s.PendingTruncated,
+		DeployedAt:       s.DeployedAt.Time,
+		DeployRunURL:     s.DeployRunURL,
+		State:            s.State,
+		Error:            s.Error,
+		LastCheckedAt:    s.LastCheckedAt.Time,
+	}
+}
+
+// crdCommitsToDom maps the CRD DeployStatusCommit slice to the read-model
+// dom.Commit slice.
+func crdCommitsToDom(commits []sreportalv1alpha1.DeployStatusCommit) []dom.Commit {
 	if len(commits) == 0 {
 		return nil
 	}
 	out := make([]dom.Commit, 0, len(commits))
 	for _, c := range commits {
 		out = append(out, dom.Commit{
-			Sha:     c.SHA,
+			Sha:     c.Sha,
 			Message: c.Message,
 			Author:  c.Author,
-			Date:    c.Date,
+			Date:    c.Date.Time,
 			URL:     c.URL,
 		})
 	}

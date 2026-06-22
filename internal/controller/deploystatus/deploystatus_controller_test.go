@@ -19,6 +19,7 @@ package deploystatus
 import (
 	"context"
 	"testing"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -98,7 +99,7 @@ func TestReconcile_PopulatesStatusAndReadStore(t *testing.T) {
 		cmp: forge.CompareResult{
 			AheadBy: 2,
 			Commits: []forge.Commit{
-				{SHA: "c1", Message: "feat: one"},
+				{SHA: "c1", Message: testCommitMsgOne},
 				{SHA: "c2", Message: "feat: two"},
 			},
 		},
@@ -107,7 +108,7 @@ func TestReconcile_PopulatesStatusAndReadStore(t *testing.T) {
 
 	cfg := &config.DeployStatusConfig{
 		Enabled: true,
-		Forges:  []config.ForgeConfig{{Host: "github.com", Kind: "github"}},
+		Forges:  []config.ForgeConfig{{Host: testForgeHost, Kind: "github"}},
 	}
 
 	r := NewDeployStatusReconciler(cl, store, clientFor, remoteclient.NewCache(), cfg)
@@ -158,6 +159,81 @@ func TestReconcile_PopulatesStatusAndReadStore(t *testing.T) {
 	}
 }
 
+// TestReconcile_SecondNothingDueReconcileKeepsReadStore is the regression test
+// for the readstore-wipe bug. After a first reconcile populates the store, a
+// second reconcile within the refresh interval finds nothing due (SelectDue
+// empty); the read store must NOT be emptied — it must keep the full prior set.
+func TestReconcile_SecondNothingDueReconcileKeepsReadStore(t *testing.T) {
+	scheme := newScheme(t)
+	store := readstoredeploystatus.NewStore()
+
+	cr := &sreportalv1alpha1.DeployStatus{
+		ObjectMeta: objectMeta("portal-a-default", "sreportal"),
+		Spec: sreportalv1alpha1.DeployStatusSpec{
+			PortalRef: "portal-a",
+			Namespace: testNsDefault,
+			Services: []sreportalv1alpha1.DeployStatusEntry{
+				{
+					Key: "k1",
+					Workload: sreportalv1alpha1.DeployStatusWorkloadRef{
+						Kind: testKindDeployment, Namespace: testNsDefault, Name: testWorkloadWidget, Container: testContainerApp,
+					},
+					Image:       testImage,
+					SourceRepo:  testSourceRepo,
+					DeployedRef: testDeployedRef,
+				},
+			},
+		},
+	}
+
+	cl := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(cr).
+		WithStatusSubresource(cr).
+		Build()
+
+	fc := &fakeForge{
+		branch: testBranch,
+		cmp: forge.CompareResult{
+			AheadBy: 2,
+			Commits: []forge.Commit{{SHA: "c1", Message: testCommitMsgOne}},
+		},
+	}
+	clientFor := func(string) forge.Client { return fc }
+
+	// Large refresh interval so the second reconcile finds nothing due.
+	cfg := &config.DeployStatusConfig{
+		Enabled:         true,
+		RefreshInterval: config.Duration(time.Hour),
+		Forges:          []config.ForgeConfig{{Host: testForgeHost, Kind: "github"}},
+	}
+
+	r := NewDeployStatusReconciler(cl, store, clientFor, remoteclient.NewCache(), cfg)
+
+	req := ctrl.Request{NamespacedName: types.NamespacedName{Name: cr.Name, Namespace: cr.Namespace}}
+	ctx := context.Background()
+
+	// First reconcile populates the store.
+	if _, err := r.Reconcile(ctx, req); err != nil {
+		t.Fatalf("first reconcile: %v", err)
+	}
+	if got := len(store.List("portal-a")); got != 1 {
+		t.Fatalf("after first reconcile: expected 1 readstore entry, got %d", got)
+	}
+
+	// Second reconcile: nothing due (LastCheckedAt is fresh) → store must NOT be wiped.
+	if _, err := r.Reconcile(ctx, req); err != nil {
+		t.Fatalf("second reconcile: %v", err)
+	}
+	entries := store.List("portal-a")
+	if len(entries) != 1 {
+		t.Fatalf("after second (nothing-due) reconcile: expected 1 readstore entry, got %d (wipe regression)", len(entries))
+	}
+	if entries[0].Key != "k1" || entries[0].State != testStateBehind {
+		t.Errorf("readstore entry changed unexpectedly: %+v", entries[0])
+	}
+}
+
 func TestReconcile_SkipsRemoteCR(t *testing.T) {
 	scheme := newScheme(t)
 	store := readstoredeploystatus.NewStore()
@@ -192,7 +268,7 @@ func TestReconcile_SkipsRemoteCR(t *testing.T) {
 		return nil
 	}
 
-	cfg := &config.DeployStatusConfig{Enabled: true, Forges: []config.ForgeConfig{{Host: "github.com"}}}
+	cfg := &config.DeployStatusConfig{Enabled: true, Forges: []config.ForgeConfig{{Host: testForgeHost}}}
 	r := NewDeployStatusReconciler(cl, store, clientFor, remoteclient.NewCache(), cfg)
 
 	req := ctrl.Request{NamespacedName: types.NamespacedName{Name: cr.Name, Namespace: cr.Namespace}}

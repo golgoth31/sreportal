@@ -27,4 +27,6 @@ const (
 	testStateBehind    = "behind"
 	testContainerApp   = "app"
 	testWorkloadWidget = "widget"
+	testForgeHost      = "github.com"
+	testCommitMsgOne   = "feat: one"
 )

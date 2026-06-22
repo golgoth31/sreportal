@@ -127,7 +127,7 @@ func (h *UpdateStatusHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 }
 
 // toCRDCommits maps forge.Commit slice to the CRD DeployStatusCommit slice.
-// Uses the same SHA→Sha mapping as toDomCommits but targets the CRD type.
+// Maps forge.Commit.SHA (uppercase) → DeployStatusCommit.Sha (lowercase, JSON tag).
 func toCRDCommits(commits []forge.Commit) []sreportalv1alpha1.DeployStatusCommit {
 	if len(commits) == 0 {
 		return nil

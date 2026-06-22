@@ -80,7 +80,7 @@ func TestResolveDeployRun_EnrichesOkAndBehindEntries(t *testing.T) {
 			{Key: testKeyB, State: stateOk, DefaultBranch: testDefaultBranch},
 		},
 		[]WorkItem{
-			{Key: testKeyA, Workload: forge.RepoRef{Host: testForgeHost, Owner: testRepoOwner, Repo: "app-a"}},
+			{Key: testKeyA, Workload: forge.RepoRef{Host: testForgeHost, Owner: testRepoOwner, Repo: testRepoNameA}},
 			{Key: testKeyB, Workload: forge.RepoRef{Host: testForgeHost, Owner: testRepoOwner, Repo: "app-b"}},
 		},
 	)
@@ -149,7 +149,7 @@ func TestResolveDeployRun_SwallowsLatestWorkflowRunError(t *testing.T) {
 			{Key: testKeyA, State: stateBehind, DefaultBranch: testDefaultBranch},
 		},
 		[]WorkItem{
-			{Key: testKeyA, Workload: forge.RepoRef{Host: testForgeHost, Owner: testRepoOwner, Repo: "app-a"}},
+			{Key: testKeyA, Workload: forge.RepoRef{Host: testForgeHost, Owner: testRepoOwner, Repo: testRepoNameA}},
 		},
 	)
 

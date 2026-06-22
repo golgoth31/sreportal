@@ -800,6 +800,10 @@ func main() {
 				}
 				ts = appTS
 			} else {
+				if os.Getenv(f.Auth.TokenEnv) == "" {
+					setupLog.Info("deployStatus: forge PAT env var is empty; forge API calls will be unauthenticated",
+						"host", f.Host, "tokenEnv", f.Auth.TokenEnv)
+				}
 				ts = githubforge.NewPATTokenSource(os.Getenv(f.Auth.TokenEnv))
 			}
 			clients[f.Host] = githubforge.NewClient(githubforge.Config{

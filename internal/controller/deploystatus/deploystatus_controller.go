@@ -25,8 +25,10 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/config"
@@ -88,8 +90,11 @@ func NewDeployStatusReconciler(
 		deploystatuschain.NewResolveOCISourceHandler(forges),
 		deploystatuschain.NewForgeCompareHandler(clientFor),
 		deploystatuschain.NewResolveDeployRunHandler(clientFor, forges),
-		deploystatuschain.NewUpdateReadStoreHandler(store),
+		// UpdateStatus runs BEFORE UpdateReadStore so the readstore can project
+		// from the full, just-updated Status.Services (the complete current view)
+		// rather than only this cycle's computed (due) subset.
 		deploystatuschain.NewUpdateStatusHandler(c),
+		deploystatuschain.NewUpdateReadStoreHandler(store),
 	}
 
 	return &DeployStatusReconciler{
@@ -332,7 +337,7 @@ func (r *DeployStatusReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&sreportalv1alpha1.DeployStatus{}).
+		For(&sreportalv1alpha1.DeployStatus{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Named("deploystatus").
 		Complete(r)
 }

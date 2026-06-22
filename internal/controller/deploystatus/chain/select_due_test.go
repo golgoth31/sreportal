@@ -73,9 +73,9 @@ func TestSelectDue_MapsWorkloadFields(t *testing.T) {
 			SourceRepo:  "https://github.com/org/repo",
 			DeployedRef: "abc123",
 			Workload: sreportalv1alpha1.DeployStatusWorkloadRef{
-				Kind:      "Deployment",
+				Kind:      testKindDeployment,
 				Namespace: "prod",
-				Name:      "app",
+				Name:      testWorkloadApp,
 				Container: testDefaultBranch,
 			},
 		},
@@ -98,8 +98,8 @@ func TestSelectDue_MapsWorkloadFields(t *testing.T) {
 	if wi.DeployedRef != "abc123" {
 		t.Errorf("deployedRef = %q", wi.DeployedRef)
 	}
-	if wi.WorkloadKind != "Deployment" || wi.WorkloadNamespace != "prod" ||
-		wi.WorkloadName != "app" || wi.WorkloadContainer != "main" {
+	if wi.WorkloadKind != testKindDeployment || wi.WorkloadNamespace != "prod" ||
+		wi.WorkloadName != testWorkloadApp || wi.WorkloadContainer != testDefaultBranch {
 		t.Errorf("workload fields not mapped correctly: %+v", wi)
 	}
 }

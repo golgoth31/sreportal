@@ -39,7 +39,7 @@ func TestMapRemoteEntry_FullFields(t *testing.T) {
 		DefaultBranch: testBranch,
 		AheadBy:       2,
 		PendingCommits: []remoteclient.RemoteDeployCommit{
-			{Sha: "c1", Message: "feat: one", Author: "alice", Date: &commitDate, URL: "https://x/c1"},
+			{Sha: "c1", Message: testCommitMsgOne, Author: "alice", Date: &commitDate, URL: "https://x/c1"},
 		},
 		PendingTruncated: true,
 		DeployedAt:       &deployedAt,

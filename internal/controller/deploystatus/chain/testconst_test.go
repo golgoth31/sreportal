@@ -33,4 +33,9 @@ const (
 	// testErrKey / testUnresKey are service keys whose states are error / unresolved.
 	testErrKey   = "err-key"
 	testUnresKey = "unres-key"
+
+	// testRepoNameA / testKindDeployment / testWorkloadApp are shared fixtures used across chain tests.
+	testRepoNameA      = "app-a"
+	testKindDeployment = "Deployment"
+	testWorkloadApp    = "app"
 )

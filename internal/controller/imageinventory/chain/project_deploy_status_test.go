@@ -18,6 +18,7 @@ package chain
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -25,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	domainimageregistry "github.com/golgoth31/sreportal/internal/domain/imageregistry"
@@ -38,13 +40,19 @@ const (
 	tRevAbc           = "abc123def456"
 )
 
-// fakeLabelReader maps "host/repository:reference" -> labels.
+// fakeLabelReader maps "host/repository:reference" -> labels. A reference listed
+// in errOn returns a (transient) error instead of labels.
 type fakeLabelReader struct {
 	labels map[string]map[string]string
+	errOn  map[string]struct{}
 }
 
 func (f *fakeLabelReader) ImageConfigLabels(_ context.Context, host, repository, reference string) (map[string]string, error) {
-	return f.labels[host+"/"+repository+":"+reference], nil
+	key := host + "/" + repository + ":" + reference
+	if _, fail := f.errOn[key]; fail {
+		return nil, errors.New("transient registry error")
+	}
+	return f.labels[key], nil
 }
 
 func newProjectTestScheme(t *testing.T) *runtime.Scheme {
@@ -167,4 +175,135 @@ func TestProjectDeployStatus_FeatureDisabledSkips(t *testing.T) {
 	var list sreportalv1alpha1.DeployStatusList
 	require.NoError(t, cli.List(context.Background(), &list))
 	require.Empty(t, list.Items, "feature disabled → no projection")
+}
+
+// TestProjectDeployStatus_PrunesStaleNamespace verifies FIX 2: when a namespace
+// stops carrying any first-party image this cycle, its DeployStatus CR (owned by
+// this ImageInventory) is pruned.
+func TestProjectDeployStatus_PrunesStaleNamespace(t *testing.T) {
+	t.Parallel()
+
+	scheme := newProjectTestScheme(t)
+
+	portal := &sreportalv1alpha1.Portal{
+		ObjectMeta: metav1.ObjectMeta{Name: tPortalMain, Namespace: tNsDefault},
+	}
+	inv := &sreportalv1alpha1.ImageInventory{
+		ObjectMeta: metav1.ObjectMeta{Name: tNameInv, Namespace: tNsDefault, UID: "inv-uid"},
+		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: tPortalMain},
+	}
+
+	// A pre-existing DeployStatus CR for the "old" namespace, owned by inv, that
+	// will have no first-party image this cycle.
+	staleName := domainimageregistry.DeployStatusCRName(tPortalMain, "old-ns")
+	stale := &sreportalv1alpha1.DeployStatus{
+		ObjectMeta: metav1.ObjectMeta{Name: staleName, Namespace: tNsDefault},
+		Spec: sreportalv1alpha1.DeployStatusSpec{
+			PortalRef: tPortalMain,
+			Namespace: "old-ns",
+			Services: []sreportalv1alpha1.DeployStatusEntry{
+				{Key: "stalekey", Image: tImgGhcrAPIv1, SourceRepo: tSourceAcmeAPI},
+			},
+		},
+	}
+	require.NoError(t, controllerutil.SetControllerReference(inv, stale, scheme))
+
+	cli := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(portal, inv, stale).
+		Build()
+
+	reader := &fakeLabelReader{labels: map[string]map[string]string{
+		tImgGhcrAPIv1: {ociLabelSource: tSourceAcmeAPI, ociLabelRevision: tRevAbc},
+	}}
+
+	// This cycle only "default" namespace has a first-party image.
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageInventory, ChainData]{
+		Resource: inv,
+		Data: ChainData{Observations: []domainimageregistry.ContainerObservation{
+			{WorkloadKind: tKindDeploy, WorkloadName: tNameAPI, WorkloadNamespace: tNsDefault, ContainerName: tNameAPI, PodImage: tImgGhcrAPIv1},
+		}},
+	}
+
+	h := NewProjectDeployStatusHandler(cli, reader)
+	require.NoError(t, h.Handle(context.Background(), rc))
+
+	// The stale CR for old-ns must be deleted.
+	var gone sreportalv1alpha1.DeployStatus
+	err := cli.Get(context.Background(), types.NamespacedName{Name: staleName, Namespace: tNsDefault}, &gone)
+	require.True(t, err != nil, "stale DeployStatus CR must be pruned")
+
+	// The fresh CR for default must exist.
+	freshName := domainimageregistry.DeployStatusCRName(tPortalMain, tNsDefault)
+	var fresh sreportalv1alpha1.DeployStatus
+	require.NoError(t, cli.Get(context.Background(), types.NamespacedName{Name: freshName, Namespace: tNsDefault}, &fresh))
+	require.Len(t, fresh.Spec.Services, 1)
+}
+
+// TestProjectDeployStatus_CarriesForwardOnLabelError verifies FIX 3: a workload
+// whose OCI-label read errors this cycle but which already had a prior entry in
+// the DeployStatus CR keeps that entry (not silently dropped).
+func TestProjectDeployStatus_CarriesForwardOnLabelError(t *testing.T) {
+	t.Parallel()
+
+	scheme := newProjectTestScheme(t)
+
+	portal := &sreportalv1alpha1.Portal{
+		ObjectMeta: metav1.ObjectMeta{Name: tPortalMain, Namespace: tNsDefault},
+	}
+	inv := &sreportalv1alpha1.ImageInventory{
+		ObjectMeta: metav1.ObjectMeta{Name: tNameInv, Namespace: tNsDefault, UID: "inv-uid"},
+		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: tPortalMain},
+	}
+
+	// The key the handler will compute for the erroring observation.
+	priorKey := deployStatusEntryKey(tImgGhcrAPIv1, tKindDeploy, tNsDefault, tNameAPI, tNameAPI)
+
+	// Pre-existing CR for default ns carrying the prior entry.
+	name := domainimageregistry.DeployStatusCRName(tPortalMain, tNsDefault)
+	existing := &sreportalv1alpha1.DeployStatus{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: tNsDefault},
+		Spec: sreportalv1alpha1.DeployStatusSpec{
+			PortalRef: tPortalMain,
+			Namespace: tNsDefault,
+			Services: []sreportalv1alpha1.DeployStatusEntry{
+				{
+					Key:         priorKey,
+					Image:       tImgGhcrAPIv1,
+					Workload:    sreportalv1alpha1.DeployStatusWorkloadRef{Kind: tKindDeploy, Namespace: tNsDefault, Name: tNameAPI, Container: tNameAPI},
+					SourceRepo:  tSourceAcmeAPI,
+					DeployedRef: tRevAbc,
+				},
+			},
+		},
+	}
+	require.NoError(t, controllerutil.SetControllerReference(inv, existing, scheme))
+
+	cli := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(portal, inv, existing).
+		Build()
+
+	// The label read for this image fails this cycle.
+	reader := &fakeLabelReader{
+		labels: map[string]map[string]string{},
+		errOn:  map[string]struct{}{tImgGhcrAPIv1: {}},
+	}
+
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageInventory, ChainData]{
+		Resource: inv,
+		Data: ChainData{Observations: []domainimageregistry.ContainerObservation{
+			{WorkloadKind: tKindDeploy, WorkloadName: tNameAPI, WorkloadNamespace: tNsDefault, ContainerName: tNameAPI, PodImage: tImgGhcrAPIv1},
+		}},
+	}
+
+	h := NewProjectDeployStatusHandler(cli, reader)
+	require.NoError(t, h.Handle(context.Background(), rc))
+
+	// The CR must still exist and still carry the prior entry.
+	var got sreportalv1alpha1.DeployStatus
+	require.NoError(t, cli.Get(context.Background(), types.NamespacedName{Name: name, Namespace: tNsDefault}, &got))
+	require.Len(t, got.Spec.Services, 1, "prior entry must be carried forward, not dropped")
+	require.Equal(t, priorKey, got.Spec.Services[0].Key)
+	require.Equal(t, tRevAbc, got.Spec.Services[0].DeployedRef)
 }

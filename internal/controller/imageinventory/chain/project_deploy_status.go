@@ -92,25 +92,40 @@ func (h *ProjectDeployStatusHandler) Handle(ctx context.Context, rc *reconciler.
 
 	// Group source-labeled entries by observed namespace — one DeployStatus CR
 	// per (portalRef, namespace), mirroring sync_registry_crs.go's per-group upsert.
-	byNamespace := h.buildEntries(ctx, rc.Data.Observations)
+	byNamespace, carryForwardKeys := h.buildEntries(ctx, rc.Data.Observations)
 
 	for ns, entries := range byNamespace {
-		if err := h.upsertCR(ctx, inv, ns, entries); err != nil {
+		if err := h.upsertCR(ctx, inv, ns, entries, carryForwardKeys[ns]); err != nil {
 			return fmt.Errorf("upsert DeployStatus for namespace %s: %w", ns, err)
 		}
+	}
+
+	// Garbage-collect DeployStatus CRs previously owned by this ImageInventory
+	// whose namespace no longer carries any first-party image this cycle. Without
+	// this, a vanished workload's stale lag would be shown indefinitely.
+	if err := h.deleteOrphans(ctx, inv, byNamespace); err != nil {
+		return fmt.Errorf("delete orphan DeployStatus CRs: %w", err)
 	}
 	return nil
 }
 
 // buildEntries resolves each observation's OCI labels and returns the
 // source-labeled DeployStatusEntries grouped by namespace. Entries with no
-// source label are dropped.
+// source label are dropped (legit base images).
+//
+// It also returns, per namespace, the set of entry keys whose OCI-label read
+// FAILED. A transient registry error must not silently drop a workload from the
+// CR (which would be indistinguishable from "not first-party"): the caller
+// carries forward the prior entry for these keys. Namespaces that have only
+// errored keys are still registered in the returned map (with no fresh entries)
+// so they are neither pruned nor lose their carried-forward entries.
 func (h *ProjectDeployStatusHandler) buildEntries(
 	ctx context.Context,
 	obs []domainimageregistry.ContainerObservation,
-) map[string][]sreportalv1alpha1.DeployStatusEntry {
+) (map[string][]sreportalv1alpha1.DeployStatusEntry, map[string]map[string]struct{}) {
 	logger := log.FromContext(ctx)
 	out := map[string][]sreportalv1alpha1.DeployStatusEntry{}
+	carryForward := map[string]map[string]struct{}{}
 
 	for _, o := range obs {
 		image := o.PodImage
@@ -125,8 +140,21 @@ func (h *ProjectDeployStatusHandler) buildEntries(
 
 		labels, err := h.labels.ImageConfigLabels(ctx, parsed.Registry, parsed.Repository, parsed.Tag)
 		if err != nil {
-			// Best-effort: a registry hiccup must not fail the inventory chain.
-			logger.V(1).Info("skipping image with unreadable OCI labels", "image", image, "error", err.Error())
+			// A transient read error must NOT change CR membership. Log at Error
+			// (default-visible) and mark the key for carry-forward so an existing
+			// entry survives this cycle instead of vanishing.
+			key := deployStatusEntryKey(image, o.WorkloadKind, o.WorkloadNamespace, o.WorkloadName, o.ContainerName)
+			logger.Error(err, "failed to read OCI labels for deploy-status; carrying forward any prior entry",
+				"image", image, "namespace", o.WorkloadNamespace, "workload", o.WorkloadName, "key", key)
+			if carryForward[o.WorkloadNamespace] == nil {
+				carryForward[o.WorkloadNamespace] = map[string]struct{}{}
+			}
+			carryForward[o.WorkloadNamespace][key] = struct{}{}
+			// Register the namespace so it is not pruned and the carry-forward
+			// merge runs even when no fresh entry exists for it this cycle.
+			if _, ok := out[o.WorkloadNamespace]; !ok {
+				out[o.WorkloadNamespace] = nil
+			}
 			continue
 		}
 		source := labels[ociLabelSource]
@@ -149,21 +177,23 @@ func (h *ProjectDeployStatusHandler) buildEntries(
 		}
 		out[o.WorkloadNamespace] = append(out[o.WorkloadNamespace], entry)
 	}
-	return out
+	return out, carryForward
 }
 
 // upsertCR creates or patches the per-(portal, namespace) DeployStatus CR,
 // owned by the parent ImageInventory so GC works. Only Spec is written.
+//
+// carryForwardKeys are entry keys whose OCI-label read failed this cycle: for
+// each, if the existing CR already carries an entry, it is preserved so a
+// transient registry error does not drop the workload from the CR.
 func (h *ProjectDeployStatusHandler) upsertCR(
 	ctx context.Context,
 	inv *sreportalv1alpha1.ImageInventory,
 	namespace string,
 	entries []sreportalv1alpha1.DeployStatusEntry,
+	carryForwardKeys map[string]struct{},
 ) error {
 	logger := log.FromContext(ctx)
-
-	// Deterministic ordering so repeated reconciles produce identical specs.
-	sort.SliceStable(entries, func(i, j int) bool { return entries[i].Key < entries[j].Key })
 
 	name := domainimageregistry.DeployStatusCRName(inv.Spec.PortalRef, namespace)
 	cr := &sreportalv1alpha1.DeployStatus{
@@ -176,15 +206,74 @@ func (h *ProjectDeployStatusHandler) upsertCR(
 		if err := controllerutil.SetControllerReference(inv, cr, h.client.Scheme()); err != nil {
 			return fmt.Errorf("set owner reference: %w", err)
 		}
+
+		// Carry forward prior entries for keys whose label read failed this cycle.
+		// cr.Spec.Services here holds the previously persisted spec (CreateOrUpdate
+		// fetched the object before invoking this mutate fn).
+		merged := append([]sreportalv1alpha1.DeployStatusEntry(nil), entries...)
+		if len(carryForwardKeys) > 0 {
+			fresh := make(map[string]struct{}, len(entries))
+			for _, e := range entries {
+				fresh[e.Key] = struct{}{}
+			}
+			for _, prev := range cr.Spec.Services {
+				if _, carry := carryForwardKeys[prev.Key]; !carry {
+					continue
+				}
+				if _, alreadyFresh := fresh[prev.Key]; alreadyFresh {
+					continue
+				}
+				merged = append(merged, prev)
+			}
+		}
+
+		// Deterministic ordering so repeated reconciles produce identical specs.
+		sort.SliceStable(merged, func(i, j int) bool { return merged[i].Key < merged[j].Key })
+
 		cr.Spec.PortalRef = inv.Spec.PortalRef
 		cr.Spec.Namespace = namespace
-		cr.Spec.Services = entries
+		cr.Spec.Services = merged
 		return nil
 	})
 	if err != nil {
 		return err
 	}
-	logger.V(1).Info("DeployStatus reconciled", "operation", op, "name", name, "serviceCount", len(entries))
+	logger.V(1).Info("DeployStatus reconciled", "operation", op, "name", name, "serviceCount", len(cr.Spec.Services))
+	return nil
+}
+
+// deleteOrphans deletes DeployStatus CRs owned by this ImageInventory whose
+// namespace no longer carries any first-party image this cycle. Ownership is
+// checked via the controller owner reference, mirroring the delete-vs-empty
+// choice in sync_registry_crs.go (delete the whole CR).
+func (h *ProjectDeployStatusHandler) deleteOrphans(
+	ctx context.Context,
+	inv *sreportalv1alpha1.ImageInventory,
+	byNamespace map[string][]sreportalv1alpha1.DeployStatusEntry,
+) error {
+	logger := log.FromContext(ctx)
+
+	var list sreportalv1alpha1.DeployStatusList
+	if err := h.client.List(ctx, &list, client.InNamespace(inv.Namespace)); err != nil {
+		return fmt.Errorf("list DeployStatus CRs: %w", err)
+	}
+
+	for i := range list.Items {
+		cr := &list.Items[i]
+		if !metav1.IsControlledBy(cr, inv) {
+			continue
+		}
+		if _, keep := byNamespace[cr.Spec.Namespace]; keep {
+			continue
+		}
+		if err := h.client.Delete(ctx, cr); err != nil {
+			if apierrors.IsNotFound(err) {
+				continue
+			}
+			return fmt.Errorf("delete orphan DeployStatus %s: %w", cr.Name, err)
+		}
+		logger.V(1).Info("deleted orphan DeployStatus", "name", cr.Name, "namespace", cr.Spec.Namespace)
+	}
 	return nil
 }
 

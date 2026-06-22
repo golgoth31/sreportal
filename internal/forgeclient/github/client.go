@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	neturl "net/url"
 	"strconv"
 	"time"
 
@@ -81,7 +82,8 @@ func NewClient(cfg Config) *Client {
 
 // DefaultBranch returns the repository's default branch name.
 func (c *Client) DefaultBranch(ctx context.Context, ref forge.RepoRef) (string, error) {
-	url := fmt.Sprintf("%s/repos/%s/%s", c.cfg.BaseURL, ref.Owner, ref.Repo)
+	url := fmt.Sprintf("%s/repos/%s/%s",
+		c.cfg.BaseURL, neturl.PathEscape(ref.Owner), neturl.PathEscape(ref.Repo))
 
 	var repo struct {
 		DefaultBranch string `json:"default_branch"`
@@ -96,7 +98,9 @@ func (c *Client) DefaultBranch(ctx context.Context, ref forge.RepoRef) (string, 
 // via Commit.Merge when they have more than one parent.
 func (c *Client) Compare(ctx context.Context, ref forge.RepoRef, base, head string) (forge.CompareResult, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/compare/%s...%s",
-		c.cfg.BaseURL, ref.Owner, ref.Repo, base, head)
+		c.cfg.BaseURL,
+		neturl.PathEscape(ref.Owner), neturl.PathEscape(ref.Repo),
+		neturl.PathEscape(base), neturl.PathEscape(head))
 
 	var resp apiCompareResponse
 	if err := c.getJSON(ctx, url, &resp); err != nil {
@@ -134,7 +138,9 @@ func (c *Client) LatestWorkflowRun(ctx context.Context, ref forge.RepoRef, workf
 	}
 
 	url := fmt.Sprintf("%s/repos/%s/%s/actions/workflows/%s/runs?branch=%s&per_page=1",
-		c.cfg.BaseURL, ref.Owner, ref.Repo, workflowFile, branch)
+		c.cfg.BaseURL,
+		neturl.PathEscape(ref.Owner), neturl.PathEscape(ref.Repo),
+		neturl.PathEscape(workflowFile), neturl.QueryEscape(branch))
 
 	var resp apiWorkflowRunsResponse
 	if err := c.getJSON(ctx, url, &resp); err != nil {
