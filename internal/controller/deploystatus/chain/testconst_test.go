@@ -20,4 +20,17 @@ package chain
 const (
 	testDefaultBranch = "main"
 	testForgeHost     = "github.com"
+
+	// testOperatorNs is the namespace the operator itself runs in (used when seeding fake CRs).
+	testOperatorNs = "sreportal"
+
+	// testCommitSHA is a reusable dummy commit SHA for field-mapping assertions.
+	testCommitSHA = "abc123"
+
+	// testRepoOwner is a placeholder GitHub org used in forge.RepoRef fixtures.
+	testRepoOwner = "acme"
+
+	// testErrKey / testUnresKey are service keys whose states are error / unresolved.
+	testErrKey   = "err-key"
+	testUnresKey = "unres-key"
 )
