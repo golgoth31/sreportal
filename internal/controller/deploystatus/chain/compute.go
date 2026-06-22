@@ -26,10 +26,6 @@ const (
 	stateBehind     = "behind"
 	stateError      = "error"
 	stateUnresolved = "unresolved"
-
-	// Test helper constants.
-	testDefaultBranch = "main"
-	testForgeHost     = "github.com"
 )
 
 // ComputeLag filters merge commits out of the CompareResult and caps the list
