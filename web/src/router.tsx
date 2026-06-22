@@ -53,6 +53,9 @@ const StatusPage = lazy(() =>
 const ImagesPage = lazy(() =>
   import("@/pages/ImagesPage").then((m) => ({ default: m.ImagesPage }))
 );
+const DeployStatusPage = lazy(() =>
+  import("@/pages/DeployStatusPage").then((m) => ({ default: m.DeployStatusPage }))
+);
 
 export const router = createBrowserRouter([
   {
@@ -124,6 +127,15 @@ export const router = createBrowserRouter([
         element: (
           <Suspense fallback={<PageSkeleton />}>
             <ImagesPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: ":portalName/deploystatus",
+        errorElement: <ErrorPage />,
+        element: (
+          <Suspense fallback={<PageSkeleton />}>
+            <DeployStatusPage />
           </Suspense>
         ),
       },

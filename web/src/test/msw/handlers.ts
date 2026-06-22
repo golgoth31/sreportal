@@ -2,6 +2,7 @@ import { http, HttpResponse } from "msw";
 
 import {
   listCustomEmojisResponseJson,
+  listDeployStatusResponseJson,
   listFqdnsResponseJson,
   listPortalsResponseJson,
   listReleaseDaysResponseJson,
@@ -16,6 +17,7 @@ export const listPortalsPath = /\/sreportal\.v1\.PortalService\/ListPortals$/;
 export const listReleasesPath = /\/sreportal\.v1\.ReleaseService\/ListReleases$/;
 export const listReleaseDaysPath = /\/sreportal\.v1\.ReleaseService\/ListReleaseDays$/;
 export const listCustomEmojisPath = /\/sreportal\.v1\.EmojiService\/ListCustomEmojis$/;
+export const listDeployStatusPath = /\/sreportal\.v1\.DeployStatusService\/ListDeployStatus$/;
 
 /** gRPC-Web Content-Type header. */
 const GRPC_WEB_HEADERS = {
@@ -60,6 +62,11 @@ export const defaultHandlers = [
   http.post(listCustomEmojisPath, () =>
     grpcWebResponse(
       listCustomEmojisResponseJson({}),
+    ),
+  ),
+  http.post(listDeployStatusPath, () =>
+    grpcWebResponse(
+      listDeployStatusResponseJson([]),
     ),
   ),
 ];

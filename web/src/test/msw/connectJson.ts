@@ -20,6 +20,11 @@ import {
   ReleaseEntrySchema,
   type ReleaseEntry,
 } from "@/gen/sreportal/v1/release_pb";
+import {
+  DeployStatusEntrySchema,
+  ListDeployStatusResponseSchema,
+  type DeployStatusEntry,
+} from "@/gen/sreportal/v1/deploystatus_pb";
 
 // ---------------------------------------------------------------------------
 // gRPC-Web binary framing helpers
@@ -139,6 +144,28 @@ export function samplePortal(
     ready: true,
     url: "",
     isRemote: false,
+    ...overrides,
+  });
+}
+
+export function listDeployStatusResponseJson(entries: DeployStatusEntry[]) {
+  const message = create(ListDeployStatusResponseSchema, { entries });
+  return grpcWebFrame(ListDeployStatusResponseSchema, message);
+}
+
+export function sampleDeployStatusEntry(
+  overrides: Partial<DeployStatusEntry> & Pick<DeployStatusEntry, "key" | "state">,
+): DeployStatusEntry {
+  return create(DeployStatusEntrySchema, {
+    image: "ghcr.io/example/service:latest",
+    sourceRepo: "https://github.com/example/service",
+    deployedRef: "abc1234",
+    defaultBranch: "main",
+    aheadBy: 0,
+    pendingCommits: [],
+    pendingTruncated: false,
+    deployRunUrl: "",
+    error: "",
     ...overrides,
   });
 }

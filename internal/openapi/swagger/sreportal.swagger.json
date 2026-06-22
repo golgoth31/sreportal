@@ -2314,6 +2314,10 @@
         "imageInventory": {
           "type": "boolean",
           "title": "image_inventory enables the image inventory page for this portal"
+        },
+        "deployStatus": {
+          "type": "boolean",
+          "title": "deploy_status enables the deploy status page for this portal"
         }
       },
       "title": "PortalFeatures controls which features are enabled for a portal"
