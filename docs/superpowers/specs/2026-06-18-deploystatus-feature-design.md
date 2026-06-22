@@ -269,6 +269,15 @@ These deltas were decided while implementing and supersede the matching details 
 - **Remote federation keying.** The deploy-status read store is 2-level `(portalRef, namespace)` with no host dimension, so a remote portal's federated entries are projected into a single sentinel bucket `namespace = "remote-<portal>"` (the shadow CR's `Spec.Namespace`); `Reader.List(portalRef)` aggregates it with local buckets and the finalizer's single `RemoveForNamespace` purges it.
 - **Feature default.** The `deployStatus` portal feature flag defaults to true (opt-out), consistent with the other features; the backend emits `deploy_status` in the portal proto features so the UI nav gates correctly.
 
+## 9c. Known limitations (deferred follow-ups)
+
+Surfaced by the final review panel; non-blocking, left for a follow-up:
+
+- **Remote-fetch staleness not exposed on the read API.** When a remote portal is unreachable, the controller logs at Error, sets `Status.LastError`, requeues, and keeps serving the last-good readstore entries — but the gRPC/MCP/UI read path has no staleness/error signal, so consumers may see stale (or empty) data without knowing the federation link is down. Fix would add a portal-level `lastError`/`lastSuccessfulFetch` to `ListDeployStatusResponse` + a UI banner.
+- **Feature-disabled vs empty is indistinguishable on the read API.** A portal with `deployStatus` off returns an empty list, same as an enabled portal with zero tracked services. Fix would add a `feature_enabled` flag to `ListDeployStatusResponse` (and gate the MCP tool with a distinct message).
+- **SelectDue pacing edge.** The periodic requeue equals `refreshInterval`; timer drift + second-truncation can occasionally push a service's effective recheck to ~2×interval. Harmless (no starvation); a sub-interval requeue or a margin would tighten it.
+- **GitLab subgroups.** `forge.ParseSourceURL` splits owner/repo flat, so a GitLab subgroup path (`group/subgroup/repo`) would parse wrong. No impact in v1 (GitHub-only client); fix when a GitLab forge client is added.
+
 ## 10. Open questions / decisions taken
 
 - **Persistence**: decided — controller-managed `DeployStatus` CR + readstore (survives restarts, observable via `kubectl`), consistent with `ImageRegistry`. Rejected: in-memory-only readstore.
