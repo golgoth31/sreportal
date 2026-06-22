@@ -230,6 +230,9 @@ type PortalFeaturesStatus struct {
 
 	// imageInventory indicates whether the remote portal has image inventory enabled.
 	ImageInventory bool `json:"imageInventory"`
+
+	// deployStatus indicates whether the remote portal has deploy status enabled.
+	DeployStatus bool `json:"deployStatus"`
 }
 
 // +kubebuilder:object:root=true

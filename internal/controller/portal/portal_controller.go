@@ -195,6 +195,7 @@ func portalToView(p *sreportalv1alpha1.Portal) domainportal.PortalView {
 			Alerts:         p.Spec.Features.IsAlertsEnabled(),
 			StatusPage:     p.Spec.Features.IsStatusPageEnabled(),
 			ImageInventory: p.Spec.Features.IsImageInventoryEnabled(),
+			DeployStatus:   p.Spec.Features.IsDeployStatusEnabled(),
 		},
 	}
 	if p.Spec.Remote != nil {
@@ -218,6 +219,7 @@ func portalToView(p *sreportalv1alpha1.Portal) domainportal.PortalView {
 				Alerts:         rf.Alerts,
 				StatusPage:     rf.StatusPage,
 				ImageInventory: rf.ImageInventory,
+				DeployStatus:   rf.DeployStatus,
 			}
 			// Effective features for remote portals: local AND remote.
 			view.Features.DNS = view.Features.DNS && rf.DNS
@@ -226,6 +228,7 @@ func portalToView(p *sreportalv1alpha1.Portal) domainportal.PortalView {
 			view.Features.Alerts = view.Features.Alerts && rf.Alerts
 			view.Features.StatusPage = view.Features.StatusPage && rf.StatusPage
 			view.Features.ImageInventory = view.Features.ImageInventory && rf.ImageInventory
+			view.Features.DeployStatus = view.Features.DeployStatus && rf.DeployStatus
 		}
 		view.RemoteSync = rs
 	}

@@ -862,6 +862,7 @@ func main() {
 		MaintenanceReader:   maintenanceStore,
 		IncidentReader:      incidentStore,
 		ImageReader:         imageStore,
+		DeployStatusReader:  deployStatusStore,
 		StatusPageService:   statuspagesvc.NewService(mgr.GetClient(), portalNamespace),
 		EmojiReader:         emojiStore,
 		AuthChain:           authChain,
