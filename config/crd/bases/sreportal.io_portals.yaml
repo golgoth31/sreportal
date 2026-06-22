@@ -247,6 +247,10 @@ spec:
                         description: alerts indicates whether the remote portal has
                           alertmanager integration enabled.
                         type: boolean
+                      deployStatus:
+                        description: deployStatus indicates whether the remote portal
+                          has deploy status enabled.
+                        type: boolean
                       dns:
                         description: dns indicates whether the remote portal has DNS
                           discovery enabled.
@@ -269,6 +273,7 @@ spec:
                         type: boolean
                     required:
                     - alerts
+                    - deployStatus
                     - dns
                     - imageInventory
                     - networkPolicy
