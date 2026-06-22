@@ -1,0 +1,388 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: deploystatuses.sreportal.io
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.20.0
+  labels:
+  {{- include "helm.labels" . | nindent 4 }}
+spec:
+  group: sreportal.io
+  names:
+    kind: DeployStatus
+    listKind: DeployStatusList
+    plural: deploystatuses
+    singular: deploystatus
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.portalRef
+      name: Portal
+      type: string
+    - jsonPath: .spec.namespace
+      name: Namespace
+      type: string
+    - jsonPath: .status.serviceCount
+      name: Services
+      type: integer
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: DeployStatus is the Schema for the deploystatuses API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: spec defines the desired state of DeployStatus
+            properties:
+              isRemote:
+                description: |-
+                  isRemote marks a shadow CR (`remote-<portal>`) whose entries are fetched from a
+                  remote portal's DeployStatusService rather than computed locally (federation).
+                type: boolean
+              namespace:
+                description: namespace is the Kubernetes namespace observed (may differ
+                  from the CR's own namespace).
+                minLength: 1
+                type: string
+              portalRef:
+                description: portalRef is the Portal name this deploy status is derived
+                  from.
+                minLength: 1
+                type: string
+              services:
+                description: services is the list of per-workload deploy status entries.
+                items:
+                  description: DeployStatusEntry is one observed workload's deploy status.
+                  properties:
+                    aheadBy:
+                      description: aheadBy is the number of commits the default branch
+                        is ahead of deployedRef.
+                      type: integer
+                    defaultBranch:
+                      description: defaultBranch is the repo's default branch, read
+                        dynamically.
+                      type: string
+                    deployRunUrl:
+                      description: deployRunURL links to the deploy workflow run gating
+                        prod (best-effort).
+                      type: string
+                    deployedAt:
+                      description: deployedAt is the commit date of the deployed ref
+                        (proxy — not the real deploy time).
+                      format: date-time
+                      type: string
+                    deployedRef:
+                      description: deployedRef is the deployed commit SHA (OCI revision
+                        label) or git tag (semver fallback).
+                      type: string
+                    error:
+                      description: error carries the last per-entry error message (set
+                        when state=error).
+                      type: string
+                    image:
+                      description: image is the deployed image reference observed on
+                        the running Pod.
+                      minLength: 1
+                      type: string
+                    key:
+                      description: key is sha256(image|workloadKind|workloadNamespace|workloadName|container)[:16].
+                      minLength: 1
+                      type: string
+                    lastCheckedAt:
+                      description: lastCheckedAt paces re-checks (isDue); set on every
+                        attempt, success or error.
+                      format: date-time
+                      type: string
+                    pendingCommits:
+                      description: pendingCommits lists commits not yet deployed (merge
+                        commits filtered, capped at 50).
+                      items:
+                        description: DeployStatusCommit is one pending commit.
+                        properties:
+                          author:
+                            type: string
+                          date:
+                            format: date-time
+                            type: string
+                          message:
+                            type: string
+                          sha:
+                            minLength: 1
+                            type: string
+                          url:
+                            type: string
+                        required:
+                        - sha
+                        type: object
+                      type: array
+                    pendingTruncated:
+                      description: pendingTruncated is true when more than 50 commits
+                        are pending.
+                      type: boolean
+                    sourceRepo:
+                      description: sourceRepo is the git repo URL from the OCI source
+                        label. Empty when unresolved.
+                      type: string
+                    state:
+                      description: |-
+                        state is ok | behind | unresolved | error. Empty on Spec.Services input
+                        entries (controller-managed); always set on Status.Services entries.
+                      enum:
+                      - ok
+                      - behind
+                      - unresolved
+                      - error
+                      type: string
+                    workload:
+                      description: workload identifies the workload+container running
+                        the image.
+                      properties:
+                        container:
+                          type: string
+                        kind:
+                          type: string
+                        name:
+                          type: string
+                        namespace:
+                          type: string
+                      required:
+                      - container
+                      - kind
+                      - name
+                      - namespace
+                      type: object
+                  required:
+                  - image
+                  - key
+                  - workload
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - key
+                x-kubernetes-list-type: map
+            required:
+            - namespace
+            - portalRef
+            type: object
+          status:
+            description: status defines the observed state of DeployStatus
+            properties:
+              conditions:
+                description: conditions represent the current state of the DeployStatus
+                  resource.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              lastError:
+                description: lastError contains the last reconciliation error, if any.
+                type: string
+              observedGeneration:
+                description: observedGeneration is the most recently observed generation.
+                format: int64
+                type: integer
+              serviceCount:
+                description: serviceCount is the total number of entries in Spec.Services.
+                type: integer
+              services:
+                description: |-
+                  services is the observed per-workload deploy status (computed deployment lag).
+                  This is the observed-state counterpart of Spec.Services and is the only place
+                  the controller writes lag results / LastCheckedAt — Spec.Services carries only
+                  the controller-managed input (workload, image, source, deployedRef).
+                items:
+                  description: DeployStatusEntry is one observed workload's deploy status.
+                  properties:
+                    aheadBy:
+                      description: aheadBy is the number of commits the default branch
+                        is ahead of deployedRef.
+                      type: integer
+                    defaultBranch:
+                      description: defaultBranch is the repo's default branch, read
+                        dynamically.
+                      type: string
+                    deployRunUrl:
+                      description: deployRunURL links to the deploy workflow run gating
+                        prod (best-effort).
+                      type: string
+                    deployedAt:
+                      description: deployedAt is the commit date of the deployed ref
+                        (proxy — not the real deploy time).
+                      format: date-time
+                      type: string
+                    deployedRef:
+                      description: deployedRef is the deployed commit SHA (OCI revision
+                        label) or git tag (semver fallback).
+                      type: string
+                    error:
+                      description: error carries the last per-entry error message (set
+                        when state=error).
+                      type: string
+                    image:
+                      description: image is the deployed image reference observed on
+                        the running Pod.
+                      minLength: 1
+                      type: string
+                    key:
+                      description: key is sha256(image|workloadKind|workloadNamespace|workloadName|container)[:16].
+                      minLength: 1
+                      type: string
+                    lastCheckedAt:
+                      description: lastCheckedAt paces re-checks (isDue); set on every
+                        attempt, success or error.
+                      format: date-time
+                      type: string
+                    pendingCommits:
+                      description: pendingCommits lists commits not yet deployed (merge
+                        commits filtered, capped at 50).
+                      items:
+                        description: DeployStatusCommit is one pending commit.
+                        properties:
+                          author:
+                            type: string
+                          date:
+                            format: date-time
+                            type: string
+                          message:
+                            type: string
+                          sha:
+                            minLength: 1
+                            type: string
+                          url:
+                            type: string
+                        required:
+                        - sha
+                        type: object
+                      type: array
+                    pendingTruncated:
+                      description: pendingTruncated is true when more than 50 commits
+                        are pending.
+                      type: boolean
+                    sourceRepo:
+                      description: sourceRepo is the git repo URL from the OCI source
+                        label. Empty when unresolved.
+                      type: string
+                    state:
+                      description: |-
+                        state is ok | behind | unresolved | error. Empty on Spec.Services input
+                        entries (controller-managed); always set on Status.Services entries.
+                      enum:
+                      - ok
+                      - behind
+                      - unresolved
+                      - error
+                      type: string
+                    workload:
+                      description: workload identifies the workload+container running
+                        the image.
+                      properties:
+                        container:
+                          type: string
+                        kind:
+                          type: string
+                        name:
+                          type: string
+                        namespace:
+                          type: string
+                      required:
+                      - container
+                      - kind
+                      - name
+                      - namespace
+                      type: object
+                  required:
+                  - image
+                  - key
+                  - workload
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - key
+                x-kubernetes-list-type: map
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
