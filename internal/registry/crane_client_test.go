@@ -19,6 +19,13 @@ import (
 	"strings"
 	"testing"
 
+	ggcrregistry "github.com/google/go-containerregistry/pkg/registry"
+	"github.com/google/go-containerregistry/pkg/v1/mutate"
+	"github.com/google/go-containerregistry/pkg/v1/random"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
+
+	cranename "github.com/google/go-containerregistry/pkg/name"
+
 	domainimageregistry "github.com/golgoth31/sreportal/internal/domain/imageregistry"
 )
 
@@ -167,6 +174,80 @@ func TestCraneClient_ListTags_InvalidHost(t *testing.T) {
 
 	c := NewCraneClient()
 	_, err := c.ListTags(context.Background(), "not a host", "library/nginx")
+	if err == nil {
+		t.Fatalf("expected error on invalid host")
+	}
+}
+
+func TestCraneClient_ImageConfigLabels_Success(t *testing.T) {
+	t.Parallel()
+
+	// Spin up an in-memory OCI registry and push an image carrying OCI labels.
+	srv := httptest.NewServer(ggcrregistry.New())
+	defer srv.Close()
+	host := stripScheme(t, srv.URL)
+
+	img, err := random.Image(1024, 1)
+	if err != nil {
+		t.Fatalf("build random image: %v", err)
+	}
+	cfg, err := img.ConfigFile()
+	if err != nil {
+		t.Fatalf("config file: %v", err)
+	}
+	cfg = cfg.DeepCopy()
+	cfg.Config.Labels = map[string]string{
+		"org.opencontainers.image.source":   "https://github.com/acme/widget",
+		"org.opencontainers.image.revision": "abc123def456",
+	}
+	img, err = mutate.ConfigFile(img, cfg)
+	if err != nil {
+		t.Fatalf("mutate config: %v", err)
+	}
+
+	ref, err := cranename.ParseReference(host + "/acme/widget:v1.2.3")
+	if err != nil {
+		t.Fatalf("parse ref: %v", err)
+	}
+	if err := remote.Write(ref, img); err != nil {
+		t.Fatalf("push image: %v", err)
+	}
+
+	c := NewCraneClient()
+	labels, err := c.ImageConfigLabels(context.Background(), host, "acme/widget", "v1.2.3")
+	if err != nil {
+		t.Fatalf("ImageConfigLabels error: %v", err)
+	}
+	if labels["org.opencontainers.image.source"] != "https://github.com/acme/widget" {
+		t.Fatalf("unexpected source label: %q", labels["org.opencontainers.image.source"])
+	}
+	if labels["org.opencontainers.image.revision"] != "abc123def456" {
+		t.Fatalf("unexpected revision label: %q", labels["org.opencontainers.image.revision"])
+	}
+}
+
+func TestCraneClient_ImageConfigLabels_NotFoundReturnsNil(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(ggcrregistry.New())
+	defer srv.Close()
+	host := stripScheme(t, srv.URL)
+
+	c := NewCraneClient()
+	labels, err := c.ImageConfigLabels(context.Background(), host, "missing/repo", "v1.0.0")
+	if err != nil {
+		t.Fatalf("404 must be swallowed (nil labels), got error: %v", err)
+	}
+	if labels != nil {
+		t.Fatalf("expected nil labels on 404, got %v", labels)
+	}
+}
+
+func TestCraneClient_ImageConfigLabels_InvalidHost(t *testing.T) {
+	t.Parallel()
+
+	c := NewCraneClient()
+	_, err := c.ImageConfigLabels(context.Background(), "not a host", "library/nginx", "latest")
 	if err == nil {
 		t.Fatalf("expected error on invalid host")
 	}

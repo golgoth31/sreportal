@@ -37,6 +37,7 @@ function toDomainPortal(p: ProtoPortal): Portal {
       alerts: p.features?.alerts ?? true,
       statusPage: p.features?.statusPage ?? true,
       imageInventory: p.features?.imageInventory ?? true,
+      deployStatus: p.features?.deployStatus ?? false,
     },
   };
 }

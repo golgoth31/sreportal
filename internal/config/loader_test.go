@@ -23,6 +23,8 @@ import (
 	"time"
 )
 
+const testForgeHost = "github.com"
+
 func TestLoadFromFile(t *testing.T) {
 	// Create a temp config file
 	content := `
@@ -118,9 +120,9 @@ func TestLoadFromFile_NotExist(t *testing.T) {
 	if cfg.Sources.Service != nil {
 		t.Error("Expected Sources.Service to be nil for default config")
 	}
-	if cfg.GroupMapping.DefaultGroup != "Services" {
+	if cfg.GroupMapping.DefaultGroup != DefaultGroupName {
 		t.Errorf("GroupMapping.DefaultGroup = %q, expected %q for default",
-			cfg.GroupMapping.DefaultGroup, "Services")
+			cfg.GroupMapping.DefaultGroup, DefaultGroupName)
 	}
 }
 
@@ -163,6 +165,77 @@ reconciliation:
 		if cfg.Sources.Priority[i] != v {
 			t.Errorf("Sources.Priority[%d] = %q, expected %q", i, cfg.Sources.Priority[i], v)
 		}
+	}
+}
+
+// validDeployStatusBase returns a minimal valid OperatorConfig with DeployStatus enabled,
+// ready for individual forge entries to be set under test.
+func validDeployStatusBase() *OperatorConfig {
+	return &OperatorConfig{
+		Reconciliation: ReconciliationConfig{
+			Interval:     Duration(5 * time.Minute),
+			RetryOnError: Duration(30 * time.Second),
+		},
+		GroupMapping: GroupMappingConfig{DefaultGroup: DefaultGroupName},
+		DeployStatus: &DeployStatusConfig{Enabled: true},
+	}
+}
+
+func TestValidate_DeployStatus_RejectsForgeWithoutHost(t *testing.T) {
+	cfg := validDeployStatusBase()
+	cfg.DeployStatus.Forges = []ForgeConfig{{Host: "", Auth: ForgeAuthConfig{TokenEnv: "X"}}}
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected error for forge with empty host")
+	}
+}
+
+func TestValidate_DeployStatus_RejectsNoAuthMode(t *testing.T) {
+	cfg := validDeployStatusBase()
+	cfg.DeployStatus.Forges = []ForgeConfig{{Host: testForgeHost, Auth: ForgeAuthConfig{}}}
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected error: neither tokenEnv nor app set")
+	}
+}
+
+func TestValidate_DeployStatus_RejectsBothAuthModes(t *testing.T) {
+	cfg := validDeployStatusBase()
+	cfg.DeployStatus.Forges = []ForgeConfig{{Host: testForgeHost, Auth: ForgeAuthConfig{
+		TokenEnv: "X", App: &GitHubAppConfig{AppID: 1, InstallationID: 2, PrivateKeyEnv: "K"},
+	}}}
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected error: both tokenEnv and app set")
+	}
+}
+
+func TestValidate_DeployStatus_RejectsIncompleteApp(t *testing.T) {
+	cfg := validDeployStatusBase()
+	cfg.DeployStatus.Forges = []ForgeConfig{{Host: testForgeHost, Auth: ForgeAuthConfig{
+		App: &GitHubAppConfig{AppID: 1},
+	}}}
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected error: incomplete app config")
+	}
+}
+
+func TestValidate_DeployStatus_AcceptsPAT(t *testing.T) {
+	cfg := validDeployStatusBase()
+	cfg.DeployStatus.Forges = []ForgeConfig{{
+		Host: testForgeHost, Kind: ForgeKindGitHub,
+		Auth: ForgeAuthConfig{TokenEnv: "GITHUB_TOKEN"},
+	}}
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidate_DeployStatus_AcceptsApp(t *testing.T) {
+	cfg := validDeployStatusBase()
+	cfg.DeployStatus.Forges = []ForgeConfig{{
+		Host: testForgeHost, Kind: ForgeKindGitHub,
+		Auth: ForgeAuthConfig{App: &GitHubAppConfig{AppID: 1, InstallationID: 2, PrivateKeyEnv: "GH_APP_KEY"}},
+	}}
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 

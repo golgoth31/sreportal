@@ -74,19 +74,42 @@ config:
       jwt:
         enabled: false
         issuers: []
+    # Deploy-status feature: resolves the deploy state of OCI images against their
+    # source git forge. Token VALUES are never stored here — only the NAME of the env
+    # var holding each forge token. Wire those env vars to a Secret via the chart's
+    # `deployStatus.secretEnv` values block (rendered as secretKeyRef on the manager).
+    deployStatus:
+      enabled: false
+      refreshInterval: 5m
+      forges: []
+        # PAT (fine-grained personal access token) mode:
+        # - host: github.com          # matched against the OCI source label host
+        #   kind: github
+        #   deployWorkflow: deploy-prod.yml   # optional; else falls back to the Actions page
+        #   auth:
+        #     tokenEnv: GITHUB_TOKEN   # env var name holding the PAT
+        #
+        # GitHub App mode (set auth.app XOR auth.tokenEnv):
+        # - host: github.com
+        #   kind: github
+        #   auth:
+        #     app:
+        #       appID: 123456
+        #       installationID: 7891011
+        #       privateKeyEnv: GH_APP_PRIVATE_KEY   # env var name holding the PEM key
 controllerManager:
   manager:
     args:
-      - '--metrics-bind-address=:8443'
-      - '--leader-elect'
-      - '--health-probe-bind-address=:9090'
-      - '--webhook-cert-path=/tmp/k8s-webhook-server/serving-certs'
-      - '--enable-mcp'
+    - --metrics-bind-address=:8443
+    - --leader-elect
+    - --health-probe-bind-address=:9090
+    - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
+    - --enable-mcp
     containerSecurityContext:
       allowPrivilegeEscalation: false
       capabilities:
         drop:
-          - ALL
+        - ALL
       readOnlyRootFilesystem: true
     image:
       repository: ghcr.io/golgoth31/sreportal
@@ -109,43 +132,56 @@ controllerManager:
 kubernetesClusterDomain: cluster.local
 metricsService:
   ports:
-    - name: metrics
-      port: 8443
-      protocol: TCP
-      targetPort: 8443
+  - name: metrics
+    port: 8443
+    protocol: TCP
+    targetPort: 8443
   type: ClusterIP
 serviceAccount:
   annotations: {}
   automount: true
   create: true
-  name: ''
+  name: ""
 webMcpService:
   ports:
-    - name: http
-      port: 8090
-      protocol: TCP
-      targetPort: 8090
+  - name: http
+    port: 8090
+    protocol: TCP
+    targetPort: 8090
   type: ClusterIP
 webhookService:
   ports:
-    - port: 443
-      protocol: TCP
-      targetPort: 9443
+  - port: 443
+    protocol: TCP
+    targetPort: 9443
   type: ClusterIP
 auth:
   enabled: false
-  secretRef: ''
-  secretKey: ''
+  secretRef: ""
+  secretKey: ""
 flowObserver:
   enabled: false
   name: flow-observer-main
   portalRef: main
-  reconcileInterval: 5m
+  reconcileInterval: "5m"
   evaluatedEdgeTypes:
-    - service
+  - service
   prometheus:
-    address: http://prometheus.internal
-    queryWindow: 5m
+    address: "http://prometheus.internal"
+    queryWindow: "5m"
   metrics: []
 extraVolumes: []
 extraVolumeMounts: []
+deployStatus:
+  # Maps a container env var name -> a Secret key, rendered as a secretKeyRef on the
+  # controller-manager. The operator reads each forge token via os.Getenv, so the env
+  # var names here must match the tokenEnv / app.privateKeyEnv referenced in the
+  # operator config (config.configYaml deployStatus.forges[].auth). The Secret itself
+  # is managed out-of-band (not created by this chart).
+  secretEnv: {}
+    # GITHUB_TOKEN:
+    #   name: deploystatus-forge-secrets
+    #   key: github-token
+    # GH_APP_PRIVATE_KEY:
+    #   name: deploystatus-forge-secrets
+    #   key: app-private-key
