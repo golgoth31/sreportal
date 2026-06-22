@@ -29,6 +29,7 @@ import (
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/config"
 	"github.com/golgoth31/sreportal/internal/domain/forge"
+	"github.com/golgoth31/sreportal/internal/remoteclient"
 	readstoredeploystatus "github.com/golgoth31/sreportal/internal/readstore/deploystatus"
 )
 
@@ -109,7 +110,7 @@ func TestReconcile_PopulatesStatusAndReadStore(t *testing.T) {
 		Forges:  []config.ForgeConfig{{Host: "github.com", Kind: "github"}},
 	}
 
-	r := NewDeployStatusReconciler(cl, store, clientFor, cfg)
+	r := NewDeployStatusReconciler(cl, store, clientFor, remoteclient.NewCache(), cfg)
 
 	req := ctrl.Request{NamespacedName: types.NamespacedName{Name: cr.Name, Namespace: cr.Namespace}}
 	ctx := context.Background()
@@ -192,7 +193,7 @@ func TestReconcile_SkipsRemoteCR(t *testing.T) {
 	}
 
 	cfg := &config.DeployStatusConfig{Enabled: true, Forges: []config.ForgeConfig{{Host: "github.com"}}}
-	r := NewDeployStatusReconciler(cl, store, clientFor, cfg)
+	r := NewDeployStatusReconciler(cl, store, clientFor, remoteclient.NewCache(), cfg)
 
 	req := ctrl.Request{NamespacedName: types.NamespacedName{Name: cr.Name, Namespace: cr.Namespace}}
 	ctx := context.Background()

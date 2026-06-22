@@ -23,6 +23,7 @@ import (
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -34,6 +35,8 @@ import (
 	"github.com/golgoth31/sreportal/internal/domain/forge"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/reconciler"
+	"github.com/golgoth31/sreportal/internal/remoteclient"
+	"github.com/golgoth31/sreportal/internal/tlsutil"
 )
 
 const (
@@ -53,8 +56,9 @@ type DeployStatusReconciler struct {
 	client.Client
 	chain *reconciler.Chain[*sreportalv1alpha1.DeployStatus, deploystatuschain.ChainData]
 
-	store           domdeploystatus.Writer
-	refreshInterval time.Duration
+	store             domdeploystatus.Writer
+	remoteClientCache *remoteclient.Cache
+	refreshInterval   time.Duration
 }
 
 // +kubebuilder:rbac:groups=sreportal.io,resources=deploystatuses,verbs=get;list;watch;create;update;patch;delete
@@ -67,6 +71,7 @@ func NewDeployStatusReconciler(
 	c client.Client,
 	store domdeploystatus.Writer,
 	clientFor func(host string) forge.Client,
+	remoteClientCache *remoteclient.Cache,
 	cfg *config.DeployStatusConfig,
 ) *DeployStatusReconciler {
 	refreshInterval := defaultRequeueInterval
@@ -88,10 +93,11 @@ func NewDeployStatusReconciler(
 	}
 
 	return &DeployStatusReconciler{
-		Client:          c,
-		chain:           reconciler.NewChain("deploystatus", handlers...),
-		store:           store,
-		refreshInterval: refreshInterval,
+		Client:            c,
+		chain:             reconciler.NewChain("deploystatus", handlers...),
+		store:             store,
+		remoteClientCache: remoteClientCache,
+		refreshInterval:   refreshInterval,
 	}
 }
 
@@ -126,11 +132,16 @@ func (r *DeployStatusReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	// Remote shadow CR: entries are fetched from a remote portal's
 	// DeployStatusService rather than computed locally. Skip the local compute
-	// chain and just requeue periodically.
-	// TODO(phase9): remote fetch
+	// chain and project the remote entries into the local readstore.
 	if cr.Spec.IsRemote {
-		logger.V(1).Info("skipping remote DeployStatus (federation not yet implemented)",
-			"name", cr.Name, "portal", cr.Spec.PortalRef)
+		if err := r.reconcileRemote(ctx, &cr); err != nil {
+			// Best-effort: a remote fetch error must not crash the reconcile.
+			// Surface it on status + log, then requeue with the periodic interval.
+			logger.Error(err, "remote DeployStatus fetch failed", "name", cr.Name, "portal", cr.Spec.PortalRef)
+			r.setRemoteLastError(ctx, &cr, err.Error())
+			return ctrl.Result{RequeueAfter: r.refreshInterval}, nil
+		}
+		r.setRemoteLastError(ctx, &cr, "")
 		return ctrl.Result{RequeueAfter: r.refreshInterval}, nil
 	}
 
@@ -168,6 +179,137 @@ func (r *DeployStatusReconciler) handleFinalizer(ctx context.Context, cr *srepor
 		}
 	}
 	return ctrl.Result{}, nil
+}
+
+// reconcileRemote fetches deploy-status entries from the remote portal pointed
+// to by this shadow CR and projects them into the local readstore under a
+// single (portalRef, namespace) bucket (cr.Spec.Namespace).
+//
+// All of the remote portal's namespaces are aggregated into that single bucket
+// so the finalizer's single RemoveForNamespace(portalRef, namespace) call
+// cleans up the whole contribution on deletion. List() on the read side
+// aggregates entries across buckets, so the local-vs-remote keying does not
+// affect query results.
+func (r *DeployStatusReconciler) reconcileRemote(ctx context.Context, cr *sreportalv1alpha1.DeployStatus) error {
+	logger := log.FromContext(ctx)
+
+	portal := &sreportalv1alpha1.Portal{}
+	portalKey := types.NamespacedName{Name: cr.Spec.PortalRef, Namespace: cr.Namespace}
+	if err := r.Get(ctx, portalKey, portal); err != nil {
+		return fmt.Errorf("get portal %s: %w", portalKey, err)
+	}
+	if portal.Spec.Remote == nil {
+		return fmt.Errorf("portal %s has no remote configuration but DeployStatus is marked as remote", portalKey.Name)
+	}
+
+	remoteClient, err := r.remoteClientFor(ctx, portal)
+	if err != nil {
+		return fmt.Errorf("build remote client for portal %s: %w", portalKey.Name, err)
+	}
+
+	baseURL := portal.Spec.Remote.URL
+	portalName := portal.Spec.Remote.Portal
+	logger.V(1).Info("fetching deploy status from remote portal", "url", baseURL, "portalName", portalName)
+
+	result, err := remoteClient.FetchDeployStatus(ctx, baseURL, portalName)
+	if err != nil {
+		return fmt.Errorf("fetch remote deploy status from %s: %w", baseURL, err)
+	}
+
+	entries := make([]domdeploystatus.Entry, 0, len(result.Entries))
+	for _, re := range result.Entries {
+		entries = append(entries, mapRemoteEntry(re))
+	}
+
+	r.store.ReplaceForNamespace(cr.Spec.PortalRef, cr.Spec.Namespace, entries)
+	logger.V(1).Info("projected remote deploy status", "portal", cr.Spec.PortalRef, "entries", len(entries))
+	return nil
+}
+
+// setRemoteLastError patches Status.LastError on a remote shadow CR (best-effort:
+// a patch failure is logged but never propagated, so it can't crash the reconcile).
+func (r *DeployStatusReconciler) setRemoteLastError(ctx context.Context, cr *sreportalv1alpha1.DeployStatus, msg string) {
+	if cr.Status.LastError == msg {
+		return
+	}
+	base := cr.DeepCopy()
+	cr.Status.LastError = msg
+	if err := r.Status().Patch(ctx, cr, client.MergeFrom(base)); err != nil {
+		log.FromContext(ctx).Error(err, "failed to patch remote DeployStatus status.lastError", "name", cr.Name)
+	}
+}
+
+// mapRemoteEntry converts a remoteclient RemoteDeployStatusEntry into the
+// readstore domain Entry.
+func mapRemoteEntry(re remoteclient.RemoteDeployStatusEntry) domdeploystatus.Entry {
+	commits := make([]domdeploystatus.Commit, 0, len(re.PendingCommits))
+	for _, c := range re.PendingCommits {
+		commit := domdeploystatus.Commit{
+			Sha:     c.Sha,
+			Message: c.Message,
+			Author:  c.Author,
+			URL:     c.URL,
+		}
+		if c.Date != nil {
+			commit.Date = *c.Date
+		}
+		commits = append(commits, commit)
+	}
+
+	entry := domdeploystatus.Entry{
+		Key: re.Key,
+		Workload: domdeploystatus.WorkloadRef{
+			Kind:      re.Workload.Kind,
+			Namespace: re.Workload.Namespace,
+			Name:      re.Workload.Name,
+			Container: re.Workload.Container,
+		},
+		Image:            re.Image,
+		SourceRepo:       re.SourceRepo,
+		DeployedRef:      re.DeployedRef,
+		DefaultBranch:    re.DefaultBranch,
+		AheadBy:          re.AheadBy,
+		PendingCommits:   commits,
+		PendingTruncated: re.PendingTruncated,
+		DeployRunURL:     re.DeployRunURL,
+		State:            re.State,
+		Error:            re.Error,
+	}
+	if re.DeployedAt != nil {
+		entry.DeployedAt = *re.DeployedAt
+	}
+	if re.LastCheckedAt != nil {
+		entry.LastCheckedAt = *re.LastCheckedAt
+	}
+	return entry
+}
+
+// remoteClientFor returns a cached remoteclient configured with TLS from the
+// Portal spec, mirroring the ImageInventory FetchRemoteImagesHandler.
+func (r *DeployStatusReconciler) remoteClientFor(ctx context.Context, portal *sreportalv1alpha1.Portal) (*remoteclient.Client, error) {
+	if portal.Spec.Remote.TLS == nil {
+		return r.remoteClientCache.Fallback(), nil
+	}
+
+	key := portal.Namespace + "/" + portal.Name
+	versions, err := tlsutil.SecretVersions(ctx, r.Client, portal.Namespace, portal.Spec.Remote.TLS)
+	if err != nil {
+		return nil, fmt.Errorf("read TLS secret versions: %w", err)
+	}
+
+	if cached := r.remoteClientCache.Get(key, versions); cached != nil {
+		return cached, nil
+	}
+
+	tlsConfig, err := tlsutil.BuildTLSConfig(ctx, r.Client, portal.Namespace, portal.Spec.Remote.TLS)
+	if err != nil {
+		return nil, fmt.Errorf("build TLS config: %w", err)
+	}
+
+	c := remoteclient.NewClient(remoteclient.WithTLSConfig(tlsConfig))
+	r.remoteClientCache.Put(key, versions, c)
+
+	return c, nil
 }
 
 // SetupWithManager registers the controller and installs the field indexer.

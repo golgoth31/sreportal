@@ -809,7 +809,7 @@ func main() {
 		clientFor := func(host string) forge.Client { return clients[host] }
 
 		deployStatusReconciler := deploystatusctrl.NewDeployStatusReconciler(
-			mgr.GetClient(), deployStatusStore, clientFor, operatorConfig.DeployStatus,
+			mgr.GetClient(), deployStatusStore, clientFor, remoteCache, operatorConfig.DeployStatus,
 		)
 		if err := deployStatusReconciler.SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "Failed to create controller", "controller", "DeployStatus")

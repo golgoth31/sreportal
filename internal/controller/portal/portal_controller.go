@@ -84,6 +84,7 @@ func NewPortalReconciler(c client.Client, scheme *runtime.Scheme, cache *remotec
 		portalchain.NewSyncRemoteAlertmanagerHandler(c, scheme),
 		portalchain.NewSyncRemoteNetworkFlowsHandler(c, scheme),
 		portalchain.NewSyncRemoteImageInventoryHandler(c, scheme),
+		portalchain.NewSyncRemoteDeployStatusHandler(c, scheme),
 		portalchain.NewUpdateStatusHandler(c),
 	}
 
