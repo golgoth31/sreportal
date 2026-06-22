@@ -259,6 +259,16 @@ Per-layer unit tests (the repo's `*_test.go` convention), each isolated:
 - **Controller chain**: due selection pacing; per-entry error isolation does not fail the reconcile.
 - **Federation**: `sync_remote_deploy_status` creates the shadow CR only for remote portals with the feature enabled; `IsRemote` CRs project remote entries without any forge call.
 
+## 9b. Amendments made during implementation
+
+These deltas were decided while implementing and supersede the matching details above:
+
+- **Spec/Status split (reconcile-loop fix).** `Spec.Services` holds only the controller-managed INPUT (key, workload, image, sourceRepo, deployedRef), populated by the imageInventory projection. The computed OBSERVED state (state, aheadBy, pendingCommits, pendingTruncated, deployRunUrl, defaultBranch, error, **lastCheckedAt**) lives in **`Status.Services`** and is written ONLY via `client.Status().Update`. Writing observed state into Spec would bump `metadata.generation` and re-trigger the controller (reconcile loop). `SelectDue` reads `lastCheckedAt` from `Status.Services`.
+- **Projection scope.** The imageInventory projection emits a `Spec.Services` entry only for images that carry an `org.opencontainers.image.source` label (first-party services); base images are skipped (no `unresolved` noise). OCI labels are read via a new `CraneClient.ImageConfigLabels`.
+- **Forge API names (as built).** Port methods take a `forge.RepoRef` (not `owner, repo` strings): `DefaultBranch(ctx, RepoRef)`, `Compare(ctx, RepoRef, base, head)`, `LatestWorkflowRun(ctx, RepoRef, workflowFile, branch)`. Merge flag is `Commit.Merge`. Client constructor is `github.NewClient(Config{TokenSource, BaseURL, MaxRetries, InitialBackoff, HTTPClient})`; token sources are `NewPATTokenSource(pat)` and `NewAppTokenSource(AppTokenSourceConfig) (*, error)` (fail-fast PEM parse). Proto workload message is `DeployWorkloadRef` (distinct from image inventory's `WorkloadRef`).
+- **Remote federation keying.** The deploy-status read store is 2-level `(portalRef, namespace)` with no host dimension, so a remote portal's federated entries are projected into a single sentinel bucket `namespace = "remote-<portal>"` (the shadow CR's `Spec.Namespace`); `Reader.List(portalRef)` aggregates it with local buckets and the finalizer's single `RemoveForNamespace` purges it.
+- **Feature default.** The `deployStatus` portal feature flag defaults to true (opt-out), consistent with the other features; the backend emits `deploy_status` in the portal proto features so the UI nav gates correctly.
+
 ## 10. Open questions / decisions taken
 
 - **Persistence**: decided — controller-managed `DeployStatus` CR + readstore (survives restarts, observable via `kubectl`), consistent with `ImageRegistry`. Rejected: in-memory-only readstore.
