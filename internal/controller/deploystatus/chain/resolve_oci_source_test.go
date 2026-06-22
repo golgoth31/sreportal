@@ -32,9 +32,9 @@ func TestResolveOCISource_UnmatchedHostMarksUnresolved(t *testing.T) {
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.DeployStatus, ChainData]{
 		Resource: &sreportalv1alpha1.DeployStatus{},
 		Data: ChainData{Due: []WorkItem{
-			{Key: "a", SourceURL: "https://gitlab.com/o/r"},  // unmatched host
+			{Key: "a", SourceURL: "https://gitlab.com/o/r"}, // unmatched host
 			{Key: "b", SourceURL: "https://github.com/o/r"}, // matched
-			{Key: "c", SourceURL: ""},                        // no label -> unresolved
+			{Key: "c", SourceURL: ""},                       // no label -> unresolved
 		}},
 	}
 	if err := h.Handle(context.Background(), rc); err != nil {

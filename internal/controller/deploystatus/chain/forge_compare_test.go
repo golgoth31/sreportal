@@ -28,10 +28,10 @@ import (
 
 // fakeForgeClient is a test double for forge.Client that uses the real RepoRef-based API.
 type fakeForgeClient struct {
-	branch  string
-	cmp     forge.CompareResult
-	runURL  string
-	err     error
+	branch string
+	cmp    forge.CompareResult
+	runURL string
+	err    error
 }
 
 func (f *fakeForgeClient) DefaultBranch(_ context.Context, ref forge.RepoRef) (string, error) {

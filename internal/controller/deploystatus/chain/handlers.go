@@ -31,32 +31,32 @@ type ChainData struct {
 
 // WorkItem is one service entry to evaluate this cycle.
 type WorkItem struct {
-	Key         string
-	Image       string
+	Key   string
+	Image string
 	// Workload holds the resolved forge repo ref (zero until ResolveOCISourceHandler).
-	Workload    forge.RepoRef
+	Workload forge.RepoRef
 	// workload identity fields from the CRD spec:
 	WorkloadKind      string
 	WorkloadNamespace string
 	WorkloadName      string
 	WorkloadContainer string
 	// SourceURL is the OCI org.opencontainers.image.source label value.
-	SourceURL   string
+	SourceURL string
 	// DeployedRef is the OCI revision label value (commit SHA or tag).
 	DeployedRef string
 }
 
 // ComputedEntry is the per-service result produced by the forge-compare step.
 type ComputedEntry struct {
-	Key           string
-	Image         string
-	SourceRepo    string
-	DeployedRef   string
-	DefaultBranch string
-	AheadBy       int
+	Key            string
+	Image          string
+	SourceRepo     string
+	DeployedRef    string
+	DefaultBranch  string
+	AheadBy        int
 	PendingCommits []forge.Commit
-	PendingTrunc  bool
-	DeployRunURL  string
-	State         string // ok | behind | unresolved | error
-	Error         string
+	PendingTrunc   bool
+	DeployRunURL   string
+	State          string // ok | behind | unresolved | error
+	Error          string
 }

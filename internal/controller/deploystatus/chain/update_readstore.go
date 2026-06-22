@@ -44,17 +44,17 @@ func (h *UpdateReadStoreHandler) Handle(ctx context.Context, rc *reconciler.Reco
 	entries := make([]dom.Entry, 0, len(rc.Data.Computed))
 	for _, c := range rc.Data.Computed {
 		entries = append(entries, dom.Entry{
-			Key:            c.Key,
-			Image:          c.Image,
-			SourceRepo:     c.SourceRepo,
-			DeployedRef:    c.DeployedRef,
-			DefaultBranch:  c.DefaultBranch,
-			AheadBy:        c.AheadBy,
-			PendingCommits: toDomCommits(c.PendingCommits),
+			Key:              c.Key,
+			Image:            c.Image,
+			SourceRepo:       c.SourceRepo,
+			DeployedRef:      c.DeployedRef,
+			DefaultBranch:    c.DefaultBranch,
+			AheadBy:          c.AheadBy,
+			PendingCommits:   toDomCommits(c.PendingCommits),
 			PendingTruncated: c.PendingTrunc,
-			DeployRunURL:   c.DeployRunURL,
-			State:          c.State,
-			Error:          c.Error,
+			DeployRunURL:     c.DeployRunURL,
+			State:            c.State,
+			Error:            c.Error,
 		})
 	}
 

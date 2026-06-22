@@ -5,20 +5,20 @@ import "time"
 
 // Entry is the read-model projection of one service's deploy status.
 type Entry struct {
-	Key            string
-	Workload       WorkloadRef
-	Image          string
-	SourceRepo     string
-	DeployedRef    string
-	DefaultBranch  string
-	AheadBy        int
+	Key              string
+	Workload         WorkloadRef
+	Image            string
+	SourceRepo       string
+	DeployedRef      string
+	DefaultBranch    string
+	AheadBy          int
 	PendingCommits   []Commit
 	PendingTruncated bool
 	DeployedAt       time.Time
-	DeployRunURL   string
-	State          string // ok | behind | unresolved | error
-	Error          string
-	LastCheckedAt  time.Time
+	DeployRunURL     string
+	State            string // ok | behind | unresolved | error
+	Error            string
+	LastCheckedAt    time.Time
 }
 
 // WorkloadRef identifies the workload that owns this deploy-status entry.
