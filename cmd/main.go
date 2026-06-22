@@ -61,6 +61,7 @@ import (
 	alertmanagerctrl "github.com/golgoth31/sreportal/internal/controller/alertmanager"
 	componentctrl "github.com/golgoth31/sreportal/internal/controller/component"
 	componentsctrl "github.com/golgoth31/sreportal/internal/controller/components"
+	deploystatusctrl "github.com/golgoth31/sreportal/internal/controller/deploystatus"
 	dnsctrl "github.com/golgoth31/sreportal/internal/controller/dns"
 	dnschain "github.com/golgoth31/sreportal/internal/controller/dns/chain"
 	dnsrecordsctrl "github.com/golgoth31/sreportal/internal/controller/dnsrecords"
@@ -77,10 +78,13 @@ import (
 	portalfeatures "github.com/golgoth31/sreportal/internal/controller/portal/features"
 	releasectrl "github.com/golgoth31/sreportal/internal/controller/release"
 	sourcectrl "github.com/golgoth31/sreportal/internal/controller/source"
+	"github.com/golgoth31/sreportal/internal/domain/forge"
+	githubforge "github.com/golgoth31/sreportal/internal/forgeclient/github"
 	"github.com/golgoth31/sreportal/internal/log"
 	"github.com/golgoth31/sreportal/internal/mcp"
 	alertmanagerreadstore "github.com/golgoth31/sreportal/internal/readstore/alertmanager"
 	componentreadstore "github.com/golgoth31/sreportal/internal/readstore/component"
+	readstoredeploystatus "github.com/golgoth31/sreportal/internal/readstore/deploystatus"
 	dnsreadstore "github.com/golgoth31/sreportal/internal/readstore/dns"
 	emojireadstore "github.com/golgoth31/sreportal/internal/readstore/emoji"
 	imagereadstore "github.com/golgoth31/sreportal/internal/readstore/image"
@@ -541,6 +545,7 @@ func main() {
 	alertmanagerStore := alertmanagerreadstore.NewAlertmanagerStore()
 	imageStore := imagereadstore.NewStore()
 	emojiStore := emojireadstore.NewEmojiStore()
+	deployStatusStore := readstoredeploystatus.NewStore()
 
 	// Emoji: Slack custom emoji sync (optional, async at startup + periodic refresh)
 	slackEnabled := operatorConfig != nil && operatorConfig.Emoji != nil &&
@@ -775,6 +780,42 @@ func main() {
 			os.Exit(1)
 		}
 	}
+
+	// DeployStatus: forge clients built from configured forges (PAT or GitHub App).
+	if operatorConfig.DeployStatus != nil && operatorConfig.DeployStatus.Enabled {
+		clients := make(map[string]forge.Client, len(operatorConfig.DeployStatus.Forges))
+		for _, f := range operatorConfig.DeployStatus.Forges {
+			var ts githubforge.TokenSource
+			if f.Auth.App != nil {
+				appTS, err := githubforge.NewAppTokenSource(githubforge.AppTokenSourceConfig{
+					AppID:          f.Auth.App.AppID,
+					InstallationID: f.Auth.App.InstallationID,
+					PrivateKeyPEM:  os.Getenv(f.Auth.App.PrivateKeyEnv),
+					BaseURL:        githubBaseURLForHost(f.Host),
+				})
+				if err != nil {
+					setupLog.Error(err, "Failed to build GitHub App token source", "host", f.Host)
+					os.Exit(1)
+				}
+				ts = appTS
+			} else {
+				ts = githubforge.NewPATTokenSource(os.Getenv(f.Auth.TokenEnv))
+			}
+			clients[f.Host] = githubforge.NewClient(githubforge.Config{
+				BaseURL:     githubBaseURLForHost(f.Host),
+				TokenSource: ts,
+			})
+		}
+		clientFor := func(host string) forge.Client { return clients[host] }
+
+		deployStatusReconciler := deploystatusctrl.NewDeployStatusReconciler(
+			mgr.GetClient(), deployStatusStore, clientFor, operatorConfig.DeployStatus,
+		)
+		if err := deployStatusReconciler.SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "Failed to create controller", "controller", "DeployStatus")
+			os.Exit(1)
+		}
+	}
 	// +kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
@@ -954,6 +995,16 @@ func stripPodForCache(obj any) (any, error) {
 			InitContainers: stripContainers(p.Spec.InitContainers),
 		},
 	}, nil
+}
+
+// githubBaseURLForHost maps a forge host to its GitHub REST API base URL.
+// github.com uses the public API; any other host is treated as GitHub
+// Enterprise Server (GHES), whose API lives under /api/v3.
+func githubBaseURLForHost(host string) string {
+	if host == "github.com" {
+		return "https://api.github.com"
+	}
+	return "https://" + host + "/api/v3"
 }
 
 func stripContainers(in []corev1.Container) []corev1.Container {
