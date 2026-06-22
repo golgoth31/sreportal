@@ -31,10 +31,12 @@ import (
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
+	domaindeploystatus "github.com/golgoth31/sreportal/internal/domain/deploystatus"
 	domainimage "github.com/golgoth31/sreportal/internal/domain/image"
 	domainmetrics "github.com/golgoth31/sreportal/internal/domain/metrics"
 	domainportal "github.com/golgoth31/sreportal/internal/domain/portal"
 	domainrelease "github.com/golgoth31/sreportal/internal/domain/release"
+	deploystatusstore "github.com/golgoth31/sreportal/internal/readstore/deploystatus"
 	dnsstore "github.com/golgoth31/sreportal/internal/readstore/dns"
 	imagestore "github.com/golgoth31/sreportal/internal/readstore/image"
 	portalstore "github.com/golgoth31/sreportal/internal/readstore/portal"
@@ -1039,6 +1041,170 @@ var _ = Describe("MCP Server", func() {
 					Expect(err).NotTo(HaveOccurred())
 					text := extractTextContent(result)
 					Expect(text).To(Equal("No images found matching the criteria."))
+				})
+			})
+		})
+	})
+
+	Describe("DeployStatusServer", func() {
+		var store *deploystatusstore.Store
+
+		BeforeEach(func() {
+			store = deploystatusstore.NewStore()
+		})
+
+		Describe("creation", func() {
+			It("should create server with list_deploy_status tool registered", func() {
+				s := NewDeployStatusServer(store)
+				Expect(s).NotTo(BeNil())
+				Expect(s.mcpServer).NotTo(BeNil())
+				Expect(s.reader).NotTo(BeNil())
+			})
+		})
+
+		Describe("handleListDeployStatus", func() {
+			Context("with entries in the store", func() {
+				BeforeEach(func() {
+					store.ReplaceForNamespace(portalMain, nsDefault, []domaindeploystatus.Entry{
+						{
+							Key:           nsDefault + "/api/api",
+							Workload:      domaindeploystatus.WorkloadRef{Kind: kindDeploy, Namespace: nsDefault, Name: keyAPI, Container: keyAPI},
+							Image:         "docker.io/myorg/api:abc1234",
+							SourceRepo:    "myorg/api",
+							DeployedRef:   "abc1234",
+							DefaultBranch: "main",
+							AheadBy:       2,
+							PendingCommits: []domaindeploystatus.Commit{
+								{Sha: "def5678", Message: "fix: bug", Author: "alice", Date: time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)},
+							},
+							State: "behind",
+						},
+						{
+							Key:           nsDefault + "/worker/worker",
+							Workload:      domaindeploystatus.WorkloadRef{Kind: kindDeploy, Namespace: nsDefault, Name: nameWorker, Container: nameWorker},
+							Image:         "docker.io/myorg/worker:v1.0.0",
+							SourceRepo:    "myorg/worker",
+							DeployedRef:   "v1.0.0",
+							DefaultBranch: "main",
+							AheadBy:       0,
+							State:         "ok",
+						},
+					})
+				})
+
+				It("should return all entries when no state filter", func() {
+					s := NewDeployStatusServer(store)
+					req := newCallToolRequest("list_deploy_status", map[string]any{
+						"portal": portalMain,
+					})
+
+					result, err := s.handleListDeployStatus(ctx, req)
+
+					Expect(err).NotTo(HaveOccurred())
+					Expect(isErrorResult(result)).To(BeFalse())
+					text := extractTextContent(result)
+					Expect(text).To(ContainSubstring("Found 2 deploy-status entry(ies)"))
+					Expect(text).To(ContainSubstring("myorg/api"))
+					Expect(text).To(ContainSubstring("myorg/worker"))
+				})
+
+				It("should default portal to main when omitted", func() {
+					s := NewDeployStatusServer(store)
+					req := newCallToolRequest("list_deploy_status", map[string]any{})
+
+					result, err := s.handleListDeployStatus(ctx, req)
+
+					Expect(err).NotTo(HaveOccurred())
+					Expect(isErrorResult(result)).To(BeFalse())
+					text := extractTextContent(result)
+					// store was seeded under portalMain ("main"), so this should find entries
+					Expect(text).To(ContainSubstring("Found 2 deploy-status entry(ies)"))
+				})
+
+				It("should filter by state=behind", func() {
+					s := NewDeployStatusServer(store)
+					req := newCallToolRequest("list_deploy_status", map[string]any{
+						"portal": portalMain,
+						"state":  "behind",
+					})
+
+					result, err := s.handleListDeployStatus(ctx, req)
+
+					Expect(err).NotTo(HaveOccurred())
+					Expect(isErrorResult(result)).To(BeFalse())
+					text := extractTextContent(result)
+					Expect(text).To(ContainSubstring("Found 1 deploy-status entry(ies)"))
+					Expect(text).To(ContainSubstring("myorg/api"))
+					Expect(text).NotTo(ContainSubstring("myorg/worker"))
+				})
+
+				It("should filter by state=ok", func() {
+					s := NewDeployStatusServer(store)
+					req := newCallToolRequest("list_deploy_status", map[string]any{
+						"portal": portalMain,
+						"state":  "ok",
+					})
+
+					result, err := s.handleListDeployStatus(ctx, req)
+
+					Expect(err).NotTo(HaveOccurred())
+					Expect(isErrorResult(result)).To(BeFalse())
+					text := extractTextContent(result)
+					Expect(text).To(ContainSubstring("Found 1 deploy-status entry(ies)"))
+					Expect(text).To(ContainSubstring("myorg/worker"))
+					Expect(text).NotTo(ContainSubstring("myorg/api"))
+				})
+
+				It("should return error for invalid state", func() {
+					s := NewDeployStatusServer(store)
+					req := newCallToolRequest("list_deploy_status", map[string]any{
+						"portal": portalMain,
+						"state":  "invalid",
+					})
+
+					result, err := s.handleListDeployStatus(ctx, req)
+
+					Expect(err).NotTo(HaveOccurred())
+					Expect(isErrorResult(result)).To(BeTrue())
+					text := extractTextContent(result)
+					Expect(text).To(ContainSubstring("invalid state"))
+				})
+
+				It("should include pending commits in JSON output", func() {
+					s := NewDeployStatusServer(store)
+					req := newCallToolRequest("list_deploy_status", map[string]any{
+						"portal": portalMain,
+						"state":  "behind",
+					})
+
+					result, err := s.handleListDeployStatus(ctx, req)
+
+					Expect(err).NotTo(HaveOccurred())
+					text := extractTextContent(result)
+
+					jsonStart := strings.Index(text, "[")
+					Expect(jsonStart).To(BeNumerically(">", 0))
+					var results []DeployStatusResult
+					Expect(json.Unmarshal([]byte(text[jsonStart:]), &results)).To(Succeed())
+					Expect(results).To(HaveLen(1))
+					Expect(results[0].AheadBy).To(Equal(2))
+					Expect(results[0].PendingCommits).To(HaveLen(1))
+					Expect(results[0].PendingCommits[0].SHA).To(Equal("def5678"))
+					Expect(results[0].State).To(Equal("behind"))
+				})
+			})
+
+			Context("with empty store", func() {
+				It("should return no entries message", func() {
+					s := NewDeployStatusServer(store)
+					req := newCallToolRequest("list_deploy_status", map[string]any{})
+
+					result, err := s.handleListDeployStatus(ctx, req)
+
+					Expect(err).NotTo(HaveOccurred())
+					Expect(isErrorResult(result)).To(BeFalse())
+					text := extractTextContent(result)
+					Expect(text).To(Equal("No deploy-status entries found matching the criteria."))
 				})
 			})
 		})

@@ -903,6 +903,7 @@ func main() {
 		netpolMcpServer := mcp.NewNetpolServer(flowGraphStore)
 		statusMcpServer := mcp.NewStatusServer(componentStore, maintenanceStore, incidentStore)
 		imageMcpServer := mcp.NewImageServer(imageStore)
+		deployStatusMcpServer := mcp.NewDeployStatusServer(deployStatusStore)
 
 		switch mcpTransport {
 		case "stdio":
@@ -922,6 +923,7 @@ func main() {
 				"netpol", "/mcp/netpol",
 				"status", "/mcp/status",
 				"image", "/mcp/image",
+				"deploystatus", "/mcp/deploystatus",
 			)
 			webServer.MountHandler("/mcp", dnsMcpServer.Handler())
 			webServer.MountHandler("/mcp/dns", dnsMcpServer.Handler())
@@ -931,6 +933,7 @@ func main() {
 			webServer.MountHandler("/mcp/netpol", netpolMcpServer.Handler())
 			webServer.MountHandler("/mcp/status", statusMcpServer.Handler())
 			webServer.MountHandler("/mcp/image", imageMcpServer.Handler())
+			webServer.MountHandler("/mcp/deploystatus", deployStatusMcpServer.Handler())
 		default:
 			setupLog.Error(nil, "unknown MCP transport", "transport", mcpTransport)
 			os.Exit(1)
