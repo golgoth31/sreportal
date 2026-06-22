@@ -90,12 +90,17 @@ func (c *CraneClient) ListTags(ctx context.Context, host, repository string) ([]
 //   - 429 → wrapped imageregistry.ErrRateLimited (errors.Is-matchable).
 //   - others → wrapped %w preserving the underlying transport error.
 func (c *CraneClient) ImageConfigLabels(ctx context.Context, host, repository, reference string) (map[string]string, error) {
+	// A digest reference is joined with "@", a tag reference with ":".
+	sep := ":"
+	if strings.HasPrefix(reference, "sha256:") {
+		sep = "@"
+	}
 	ref, err := name.ParseReference(
-		fmt.Sprintf("%s/%s:%s", host, strings.TrimPrefix(repository, "/"), reference),
+		host+"/"+strings.TrimPrefix(repository, "/")+sep+reference,
 		name.WithDefaultRegistry(host),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("parse reference %s/%s:%s: %w", host, repository, reference, err)
+		return nil, fmt.Errorf("parse reference %s/%s%s%s: %w", host, repository, sep, reference, err)
 	}
 
 	callCtx, cancel := context.WithTimeout(ctx, imageConfigTimeout)

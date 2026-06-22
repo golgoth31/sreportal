@@ -759,12 +759,12 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Incident")
 		os.Exit(1)
 	}
-	imageInventoryReconciler := imageinventoryctrl.NewImageInventoryReconciler(mgr.GetClient(), imageStore, remoteCache)
+	registryClient := registry.NewCraneClient()
+	imageInventoryReconciler := imageinventoryctrl.NewImageInventoryReconciler(mgr.GetClient(), imageStore, remoteCache, registryClient)
 	if err := imageInventoryReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Failed to create controller", "controller", "ImageInventory")
 		os.Exit(1)
 	}
-	registryClient := registry.NewCraneClient()
 	hostLimiter := registry.NewHostLimiter()
 	imageRegistryReconciler := imageregistryctrl.NewImageRegistryReconciler(
 		mgr.GetClient(), imageStore, registryClient, hostLimiter, signalCtx,
