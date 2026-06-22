@@ -92,7 +92,7 @@ func (h *ProjectDeployStatusHandler) Handle(ctx context.Context, rc *reconciler.
 
 	// Group source-labeled entries by observed namespace — one DeployStatus CR
 	// per (portalRef, namespace), mirroring sync_registry_crs.go's per-group upsert.
-	byNamespace := h.buildEntries(ctx, inv.Spec.PortalRef, rc.Data.Observations)
+	byNamespace := h.buildEntries(ctx, rc.Data.Observations)
 
 	for ns, entries := range byNamespace {
 		if err := h.upsertCR(ctx, inv, ns, entries); err != nil {
@@ -107,7 +107,6 @@ func (h *ProjectDeployStatusHandler) Handle(ctx context.Context, rc *reconciler.
 // source label are dropped.
 func (h *ProjectDeployStatusHandler) buildEntries(
 	ctx context.Context,
-	portalRef string,
 	obs []domainimageregistry.ContainerObservation,
 ) map[string][]sreportalv1alpha1.DeployStatusEntry {
 	logger := log.FromContext(ctx)
