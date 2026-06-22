@@ -29,6 +29,16 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+// MCP parameter and state constants for the deploy-status server.
+const (
+	paramPortal     = "portal"
+	paramState      = "state"
+	stateBehind     = "behind"
+	stateOkMCP      = "ok"
+	stateUnresolved = "unresolved"
+	stateErrorMCP   = "error"
+)
+
 // DeployStatusServer wraps the MCP server for deploy-status inventory.
 // Mount at /mcp/deploystatus for Streamable HTTP.
 type DeployStatusServer struct {
@@ -78,10 +88,10 @@ func (s *DeployStatusServer) registerDeployStatusTools() {
 			mcp.WithDescription("List deploy-status entries for workloads tracked by DeployStatus resources in the SRE Portal. "+
 				"Returns per-workload deploy information including the deployed git ref, how many commits are ahead of the "+
 				"deployed ref on the default branch, pending commits, and the overall state (ok|behind|unresolved|error)."),
-			mcp.WithString("portal",
+			mcp.WithString(paramPortal,
 				mcp.Description("Portal name (portalRef) to query. Defaults to \"main\" when omitted."),
 			),
-			mcp.WithString("state",
+			mcp.WithString(paramState,
 				mcp.Description("Filter by deploy state: ok, behind, unresolved, or error. Omit to return all states."),
 			),
 		),
@@ -125,10 +135,10 @@ type DeployStatusResult struct {
 }
 
 func (s *DeployStatusServer) handleListDeployStatus(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	portal := request.GetString("portal", "main")
-	stateFilter := request.GetString("state", "")
+	portal := request.GetString(paramPortal, "main")
+	stateFilter := request.GetString(paramState, "")
 
-	validStates := map[string]bool{"ok": true, "behind": true, "unresolved": true, "error": true}
+	validStates := map[string]bool{stateOkMCP: true, stateBehind: true, stateUnresolved: true, stateErrorMCP: true}
 	if stateFilter != "" && !validStates[stateFilter] {
 		return mcp.NewToolResultError(
 			fmt.Sprintf("invalid state %q: must be one of ok, behind, unresolved, error", stateFilter),

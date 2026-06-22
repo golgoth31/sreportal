@@ -71,7 +71,7 @@ func unresolvedEntry(wi WorkItem, msg string) ComputedEntry {
 		Image:       wi.Image,
 		SourceRepo:  wi.SourceURL,
 		DeployedRef: wi.DeployedRef,
-		State:       "unresolved",
+		State:       stateUnresolved,
 		Error:       msg,
 	}
 }

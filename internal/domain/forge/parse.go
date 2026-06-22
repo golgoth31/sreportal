@@ -26,12 +26,10 @@ func ParseSourceURL(raw string) (RepoRef, error) {
 func parseScpURL(raw string) (RepoRef, error) {
 	// Format: git@<host>:<owner>/<repo>[.git]
 	withoutPrefix := strings.TrimPrefix(raw, "git@")
-	colonIdx := strings.Index(withoutPrefix, ":")
-	if colonIdx < 0 {
+	host, path, ok := strings.Cut(withoutPrefix, ":")
+	if !ok {
 		return RepoRef{}, fmt.Errorf("forge: malformed scp URL (no colon): %q", raw)
 	}
-	host := withoutPrefix[:colonIdx]
-	path := withoutPrefix[colonIdx+1:]
 	owner, repo, err := splitOwnerRepo(path)
 	if err != nil {
 		return RepoRef{}, fmt.Errorf("forge: %w in %q", err, raw)

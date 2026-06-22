@@ -76,7 +76,7 @@ func TestSelectDue_MapsWorkloadFields(t *testing.T) {
 				Kind:      "Deployment",
 				Namespace: "prod",
 				Name:      "app",
-				Container: "main",
+				Container: testDefaultBranch,
 			},
 		},
 	}

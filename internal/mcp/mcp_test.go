@@ -30,8 +30,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
-	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 	domaindeploystatus "github.com/golgoth31/sreportal/internal/domain/deploystatus"
+	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 	domainimage "github.com/golgoth31/sreportal/internal/domain/image"
 	domainmetrics "github.com/golgoth31/sreportal/internal/domain/metrics"
 	domainportal "github.com/golgoth31/sreportal/internal/domain/portal"
@@ -982,7 +982,7 @@ var _ = Describe("MCP Server", func() {
 						},
 					})
 					s := NewImageServer(store)
-					req := newCallToolRequest("list_images", map[string]any{"portal": nsDev})
+					req := newCallToolRequest("list_images", map[string]any{paramPortal: nsDev})
 
 					result, err := s.handleListImages(ctx, req)
 
@@ -1077,7 +1077,7 @@ var _ = Describe("MCP Server", func() {
 							PendingCommits: []domaindeploystatus.Commit{
 								{Sha: "def5678", Message: "fix: bug", Author: "alice", Date: time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)},
 							},
-							State: "behind",
+							State: stateBehind,
 						},
 						{
 							Key:           nsDefault + "/worker/worker",
@@ -1095,7 +1095,7 @@ var _ = Describe("MCP Server", func() {
 				It("should return all entries when no state filter", func() {
 					s := NewDeployStatusServer(store)
 					req := newCallToolRequest("list_deploy_status", map[string]any{
-						"portal": portalMain,
+						paramPortal: portalMain,
 					})
 
 					result, err := s.handleListDeployStatus(ctx, req)
@@ -1124,8 +1124,8 @@ var _ = Describe("MCP Server", func() {
 				It("should filter by state=behind", func() {
 					s := NewDeployStatusServer(store)
 					req := newCallToolRequest("list_deploy_status", map[string]any{
-						"portal": portalMain,
-						"state":  "behind",
+						paramPortal: portalMain,
+						paramState:  stateBehind,
 					})
 
 					result, err := s.handleListDeployStatus(ctx, req)
@@ -1141,8 +1141,8 @@ var _ = Describe("MCP Server", func() {
 				It("should filter by state=ok", func() {
 					s := NewDeployStatusServer(store)
 					req := newCallToolRequest("list_deploy_status", map[string]any{
-						"portal": portalMain,
-						"state":  "ok",
+						paramPortal: portalMain,
+						paramState:  stateOkMCP,
 					})
 
 					result, err := s.handleListDeployStatus(ctx, req)
@@ -1158,8 +1158,8 @@ var _ = Describe("MCP Server", func() {
 				It("should return error for invalid state", func() {
 					s := NewDeployStatusServer(store)
 					req := newCallToolRequest("list_deploy_status", map[string]any{
-						"portal": portalMain,
-						"state":  "invalid",
+						paramPortal: portalMain,
+						paramState:  "invalid",
 					})
 
 					result, err := s.handleListDeployStatus(ctx, req)
@@ -1173,8 +1173,8 @@ var _ = Describe("MCP Server", func() {
 				It("should include pending commits in JSON output", func() {
 					s := NewDeployStatusServer(store)
 					req := newCallToolRequest("list_deploy_status", map[string]any{
-						"portal": portalMain,
-						"state":  "behind",
+						paramPortal: portalMain,
+						paramState:  stateBehind,
 					})
 
 					result, err := s.handleListDeployStatus(ctx, req)
@@ -1190,7 +1190,7 @@ var _ = Describe("MCP Server", func() {
 					Expect(results[0].AheadBy).To(Equal(2))
 					Expect(results[0].PendingCommits).To(HaveLen(1))
 					Expect(results[0].PendingCommits[0].SHA).To(Equal("def5678"))
-					Expect(results[0].State).To(Equal("behind"))
+					Expect(results[0].State).To(Equal(stateBehind))
 				})
 			})
 

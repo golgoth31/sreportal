@@ -18,7 +18,19 @@ package chain
 
 import "github.com/golgoth31/sreportal/internal/domain/forge"
 
-const pendingCap = 50
+const (
+	pendingCap = 50
+
+	// Entry state constants shared across handlers and tests.
+	stateOk         = "ok"
+	stateBehind     = "behind"
+	stateError      = "error"
+	stateUnresolved = "unresolved"
+
+	// Test helper constants.
+	testDefaultBranch = "main"
+	testForgeHost     = "github.com"
+)
 
 // ComputeLag filters merge commits out of the CompareResult and caps the list
 // at pendingCap (50). Returns the filtered list and whether truncation occurred.
@@ -38,7 +50,7 @@ func ComputeLag(cr forge.CompareResult) (pending []forge.Commit, truncated bool)
 // StateFor maps an aheadBy count to a state string for a successfully-compared entry.
 func StateFor(aheadBy int) string {
 	if aheadBy == 0 {
-		return "ok"
+		return stateOk
 	}
-	return "behind"
+	return stateBehind
 }

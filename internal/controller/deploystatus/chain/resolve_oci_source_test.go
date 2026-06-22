@@ -27,7 +27,7 @@ import (
 
 func TestResolveOCISource_UnmatchedHostMarksUnresolved(t *testing.T) {
 	h := NewResolveOCISourceHandler([]config.ForgeConfig{
-		{Host: "github.com", Auth: config.ForgeAuthConfig{TokenEnv: "X"}},
+		{Host: testForgeHost, Auth: config.ForgeAuthConfig{TokenEnv: "X"}},
 	})
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.DeployStatus, ChainData]{
 		Resource: &sreportalv1alpha1.DeployStatus{},
@@ -44,7 +44,7 @@ func TestResolveOCISource_UnmatchedHostMarksUnresolved(t *testing.T) {
 	// a and c become unresolved ComputedEntry; b remains Due.
 	gotUnresolved := 0
 	for _, e := range rc.Data.Computed {
-		if e.State == "unresolved" {
+		if e.State == stateUnresolved {
 			gotUnresolved++
 		}
 	}
@@ -58,7 +58,7 @@ func TestResolveOCISource_UnmatchedHostMarksUnresolved(t *testing.T) {
 
 func TestResolveOCISource_MatchedItemKeepsWorkload(t *testing.T) {
 	h := NewResolveOCISourceHandler([]config.ForgeConfig{
-		{Host: "github.com", Auth: config.ForgeAuthConfig{TokenEnv: "X"}},
+		{Host: testForgeHost, Auth: config.ForgeAuthConfig{TokenEnv: "X"}},
 	})
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.DeployStatus, ChainData]{
 		Resource: &sreportalv1alpha1.DeployStatus{},
@@ -83,7 +83,7 @@ func TestResolveOCISource_MatchedItemKeepsWorkload(t *testing.T) {
 
 func TestResolveOCISource_UnparseableURLMarksUnresolved(t *testing.T) {
 	h := NewResolveOCISourceHandler([]config.ForgeConfig{
-		{Host: "github.com", Auth: config.ForgeAuthConfig{TokenEnv: "X"}},
+		{Host: testForgeHost, Auth: config.ForgeAuthConfig{TokenEnv: "X"}},
 	})
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.DeployStatus, ChainData]{
 		Resource: &sreportalv1alpha1.DeployStatus{},
@@ -94,7 +94,7 @@ func TestResolveOCISource_UnparseableURLMarksUnresolved(t *testing.T) {
 	if err := h.Handle(context.Background(), rc); err != nil {
 		t.Fatal(err)
 	}
-	if len(rc.Data.Computed) != 1 || rc.Data.Computed[0].State != "unresolved" {
+	if len(rc.Data.Computed) != 1 || rc.Data.Computed[0].State != stateUnresolved {
 		t.Errorf("expected one unresolved entry, got %+v", rc.Data.Computed)
 	}
 	if len(rc.Data.Due) != 0 {

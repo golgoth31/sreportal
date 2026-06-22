@@ -36,17 +36,17 @@ func TestListDeployStatus(t *testing.T) {
 	checkedAt := time.Date(2026, 1, 2, 8, 0, 0, 0, time.UTC)
 	commitDate := time.Date(2025, 12, 31, 10, 0, 0, 0, time.UTC)
 
-	store.ReplaceForNamespace(tPortalMain, "default", []domaindeploystatus.Entry{
+	store.ReplaceForNamespace(tPortalMain, tNsDefault, []domaindeploystatus.Entry{
 		{
-			Key:   "default/api/app",
+			Key:   tKeyAPIApp,
 			Image: "ghcr.io/acme/api:abc1234",
 			Workload: domaindeploystatus.WorkloadRef{
-				Kind:      "Deployment",
-				Namespace: "default",
+				Kind:      tWorkloadKindDeployment,
+				Namespace: tNsDefault,
 				Name:      "api",
 				Container: "app",
 			},
-			SourceRepo:    "acme/api",
+			SourceRepo:    tRepoACMEAPI,
 			DeployedRef:   "abc1234",
 			DefaultBranch: "main",
 			AheadBy:       2,
@@ -56,20 +56,20 @@ func TestListDeployStatus(t *testing.T) {
 			PendingTruncated: false,
 			DeployedAt:       deployedAt,
 			DeployRunURL:     "https://github.com/acme/api/actions/runs/1",
-			State:            "behind",
+			State:            tStateBehind,
 			Error:            "",
 			LastCheckedAt:    checkedAt,
 		},
 		{
-			Key:   "default/worker/worker",
+			Key:   tKeyWorkerWorker,
 			Image: "ghcr.io/acme/worker:xyz9999",
 			Workload: domaindeploystatus.WorkloadRef{
-				Kind:      "Deployment",
-				Namespace: "default",
-				Name:      "worker",
-				Container: "worker",
+				Kind:      tWorkloadKindDeployment,
+				Namespace: tNsDefault,
+				Name:      tNameWorker,
+				Container: tNameWorker,
 			},
-			SourceRepo:    "acme/worker",
+			SourceRepo:    tRepoACMEWorker,
 			DeployedRef:   "xyz9999",
 			DefaultBranch: "main",
 			AheadBy:       0,
@@ -89,7 +89,7 @@ func TestListDeployStatus(t *testing.T) {
 	// Find the api entry for detailed field assertions.
 	var apiEntry *genv1.DeployStatusEntry
 	for _, e := range resp.Msg.Entries {
-		if e.Key == "default/api/app" {
+		if e.Key == tKeyAPIApp {
 			apiEntry = e
 			break
 		}
@@ -97,17 +97,17 @@ func TestListDeployStatus(t *testing.T) {
 	require.NotNil(t, apiEntry, "expected entry with key default/api/app")
 
 	assert.Equal(t, "ghcr.io/acme/api:abc1234", apiEntry.Image)
-	assert.Equal(t, "acme/api", apiEntry.SourceRepo)
+	assert.Equal(t, tRepoACMEAPI, apiEntry.SourceRepo)
 	assert.Equal(t, "abc1234", apiEntry.DeployedRef)
 	assert.Equal(t, "main", apiEntry.DefaultBranch)
 	assert.Equal(t, int32(2), apiEntry.AheadBy)
-	assert.Equal(t, "behind", apiEntry.State)
+	assert.Equal(t, tStateBehind, apiEntry.State)
 	assert.Equal(t, "https://github.com/acme/api/actions/runs/1", apiEntry.DeployRunUrl)
 	assert.False(t, apiEntry.PendingTruncated)
 
 	require.NotNil(t, apiEntry.Workload)
 	assert.Equal(t, "Deployment", apiEntry.Workload.Kind)
-	assert.Equal(t, "default", apiEntry.Workload.Namespace)
+	assert.Equal(t, tNsDefault, apiEntry.Workload.Namespace)
 	assert.Equal(t, "api", apiEntry.Workload.Name)
 	assert.Equal(t, "app", apiEntry.Workload.Container)
 
@@ -128,42 +128,42 @@ func TestListDeployStatus(t *testing.T) {
 
 func TestListDeployStatus_SearchFilter(t *testing.T) {
 	store := readstoredeploystatus.NewStore()
-	store.ReplaceForNamespace(tPortalMain, "default", []domaindeploystatus.Entry{
-		{Key: "default/api/app", Image: "ghcr.io/acme/api:v1", SourceRepo: "acme/api", State: "ok"},
-		{Key: "default/worker/worker", Image: "ghcr.io/acme/worker:v1", SourceRepo: "acme/worker", State: "ok"},
+	store.ReplaceForNamespace(tPortalMain, tNsDefault, []domaindeploystatus.Entry{
+		{Key: tKeyAPIApp, Image: tImageACMEAPIv1, SourceRepo: tRepoACMEAPI, State: "ok"},
+		{Key: tKeyWorkerWorker, Image: "ghcr.io/acme/worker:v1", SourceRepo: tRepoACMEWorker, State: "ok"},
 	})
 
 	svc := svcgrpc.NewDeployStatusService(store, nil)
 	resp, err := svc.ListDeployStatus(context.Background(), connect.NewRequest(&genv1.ListDeployStatusRequest{
 		Portal: tPortalMain,
-		Search: "worker",
+		Search: tNameWorker,
 	}))
 	require.NoError(t, err)
 	require.Len(t, resp.Msg.Entries, 1)
-	assert.Equal(t, "default/worker/worker", resp.Msg.Entries[0].Key)
+	assert.Equal(t, tKeyWorkerWorker, resp.Msg.Entries[0].Key)
 }
 
 func TestListDeployStatus_StateFilter(t *testing.T) {
 	store := readstoredeploystatus.NewStore()
-	store.ReplaceForNamespace(tPortalMain, "default", []domaindeploystatus.Entry{
-		{Key: "default/api/app", Image: "ghcr.io/acme/api:v1", SourceRepo: "acme/api", State: "ok"},
-		{Key: "default/worker/worker", Image: "ghcr.io/acme/worker:v1", SourceRepo: "acme/worker", State: "behind"},
+	store.ReplaceForNamespace(tPortalMain, tNsDefault, []domaindeploystatus.Entry{
+		{Key: tKeyAPIApp, Image: tImageACMEAPIv1, SourceRepo: tRepoACMEAPI, State: "ok"},
+		{Key: tKeyWorkerWorker, Image: "ghcr.io/acme/worker:v1", SourceRepo: tRepoACMEWorker, State: tStateBehind},
 	})
 
 	svc := svcgrpc.NewDeployStatusService(store, nil)
 	resp, err := svc.ListDeployStatus(context.Background(), connect.NewRequest(&genv1.ListDeployStatusRequest{
 		Portal:      tPortalMain,
-		StateFilter: "behind",
+		StateFilter: tStateBehind,
 	}))
 	require.NoError(t, err)
 	require.Len(t, resp.Msg.Entries, 1)
-	assert.Equal(t, "default/worker/worker", resp.Msg.Entries[0].Key)
+	assert.Equal(t, tKeyWorkerWorker, resp.Msg.Entries[0].Key)
 }
 
 func TestListDeployStatus_FeatureDisabled(t *testing.T) {
 	store := readstoredeploystatus.NewStore()
-	store.ReplaceForNamespace(tPortalMain, "default", []domaindeploystatus.Entry{
-		{Key: "default/api/app", Image: "ghcr.io/acme/api:v1", SourceRepo: "acme/api", State: "ok"},
+	store.ReplaceForNamespace(tPortalMain, tNsDefault, []domaindeploystatus.Entry{
+		{Key: tKeyAPIApp, Image: tImageACMEAPIv1, SourceRepo: tRepoACMEAPI, State: "ok"},
 	})
 
 	disabled := false
@@ -189,8 +189,8 @@ func TestListDeployStatus_FeatureDisabled(t *testing.T) {
 
 func TestListDeployStatus_DefaultPortalMain(t *testing.T) {
 	store := readstoredeploystatus.NewStore()
-	store.ReplaceForNamespace("main", "default", []domaindeploystatus.Entry{
-		{Key: "default/api/app", Image: "ghcr.io/acme/api:v1", SourceRepo: "acme/api", State: "ok"},
+	store.ReplaceForNamespace("main", tNsDefault, []domaindeploystatus.Entry{
+		{Key: tKeyAPIApp, Image: tImageACMEAPIv1, SourceRepo: tRepoACMEAPI, State: "ok"},
 	})
 
 	svc := svcgrpc.NewDeployStatusService(store, nil)

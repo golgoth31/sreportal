@@ -31,12 +31,12 @@ func TestMapRemoteEntry_FullFields(t *testing.T) {
 	re := remoteclient.RemoteDeployStatusEntry{
 		Key: "k1",
 		Workload: remoteclient.RemoteDeployWorkload{
-			Kind: "Deployment", Namespace: "prod", Name: "widget", Container: "app",
+			Kind: testKindDeployment, Namespace: "prod", Name: testWorkloadWidget, Container: testContainerApp,
 		},
-		Image:         "github.com/acme/widget@sha256:abc",
-		SourceRepo:    "https://github.com/acme/widget",
-		DeployedRef:   "deadbeef",
-		DefaultBranch: "main",
+		Image:         testImage,
+		SourceRepo:    testSourceRepo,
+		DeployedRef:   testDeployedRef,
+		DefaultBranch: testBranch,
 		AheadBy:       2,
 		PendingCommits: []remoteclient.RemoteDeployCommit{
 			{Sha: "c1", Message: "feat: one", Author: "alice", Date: &commitDate, URL: "https://x/c1"},
@@ -54,8 +54,8 @@ func TestMapRemoteEntry_FullFields(t *testing.T) {
 	if got.Key != "k1" {
 		t.Errorf("Key = %q, want k1", got.Key)
 	}
-	if got.Workload.Kind != "Deployment" || got.Workload.Namespace != "prod" ||
-		got.Workload.Name != "widget" || got.Workload.Container != "app" {
+	if got.Workload.Kind != testKindDeployment || got.Workload.Namespace != "prod" ||
+		got.Workload.Name != testWorkloadWidget || got.Workload.Container != testContainerApp {
 		t.Errorf("Workload mismatch: %+v", got.Workload)
 	}
 	if got.AheadBy != 2 {
@@ -76,7 +76,7 @@ func TestMapRemoteEntry_FullFields(t *testing.T) {
 	if !got.LastCheckedAt.Equal(lastChecked) {
 		t.Errorf("LastCheckedAt = %v, want %v", got.LastCheckedAt, lastChecked)
 	}
-	if got.State != "behind" {
+	if got.State != testStateBehind {
 		t.Errorf("State = %q, want behind", got.State)
 	}
 }

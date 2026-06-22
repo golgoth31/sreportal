@@ -22,6 +22,13 @@ import (
 	"time"
 )
 
+const (
+	// DefaultGroupName is the default group name for ungrouped services.
+	DefaultGroupName = "Services"
+	// ForgeKindGitHub is the forge kind identifier for GitHub.
+	ForgeKindGitHub = "github"
+)
+
 // Duration is a wrapper around time.Duration that supports YAML/JSON unmarshaling from strings.
 type Duration time.Duration
 
@@ -160,8 +167,8 @@ type ForgeAuthConfig struct {
 // short-lived App JWT (RS256) and exchanges it for an installation access token
 // (~1h TTL), cached and refreshed before expiry.
 type GitHubAppConfig struct {
-	AppID          int64  `json:"appID" yaml:"appID"`
-	InstallationID int64  `json:"installationID" yaml:"installationID"`
+	AppID          int64 `json:"appID" yaml:"appID"`
+	InstallationID int64 `json:"installationID" yaml:"installationID"`
 	// PrivateKeyEnv names the env var holding the App private key (PEM).
 	PrivateKeyEnv string `json:"privateKeyEnv" yaml:"privateKeyEnv"`
 }
@@ -363,7 +370,7 @@ func DefaultConfig() *OperatorConfig {
 	return &OperatorConfig{
 		Sources: SourcesConfig{},
 		GroupMapping: GroupMappingConfig{
-			DefaultGroup: "Services",
+			DefaultGroup: DefaultGroupName,
 		},
 		Reconciliation: ReconciliationConfig{
 			Interval:     Duration(5 * time.Minute),
@@ -391,8 +398,8 @@ func (c *OperatorConfig) Validate() error {
 			if f.Host == "" {
 				return fmt.Errorf("deployStatus.forges[%d]: host is required", i)
 			}
-			if f.Kind != "" && f.Kind != "github" {
-				return fmt.Errorf("deployStatus.forges[%d]: unsupported kind %q (v1 supports \"github\")", i, f.Kind)
+			if f.Kind != "" && f.Kind != ForgeKindGitHub {
+				return fmt.Errorf("deployStatus.forges[%d]: unsupported kind %q (v1 supports %q)", i, f.Kind, ForgeKindGitHub)
 			}
 			hasPAT := f.Auth.TokenEnv != ""
 			hasApp := f.Auth.App != nil

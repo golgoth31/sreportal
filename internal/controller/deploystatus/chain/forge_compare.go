@@ -53,7 +53,7 @@ func (h *ForgeCompareHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 		branch, err := cl.DefaultBranch(ctx, wi.Workload)
 		if err != nil {
 			logger.V(1).Info("default branch lookup failed", "key", wi.Key, "err", err)
-			entry.State = "error"
+			entry.State = stateError
 			entry.Error = err.Error()
 			rc.Data.Computed = append(rc.Data.Computed, entry)
 			continue
@@ -63,7 +63,7 @@ func (h *ForgeCompareHandler) Handle(ctx context.Context, rc *reconciler.Reconci
 		cr, err := cl.Compare(ctx, wi.Workload, wi.DeployedRef, branch)
 		if err != nil {
 			logger.V(1).Info("forge compare failed", "key", wi.Key, "err", err)
-			entry.State = "error"
+			entry.State = stateError
 			entry.Error = err.Error()
 			rc.Data.Computed = append(rc.Data.Computed, entry)
 			continue

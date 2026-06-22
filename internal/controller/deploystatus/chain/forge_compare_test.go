@@ -48,7 +48,7 @@ func (f *fakeForgeClient) LatestWorkflowRun(_ context.Context, ref forge.RepoRef
 
 func TestForgeCompare_ProducesBehindEntry(t *testing.T) {
 	fc := &fakeForgeClient{
-		branch: "main",
+		branch: testDefaultBranch,
 		cmp: forge.CompareResult{
 			AheadBy: 2,
 			Commits: []forge.Commit{
@@ -64,7 +64,7 @@ func TestForgeCompare_ProducesBehindEntry(t *testing.T) {
 			{
 				Key:         "b",
 				DeployedRef: "v1",
-				Workload:    forge.RepoRef{Host: "github.com", Owner: "o", Repo: "r"},
+				Workload:    forge.RepoRef{Host: testForgeHost, Owner: "o", Repo: "r"},
 			},
 		}},
 	}
@@ -75,13 +75,13 @@ func TestForgeCompare_ProducesBehindEntry(t *testing.T) {
 		t.Fatalf("computed = %d, want 1", len(rc.Data.Computed))
 	}
 	e := rc.Data.Computed[0]
-	if e.State != "behind" {
+	if e.State != stateBehind {
 		t.Errorf("state = %q, want behind", e.State)
 	}
 	if e.AheadBy != 2 {
 		t.Errorf("aheadBy = %d, want 2", e.AheadBy)
 	}
-	if e.DefaultBranch != "main" {
+	if e.DefaultBranch != testDefaultBranch {
 		t.Errorf("defaultBranch = %q, want main", e.DefaultBranch)
 	}
 	if len(e.PendingCommits) != 2 {
@@ -94,14 +94,14 @@ func TestForgeCompare_ProducesBehindEntry(t *testing.T) {
 
 func TestForgeCompare_OkStateWhenNotBehind(t *testing.T) {
 	fc := &fakeForgeClient{
-		branch: "main",
+		branch: testDefaultBranch,
 		cmp:    forge.CompareResult{AheadBy: 0, Commits: nil},
 	}
 	h := NewForgeCompareHandler(func(string) forge.Client { return fc })
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.DeployStatus, ChainData]{
 		Resource: &sreportalv1alpha1.DeployStatus{},
 		Data: ChainData{Due: []WorkItem{
-			{Key: "x", Workload: forge.RepoRef{Host: "github.com", Owner: "o", Repo: "r"}},
+			{Key: "x", Workload: forge.RepoRef{Host: testForgeHost, Owner: "o", Repo: "r"}},
 		}},
 	}
 	if err := h.Handle(context.Background(), rc); err != nil {
@@ -118,7 +118,7 @@ func TestForgeCompare_ErrorMarksErrorState_DoesNotFailChain(t *testing.T) {
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.DeployStatus, ChainData]{
 		Resource: &sreportalv1alpha1.DeployStatus{},
 		Data: ChainData{Due: []WorkItem{
-			{Key: "b", Workload: forge.RepoRef{Host: "github.com", Owner: "o", Repo: "r"}},
+			{Key: "b", Workload: forge.RepoRef{Host: testForgeHost, Owner: "o", Repo: "r"}},
 		}},
 	}
 	// The handler MUST return nil even on per-entry errors.
@@ -128,7 +128,7 @@ func TestForgeCompare_ErrorMarksErrorState_DoesNotFailChain(t *testing.T) {
 	if len(rc.Data.Computed) != 1 {
 		t.Fatalf("expected one computed entry even on error, got %d", len(rc.Data.Computed))
 	}
-	if rc.Data.Computed[0].State != "error" {
+	if rc.Data.Computed[0].State != stateError {
 		t.Errorf("state = %q, want error", rc.Data.Computed[0].State)
 	}
 	if rc.Data.Computed[0].Error == "" {
@@ -145,13 +145,13 @@ func TestForgeCompare_CompareErrorMarksErrorState(t *testing.T) {
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.DeployStatus, ChainData]{
 		Resource: &sreportalv1alpha1.DeployStatus{},
 		Data: ChainData{Due: []WorkItem{
-			{Key: "z", Workload: forge.RepoRef{Host: "github.com", Owner: "o", Repo: "r"}},
+			{Key: "z", Workload: forge.RepoRef{Host: testForgeHost, Owner: "o", Repo: "r"}},
 		}},
 	}
 	if err := h.Handle(context.Background(), rc); err != nil {
 		t.Fatalf("handler must not fail the chain: %v", err)
 	}
-	if rc.Data.Computed[0].State != "error" {
+	if rc.Data.Computed[0].State != stateError {
 		t.Errorf("state = %q, want error", rc.Data.Computed[0].State)
 	}
 }
@@ -162,7 +162,7 @@ type callTrackingFake struct {
 }
 
 func (f *callTrackingFake) DefaultBranch(_ context.Context, _ forge.RepoRef) (string, error) {
-	return "main", nil
+	return testDefaultBranch, nil
 }
 
 func (f *callTrackingFake) Compare(_ context.Context, _ forge.RepoRef, _, _ string) (forge.CompareResult, error) {

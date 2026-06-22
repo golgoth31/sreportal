@@ -77,8 +77,8 @@ func TestAppTokenSource_MintsAndCaches(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		// Return an installation token valid for 1 hour
 		resp := map[string]any{
-			"token":      "ghs_installation_token",
-			"expires_at": time.Now().Add(time.Hour).Format(time.RFC3339),
+			keyToken:   "ghs_installation_token",
+			keyExpires: time.Now().Add(time.Hour).Format(time.RFC3339),
 		}
 		_ = json.NewEncoder(w).Encode(resp)
 	}))
@@ -124,8 +124,8 @@ func TestAppTokenSource_RefreshesExpiredToken(t *testing.T) {
 			exp = time.Now().Add(time.Hour)
 		}
 		resp := map[string]any{
-			"token":      tok,
-			"expires_at": exp.Format(time.RFC3339),
+			keyToken:   tok,
+			keyExpires: exp.Format(time.RFC3339),
 		}
 		_ = json.NewEncoder(w).Encode(resp)
 	}))
@@ -158,8 +158,8 @@ func TestAppTokenSource_PKCS8Key(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		resp := map[string]any{
-			"token":      "ghs_pkcs8_token",
-			"expires_at": time.Now().Add(time.Hour).Format(time.RFC3339),
+			keyToken:   "ghs_pkcs8_token",
+			keyExpires: time.Now().Add(time.Hour).Format(time.RFC3339),
 		}
 		_ = json.NewEncoder(w).Encode(resp)
 	}))

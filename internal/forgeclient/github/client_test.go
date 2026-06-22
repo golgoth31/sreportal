@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	githubclient "github.com/golgoth31/sreportal/internal/forgeclient/github"
 	"github.com/golgoth31/sreportal/internal/domain/forge"
+	githubclient "github.com/golgoth31/sreportal/internal/forgeclient/github"
 )
 
 // staticTokenSource always returns the same token (no network).
@@ -33,13 +33,13 @@ func TestDefaultBranch_ParsesResponse(t *testing.T) {
 	defer srv.Close()
 
 	c := githubclient.NewClient(githubclient.Config{
-		TokenSource: &staticTokenSource{tok: "test-pat"},
+		TokenSource: &staticTokenSource{tok: testPAT},
 		BaseURL:     srv.URL,
 	})
 	branch, err := c.DefaultBranch(context.Background(), forge.RepoRef{
 		Host:  "github.com",
-		Owner: "acme",
-		Repo:  "myapp",
+		Owner: testOwner,
+		Repo:  testRepo,
 	})
 	require.NoError(t, err)
 	assert.Equal(t, "main", branch)
@@ -52,26 +52,26 @@ func TestCompare_ParsesCommitsAndMergeFlag(t *testing.T) {
 		assert.Equal(t, "/repos/acme/myapp/compare/abc...HEAD", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"ahead_by": 2,
-			"commits": []map[string]any{
+			keyAheadBy: 2,
+			keyCommits: []map[string]any{
 				{
-					"sha": "aaa111",
-					"commit": map[string]any{
-						"message": "feat: add feature",
-						"author":  map[string]any{"name": "Alice", "date": now.Format(time.RFC3339)},
+					keySHA: "aaa111",
+					keyCommit: map[string]any{
+						keyMessage: "feat: add feature",
+						keyAuthor:  map[string]any{keyName: "Alice", keyDate: now.Format(time.RFC3339)},
 					},
-					"html_url": "https://github.com/acme/myapp/commit/aaa111",
-					"parents":  []map[string]any{{"sha": "parent1"}},
+					keyHTMLURL: "https://github.com/acme/myapp/commit/aaa111",
+					keyParents: []map[string]any{{keySHA: "parent1"}},
 				},
 				{
-					"sha": "bbb222",
-					"commit": map[string]any{
-						"message": "Merge PR #42",
-						"author":  map[string]any{"name": "Bot", "date": now.Format(time.RFC3339)},
+					keySHA: "bbb222",
+					keyCommit: map[string]any{
+						keyMessage: "Merge PR #42",
+						keyAuthor:  map[string]any{keyName: "Bot", keyDate: now.Format(time.RFC3339)},
 					},
-					"html_url": "https://github.com/acme/myapp/commit/bbb222",
+					keyHTMLURL: "https://github.com/acme/myapp/commit/bbb222",
 					// two parents => merge commit
-					"parents": []map[string]any{{"sha": "parent1"}, {"sha": "parent2"}},
+					keyParents: []map[string]any{{keySHA: "parent1"}, {keySHA: "parent2"}},
 				},
 			},
 		})
@@ -79,13 +79,13 @@ func TestCompare_ParsesCommitsAndMergeFlag(t *testing.T) {
 	defer srv.Close()
 
 	c := githubclient.NewClient(githubclient.Config{
-		TokenSource: &staticTokenSource{tok: "test-pat"},
+		TokenSource: &staticTokenSource{tok: testPAT},
 		BaseURL:     srv.URL,
 	})
 	result, err := c.Compare(context.Background(), forge.RepoRef{
 		Host:  "github.com",
-		Owner: "acme",
-		Repo:  "myapp",
+		Owner: testOwner,
+		Repo:  testRepo,
 	}, "abc", "HEAD")
 	require.NoError(t, err)
 	assert.Equal(t, 2, result.AheadBy)
@@ -109,13 +109,13 @@ func TestCompare_RetriesOn429ThenParses(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"ahead_by": 1,
-			"commits": []map[string]any{
+			keyAheadBy: 1,
+			keyCommits: []map[string]any{
 				{
-					"sha":      "ccc333",
-					"commit":   map[string]any{"message": "fix", "author": map[string]any{"name": "Bob", "date": time.Now().Format(time.RFC3339)}},
-					"html_url": "https://github.com/acme/myapp/commit/ccc333",
-					"parents":  []map[string]any{{"sha": "p"}},
+					keySHA:     "ccc333",
+					keyCommit:  map[string]any{keyMessage: "fix", keyAuthor: map[string]any{keyName: "Bob", keyDate: time.Now().Format(time.RFC3339)}},
+					keyHTMLURL: "https://github.com/acme/myapp/commit/ccc333",
+					keyParents: []map[string]any{{keySHA: "p"}},
 				},
 			},
 		})
@@ -123,12 +123,12 @@ func TestCompare_RetriesOn429ThenParses(t *testing.T) {
 	defer srv.Close()
 
 	c := githubclient.NewClient(githubclient.Config{
-		TokenSource:     &staticTokenSource{tok: "test-pat"},
-		BaseURL:         srv.URL,
-		MaxRetries:      5,
-		InitialBackoff:  time.Millisecond,
+		TokenSource:    &staticTokenSource{tok: testPAT},
+		BaseURL:        srv.URL,
+		MaxRetries:     5,
+		InitialBackoff: time.Millisecond,
 	})
-	result, err := c.Compare(context.Background(), forge.RepoRef{Owner: "acme", Repo: "myapp"}, "base", "head")
+	result, err := c.Compare(context.Background(), forge.RepoRef{Owner: testOwner, Repo: testRepo}, "base", "head")
 	require.NoError(t, err)
 	assert.Equal(t, 1, result.AheadBy)
 	assert.GreaterOrEqual(t, callCount.Load(), int32(3))
@@ -145,12 +145,12 @@ func TestCompare_DoesNotRetry4xx(t *testing.T) {
 	defer srv.Close()
 
 	c := githubclient.NewClient(githubclient.Config{
-		TokenSource:    &staticTokenSource{tok: "test-pat"},
+		TokenSource:    &staticTokenSource{tok: testPAT},
 		BaseURL:        srv.URL,
 		MaxRetries:     5,
 		InitialBackoff: time.Millisecond,
 	})
-	_, err := c.Compare(context.Background(), forge.RepoRef{Owner: "acme", Repo: "myapp"}, "base", "head")
+	_, err := c.Compare(context.Background(), forge.RepoRef{Owner: testOwner, Repo: testRepo}, "base", "head")
 	require.Error(t, err)
 	assert.Equal(t, int32(1), callCount.Load(), "4xx should not be retried")
 }
@@ -159,18 +159,18 @@ func TestCompare_Truncated(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"ahead_by": 100,
-			"commits":  []map[string]any{},
+			keyAheadBy: 100,
+			keyCommits: []map[string]any{},
 			"status":   "diverged",
 		})
 	}))
 	defer srv.Close()
 
 	c := githubclient.NewClient(githubclient.Config{
-		TokenSource: &staticTokenSource{tok: "test-pat"},
+		TokenSource: &staticTokenSource{tok: testPAT},
 		BaseURL:     srv.URL,
 	})
-	result, err := c.Compare(context.Background(), forge.RepoRef{Owner: "acme", Repo: "myapp"}, "base", "head")
+	result, err := c.Compare(context.Background(), forge.RepoRef{Owner: testOwner, Repo: testRepo}, "base", "head")
 	require.NoError(t, err)
 	// When status == "diverged", commits list may be empty but ahead_by > 0; not truncated per se.
 	assert.Equal(t, 100, result.AheadBy)
@@ -184,17 +184,17 @@ func TestLatestWorkflowRun_ReturnsHTMLURL(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"workflow_runs": []map[string]any{
-				{"html_url": "https://github.com/acme/myapp/actions/runs/12345"},
+				{keyHTMLURL: "https://github.com/acme/myapp/actions/runs/12345"},
 			},
 		})
 	}))
 	defer srv.Close()
 
 	c := githubclient.NewClient(githubclient.Config{
-		TokenSource: &staticTokenSource{tok: "test-pat"},
+		TokenSource: &staticTokenSource{tok: testPAT},
 		BaseURL:     srv.URL,
 	})
-	got, err := c.LatestWorkflowRun(context.Background(), forge.RepoRef{Owner: "acme", Repo: "myapp"}, "deploy.yml", "mybranch")
+	got, err := c.LatestWorkflowRun(context.Background(), forge.RepoRef{Owner: testOwner, Repo: testRepo}, "deploy.yml", "mybranch")
 	require.NoError(t, err)
 	assert.Equal(t, "https://github.com/acme/myapp/actions/runs/12345", got)
 }
@@ -202,10 +202,10 @@ func TestLatestWorkflowRun_ReturnsHTMLURL(t *testing.T) {
 func TestLatestWorkflowRun_EmptyWorkflowFile(t *testing.T) {
 	// No server needed — should return early without any HTTP call.
 	c := githubclient.NewClient(githubclient.Config{
-		TokenSource: &staticTokenSource{tok: "test-pat"},
+		TokenSource: &staticTokenSource{tok: testPAT},
 		BaseURL:     "http://127.0.0.1:0", // unreachable; call must not reach it
 	})
-	got, err := c.LatestWorkflowRun(context.Background(), forge.RepoRef{Owner: "acme", Repo: "myapp"}, "", "main")
+	got, err := c.LatestWorkflowRun(context.Background(), forge.RepoRef{Owner: testOwner, Repo: testRepo}, "", "main")
 	require.NoError(t, err)
 	assert.Equal(t, "", got)
 }
@@ -218,12 +218,12 @@ func TestLatestWorkflowRun_ServerErrorReturnsEmpty(t *testing.T) {
 	defer srv.Close()
 
 	c := githubclient.NewClient(githubclient.Config{
-		TokenSource:    &staticTokenSource{tok: "test-pat"},
+		TokenSource:    &staticTokenSource{tok: testPAT},
 		BaseURL:        srv.URL,
 		MaxRetries:     0, // no retries, fail fast
 		InitialBackoff: time.Millisecond,
 	})
-	got, err := c.LatestWorkflowRun(context.Background(), forge.RepoRef{Owner: "acme", Repo: "myapp"}, "deploy.yml", "main")
+	got, err := c.LatestWorkflowRun(context.Background(), forge.RepoRef{Owner: testOwner, Repo: testRepo}, "deploy.yml", "main")
 	require.NoError(t, err, "LatestWorkflowRun must swallow errors (best-effort)")
 	assert.Equal(t, "", got)
 }
@@ -238,10 +238,10 @@ func TestLatestWorkflowRun_EmptyRunsReturnsEmpty(t *testing.T) {
 	defer srv.Close()
 
 	c := githubclient.NewClient(githubclient.Config{
-		TokenSource: &staticTokenSource{tok: "test-pat"},
+		TokenSource: &staticTokenSource{tok: testPAT},
 		BaseURL:     srv.URL,
 	})
-	got, err := c.LatestWorkflowRun(context.Background(), forge.RepoRef{Owner: "acme", Repo: "myapp"}, "ci.yml", "main")
+	got, err := c.LatestWorkflowRun(context.Background(), forge.RepoRef{Owner: testOwner, Repo: testRepo}, "ci.yml", "main")
 	require.NoError(t, err)
 	assert.Equal(t, "", got)
 }

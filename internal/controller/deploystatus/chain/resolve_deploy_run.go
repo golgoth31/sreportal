@@ -52,7 +52,7 @@ func (h *ResolveDeployRunHandler) Handle(ctx context.Context, rc *reconciler.Rec
 	for i := range rc.Data.Computed {
 		e := &rc.Data.Computed[i]
 		// Only enrich successfully compared entries.
-		if e.State == "error" || e.State == "unresolved" {
+		if e.State == stateError || e.State == stateUnresolved {
 			continue
 		}
 		ref, ok := repoByKey[e.Key]

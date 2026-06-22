@@ -29,8 +29,8 @@ import (
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/config"
 	"github.com/golgoth31/sreportal/internal/domain/forge"
-	"github.com/golgoth31/sreportal/internal/remoteclient"
 	readstoredeploystatus "github.com/golgoth31/sreportal/internal/readstore/deploystatus"
+	"github.com/golgoth31/sreportal/internal/remoteclient"
 )
 
 // fakeForge is a forge.Client test double returning canned compare results.
@@ -72,16 +72,16 @@ func TestReconcile_PopulatesStatusAndReadStore(t *testing.T) {
 		ObjectMeta: objectMeta("portal-a-default", "sreportal"),
 		Spec: sreportalv1alpha1.DeployStatusSpec{
 			PortalRef: "portal-a",
-			Namespace: "default",
+			Namespace: testNsDefault,
 			Services: []sreportalv1alpha1.DeployStatusEntry{
 				{
 					Key: "k1",
 					Workload: sreportalv1alpha1.DeployStatusWorkloadRef{
-						Kind: "Deployment", Namespace: "default", Name: "widget", Container: "app",
+						Kind: testKindDeployment, Namespace: testNsDefault, Name: testWorkloadWidget, Container: testContainerApp,
 					},
-					Image:       "github.com/acme/widget@sha256:abc",
-					SourceRepo:  "https://github.com/acme/widget",
-					DeployedRef: "deadbeef",
+					Image:       testImage,
+					SourceRepo:  testSourceRepo,
+					DeployedRef: testDeployedRef,
 				},
 			},
 		},
@@ -94,7 +94,7 @@ func TestReconcile_PopulatesStatusAndReadStore(t *testing.T) {
 		Build()
 
 	fc := &fakeForge{
-		branch: "main",
+		branch: testBranch,
 		cmp: forge.CompareResult{
 			AheadBy: 2,
 			Commits: []forge.Commit{
@@ -129,13 +129,13 @@ func TestReconcile_PopulatesStatusAndReadStore(t *testing.T) {
 		t.Fatalf("expected 1 status service, got %d", len(got.Status.Services))
 	}
 	gotEntry := got.Status.Services[0]
-	if gotEntry.State != "behind" {
+	if gotEntry.State != testStateBehind {
 		t.Errorf("expected state=behind, got %q", gotEntry.State)
 	}
 	if gotEntry.AheadBy != 2 {
 		t.Errorf("expected aheadBy=2, got %d", gotEntry.AheadBy)
 	}
-	if gotEntry.DefaultBranch != "main" {
+	if gotEntry.DefaultBranch != testBranch {
 		t.Errorf("expected defaultBranch=main, got %q", gotEntry.DefaultBranch)
 	}
 	if len(gotEntry.PendingCommits) != 2 {
@@ -153,7 +153,7 @@ func TestReconcile_PopulatesStatusAndReadStore(t *testing.T) {
 	if entries[0].Key != "k1" {
 		t.Errorf("expected readstore entry key=k1, got %q", entries[0].Key)
 	}
-	if entries[0].State != "behind" {
+	if entries[0].State != testStateBehind {
 		t.Errorf("expected readstore state=behind, got %q", entries[0].State)
 	}
 }
@@ -166,15 +166,15 @@ func TestReconcile_SkipsRemoteCR(t *testing.T) {
 		ObjectMeta: objectMeta("remote-portal-b", "sreportal"),
 		Spec: sreportalv1alpha1.DeployStatusSpec{
 			PortalRef: "portal-b",
-			Namespace: "default",
+			Namespace: testNsDefault,
 			IsRemote:  true,
 			Services: []sreportalv1alpha1.DeployStatusEntry{
 				{
 					Key:         "k1",
-					Workload:    sreportalv1alpha1.DeployStatusWorkloadRef{Kind: "Deployment", Namespace: "default", Name: "w", Container: "c"},
-					Image:       "github.com/acme/widget@sha256:abc",
-					SourceRepo:  "https://github.com/acme/widget",
-					DeployedRef: "deadbeef",
+					Workload:    sreportalv1alpha1.DeployStatusWorkloadRef{Kind: testKindDeployment, Namespace: testNsDefault, Name: "w", Container: "c"},
+					Image:       testImage,
+					SourceRepo:  testSourceRepo,
+					DeployedRef: testDeployedRef,
 				},
 			},
 		},

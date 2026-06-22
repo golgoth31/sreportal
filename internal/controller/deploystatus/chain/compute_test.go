@@ -27,7 +27,7 @@ func TestComputeLag_FiltersMergesAndCaps(t *testing.T) {
 	// one merge commit that must be filtered out
 	commits = append(commits, forge.Commit{SHA: "m", Merge: true})
 	// 55 regular commits — after filtering 55 remain, capped to 50
-	for i := 0; i < 55; i++ {
+	for range 55 {
 		commits = append(commits, forge.Commit{SHA: "c"})
 	}
 	cr := forge.CompareResult{AheadBy: 55, Commits: commits}
@@ -67,10 +67,10 @@ func TestStateFor(t *testing.T) {
 	if StateFor(0) != "ok" {
 		t.Errorf("aheadBy 0 -> ok, got %q", StateFor(0))
 	}
-	if StateFor(3) != "behind" {
+	if StateFor(3) != stateBehind {
 		t.Errorf("aheadBy 3 -> behind, got %q", StateFor(3))
 	}
-	if StateFor(1) != "behind" {
+	if StateFor(1) != stateBehind {
 		t.Errorf("aheadBy 1 -> behind, got %q", StateFor(1))
 	}
 }

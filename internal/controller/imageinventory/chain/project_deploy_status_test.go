@@ -54,8 +54,6 @@ func newProjectTestScheme(t *testing.T) *runtime.Scheme {
 	return scheme
 }
 
-func boolPtr(b bool) *bool { return &b }
-
 // TestProjectDeployStatus_OnlySourceLabeledImages verifies that the handler
 // creates a DeployStatus CR whose Spec.Services contains ONLY the
 // source-labeled images, with correct SourceRepo and DeployedRef (both the
@@ -141,7 +139,7 @@ func TestProjectDeployStatus_FeatureDisabledSkips(t *testing.T) {
 	portal := &sreportalv1alpha1.Portal{
 		ObjectMeta: metav1.ObjectMeta{Name: tPortalMain, Namespace: tNsDefault},
 		Spec: sreportalv1alpha1.PortalSpec{
-			Features: &sreportalv1alpha1.PortalFeatures{DeployStatus: boolPtr(false)},
+			Features: &sreportalv1alpha1.PortalFeatures{DeployStatus: new(bool)},
 		},
 	}
 	inv := &sreportalv1alpha1.ImageInventory{

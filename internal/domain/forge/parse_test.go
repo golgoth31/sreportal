@@ -9,6 +9,12 @@ import (
 	"github.com/golgoth31/sreportal/internal/domain/forge"
 )
 
+const (
+	testOwnerAcme  = "acme"
+	testHostGitHub = "github.com"
+	testRepoMyApp  = "myapp"
+)
+
 func TestParseSourceURL(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -19,12 +25,12 @@ func TestParseSourceURL(t *testing.T) {
 		{
 			name: "https github.com",
 			raw:  "https://github.com/acme/myapp",
-			want: forge.RepoRef{Host: "github.com", Owner: "acme", Repo: "myapp"},
+			want: forge.RepoRef{Host: testHostGitHub, Owner: testOwnerAcme, Repo: testRepoMyApp},
 		},
 		{
 			name: "https with .git suffix",
 			raw:  "https://github.com/acme/myapp.git",
-			want: forge.RepoRef{Host: "github.com", Owner: "acme", Repo: "myapp"},
+			want: forge.RepoRef{Host: testHostGitHub, Owner: testOwnerAcme, Repo: testRepoMyApp},
 		},
 		{
 			name: "https GHES host",
@@ -34,7 +40,7 @@ func TestParseSourceURL(t *testing.T) {
 		{
 			name: "scp-style ssh git@github.com",
 			raw:  "git@github.com:acme/myapp.git",
-			want: forge.RepoRef{Host: "github.com", Owner: "acme", Repo: "myapp"},
+			want: forge.RepoRef{Host: testHostGitHub, Owner: testOwnerAcme, Repo: testRepoMyApp},
 		},
 		{
 			name: "scp-style ssh GHES",
