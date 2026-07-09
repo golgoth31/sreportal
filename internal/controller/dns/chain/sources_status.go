@@ -93,7 +93,26 @@ const (
 	// matching the +kubebuilder:validation:MaxLength marker on
 	// SkippedFQDNStatus.FQDN.
 	maxSkippedFQDNLen = 253
+	// maxSkippedRecordTypeLen bounds the mirrored record type, matching the
+	// +kubebuilder:validation:MaxLength marker on SkippedFQDNStatus.RecordType.
+	// A dropped entry's record type is source-controlled and unbounded.
+	maxSkippedRecordTypeLen = 16
 )
+
+// truncateRunes returns s limited to max Unicode code points, on a rune
+// boundary. CRD MaxLength counts code points, so a byte-slice could both split
+// a multi-byte rune (corrupting the stored value) and over-truncate a valid
+// multi-byte string; slicing on runes avoids both.
+func truncateRunes(s string, max int) string {
+	if len(s) <= max { // byte len <= max => rune count <= max
+		return s
+	}
+	r := []rune(s)
+	if len(r) <= max {
+		return s
+	}
+	return string(r[:max])
+}
 
 // projectSkippedEntries mirrors a bounded sample of the validation-dropped
 // entries onto the DNS status and flips the EntriesValid condition. skipped is
@@ -115,14 +134,10 @@ func projectSkippedEntries(dns *sreportalv1alpha2.DNS, skipped []SkippedEntry) {
 	}
 	out := make([]sreportalv1alpha2.SkippedFQDNStatus, 0, len(sample))
 	for _, s := range sample {
-		fqdn := s.FQDN
-		if len(fqdn) > maxSkippedFQDNLen {
-			fqdn = fqdn[:maxSkippedFQDNLen]
-		}
 		out = append(out, sreportalv1alpha2.SkippedFQDNStatus{
-			FQDN:       fqdn,
+			FQDN:       truncateRunes(s.FQDN, maxSkippedFQDNLen),
 			SourceType: string(s.Kind),
-			RecordType: s.RecordType,
+			RecordType: truncateRunes(s.RecordType, maxSkippedRecordTypeLen),
 			Reason:     s.Reason,
 		})
 	}

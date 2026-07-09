@@ -53,8 +53,11 @@ const (
 //
 // A kind that has any dropped entry this cycle is added to PreserveKinds so
 // UpsertDNSRecordsHandler does not delete its existing (last-good) DNSRecord
-// when filtering leaves the kind with zero valid entries — a transient
-// all-invalid source glitch must not purge good persisted records.
+// when filtering leaves the kind with zero valid entries. This keeps the
+// last-good record for a kind that produces only invalid entries — whether the
+// all-invalid state is a transient glitch or persistent (in the persistent
+// case the stale record is retained by design and the EntriesValid=False
+// condition surfaces the problem).
 type ValidateEntriesHandler struct{}
 
 // Handle implements reconciler.Handler.

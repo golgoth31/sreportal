@@ -152,8 +152,12 @@ type SkippedFQDNStatus struct {
 	// +optional
 	SourceType string `json:"sourceType,omitempty"`
 
-	// recordType is the DNS record type of the dropped entry.
+	// recordType is the DNS record type of the dropped entry (truncated). It is
+	// bounded because a dropped entry's record type is source-controlled and
+	// unbounded (e.g. a Crossplane Scaleway Record type), and an unbounded value
+	// could bloat the status object past the etcd size limit.
 	// +optional
+	// +kubebuilder:validation:MaxLength=16
 	RecordType string `json:"recordType,omitempty"`
 
 	// reason is a short machine-friendly cause (e.g. invalid_fqdn).

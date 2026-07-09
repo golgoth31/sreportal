@@ -18,7 +18,9 @@ package dns_test
 
 import (
 	"context"
+	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -219,4 +221,26 @@ func TestSourcesStatus_SkippedEntriesBounded(t *testing.T) {
 	// Status list is capped, but the condition message reports the full count.
 	require.Len(t, dns.Status.SkippedEntries, 100)
 	require.Contains(t, findCondition(dns, "EntriesValid").Message, "250 ")
+}
+
+func TestSourcesStatus_SkippedEntriesTruncated(t *testing.T) {
+	dns := &sreportalv1alpha2.DNS{ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "n"}}
+	data := chainDataWithEnabledKind()
+	data.SkippedEntries = []dnschain.SkippedEntry{{
+		FQDN:       strings.Repeat("é", 300), // 300 runes / 600 bytes
+		RecordType: strings.Repeat("X", 64),  // source-controlled, unbounded
+		Reason:     testReasonInvalidFQDN,
+		Kind:       externaldns.KindService,
+	}}
+	h := &dnschain.SourcesStatusHandler{Conflicts: fakeConflicts{}}
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{Resource: dns, Data: data}
+	require.NoError(t, h.Handle(context.Background(), rc))
+
+	require.Len(t, dns.Status.SkippedEntries, 1)
+	got := dns.Status.SkippedEntries[0]
+	// Truncated on a rune boundary to the CRD MaxLength (code points), never
+	// splitting a multi-byte rune.
+	require.Equal(t, 253, len([]rune(got.FQDN)))
+	require.True(t, utf8.ValidString(got.FQDN))
+	require.Equal(t, 16, len(got.RecordType))
 }

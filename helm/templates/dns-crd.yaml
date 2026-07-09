@@ -723,8 +723,12 @@ spec:
                       description: reason is a short machine-friendly cause (e.g. invalid_fqdn).
                       type: string
                     recordType:
-                      description: recordType is the DNS record type of the dropped
-                        entry.
+                      description: |-
+                        recordType is the DNS record type of the dropped entry (truncated). It is
+                        bounded because a dropped entry's record type is source-controlled and
+                        unbounded (e.g. a Crossplane Scaleway Record type), and an unbounded value
+                        could bloat the status object past the etcd size limit.
+                      maxLength: 16
                       type: string
                     sourceType:
                       description: sourceType is the source kind that produced the entry.

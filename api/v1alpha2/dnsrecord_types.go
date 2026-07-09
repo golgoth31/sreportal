@@ -69,6 +69,10 @@ type DNSRecordEntry struct {
 	// +optional
 	Description string `json:"description,omitempty"`
 
+	// Enum MUST stay in sync with domaindns.ValidRecordTypes
+	// (internal/domain/dns/fqdn.go): the DNS controller pre-filters auto entries
+	// with that set so an unsupported record type doesn't get the whole
+	// DNSRecord rejected at admission. A drift-guard test enforces this.
 	// +kubebuilder:validation:Enum=A;AAAA;CNAME;TXT
 	// +kubebuilder:default="A"
 	// +optional

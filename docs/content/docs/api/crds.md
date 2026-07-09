@@ -1391,7 +1391,7 @@ _Appears in:_
 | --- | --- | --- | --- |
 | `fqdn` _string_ | fqdn is the offending fully qualified domain name (truncated to the DNS name length limit). |   |   |
 | `sourceType` _string_ | sourceType is the source kind that produced the entry. |   |   |
-| `recordType` _string_ | recordType is the DNS record type of the dropped entry. |   |   |
+| `recordType` _string_ | recordType is the DNS record type of the dropped entry (truncated). It is bounded because a dropped entry's record type is source-controlled and unbounded (e.g. a Crossplane Scaleway Record type), and an unbounded value could bloat the status object past the etcd size limit. |   |   |
 | `reason` _string_ | reason is a short machine-friendly cause (e.g. invalid_fqdn). |   |   |
 
 
@@ -1472,7 +1472,7 @@ _Appears in:_
 | `group` _string_ |   |   |   |
 | `groups` _string array_ | groups are the UI groups this entry belongs to (the sreportal.io/groups annotation, comma-separated). Supports multiple groups, unlike the single group field. Set by the DNS controller for origin=auto entries from the source resource annotation; may be set directly on manual entries. |   |   |
 | `description` _string_ |   |   |   |
-| `recordType` _string_ |   |   | Enum: [A AAAA CNAME TXT] |
+| `recordType` _string_ | Enum MUST stay in sync with domaindns.ValidRecordTypes (internal/domain/dns/fqdn.go): the DNS controller pre-filters auto entries with that set so an unsupported record type doesn't get the whole DNSRecord rejected at admission. A drift-guard test enforces this. |   | Enum: [A AAAA CNAME TXT] |
 | `targets` _string array_ |   |   |   |
 | `originRef` _string_ | originRef identifies the source Kubernetes resource that produced this entry, in "kind/namespace/name" form (the external-dns "resource" label). Set by the DNS controller for origin=auto entries; empty for manual. |   |   |
 

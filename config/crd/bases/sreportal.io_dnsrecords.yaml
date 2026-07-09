@@ -297,6 +297,11 @@ spec:
                       type: string
                     recordType:
                       default: A
+                      description: |-
+                        Enum MUST stay in sync with domaindns.ValidRecordTypes
+                        (internal/domain/dns/fqdn.go): the DNS controller pre-filters auto entries
+                        with that set so an unsupported record type doesn't get the whole
+                        DNSRecord rejected at admission. A drift-guard test enforces this.
                       enum:
                       - A
                       - AAAA
