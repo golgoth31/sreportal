@@ -103,15 +103,15 @@ const (
 // boundary. CRD MaxLength counts code points, so a byte-slice could both split
 // a multi-byte rune (corrupting the stored value) and over-truncate a valid
 // multi-byte string; slicing on runes avoids both.
-func truncateRunes(s string, max int) string {
-	if len(s) <= max { // byte len <= max => rune count <= max
+func truncateRunes(s string, limit int) string {
+	if len(s) <= limit { // byte len <= limit => rune count <= limit
 		return s
 	}
 	r := []rune(s)
-	if len(r) <= max {
+	if len(r) <= limit {
 		return s
 	}
-	return string(r[:max])
+	return string(r[:limit])
 }
 
 // projectSkippedEntries mirrors a bounded sample of the validation-dropped
