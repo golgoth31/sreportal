@@ -62,8 +62,14 @@ type ValidateEntriesHandler struct{}
 
 // Handle implements reconciler.Handler.
 func (*ValidateEntriesHandler) Handle(ctx context.Context, rc *reconciler.ReconcileContext[*sreportalv1alpha2.DNS, ChainData]) error {
-	portal := rc.Resource.Spec.PortalRef
+	ns, name := rc.Resource.Namespace, rc.Resource.Name
 	filtered := make(map[registry.SourceType][]*endpoint.Endpoint, len(rc.Data.KeptEndpointsByKind))
+
+	// Drop this DNS resource's stale valid-entry gauges before re-setting the
+	// kinds produced this reconcile, so a kind that stopped producing does not
+	// leave a frozen non-zero series. The gauge is current-value, so wipe+re-set
+	// is safe; the invalid counter is cumulative and must NOT be reset here.
+	metrics.DeleteDNSEntriesValidSeries(ns, name)
 
 	for kind, eps := range rc.Data.KeptEndpointsByKind {
 		kept := make([]*endpoint.Endpoint, 0, len(eps))
@@ -84,9 +90,9 @@ func (*ValidateEntriesHandler) Handle(ctx context.Context, rc *reconciler.Reconc
 		}
 		filtered[kind] = kept
 
-		metrics.DNSEntriesValid.WithLabelValues(portal, string(kind)).Set(float64(len(kept)))
+		metrics.DNSEntriesValid.WithLabelValues(ns, name, string(kind)).Set(float64(len(kept)))
 		for reason, n := range invalidByReason {
-			metrics.DNSEntriesInvalid.WithLabelValues(portal, string(kind), reason).Add(float64(n))
+			metrics.DNSEntriesInvalid.WithLabelValues(ns, name, string(kind), reason).Add(float64(n))
 		}
 		// Guard the kind's last-good record against a transient all-invalid glitch.
 		if len(invalidByReason) > 0 {

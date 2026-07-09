@@ -36,6 +36,7 @@ const (
 	subsystemDNS           = "dns"
 
 	labelKind       = "kind"
+	labelName       = "name"
 	labelPortal     = "portal"
 	labelServer     = "server"
 	labelSourceType = "source_type"
@@ -112,28 +113,32 @@ var (
 		[]string{labelPortal},
 	)
 
-	// DNSEntriesValid tracks the number of valid FQDN entries projected into
-	// auto DNSRecords on the last reconcile, per portal and source kind.
+	// DNSEntriesValid tracks the number of valid entries projected into auto
+	// DNSRecords on the last reconcile, per DNS resource and source kind. Keyed
+	// by (namespace, name) — not portal — so multiple DNS CRs sharing a portalRef
+	// do not clobber each other's series. Stale series are reclaimed by
+	// ValidateEntriesHandler (kinds no longer produced) and ResetDNSEntryMetrics
+	// (DNS CR deleted).
 	DNSEntriesValid = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: subsystemDNS,
 			Name:      "entries_valid",
-			Help:      "Number of valid FQDN entries projected on the last reconcile, per portal and source kind.",
+			Help:      "Number of valid entries projected on the last reconcile, per DNS resource (namespace, name) and source kind.",
 		},
-		[]string{labelPortal, labelKind},
+		[]string{labelNamespace, labelName, labelKind},
 	)
 
-	// DNSEntriesInvalid counts FQDN entries skipped because they failed the
-	// DNSRecord FQDN validation, per portal, source kind and skip reason.
+	// DNSEntriesInvalid counts entries skipped because they failed DNSRecord
+	// validation, per DNS resource, source kind and skip reason.
 	DNSEntriesInvalid = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: subsystemDNS,
 			Name:      "entries_invalid_total",
-			Help:      "Total number of FQDN entries skipped due to validation failure, per portal, source kind and reason.",
+			Help:      "Total number of entries skipped due to validation failure, per DNS resource (namespace, name), source kind and reason.",
 		},
-		[]string{labelPortal, labelKind, "reason"},
+		[]string{labelNamespace, labelName, labelKind, "reason"},
 	)
 
 	// SourceEndpointsCollected tracks the number of endpoints collected per source type.
@@ -610,6 +615,23 @@ func ResetImageRegistryMetrics(portal, host, namespace string) {
 	ImageRegistryUpgradesTotal.DeleteLabelValues(portal, host, namespace)
 	ImageRegistryMutatedTotal.DeleteLabelValues(portal, host, namespace)
 	ImageRegistryInjectedTotal.DeleteLabelValues(portal, host, namespace)
+}
+
+// ResetDNSEntryMetrics removes every entries_valid / entries_invalid_total
+// series for the given DNS resource (all kinds/reasons). Called from the DNS
+// reconcile when the DNS CR is gone (Get → NotFound) so a deleted resource does
+// not leave phantom series behind.
+func ResetDNSEntryMetrics(namespace, name string) {
+	DNSEntriesValid.DeletePartialMatch(prometheus.Labels{labelNamespace: namespace, labelName: name})
+	DNSEntriesInvalid.DeletePartialMatch(prometheus.Labels{labelNamespace: namespace, labelName: name})
+}
+
+// DeleteDNSEntriesValidSeries removes the entries_valid gauge series (all kinds)
+// for the given DNS resource. Called each reconcile before re-setting so a kind
+// that stopped producing does not leave a frozen non-zero gauge. Only the gauge
+// is dropped — the invalid counter is cumulative and must survive.
+func DeleteDNSEntriesValidSeries(namespace, name string) {
+	DNSEntriesValid.DeletePartialMatch(prometheus.Labels{labelNamespace: namespace, labelName: name})
 }
 
 func init() {

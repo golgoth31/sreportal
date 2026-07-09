@@ -32,9 +32,16 @@ import (
 	"github.com/golgoth31/sreportal/internal/source/registry"
 )
 
-func newDNSFor(portal string) *sreportalv1alpha2.DNS {
+const testNS = "dns-test"
+
+// newDNSFor builds a DNS CR named id in the test namespace. The per-DNS metric
+// series are keyed by (namespace, name), so a distinct id per test isolates the
+// metric assertions.
+func newDNSFor(id string) *sreportalv1alpha2.DNS {
 	dns := &sreportalv1alpha2.DNS{}
-	dns.Spec.PortalRef = portal
+	dns.Namespace = testNS
+	dns.Name = id
+	dns.Spec.PortalRef = id
 	return dns
 }
 
@@ -53,7 +60,7 @@ func TestValidateEntries_MixedDropsInvalidKeepsValid(t *testing.T) {
 		},
 	}
 
-	before := testutil.ToFloat64(metrics.DNSEntriesInvalid.WithLabelValues(portal, string(externaldns.KindService), "invalid_fqdn"))
+	before := testutil.ToFloat64(metrics.DNSEntriesInvalid.WithLabelValues(testNS, portal, string(externaldns.KindService), "invalid_fqdn"))
 	require.NoError(t, h.Handle(context.Background(), rc))
 
 	kept := rc.Data.KeptEndpointsByKind[externaldns.KindService]
@@ -65,8 +72,8 @@ func TestValidateEntries_MixedDropsInvalidKeepsValid(t *testing.T) {
 	require.Equal(t, "invalid_fqdn", rc.Data.SkippedEntries[0].Reason)
 	require.Equal(t, externaldns.KindService, rc.Data.SkippedEntries[0].Kind)
 
-	require.Equal(t, float64(1), testutil.ToFloat64(metrics.DNSEntriesValid.WithLabelValues(portal, string(externaldns.KindService))))
-	after := testutil.ToFloat64(metrics.DNSEntriesInvalid.WithLabelValues(portal, string(externaldns.KindService), "invalid_fqdn"))
+	require.Equal(t, float64(1), testutil.ToFloat64(metrics.DNSEntriesValid.WithLabelValues(testNS, portal, string(externaldns.KindService))))
+	after := testutil.ToFloat64(metrics.DNSEntriesInvalid.WithLabelValues(testNS, portal, string(externaldns.KindService), "invalid_fqdn"))
 	require.Equal(t, float64(1), after-before)
 }
 
@@ -88,7 +95,7 @@ func TestValidateEntries_AllInvalidYieldsEmptyKindAndPreserves(t *testing.T) {
 	require.NoError(t, h.Handle(context.Background(), rc))
 	require.Empty(t, rc.Data.KeptEndpointsByKind[externaldns.KindService])
 	require.Len(t, rc.Data.SkippedEntries, 2)
-	require.Equal(t, float64(0), testutil.ToFloat64(metrics.DNSEntriesValid.WithLabelValues(portal, string(externaldns.KindService))))
+	require.Equal(t, float64(0), testutil.ToFloat64(metrics.DNSEntriesValid.WithLabelValues(testNS, portal, string(externaldns.KindService))))
 	// A kind that had drops must be preserved so upsert does not delete its
 	// last-good DNSRecord on a transient all-invalid glitch.
 	require.True(t, rc.Data.PreserveKinds[externaldns.KindService])
@@ -109,7 +116,7 @@ func TestValidateEntries_InvalidRecordTypeSkipped(t *testing.T) {
 		},
 	}
 
-	before := testutil.ToFloat64(metrics.DNSEntriesInvalid.WithLabelValues(portal, string(externaldns.KindService), "invalid_record_type"))
+	before := testutil.ToFloat64(metrics.DNSEntriesInvalid.WithLabelValues(testNS, portal, string(externaldns.KindService), "invalid_record_type"))
 	require.NoError(t, h.Handle(context.Background(), rc))
 
 	kept := rc.Data.KeptEndpointsByKind[externaldns.KindService]
@@ -118,8 +125,47 @@ func TestValidateEntries_InvalidRecordTypeSkipped(t *testing.T) {
 	require.Len(t, rc.Data.SkippedEntries, 1)
 	require.Equal(t, "mail.example.com", rc.Data.SkippedEntries[0].FQDN)
 	require.Equal(t, "invalid_record_type", rc.Data.SkippedEntries[0].Reason)
-	after := testutil.ToFloat64(metrics.DNSEntriesInvalid.WithLabelValues(portal, string(externaldns.KindService), "invalid_record_type"))
+	after := testutil.ToFloat64(metrics.DNSEntriesInvalid.WithLabelValues(testNS, portal, string(externaldns.KindService), "invalid_record_type"))
 	require.Equal(t, float64(1), after-before)
+}
+
+func TestValidateEntries_StaleKindGaugeReclaimed(t *testing.T) {
+	const id = "portal-stale"
+	h := &dnschain.ValidateEntriesHandler{}
+	newRC := func(kinds map[registry.SourceType][]*endpoint.Endpoint) *reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData] {
+		return &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{
+			Resource: newDNSFor(id),
+			Data:     dnschain.ChainData{KeptEndpointsByKind: kinds},
+		}
+	}
+
+	// Reconcile 1: Service produces one valid entry -> gauge = 1.
+	require.NoError(t, h.Handle(context.Background(), newRC(map[registry.SourceType][]*endpoint.Endpoint{
+		externaldns.KindService: {endpoint.NewEndpoint("a.example.com", "A", "1.1.1.1")},
+	})))
+	require.Equal(t, float64(1), testutil.ToFloat64(metrics.DNSEntriesValid.WithLabelValues(testNS, id, string(externaldns.KindService))))
+
+	// Reconcile 2: Service stops producing (only Ingress now). The stale Service
+	// gauge must be reclaimed (reads 0), not frozen at 1.
+	require.NoError(t, h.Handle(context.Background(), newRC(map[registry.SourceType][]*endpoint.Endpoint{
+		externaldns.KindIngress: {endpoint.NewEndpoint("b.example.com", "A", "2.2.2.2")},
+	})))
+	require.Equal(t, float64(0), testutil.ToFloat64(metrics.DNSEntriesValid.WithLabelValues(testNS, id, string(externaldns.KindService))),
+		"stale Service gauge must be reclaimed, not frozen at 1")
+	require.Equal(t, float64(1), testutil.ToFloat64(metrics.DNSEntriesValid.WithLabelValues(testNS, id, string(externaldns.KindIngress))))
+}
+
+func TestResetDNSEntryMetrics(t *testing.T) {
+	const id = "portal-del"
+	metrics.DNSEntriesValid.WithLabelValues(testNS, id, string(externaldns.KindService)).Set(3)
+	metrics.DNSEntriesInvalid.WithLabelValues(testNS, id, string(externaldns.KindService), "invalid_fqdn").Add(2)
+
+	metrics.ResetDNSEntryMetrics(testNS, id)
+
+	require.Equal(t, float64(0), testutil.ToFloat64(metrics.DNSEntriesValid.WithLabelValues(testNS, id, string(externaldns.KindService))),
+		"gauge series must be dropped on DNS deletion")
+	require.Equal(t, float64(0), testutil.ToFloat64(metrics.DNSEntriesInvalid.WithLabelValues(testNS, id, string(externaldns.KindService), "invalid_fqdn")),
+		"counter series must be dropped on DNS deletion")
 }
 
 func TestValidateEntries_CrossKindRecordTypeTiebreak(t *testing.T) {

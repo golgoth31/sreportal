@@ -21,6 +21,7 @@ import (
 	"errors"
 	"time"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -98,6 +99,11 @@ func (r *DNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 
 	var resource v1alpha2.DNS
 	if err := r.Get(ctx, req.NamespacedName, &resource); err != nil {
+		if apierrors.IsNotFound(err) {
+			// DNS CR gone: drop its entries_valid / entries_invalid_total series
+			// so a deleted resource leaves no phantom metrics behind.
+			metrics.ResetDNSEntryMetrics(req.Namespace, req.Name)
+		}
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
