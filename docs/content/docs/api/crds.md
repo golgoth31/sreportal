@@ -1375,6 +1375,24 @@ _Appears in:_
 | `observedGeneration` _integer_ |   |   |   |
 | `activeSources` _string array_ |   |   |   |
 | `nextReconcileTime` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta)_ |   |   |   |
+| `skippedEntries` _[sreportal.io/v1alpha2.SkippedFQDNStatus](#sreportaliov1alpha2skippedfqdnstatus) array_ | skippedEntries lists the discovered entries dropped on the last reconcile because they failed DNSRecord validation (FQDN pattern or record-type enum). They are excluded from the produced DNSRecords instead of aborting the whole reconcile. The list is a bounded sample; the full count is carried by the EntriesValid condition and the dns_entries_invalid_total metric. |   |   |
+
+
+
+#### sreportal.io/v1alpha2.SkippedFQDNStatus
+
+SkippedFQDNStatus describes a single entry dropped during validation.
+skippedEntries lists the discovered entries dropped on the last reconcile because they failed DNSRecord validation (FQDN pattern or record-type enum). They are excluded from the produced DNSRecords instead of aborting the whole reconcile. The list is a bounded sample; the full count is carried by the EntriesValid condition and the dns_entries_invalid_total metric.
+
+_Appears in:_
+- [sreportal.io/v1alpha2.DNSStatus](#sreportaliov1alpha2dnsstatus)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `fqdn` _string_ | fqdn is the offending fully qualified domain name (truncated to the DNS name length limit). |   |   |
+| `sourceType` _string_ | sourceType is the source kind that produced the entry. |   |   |
+| `recordType` _string_ | recordType is the DNS record type of the dropped entry. |   |   |
+| `reason` _string_ | reason is a short machine-friendly cause (e.g. invalid_fqdn). |   |   |
 
 
 
@@ -1450,7 +1468,7 @@ _Appears in:_
 
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
-| `fqdn` _string_ |   |   | Pattern: `^([a-zA-Z0-9]([a-zA-Z0-9-]\{0,61\}[a-zA-Z0-9])?\.)+[a-zA-Z]\{2,\}$` |
+| `fqdn` _string_ | Pattern MUST stay byte-identical to domaindns.FQDNPattern (internal/domain/dns/fqdn.go): the DNS controller pre-filters auto entries with that expression so a single invalid FQDN doesn't get the whole DNSRecord rejected at admission. |   | Pattern: `^([a-zA-Z0-9]([a-zA-Z0-9-]\{0,61\}[a-zA-Z0-9])?\.)+[a-zA-Z]\{2,\}$` |
 | `group` _string_ |   |   |   |
 | `groups` _string array_ | groups are the UI groups this entry belongs to (the sreportal.io/groups annotation, comma-separated). Supports multiple groups, unlike the single group field. Set by the DNS controller for origin=auto entries from the source resource annotation; may be set directly on manual entries. |   |   |
 | `description` _string_ |   |   |   |

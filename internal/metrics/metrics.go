@@ -112,6 +112,30 @@ var (
 		[]string{labelPortal},
 	)
 
+	// DNSEntriesValid tracks the number of valid FQDN entries projected into
+	// auto DNSRecords on the last reconcile, per portal and source kind.
+	DNSEntriesValid = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: subsystemDNS,
+			Name:      "entries_valid",
+			Help:      "Number of valid FQDN entries projected on the last reconcile, per portal and source kind.",
+		},
+		[]string{labelPortal, labelKind},
+	)
+
+	// DNSEntriesInvalid counts FQDN entries skipped because they failed the
+	// DNSRecord FQDN validation, per portal, source kind and skip reason.
+	DNSEntriesInvalid = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: subsystemDNS,
+			Name:      "entries_invalid_total",
+			Help:      "Total number of FQDN entries skipped due to validation failure, per portal, source kind and reason.",
+		},
+		[]string{labelPortal, labelKind, "reason"},
+	)
+
 	// SourceEndpointsCollected tracks the number of endpoints collected per source type.
 	SourceEndpointsCollected = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -599,6 +623,8 @@ func init() {
 		// DNS
 		DNSFQDNsTotal,
 		DNSGroupsTotal,
+		DNSEntriesValid,
+		DNSEntriesInvalid,
 		// Source
 		SourceEndpointsCollected,
 		SourceErrorsTotal,

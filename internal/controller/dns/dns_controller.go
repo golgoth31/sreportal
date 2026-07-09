@@ -75,6 +75,7 @@ func NewDNSReconciler(
 		"dns",
 		&dnschain.LookupSourcesHandler{Source: sourceReader},
 		&dnschain.IntraDNSDedupHandler{},
+		&dnschain.ValidateEntriesHandler{},
 		&dnschain.UpsertDNSRecordsHandler{Client: c},
 		&dnschain.SourcesStatusHandler{Conflicts: conflicts},
 	)

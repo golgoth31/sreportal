@@ -691,6 +691,42 @@ spec:
               observedGeneration:
                 format: int64
                 type: integer
+              skippedEntries:
+                description: |-
+                  skippedEntries lists the discovered entries dropped on the last reconcile
+                  because they failed DNSRecord validation (FQDN pattern or record-type
+                  enum). They are excluded from the produced DNSRecords instead of aborting
+                  the whole reconcile. The list is a bounded sample; the full count is
+                  carried by the EntriesValid condition and the dns_entries_invalid_total
+                  metric.
+                items:
+                  description: SkippedFQDNStatus describes a single entry dropped
+                    during validation.
+                  properties:
+                    fqdn:
+                      description: |-
+                        fqdn is the offending fully qualified domain name (truncated to the DNS
+                        name length limit).
+                      maxLength: 253
+                      type: string
+                    reason:
+                      description: reason is a short machine-friendly cause (e.g.
+                        invalid_fqdn).
+                      type: string
+                    recordType:
+                      description: recordType is the DNS record type of the dropped
+                        entry.
+                      type: string
+                    sourceType:
+                      description: sourceType is the source kind that produced the
+                        entry.
+                      type: string
+                  required:
+                  - fqdn
+                  - reason
+                  type: object
+                maxItems: 100
+                type: array
             type: object
         required:
         - metadata

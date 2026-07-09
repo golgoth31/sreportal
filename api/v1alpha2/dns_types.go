@@ -129,6 +129,35 @@ type DNSStatus struct {
 	ObservedGeneration int64              `json:"observedGeneration,omitempty"`
 	ActiveSources      []string           `json:"activeSources,omitempty"`
 	NextReconcileTime  *metav1.Time       `json:"nextReconcileTime,omitempty"`
+
+	// skippedEntries lists the discovered entries dropped on the last reconcile
+	// because they failed DNSRecord validation (FQDN pattern or record-type
+	// enum). They are excluded from the produced DNSRecords instead of aborting
+	// the whole reconcile. The list is a bounded sample; the full count is
+	// carried by the EntriesValid condition and the dns_entries_invalid_total
+	// metric.
+	// +optional
+	// +kubebuilder:validation:MaxItems=100
+	SkippedEntries []SkippedFQDNStatus `json:"skippedEntries,omitempty"`
+}
+
+// SkippedFQDNStatus describes a single entry dropped during validation.
+type SkippedFQDNStatus struct {
+	// fqdn is the offending fully qualified domain name (truncated to the DNS
+	// name length limit).
+	// +kubebuilder:validation:MaxLength=253
+	FQDN string `json:"fqdn"`
+
+	// sourceType is the source kind that produced the entry.
+	// +optional
+	SourceType string `json:"sourceType,omitempty"`
+
+	// recordType is the DNS record type of the dropped entry.
+	// +optional
+	RecordType string `json:"recordType,omitempty"`
+
+	// reason is a short machine-friendly cause (e.g. invalid_fqdn).
+	Reason string `json:"reason"`
 }
 
 // FQDNGroupStatus represents a group of FQDNs in the status
