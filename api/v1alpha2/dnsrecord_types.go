@@ -49,6 +49,10 @@ type DNSRecordSpec struct {
 type DNSRecordEntry struct {
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinLength=1
+	// Pattern MUST stay byte-identical to domaindns.FQDNPattern
+	// (internal/domain/dns/fqdn.go): the DNS controller pre-filters auto entries
+	// with that expression so a single invalid FQDN doesn't get the whole
+	// DNSRecord rejected at admission.
 	// +kubebuilder:validation:Pattern=`^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$`
 	FQDN string `json:"fqdn"`
 
@@ -65,6 +69,10 @@ type DNSRecordEntry struct {
 	// +optional
 	Description string `json:"description,omitempty"`
 
+	// Enum MUST stay in sync with domaindns.ValidRecordTypes
+	// (internal/domain/dns/fqdn.go): the DNS controller pre-filters auto entries
+	// with that set so an unsupported record type doesn't get the whole
+	// DNSRecord rejected at admission. A drift-guard test enforces this.
 	// +kubebuilder:validation:Enum=A;AAAA;CNAME;TXT
 	// +kubebuilder:default="A"
 	// +optional

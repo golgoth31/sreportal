@@ -18,6 +18,7 @@ package dns
 
 import (
 	"context"
+	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -75,7 +76,86 @@ func (h *SourcesStatusHandler) Handle(_ context.Context, rc *reconciler.Reconcil
 			Reason: "NoConflicts",
 		})
 	}
+
+	projectSkippedEntries(dns, rc.Data.SkippedEntries)
 	return nil
+}
+
+const (
+	// maxSkippedStatus bounds how many skipped entries are mirrored onto the DNS
+	// status. It must stay <= the +kubebuilder:validation:MaxItems marker on
+	// DNSStatus.SkippedEntries so a large batch of invalid entries can never
+	// bloat the status object past the etcd size limit (which would fail the
+	// whole status write). The full count stays in the condition message and the
+	// dns_entries_invalid_total metric.
+	maxSkippedStatus = 100
+	// maxSkippedFQDNLen bounds the mirrored FQDN length to the DNS name limit,
+	// matching the +kubebuilder:validation:MaxLength marker on
+	// SkippedFQDNStatus.FQDN.
+	maxSkippedFQDNLen = 253
+	// maxSkippedRecordTypeLen bounds the mirrored record type, matching the
+	// +kubebuilder:validation:MaxLength marker on SkippedFQDNStatus.RecordType.
+	// A dropped entry's record type is source-controlled and unbounded.
+	maxSkippedRecordTypeLen = 16
+)
+
+// truncateRunes returns s limited to max Unicode code points, on a rune
+// boundary. CRD MaxLength counts code points, so a byte-slice could both split
+// a multi-byte rune (corrupting the stored value) and over-truncate a valid
+// multi-byte string; slicing on runes avoids both.
+func truncateRunes(s string, limit int) string {
+	if len(s) <= limit { // byte len <= limit => rune count <= limit
+		return s
+	}
+	r := []rune(s)
+	if len(r) <= limit {
+		return s
+	}
+	return string(r[:limit])
+}
+
+// projectSkippedEntries mirrors a bounded sample of the validation-dropped
+// entries onto the DNS status and flips the EntriesValid condition. skipped is
+// already sorted deterministically by ValidateEntriesHandler.
+func projectSkippedEntries(dns *sreportalv1alpha2.DNS, skipped []SkippedEntry) {
+	if len(skipped) == 0 {
+		dns.Status.SkippedEntries = nil
+		SetCondition(dns, metav1.Condition{
+			Type:   "EntriesValid",
+			Status: metav1.ConditionTrue,
+			Reason: "AllValid",
+		})
+		return
+	}
+
+	sample := skipped
+	if len(sample) > maxSkippedStatus {
+		sample = sample[:maxSkippedStatus]
+	}
+	out := make([]sreportalv1alpha2.SkippedFQDNStatus, 0, len(sample))
+	for _, s := range sample {
+		out = append(out, sreportalv1alpha2.SkippedFQDNStatus{
+			FQDN:       truncateRunes(s.FQDN, maxSkippedFQDNLen),
+			SourceType: string(s.Kind),
+			RecordType: truncateRunes(s.RecordType, maxSkippedRecordTypeLen),
+			Reason:     s.Reason,
+		})
+	}
+	dns.Status.SkippedEntries = out
+
+	SetCondition(dns, metav1.Condition{
+		Type:    "EntriesValid",
+		Status:  metav1.ConditionFalse,
+		Reason:  "InvalidEntriesSkipped",
+		Message: fmt.Sprintf("%d entr%s skipped due to validation failure", len(skipped), plural(len(skipped))),
+	})
+}
+
+func plural(n int) string {
+	if n == 1 {
+		return "y was"
+	}
+	return "ies were"
 }
 
 // SetCondition upserts c into dns.Status.Conditions, preserving

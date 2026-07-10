@@ -19,10 +19,47 @@ limitations under the License.
 package dns
 
 import (
+	"regexp"
 	"sort"
 	"strings"
 	"time"
 )
+
+// FQDNPattern is the regular expression an FQDN must satisfy to be accepted by
+// the DNSRecord CRD. It MUST stay byte-identical to the
+// +kubebuilder:validation:Pattern marker on DNSRecordEntry.FQDN in
+// api/v1alpha2/dnsrecord_types.go — the DNS controller pre-filters entries with
+// this same expression so a single invalid FQDN no longer makes the API server
+// reject the whole DNSRecord (which previously aborted the entire reconcile).
+const FQDNPattern = `^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$`
+
+var fqdnRe = regexp.MustCompile(FQDNPattern)
+
+// ValidFQDN reports whether name is accepted by the DNSRecord CRD FQDN pattern.
+func ValidFQDN(name string) bool {
+	return fqdnRe.MatchString(name)
+}
+
+// ValidRecordTypes is the set of DNS record types accepted by the DNSRecord CRD.
+// It MUST stay in sync with the +kubebuilder:validation:Enum marker on
+// DNSRecordEntry.RecordType in api/v1alpha2/dnsrecord_types.go — the DNS
+// controller pre-filters entries with an unsupported record type for the same
+// reason it pre-filters invalid FQDNs: a single unsupported type (e.g. a
+// Crossplane Scaleway Record of type MX/NS/SRV) would otherwise get the whole
+// DNSRecord rejected at admission and abort the entire reconcile.
+var ValidRecordTypes = map[string]struct{}{
+	"A":     {},
+	"AAAA":  {},
+	"CNAME": {},
+	"TXT":   {},
+}
+
+// ValidRecordType reports whether recordType is accepted by the DNSRecord CRD
+// enum.
+func ValidRecordType(recordType string) bool {
+	_, ok := ValidRecordTypes[recordType]
+	return ok
+}
 
 // Source represents the origin of an FQDN
 type Source string

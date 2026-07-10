@@ -18,7 +18,9 @@ package dns_test
 
 import (
 	"context"
+	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,6 +32,8 @@ import (
 	"github.com/golgoth31/sreportal/internal/source/externaldns"
 	"github.com/golgoth31/sreportal/internal/source/registry"
 )
+
+const testReasonInvalidFQDN = "invalid_fqdn"
 
 // chainDataWithEnabledKind builds ChainData with one enabled source kind so
 // SourcesStatusHandler emits Status=True instead of Unknown.
@@ -170,4 +174,73 @@ func TestSourcesStatusHandler_LastTransitionTimeUpdatesOnStatusFlip(t *testing.T
 	stampAfter := condAfter.LastTransitionTime
 	require.True(t, !stampAfter.Before(&stampBefore),
 		"LastTransitionTime after flip must not be before the pre-flip stamp")
+}
+
+func TestSourcesStatus_SkippedEntriesProjected(t *testing.T) {
+	dns := &sreportalv1alpha2.DNS{ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "n"}}
+	h := &dnschain.SourcesStatusHandler{Conflicts: fakeConflicts{}}
+	data := chainDataWithEnabledKind()
+	data.SkippedEntries = []dnschain.SkippedEntry{
+		{FQDN: "override-on-app-set", RecordType: "A", Reason: testReasonInvalidFQDN, Kind: externaldns.KindService},
+	}
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{Resource: dns, Data: data}
+	require.NoError(t, h.Handle(context.Background(), rc))
+
+	require.Equal(t, metav1.ConditionFalse, conditionStatus(dns, "EntriesValid"))
+	require.Len(t, dns.Status.SkippedEntries, 1)
+	require.Equal(t, "override-on-app-set", dns.Status.SkippedEntries[0].FQDN)
+	require.Equal(t, "invalid_fqdn", dns.Status.SkippedEntries[0].Reason)
+	require.Equal(t, string(externaldns.KindService), dns.Status.SkippedEntries[0].SourceType)
+	require.Equal(t, "A", dns.Status.SkippedEntries[0].RecordType)
+}
+
+func TestSourcesStatus_NoSkippedEntriesClearsStatus(t *testing.T) {
+	dns := &sreportalv1alpha2.DNS{ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "n"}}
+	// Pre-seed a stale skipped entry to prove a clean reconcile clears it.
+	dns.Status.SkippedEntries = []sreportalv1alpha2.SkippedFQDNStatus{{FQDN: "stale.example.com", Reason: testReasonInvalidFQDN}}
+	h := &dnschain.SourcesStatusHandler{Conflicts: fakeConflicts{}}
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{Resource: dns, Data: chainDataWithEnabledKind()}
+	require.NoError(t, h.Handle(context.Background(), rc))
+
+	require.Equal(t, metav1.ConditionTrue, conditionStatus(dns, "EntriesValid"))
+	require.Empty(t, dns.Status.SkippedEntries)
+}
+
+func TestSourcesStatus_SkippedEntriesBounded(t *testing.T) {
+	dns := &sreportalv1alpha2.DNS{ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "n"}}
+	data := chainDataWithEnabledKind()
+	for range 250 {
+		data.SkippedEntries = append(data.SkippedEntries, dnschain.SkippedEntry{
+			FQDN: "bad", RecordType: "A", Reason: testReasonInvalidFQDN, Kind: externaldns.KindService,
+		})
+	}
+	h := &dnschain.SourcesStatusHandler{Conflicts: fakeConflicts{}}
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{Resource: dns, Data: data}
+	require.NoError(t, h.Handle(context.Background(), rc))
+
+	// Status list is capped, but the condition message reports the full count.
+	require.Len(t, dns.Status.SkippedEntries, 100)
+	require.Contains(t, findCondition(dns, "EntriesValid").Message, "250 ")
+}
+
+func TestSourcesStatus_SkippedEntriesTruncated(t *testing.T) {
+	dns := &sreportalv1alpha2.DNS{ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "n"}}
+	data := chainDataWithEnabledKind()
+	data.SkippedEntries = []dnschain.SkippedEntry{{
+		FQDN:       strings.Repeat("é", 300), // 300 runes / 600 bytes
+		RecordType: strings.Repeat("X", 64),  // source-controlled, unbounded
+		Reason:     testReasonInvalidFQDN,
+		Kind:       externaldns.KindService,
+	}}
+	h := &dnschain.SourcesStatusHandler{Conflicts: fakeConflicts{}}
+	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{Resource: dns, Data: data}
+	require.NoError(t, h.Handle(context.Background(), rc))
+
+	require.Len(t, dns.Status.SkippedEntries, 1)
+	got := dns.Status.SkippedEntries[0]
+	// Truncated on a rune boundary to the CRD MaxLength (code points), never
+	// splitting a multi-byte rune.
+	require.Equal(t, 253, len([]rune(got.FQDN)))
+	require.True(t, utf8.ValidString(got.FQDN))
+	require.Equal(t, 16, len(got.RecordType))
 }

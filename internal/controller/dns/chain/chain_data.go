@@ -59,4 +59,22 @@ type ChainData struct {
 	// "not synced yet", not "authoritatively empty", and deleting would purge
 	// good persisted records until the sources catch up.
 	PreserveKinds map[registry.SourceType]bool
+
+	// SkippedEntries is populated by ValidateEntriesHandler with the endpoints
+	// dropped before projection because their FQDN failed the DNSRecord
+	// validation pattern. Surfaced on DNS status and in metrics so a single bad
+	// FQDN no longer aborts the whole reconcile silently.
+	SkippedEntries []SkippedEntry
+}
+
+// SkippedEntry records a single endpoint dropped during validation.
+type SkippedEntry struct {
+	// FQDN is the offending fully qualified domain name.
+	FQDN string
+	// RecordType is the DNS record type of the dropped endpoint.
+	RecordType string
+	// Reason is a short machine-friendly cause (e.g. "invalid_fqdn").
+	Reason string
+	// Kind is the source kind that produced the entry.
+	Kind registry.SourceType
 }
