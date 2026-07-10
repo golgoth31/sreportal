@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.36.2](https://github.com/golgoth31/sreportal/compare/v1.36.1...v1.36.2) (2026-07-10)
+
+
+### Bug Fixes
+
+* **deps:** update kubernetes ([#318](https://github.com/golgoth31/sreportal/issues/318)) ([68bca7d](https://github.com/golgoth31/sreportal/commit/68bca7dfeb323d1b8b5771eb105d05503796c009))
+* **deps:** update module github.com/google/go-containerregistry to v0.21.7 ([#280](https://github.com/golgoth31/sreportal/issues/280)) ([2585b08](https://github.com/golgoth31/sreportal/commit/2585b08dfbb0ebff1e9bcb844606ba9caebc8588))
+* **deps:** update module github.com/mark3labs/mcp-go to v0.56.0 ([#322](https://github.com/golgoth31/sreportal/issues/322)) ([06bd257](https://github.com/golgoth31/sreportal/commit/06bd25721ff33461ecff1ebadcdfd51ce71e5a88))
+* **deps:** update module github.com/onsi/ginkgo/v2 to v2.32.0 ([#323](https://github.com/golgoth31/sreportal/issues/323)) ([23e4590](https://github.com/golgoth31/sreportal/commit/23e45906ec241e8f90b289e48475f9baf6df25c4))
+* **deps:** update module github.com/onsi/gomega to v1.42.1 ([#319](https://github.com/golgoth31/sreportal/issues/319)) ([780ffd0](https://github.com/golgoth31/sreportal/commit/780ffd0807f3a00732198f00124ddae7dd247b43))
+* **deps:** update module github.com/prometheus/common to v0.70.0 ([#331](https://github.com/golgoth31/sreportal/issues/331)) ([246d947](https://github.com/golgoth31/sreportal/commit/246d947c017dd279bbda7ef2417d995bfa08d714))
+* **deps:** update module golang.org/x/mod to v0.38.0 ([#324](https://github.com/golgoth31/sreportal/issues/324)) ([97806e3](https://github.com/golgoth31/sreportal/commit/97806e3257214edcccc5fbc671fdbdf62ca38348))
+* **deps:** update module golang.org/x/sync to v0.22.0 ([#325](https://github.com/golgoth31/sreportal/issues/325)) ([f6f1ea9](https://github.com/golgoth31/sreportal/commit/f6f1ea9d5e9f4c2574b4063181eefa774d91dfec))
+* **deps:** update web-misc ([#320](https://github.com/golgoth31/sreportal/issues/320)) ([dd10850](https://github.com/golgoth31/sreportal/commit/dd10850d450d837b32f71a0df7c71f296b094ff0))
+* **dns:** skip invalid DNSRecord entries instead of aborting reconcile ([#328](https://github.com/golgoth31/sreportal/issues/328)) ([3b87589](https://github.com/golgoth31/sreportal/commit/3b87589bf8f57989002e93b9b8ef37cc17041e90))
+
 ## [1.36.1](https://github.com/golgoth31/sreportal/compare/v1.36.0...v1.36.1) (2026-06-27)
 
 
