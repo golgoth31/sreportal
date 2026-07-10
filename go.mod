@@ -26,7 +26,7 @@ require (
 	golang.org/x/sync v0.21.0
 	golang.org/x/time v0.15.0
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
-	istio.io/client-go v1.30.1
+	istio.io/client-go v1.30.2
 	k8s.io/api v0.36.2
 	k8s.io/apiextensions-apiserver v0.36.2
 	k8s.io/apimachinery v0.36.2
@@ -34,7 +34,7 @@ require (
 	k8s.io/utils v0.0.0-20260507154919-ff6756f316d2
 	sigs.k8s.io/controller-runtime v0.24.1
 	sigs.k8s.io/external-dns v0.21.0
-	sigs.k8s.io/gateway-api v1.5.1
+	sigs.k8s.io/gateway-api v1.6.0
 	sigs.k8s.io/yaml v1.6.0
 )
 
