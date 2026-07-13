@@ -3,157 +3,121 @@ title: DNS Source Flow
 weight: 1
 ---
 
-Complete lifecycle of a DNS source (e.g. a Kubernetes Service) from discovery to display in the web UI.
+Complete lifecycle of a discovered endpoint (e.g. a Kubernetes Service) from collection to display in the web UI.
 
 ## Overview
 
 ```mermaid
 flowchart TD
-    K8s["K8s Resources\n(Service, Ingress, Gateway, DNSEndpoint)"] --> Source["Source Controller\n(Chain of Responsibility, periodic ticker)"]
-    Source --> DNSRecord["DNSRecord CRs\n(one per portal + sourceType)"]
-    DNSRecord --> RecordCtrl["DNSRecord Controller\n(DNS resolution + projection)"]
-    RecordCtrl --> Store["FQDNStore\n(in-memory ReadStore)"]
-    Store --> API["Connect gRPC API / MCP"]
-    API --> UI["Web UI\n(React SPA)"]
+    K8s["K8s Resources\n(Service, Ingress, Gateway routes, DNSEndpoint,\nIstio Gateway/VirtualService, Crossplane Record)"] --> Producer["SourceReconciler\n(global producer, manager.Runnable, cluster-wide)"]
+    Producer --> Store["SourceEndpointStore\n(in-memory, keyed by SourceType)"]
+    DNSList["non-remote DNS CRs\n(spec.sources drives which kinds are collected)"] --> Producer
+    Store --> DNSCtrl["DNS Controller\n(per DNS CR: lookup, dedup, validate, upsert)"]
+    Store --> Comp["Components Reconciler\n(separate manager.Runnable)"]
+    DNSCtrl --> DNSRecord["DNSRecord CRs\n(origin=auto, one per DNS CR + sourceType)"]
+    DNSRecord --> RecordCtrl["DNSRecord Controller\n(materialise + project)"]
+    RecordCtrl --> FQDNStore["FQDN read store\n(in-memory ReadStore)"]
+    FQDNStore --> API["Connect gRPC API / MCP"]
+    API --> UI["Web UI (React SPA)"]
 ```
 
-## Source Controller Chain
+Two independent `manager.Runnable`s drive discovery today, both ticking on the ConfigMap's `reconciliation.interval` (see [Configuration]({{< relref "../configuration" >}})):
 
-The source controller runs as a `manager.Runnable` with a periodic ticker (configurable interval). On each tick, it executes a Chain of Responsibility with 7 handlers:
+- **`SourceReconciler`** — the global producer described on this page. It owns the `SourceEndpointStore` and is the only thing that lists Kubernetes resources for DNS discovery.
+- **Components Reconciler** — a separate consumer of the same store that reconciles auto-managed `Component` CRs from `sreportal.io/component*` annotations. See the [Component Flow]({{< relref "component" >}}).
+
+Neither of these is the old "Source Controller" that used to build `DNSRecord` CRs directly — that responsibility now belongs to the per-portal [DNS Controller]({{< relref "dns-controller" >}}).
+
+## SourceReconciler: the global producer
+
+`SourceReconciler` runs a `Cycle` on every tick:
 
 ```mermaid
 flowchart TD
-    Start([Tick]) --> H1
-    H1["① RebuildSources\nBuild external-dns sources from config"] --> H2
-    H2["② BuildPortalIndex\nList Portals, build name→portal lookup"] --> H3
-    H3["③ CollectEndpoints\nFetch endpoints from each source\nEnrich with sreportal annotations\nRoute to (portal, sourceType) buckets\nCollect component requests from annotations"] --> H4
-    H4["④ Deduplicate\nRemove duplicate FQDNs across sources\nusing configured priority order"] --> H5
-    H5["⑤ ReconcileDNSRecords\nCreate/update DNSRecord CRs\nSkip if endpoints hash unchanged"] --> H6
-    H6["⑥ ReconcileComponents\nCreate/update/delete Component CRs\nfrom sreportal.io/component annotations"] --> H7
-    H7["⑦ DeleteOrphaned\nDelete DNSRecords for disabled sources\nor portals with no endpoints"] --> Done([Done])
+    Start([Tick]) --> ListDNS["List non-remote DNS CRs"]
+    ListDNS --> Union["Union enabled source kinds\nacross every DNS CR\n(spec.sources.*.enabled)"]
+    Union --> ForEachKind{"For each enabled kind"}
+    ForEachKind -->|native kind| Native["external-dns Provider\n(informer-backed)"]
+    ForEachKind -->|registry kind| Resolver["Registered resolver\n(client.List + ResolveObject)"]
+    Native --> Replace["store.ReplaceKind(kind, entries)"]
+    Resolver --> Replace
+    Replace --> Guards["Safety guards:\npreserve-on-error, drop-guard\nagainst empty overwrite"]
+    Guards --> Cleanup["Delete kinds no longer\nenabled by any DNS CR"]
 ```
 
-### Step 1 — RebuildSources
+### Which kinds are collected
 
-Ensures typed sources are built from the operator config before collection. Sources are rebuilt lazily: only if no sources exist yet (e.g. first tick or after a CRD becomes available).
+Unlike before, **the kind-set to watch is not read from the operator ConfigMap** — it is the union of `spec.sources.<kind>.enabled` across every non-remote `DNS` CR in the cluster. If no `DNS` CR enables `istio-gateway`, the collector never lists Istio Gateways, regardless of what the ConfigMap says.
 
-| Source Type | K8s Resource | Config Toggle |
+| Source Type | K8s Resource | Collection path |
 |---|---|---|
-| `service` | Service | `sources.service.enabled` |
-| `ingress` | Ingress | `sources.ingress.enabled` |
-| `dnsendpoint` | DNSEndpoint | `sources.dnsEndpoint.enabled` |
-| `gateway-httproute` | HTTPRoute | `sources.gatewayHTTPRoute.enabled` |
-| `gateway-grpcroute` | GRPCRoute | `sources.gatewayGRPCRoute.enabled` |
-| `gateway-tlsroute` | TLSRoute | `sources.gatewayTLSRoute.enabled` |
-| `gateway-tcproute` | TCPRoute | `sources.gatewayTCPRoute.enabled` |
-| `istio-gateway` | Istio Gateway | `sources.istioGateway.enabled` |
-| `istio-virtualservice` | Istio VS | `sources.istioVirtualService.enabled` |
-| `crossplane-scaleway-record` | Scaleway Record | `sources.crossplaneScalewayRecord.enabled` |
+| `service` | Service | native (external-dns `Provider`) |
+| `ingress` | Ingress | native |
+| `istio-gateway` | Istio Gateway | native |
+| `istio-virtualservice` | Istio VirtualService | native |
+| `gateway-httproute` / `gateway-grpcroute` / `gateway-tlsroute` / `gateway-tcproute` / `gateway-udproute` | Gateway API routes | native |
+| `dnsendpoint` | external-dns `DNSEndpoint` CRD | native |
+| `crossplane-scaleway-record` | Crossplane Scaleway `Record` | registered resolver |
 
-### Step 2 — BuildPortalIndex
+"Native" kinds are discovered through the external-dns source library (`internal/source/externaldns`), using a `kubernetes.Clientset` and an Istio clientset — this recovers the library's full extraction logic (`spec.rules`, `spec.tls`, every Service type, Gateway `servers`) instead of a hand-rolled annotation-only reader. The remaining kinds go through the `registry.Registry` resolver path (`client.List` + a per-kind `ResolveObject`).
 
-Lists all Portal CRs and builds a lookup index. Identifies the `main` portal (falls back to the first local portal if none has `spec.main: true`). Remote portals are indexed but excluded from local source collection.
+### Effective config per kind: union, not per-DNS
 
-### Step 3 — CollectEndpoints
+For native kinds, the actual collection parameters (namespace scope, `annotationFilter`, `labelFilter`, `fqdnTemplate`, `combineFqdnAndAnnotation`, `ignoreHostnameAnnotation`, plus `service`'s `publishInternal`/`publishHostIP`/`serviceTypeFilter` and route sources' Gateway filters) are computed **once per kind, merged across every DNS CR that enables it** (`externaldns.BuildEffectiveConfigs`). The merge is deliberately permissive:
 
-For each enabled source:
+- namespace scope: cluster-wide if *any* contributor is cluster-wide, otherwise the union of named namespaces
+- boolean flags like `publishInternal`: OR'd across contributors
+- `ignoreHostnameAnnotation` and friends: only true if *every* contributor sets it (most permissive)
+- filters/templates: every distinct non-empty value seen is applied
 
-1. **Fetch endpoints** via `source.Endpoints(ctx)` → `[]*endpoint.Endpoint` (external-dns canonical type)
-2. **Enrich** endpoints with K8s annotations from the original resource:
-   - `sreportal.io/portal` → copied to endpoint labels
-   - `sreportal.io/groups` → copied to endpoint labels
-   - `sreportal.io/ignore` → endpoint will be dropped later
-   - `sreportal.io/component` and related → copied to endpoint labels
-3. **Route** each endpoint to a `(portalName, sourceType)` bucket:
-   - If `sreportal.io/portal` annotation matches a local portal → routed there
-   - If annotation is missing or references an unknown/remote portal → falls back to the main portal
-4. **Collect component requests** from endpoints annotated with `sreportal.io/component`. Requests are deduplicated by `(portalName, displayName)` — first-seen wins.
+This guarantees the collector never under-discovers relative to what any single DNS CR asked for. Narrowing back down to what one portal/DNS CR actually wants to see happens later, when the [DNS Controller]({{< relref "dns-controller" >}})'s `LookupSourcesHandler` reads the store with that CR's own `namespace`/`labelFilter`.
 
-**Failure tracking:** Consecutive failures per source type are tracked. After 5 consecutive failures, a `NotReady` condition is set on the corresponding DNSRecord to surface the issue in `kubectl`.
+### Safety guards
 
-### Step 4 — Deduplicate
+- **Preserve-on-error**: if `client.List` fails (transient API error) or a CRD isn't installed (`NotFound`/`NoKindMatchError`), the previous cached entries for that kind are left untouched rather than wiped.
+- **All-resolved-failed guard**: if every object of a non-empty list fails `ResolveObject`, the previous state is preserved instead of collapsing to empty (protects against a resolver wired to the wrong type).
+- **Drop-guard (native path)**: a fresh empty collection is refused when the store already holds entries for that kind — logged and counted via `sreportal_source_drop_guard_triggered_total` rather than silently wiping good data (guards against a transient informer hiccup).
+- **Cleanup**: a kind that no `DNS` CR enables anymore is deleted from the store, and its native informer (if any) is stopped via `provider.Forget(kind)`.
 
-When the same FQDN is discovered by multiple sources (e.g. both a Service and an Ingress point to `api.example.com`), the deduplication handler resolves the conflict using the configured `sources.priority` order.
+### Enrichment
 
-```
-config priority: ["dnsendpoint", "ingress", "service"]
-                   rank 0         rank 1      rank 2
+Every resolved endpoint gets the external-dns `resource` label (`kind/namespace/name`) filled in if the resolver didn't already set one, and has its `sreportal.io/*` annotations folded onto its labels via the shared enrichment helper (`adapter.EnrichEndpointLabels`) — see [Annotations]({{< relref "../annotations" >}}). On the auto-discovery path, only `sreportal.io/groups` is consumed downstream (it survives into `DNSRecordEntry.Groups` for UI grouping); the component-related annotations are read separately by the Components Reconciler from the same store.
 
-api.example.com exists in "service" (rank 2)
-                    AND in "ingress" (rank 1)
+## From the store to the UI
 
-→ ingress wins (rank 1 < rank 2)
-→ service loses api.example.com entirely
-→ unique FQDNs in service are kept
-```
+Once the DNS Controller upserts a `DNSRecord`, the [DNSRecord Controller]({{< relref "dnsrecord" >}}) picks it up (watch-based) and:
 
-Deduplication is at the **FQDN-name level** (not per record type): the winning source keeps all its record types (A, AAAA, CNAME), while the losing source drops all records for that hostname. Different portals are fully independent.
-
-Sources not listed in `priority` receive the lowest rank and lose to any listed source on conflict.
-
-### Step 5 — ReconcileDNSRecords
-
-For each `(portal, sourceType)` pair with endpoints:
-
-1. **Create or update** a DNSRecord CR named `{portalName}-{sourceType}`
-2. **Compute SHA-256 hash** of the endpoint data (order-independent, excludes volatile fields like TTL)
-3. **Compare hash** with `status.endpointsHash`:
-   - **Same** → skip the status update entirely (no API write)
-   - **Different** → update `status.endpoints`, `status.endpointsHash`, `status.lastReconcileTime`, and set a `Ready` condition
-
-The hash comparison happens inside a retry loop to handle cache-lag on newly created resources and conflict errors.
-
-### Step 6 — ReconcileComponents
-
-For each component request collected in step 3:
-
-1. **Skip** if the portal's status page feature is disabled
-2. **Create or update** a Component CR named using a deterministic hash of `(portalRef, displayName)`
-3. **Sync metadata** from annotations: `displayName`, `group`, `description`, `link` are always updated
-4. **Preserve `spec.status`**: if the component already exists, its status is never overwritten (respects manual user changes)
-5. **Label** auto-created components with `sreportal.io/managed-by: source-controller`
-6. **Delete orphans**: auto-managed components whose `(portal, displayName)` no longer appears in the requests are hard-deleted. Manually created components (without the `managed-by` label) are never touched.
-
-See the [Annotations]({{< relref "annotations" >}}) page for the full list of `sreportal.io/component-*` annotations.
-
-### Step 7 — DeleteOrphaned
-
-For each local portal, lists its DNSRecords via the `spec.portalRef` field index. Deletes records whose source type is no longer enabled in config or has no active endpoints.
-
-## DNSRecord → ReadStore → UI
-
-Once a DNSRecord is created or updated, the **DNSRecord controller** picks it up (watch-based) and:
-
-1. **Resolves DNS** for each endpoint (parallel, 10 workers, 5s timeout per FQDN)
-2. **Projects to ReadStore** as `FQDNView` objects with sync status and group mapping
-3. The **gRPC API** and **MCP server** read from the ReadStore
-4. The **Web UI** fetches via Connect protocol and displays FQDNs grouped by category with sync status indicators
-
-See the [DNSRecord Controller Flow]({{< relref "dnsrecord" >}}) for details on steps 1-2.
+1. Materialises `spec.entries` into `status.endpoints`
+2. Projects to the FQDN read store as `FQDNView` objects (group mapping applied)
+3. A separate async runnable resolves live DNS and patches `syncStatus` onto the record (see [Configuration → DNS resolution]({{< relref "../configuration#dns-resolution-syncstatus" >}}))
+4. The gRPC API and MCP server read from the read store; the web UI fetches via Connect protocol and displays FQDNs grouped by category with sync status indicators
 
 ## Type Transformations
 
 ```
-K8s Service / Ingress / Gateway / DNSEndpoint
+K8s Service / Ingress / Gateway route / DNSEndpoint / Crossplane Record
      │
-     ▼  source.Endpoints()
-[]*endpoint.Endpoint              (external-dns)
+     ▼  SourceReconciler.Cycle → store.ReplaceKind()
+[]domainsource.EnrichedEndpoint    (SourceEndpointStore, in-memory)
      │
-     ▼  ReconcileDNSRecordsHandler
-sreportalv1alpha1.DNSRecord       (K8s CR in etcd)
+     ▼  DNS controller: LookupSources → IntraDNSDedup → ValidateEntries → UpsertDNSRecords
+sreportalv1alpha2.DNSRecord        (K8s CR, spec.entries, origin=auto)
      │
-     ▼  dnsRecordToFQDNViews()
-[]domaindns.FQDNView              (read model, in-memory)
+     ▼  DNSRecord controller: MaterialiseEntries
+DNSRecord.status.endpoints[]
+     │
+     ▼  DNSRecordToFQDNViews()
+[]domaindns.FQDNView               (read model, in-memory)
      │
      ▼  fqdnViewToProto()
-[]*sreportal.v1.FQDN              (protobuf, on the wire)
+[]*sreportal.v1.FQDN               (protobuf, on the wire)
      │
      ▼  dnsApi.ts transform
-Fqdn[]                            (TypeScript domain type)
+Fqdn[]                             (TypeScript domain type)
      │
      ▼  groupFqdnsByGroup()
-FqdnGroup[]                       (grouped for rendering)
+FqdnGroup[]                        (grouped for rendering)
      │
      ▼  React components
-JSX / HTML                        (pixels on screen)
+JSX / HTML                         (pixels on screen)
 ```

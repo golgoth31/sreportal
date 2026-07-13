@@ -3,319 +3,230 @@ title: Configuration
 weight: 3
 ---
 
-The operator is configured through a ConfigMap that is mounted as a file at `/etc/sreportal/config.yaml`.
+DNS discovery configuration lives in **two places** today:
 
-## ConfigMap
+1. **The `DNS` custom resource (`sreportal.io/v1alpha2`)** — the primary, per-portal configuration surface. Each `DNS` CR configures which sources are enabled, their filters, group mapping, and reconciliation timing for the portal it references (`spec.portalRef`). This is what you edit day to day.
+2. **The operator ConfigMap** (mounted at `/etc/sreportal/config.yaml`) — operator-wide settings that are not portal-specific: the global source-collector tick interval, authentication, the Release feature, and Slack emoji resolution. Its old `sources` / `groupMapping` keys still exist for one-time migration only (see [Legacy ConfigMap keys](#legacy-configmap-keys)).
 
-Create the ConfigMap in the operator namespace:
+## The DNS Custom Resource
 
 ```yaml
-apiVersion: v1
-kind: ConfigMap
+apiVersion: sreportal.io/v1alpha2
+kind: DNS
 metadata:
-  name: sreportal-config
+  name: main
   namespace: sreportal-system
-data:
-  config.yaml: |
-    sources:
-      service:
-        enabled: true
-      ingress:
-        enabled: true
-    groupMapping:
-      defaultGroup: "Services"
-    reconciliation:
-      interval: 5m
-      retryOnError: 30s
+spec:
+  portalRef: main
+  sources:
+    ingress:
+      enabled: true
+      annotationFilter: "external-dns.alpha.kubernetes.io/hostname"
+    service:
+      enabled: true
+      annotationFilter: "external-dns.alpha.kubernetes.io/hostname"
+      serviceTypeFilter: [LoadBalancer]
+    priority: [ingress, service]
+  groupMapping:
+    defaultGroup: Services
+    labelKey: sreportal.io/group
+    byNamespace:
+      monitoring: Monitoring
+      default: Development
+  reconciliation:
+    interval: 5m
+    retryOnError: 30s
+    disableDNSCheck: false
 ```
 
-## Sources
+`spec.portalRef` is **required and immutable**. Multiple `DNS` CRs may reference the same Portal (N:1) — a common pattern for splitting discovery config per team. Each `DNS` CR produces its own set of `DNSRecord` CRs (named `{dns-name}-{sourceType}`).
 
-Each source type discovers DNS records from a different kind of Kubernetes resource.
+### `spec.defaults`
 
-### Service
+Fallback `namespace` / `labelFilter` applied to every source in this CR when the source's own field is empty:
 
-Discovers DNS names from Kubernetes Services that have the `external-dns.alpha.kubernetes.io/hostname` annotation.
+```yaml
+spec:
+  defaults:
+    namespace: ""        # empty = all namespaces
+    labelFilter: ""       # label selector syntax
+```
+
+### `spec.sources`
+
+Each source type discovers endpoints from a different kind of Kubernetes resource. Every source (except `dnsEndpoint` and `crossplaneScalewayRecord`) shares a common set of fields:
+
+| Field | Description |
+|---|---|
+| `enabled` | Turns the source on for this DNS CR (default `false`) |
+| `namespace` | Restrict to a namespace; empty = all namespaces (falls back to `spec.defaults.namespace`) |
+| `annotationFilter` | Label-selector-syntax filter on resource annotations |
+| `labelFilter` | Label selector filter (falls back to `spec.defaults.labelFilter`) |
+| `fqdnTemplate` | Go template for FQDN generation |
+| `combineFqdnAndAnnotation` | Combine template-generated and annotation hostnames |
+| `ignoreHostnameAnnotation` | Ignore the `external-dns.alpha.kubernetes.io/hostname` annotation |
+
+#### `service`
 
 ```yaml
 sources:
   service:
     enabled: true
-    namespace: ""              # Empty = all namespaces
-    annotationFilter: ""       # Label selector syntax to filter services
-    labelFilter: ""            # Label selector to filter services
-    serviceTypeFilter:         # Service types to include
-      - LoadBalancer
-      - ClusterIP
-    publishInternal: true      # Publish ClusterIP for ClusterIP services
-    publishHostIP: false       # Publish host IP for NodePort services
-    fqdnTemplate: ""           # Go template for FQDN generation
-    combineFqdnAndAnnotation: false
-    ignoreHostnameAnnotation: false
-    resolveLoadBalancerHostname: false
+    serviceTypeFilter: [LoadBalancer, ClusterIP]
+    publishInternal: true      # publish ClusterIP for ClusterIP services
+    publishHostIP: false       # publish host IP for NodePort services
 ```
 
-### Ingress
-
-Discovers DNS names from Kubernetes Ingress resources.
+#### `ingress`
 
 ```yaml
 sources:
   ingress:
     enabled: true
-    namespace: ""              # Empty = all namespaces
-    annotationFilter: ""       # Label selector syntax
-    labelFilter: ""            # Label selector
-    ingressClassNames: []      # Empty = all ingress classes
-    fqdnTemplate: ""           # Go template for FQDN generation
-    combineFqdnAndAnnotation: false
-    ignoreHostnameAnnotation: false
-    ignoreIngressTLSSpec: false
-    ignoreIngressRulesSpec: false
-    resolveLoadBalancerHostname: false
+    ingressClassNames: []      # empty = all ingress classes
 ```
 
-### DNSEndpoint
+#### `dnsEndpoint`
 
-Reads external-dns `DNSEndpoint` CRDs directly. Requires external-dns CRDs to be installed in the cluster.
+Reads external-dns `DNSEndpoint` CRDs directly. Only `enabled`, `namespace`, `labelFilter` apply (no `CommonSourceSpec`).
 
 ```yaml
 sources:
   dnsEndpoint:
-    enabled: false             # Disabled by default
-    namespace: ""              # Empty = all namespaces
+    enabled: false
+    namespace: ""
+    labelFilter: ""
 ```
 
-### Istio Gateway
+#### `istioGateway` / `istioVirtualService`
 
-Discovers DNS names from Istio Gateway resources. Requires Istio CRDs.
+Require Istio CRDs installed in the cluster.
 
 ```yaml
 sources:
   istioGateway:
-    enabled: true              # Enabled by default
-    namespace: ""              # Empty = all namespaces
-    annotationFilter: ""
-    fqdnTemplate: ""
-    combineFqdnAndAnnotation: false
-    ignoreHostnameAnnotation: false
-```
-
-### Istio VirtualService
-
-Discovers DNS names from Istio VirtualService resources. Requires Istio CRDs.
-
-```yaml
-sources:
+    enabled: true
   istioVirtualService:
-    enabled: false             # Disabled by default
-    namespace: ""              # Empty = all namespaces
-    annotationFilter: ""
-    fqdnTemplate: ""
-    combineFqdnAndAnnotation: false
-    ignoreHostnameAnnotation: false
+    enabled: false
 ```
 
-### Gateway API HTTPRoute
+#### Gateway API routes: `gatewayHTTPRoute`, `gatewayGRPCRoute`, `gatewayTLSRoute`, `gatewayTCPRoute`, `gatewayUDPRoute`
 
-Discovers DNS names from Gateway API HTTPRoute resources. Requires Gateway API CRDs (v1.0+).
+Require Gateway API CRDs (`gatewayHTTPRoute`/`gatewayGRPCRoute` need v1.0+, the others v1alpha2). Each adds parent-Gateway filters on top of the common fields:
 
 ```yaml
 sources:
   gatewayHTTPRoute:
-    enabled: false             # Disabled by default
-    namespace: ""              # Empty = all namespaces
-    annotationFilter: ""
-    labelFilter: ""
-    fqdnTemplate: ""
-    combineFqdnAndAnnotation: false
-    ignoreHostnameAnnotation: false
-    gatewayName: ""            # Filter by parent Gateway name
-    gatewayNamespace: ""       # Filter by parent Gateway namespace
-    gatewayLabelFilter: ""     # Filter parent Gateways by label selector
+    enabled: false
+    gatewayName: ""            # filter by parent Gateway name
+    gatewayNamespace: ""       # filter by parent Gateway namespace
+    gatewayLabelFilter: ""     # filter parent Gateways by label selector
 ```
 
-### Gateway API GRPCRoute
+`gatewayTCPRoute` and `gatewayUDPRoute` specs carry no hostname — use the `external-dns.alpha.kubernetes.io/hostname` annotation on the route itself.
 
-Discovers DNS names from Gateway API GRPCRoute resources. Requires Gateway API CRDs (v1.0+).
+#### `crossplaneScalewayRecord`
+
+Discovers DNS names from Crossplane Scaleway `Record` resources. Only `enabled`, `namespace`, `labelFilter`, `clusterScoped` apply.
 
 ```yaml
 sources:
-  gatewayGRPCRoute:
-    enabled: false             # Disabled by default
-    namespace: ""              # Empty = all namespaces
-    annotationFilter: ""
-    labelFilter: ""
-    fqdnTemplate: ""
-    combineFqdnAndAnnotation: false
-    ignoreHostnameAnnotation: false
-    gatewayName: ""
-    gatewayNamespace: ""
-    gatewayLabelFilter: ""
+  crossplaneScalewayRecord:
+    enabled: false
+    clusterScoped: false
 ```
 
-### Gateway API TLSRoute
+#### `priority`
 
-Discovers DNS names from Gateway API TLSRoute resources. Requires Gateway API CRDs (v1alpha2).
-
-```yaml
-sources:
-  gatewayTLSRoute:
-    enabled: false             # Disabled by default
-    namespace: ""              # Empty = all namespaces
-    annotationFilter: ""
-    labelFilter: ""
-    fqdnTemplate: ""
-    combineFqdnAndAnnotation: false
-    ignoreHostnameAnnotation: false
-    gatewayName: ""
-    gatewayNamespace: ""
-    gatewayLabelFilter: ""
-```
-
-### Gateway API TCPRoute
-
-Discovers DNS names from Gateway API TCPRoute resources. Requires Gateway API CRDs (v1alpha2).
-
-Note: TCPRoute specs do not contain hostnames. Use the `external-dns.alpha.kubernetes.io/hostname` annotation on the TCPRoute to specify hostnames.
-
-```yaml
-sources:
-  gatewayTCPRoute:
-    enabled: false             # Disabled by default
-    namespace: ""              # Empty = all namespaces
-    annotationFilter: ""
-    labelFilter: ""
-    fqdnTemplate: ""
-    combineFqdnAndAnnotation: false
-    ignoreHostnameAnnotation: false
-    gatewayName: ""
-    gatewayNamespace: ""
-    gatewayLabelFilter: ""
-```
-
-### Gateway API UDPRoute
-
-Discovers DNS names from Gateway API UDPRoute resources. Requires Gateway API CRDs (v1alpha2).
-
-Note: UDPRoute specs do not contain hostnames. Use the `external-dns.alpha.kubernetes.io/hostname` annotation on the UDPRoute to specify hostnames.
-
-```yaml
-sources:
-  gatewayUDPRoute:
-    enabled: false             # Disabled by default
-    namespace: ""              # Empty = all namespaces
-    annotationFilter: ""
-    labelFilter: ""
-    fqdnTemplate: ""
-    combineFqdnAndAnnotation: false
-    ignoreHostnameAnnotation: false
-    gatewayName: ""
-    gatewayNamespace: ""
-    gatewayLabelFilter: ""
-```
-
-### Priority
-
-Controls which source wins when the same FQDN + record type is discovered by multiple sources. Sources listed first take precedence over sources listed later.
-
-When `priority` is empty or omitted, targets from all sources are merged together (default behaviour).
+Controls which source wins when the same FQDN is discovered by multiple sources within this DNS CR. Sources listed first take precedence; unlisted enabled sources rank lowest. The DNS webhook rejects a `priority` entry for a source that isn't `enabled` in the same CR.
 
 ```yaml
 sources:
   priority:
     - dnsendpoint
+    - ingress
+    - service
+    - istio-gateway
+    - istio-virtualservice
     - gateway-httproute
     - gateway-grpcroute
     - gateway-tlsroute
     - gateway-tcproute
     - gateway-udproute
-    - ingress
-    - service
-    - istio-gateway
-    - istio-virtualservice
+    - crossplane-scaleway-record
 ```
 
-Valid values correspond to the source types: `dnsendpoint`, `ingress`, `service`, `istio-gateway`, `istio-virtualservice`, `gateway-httproute`, `gateway-grpcroute`, `gateway-tlsroute`, `gateway-tcproute`, `gateway-udproute`.
+Deduplication happens at the FQDN-name level (not per record type): the winning source keeps every record type it produced for that name; the losing source drops all records for that name. See the [DNS Controller Flow]({{< relref "flows/dns-controller" >}}) for the exact algorithm.
 
-## Group Mapping
+### How collection and per-DNS filtering interact
 
-Controls how discovered FQDNs are organized into groups in the web dashboard.
+Endpoint **collection** is cluster-wide and shared: a single background collector lists each enabled Kubernetes resource kind once per tick and caches the result in an in-memory `SourceEndpointStore` (see the [DNS Source Flow]({{< relref "flows/dns-source" >}})). The set of kinds actually watched, and the collection-time knobs (namespace scope, `annotationFilter`, `fqdnTemplate`, `ignoreHostnameAnnotation`, etc.), are the **union of every non-remote `DNS` CR's settings for that kind** — the most permissive value wins so no CR under-discovers.
+
+Each `DNS` CR then reads from that shared store and applies its **own** `namespace` / `labelFilter` narrowing at read time. Practically: if any DNS CR in the cluster enables `service` cluster-wide, the collector watches all namespaces for Services; a second DNS CR can still restrict itself to `namespace: team-a` when it reads the store.
+
+### `spec.groupMapping`
+
+Controls how this DNS CR's discovered FQDNs are organized into groups in the web dashboard.
 
 ```yaml
 groupMapping:
-  defaultGroup: "Services"     # Fallback group name
-  labelKey: ""                 # Endpoint label key for grouping
-  byNamespace:                 # Map namespaces to group names
+  defaultGroup: "Services"     # fallback group name (required, default "Services")
+  labelKey: ""                 # endpoint label key for grouping
+  byNamespace:                 # namespace -> group name
     production: "Production"
     staging: "Staging"
-    monitoring: "Observability"
-    default: "Development"
 ```
 
 The group for each endpoint is resolved in priority order:
 
-1. `sreportal.io/groups` annotation on the source resource (highest priority, supports comma-separated values)
+1. `sreportal.io/groups` annotation on the source resource (highest priority, comma-separated)
 2. Endpoint label matching `labelKey`
 3. Namespace mapping via `byNamespace`
 4. `defaultGroup` fallback
 
 See [Annotations](../annotations) for details on annotation-based grouping.
 
-## Reconciliation
-
-Controls how often the source controller polls for DNS changes and optional features applied during each reconciliation cycle.
+### `spec.reconciliation`
 
 ```yaml
 reconciliation:
-  interval: 5m             # How often to poll sources (default: 5m)
-  retryOnError: 30s        # Retry delay after an error (default: 30s)
-  disableDNSCheck: false   # Disable live DNS resolution (default: false)
+  interval: 5m             # DNS controller requeue interval (default 5m, floor 30s)
+  retryOnError: 30s        # reserved field, not currently consumed by any controller
+  disableDNSCheck: false   # skip live DNS resolution for this CR's records
 ```
 
-### `disableDNSCheck`
+`interval` paces the `DNS` controller's own reconcile loop (clamped to a 30s minimum). `disableDNSCheck` is read by the async DNS-resolution runnable (see below) for every `DNSRecord` governed by this `DNS` CR — when `true`, `syncStatus` is never populated for those records. `retryOnError` is accepted by the schema for forward compatibility but nothing currently reads it; the controller relies on controller-runtime's default error-requeue behavior instead.
 
-When `false` (default), every FQDN is resolved against DNS during each reconciliation and a `syncStatus` field is populated on the FQDN status (`sync`, `notsync`, or `notavailable`).
+## Manual DNS entries
 
-Set to `true` to skip the resolution step entirely. This is useful when:
-
-- The operator runs in a network environment without outbound DNS access
-- DNS resolution latency is unacceptable for large FQDN counts
-- The `syncStatus` field is not needed in the web UI
-
-When disabled, `syncStatus` will be empty on all FQDNs.
-
-## Release
-
-Controls the Release CRD feature for tracking deployments, rollbacks, and other release events.
+There is no more "manual" mode on the `DNS` CR. To hand-author DNS entries, create a `DNSRecord` with `spec.origin: manual` directly:
 
 ```yaml
-release:
-  ttl: 720h                 # How long Release CRs are kept (default: 720h = 30 days)
-  namespace: ""             # Namespace for Release CRs (defaults to operator namespace)
-  types:                    # Optional list of release types with display colors
-    - name: deployment
-      color: "#3b82f6"
-    - name: rollback
-      color: "#f97316"
+apiVersion: sreportal.io/v1alpha2
+kind: DNSRecord
+metadata:
+  name: main-manual-apis
+  namespace: default
+spec:
+  origin: manual
+  portalRef: main
+  entries:
+    - fqdn: api.example.com
+      group: APIs
+      description: Main API endpoint
+      recordType: A
+    - fqdn: graphql.example.com
+      group: APIs
+      description: GraphQL API
 ```
 
-| Field | Default | Description |
-|-------|---------|-------------|
-| `ttl` | `720h` (30 days) | Release CRs older than this are automatically deleted by the Release controller |
-| `namespace` | _(operator namespace)_ | Namespace where Release CRs are stored |
-| `types` | _(empty)_ | List of release types with display configuration. Each entry has a `name` (used as allowlist for `AddRelease` validation) and a `color` (CSS color sent to the web UI for the type badge). When empty, all types are accepted and the web UI uses built-in default colors |
+A manual `DNSRecord` is reconciled by the same `DNSRecord` controller as auto-discovered records (group mapping and `disableDNSCheck` are still inherited from the `DNS` CR matching `spec.portalRef`). See the [DNSRecord Controller Flow]({{< relref "flows/dnsrecord" >}}).
 
-Each type entry has the following fields:
+`spec.origin` and `spec.portalRef` are immutable. The validating webhook restricts writes to `origin: auto` records to the operator's own ServiceAccount, so a human editing an auto-discovered `DNSRecord` is rejected at admission — any change is overwritten at the next DNS reconcile anyway.
 
-| Field | Description |
-|-------|-------------|
-| `name` | The release type identifier (e.g., `deployment`, `rollback`, `hotfix`) |
-| `color` | CSS color value for the type badge in the web UI (e.g., `#3b82f6`, `red`) |
+## The operator ConfigMap
 
-The Release controller re-checks each CR every 12 hours. When a CR's day is older than the TTL, the controller deletes it automatically.
-
-## Full Example
+Mounted at `/etc/sreportal/config.yaml`. If the file is absent, built-in defaults are used.
 
 ```yaml
 apiVersion: v1
@@ -325,77 +236,78 @@ metadata:
   namespace: sreportal-system
 data:
   config.yaml: |
-    sources:
-      service:
-        enabled: true
-        namespace: ""
-        annotationFilter: ""
-        serviceTypeFilter:
-          - LoadBalancer
-          - ClusterIP
-        publishInternal: true
-        publishHostIP: false
-      ingress:
-        enabled: true
-        namespace: ""
-        ingressClassNames: []
-      dnsEndpoint:
-        enabled: false
-        namespace: ""
-      istioGateway:
-        enabled: true
-        namespace: ""
-      istioVirtualService:
-        enabled: false
-        namespace: ""
-      gatewayHTTPRoute:
-        enabled: false
-        namespace: ""
-        gatewayName: ""
-        gatewayNamespace: ""
-      gatewayGRPCRoute:
-        enabled: false
-        namespace: ""
-      gatewayTLSRoute:
-        enabled: false
-        namespace: ""
-      gatewayTCPRoute:
-        enabled: false
-        namespace: ""
-      gatewayUDPRoute:
-        enabled: false
-        namespace: ""
-      priority:
-        - dnsendpoint
-        - gateway-httproute
-        - gateway-grpcroute
-        - gateway-tlsroute
-        - gateway-tcproute
-        - gateway-udproute
-        - ingress
-        - service
-        - istio-gateway
-        - istio-virtualservice
-    groupMapping:
-      defaultGroup: "Services"
-      labelKey: "sreportal.io/group"
-      byNamespace:
-        production: "Production"
-        staging: "Staging"
-        monitoring: "Observability"
-        default: "Development"
     reconciliation:
-      interval: 30s
-      retryOnError: 10s
-      disableDNSCheck: false
+      interval: 5m
+
     release:
       ttl: 720h
-      namespace: ""
       types:
         - name: deployment
           color: "#3b82f6"
         - name: rollback
           color: "#f97316"
-        - name: hotfix
-          color: "#ef4444"
+
+    auth:
+      apiKey:
+        enabled: false
+        headerName: "X-API-Key"
+      jwt:
+        enabled: false
+        issuers: []
+
+    emoji:
+      slack:
+        enabled: false
+        refreshInterval: 24h
 ```
+
+### Fields actually in use
+
+| Key | Used for |
+|---|---|
+| `reconciliation.interval` | Tick interval of the two cluster-wide background collectors: the source producer (`SourceReconciler`) and the Components reconciler. Default `5m`. |
+| `release.ttl`, `release.namespace`, `release.types` | Release CRD feature — see below. |
+| `auth.apiKey`, `auth.jwt` | Authentication for write endpoints (e.g. `AddRelease`). |
+| `emoji.slack` | Custom emoji resolution from Slack for the web UI. |
+
+### `release`
+
+Controls the Release CRD feature for tracking deployments, rollbacks, and other release events.
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `ttl` | `720h` (30 days) | Release CRs older than this are automatically deleted by the Release controller (checked every 12h) |
+| `namespace` | _(operator namespace)_ | Namespace where Release CRs are stored |
+| `types` | _(empty)_ | List of `{name, color}` entries. `name` allowlists `AddRelease` types; `color` is the CSS color sent to the web UI for the type badge. Empty means all types are accepted and the UI uses built-in default colors |
+
+### `auth`
+
+Each method has an `enabled` flag; multiple methods can coexist.
+
+- `apiKey`: header-based API key. `headerName` defaults to `X-API-Key`. The actual key value is read from the `HEADER_API_KEY` environment variable, never from the ConfigMap.
+- `jwt`: Bearer token validation against one or more `issuers` (`issuerURL`, `jwksURL`, optional `audience` / `requiredClaims`). At least one issuer is required when `jwt.enabled: true`.
+
+### `emoji.slack`
+
+Fetches custom emoji from Slack for rendering in the web UI. `refreshInterval` defaults to `24h`. The Slack API token is read from the `SLACK_API_TOKEN` environment variable.
+
+## Legacy ConfigMap keys
+
+The ConfigMap schema still accepts `sources` and `groupMapping` keys in the exact shape used before the `v1alpha2` DNS API existed, but **the operator no longer reads them on every reconcile**. They are consumed exactly once, the first time a Portal's main `DNS` CR is created (or upgraded from `v1alpha1`):
+
+- if the ConfigMap carries a legacy `sources` block, it is translated into `DNS.spec.sources` / `spec.groupMapping` / `spec.reconciliation` and written onto the newly created (or freshly-converted, still-empty) `DNS` CR;
+- the CR is then stamped with the `sreportal.io/sources-migrated: "true"` annotation;
+- from that point on the `DNS` CR is the source of truth — the handler never looks at the ConfigMap for that portal again, even if you edit the ConfigMap afterwards.
+
+If you are configuring a fresh install, skip the legacy keys entirely and configure `spec.sources` / `spec.groupMapping` / `spec.reconciliation` directly on the `DNS` CR — see [The DNS Custom Resource](#the-dns-custom-resource) above. A few advanced legacy knobs (`resolveLoadBalancerHostname`, `ignoreIngressTlsSpec`, `ignoreIngressRulesSpec`) have no `v1alpha2` equivalent and are silently dropped by the migration.
+
+## DNS resolution (`syncStatus`)
+
+Live DNS resolution is **not** part of either the `DNS` or `DNSRecord` reconcile loop. It runs in a separate background runnable that:
+
+- resolves each `DNSRecord`'s endpoints on a per-FQDN schedule jittered across a 24h interval (so checks spread out instead of firing in bursts), polled every minute;
+- skips a `DNSRecord` entirely when the governing `DNS` CR has `spec.reconciliation.disableDNSCheck: true`;
+- can be forced immediately for a record right after its spec changes (debounced ~5s), so a newly added FQDN gets an initial status quickly instead of waiting up to 24h;
+- writes `sync` / `notsync` / `notavailable` onto `DNSRecord.status.endpoints[].syncStatus`, which re-triggers the `DNSRecord` controller to re-project the new status into the read store.
+
+See [DNSRecord Controller Flow]({{< relref "flows/dnsrecord" >}}) for details.

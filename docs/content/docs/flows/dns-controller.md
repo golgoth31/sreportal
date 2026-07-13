@@ -3,81 +3,80 @@ title: DNS Controller Flow
 weight: 2
 ---
 
-The DNS controller reconciles `DNS` Custom Resources, which contain **manually defined** DNS entry groups. It aggregates manual entries, resolves DNS, and projects the result into the ReadStore.
+The DNS controller reconciles `DNS` (`sreportal.io/v1alpha2`) custom resources. A `DNS` CR no longer carries manual entries itself — it is a **per-portal discovery configuration + aggregator**: it reads endpoints collected by the global [Source Flow]({{< relref "dns-source" >}}), deduplicates and validates them, and materialises the result as one or more `DNSRecord` CRs. Manual entries live directly on a `DNSRecord` with `spec.origin: manual` — see the [DNSRecord Controller Flow]({{< relref "dnsrecord" >}}).
 
 ## Overview
 
 ```mermaid
 flowchart TD
-    DNS["DNS CR\n(spec.groups: manual entries)"] --> Chain["DNS Controller\n(Chain of Responsibility)"]
-    Chain --> Status["DNS CR Status\n(status.groups with syncStatus)"]
-    Chain --> Store["FQDNStore\n(in-memory ReadStore)"]
-    Store --> API["Connect gRPC API / MCP"]
+    DNS["DNS CR\n(spec.sources, spec.defaults,\nspec.groupMapping, spec.reconciliation)"] --> Chain["DNS Controller\n(Chain of Responsibility)"]
+    Store["SourceEndpointStore\n(populated by SourceReconciler)"] --> Chain
+    Chain --> Status["DNS CR Status\n(SourcesReady / EntriesValid / TargetsConflict conditions,\nskippedEntries)"]
+    Chain --> DNSRecords["DNSRecord CRs\n(origin=auto, one per enabled kind\nowned by this DNS CR)"]
 ```
 
 ## Trigger
 
-The DNS controller is **watch-based**: it triggers whenever a `DNS` CR is created, updated, or deleted. It requeues every 5 minutes for periodic DNS resolution refresh.
+The DNS controller is **watch-based**, `For(&v1alpha2.DNS{})` filtered by `GenerationChangedPredicate` (status-only self-writes don't re-trigger it), plus watches on:
+
+- owned `DNSRecord` CRs (generation changes only — a `DNSRecord`'s own status churn, e.g. `syncStatus`, is ignored)
+- `Portal` CRs (any change re-enqueues every `DNS` CR in that portal's namespace referencing it)
+
+It also requeues on `spec.reconciliation.interval` (default `5m`, floor `30s`). `DNS` CRs with `spec.isRemote: true` are skipped entirely — those are owned and synced by the portal controller instead.
 
 ## Chain of Responsibility
 
 ```mermaid
 flowchart TD
     Start([Reconcile]) --> H1
-    H1["① CollectManualEntries\nExtract groups from DNS.spec.groups"] --> H2
-    H2["② AggregateFQDNs\nConvert to FQDNGroupStatus\nSet source = manual, sort by name"] --> H3
-    H3["③ ResolveDNS\nParallel DNS lookup per FQDN\n(10 workers, 5s timeout)\nSkipped if disableDNSCheck=true\nSkipped for remote-source groups"] --> H4
-    H4["④ UpdateStatus\nPatch DNS.status.groups\nSet Ready condition\nProject to FQDNWriter"] --> H5
-    H5["⑤ ReconcileManualComponents\nCreate/update/delete Component CR\nfrom DNS CR annotations"] --> Done([Done])
+    H1["① LookupSourcesHandler\nRead SourceEndpointStore per enabled kind\nusing this CR's namespace/labelFilter"] --> H2
+    H2["② IntraDNSDedupHandler\nPer-FQDN priority ownership across kinds"] --> H3
+    H3["③ ValidateEntriesHandler\nDrop endpoints that would fail\nDNSRecord CRD validation"] --> H4
+    H4["④ UpsertDNSRecordsHandler\nCreateOrUpdate one auto DNSRecord per\nproducing kind; delete stale ones"] --> H5
+    H5["⑤ SourcesStatusHandler\nSet SourcesReady / TargetsConflict /\nEntriesValid conditions"] --> Done([Done])
 ```
 
-### Step 1 — CollectManualEntries
+### Step 1 — LookupSourcesHandler
 
-Extracts DNS groups from `DNS.spec.groups`. Each group contains a name and a list of FQDNs with record type, targets, and optional labels.
+For each kind enabled in `spec.sources` (in `spec.sources.priority` order, then any remaining enabled kinds in deterministic order), calls `SourceEndpointReader.Lookup(kind, namespace, labelFilter)` against the shared `SourceEndpointStore`, using the effective `(namespace, labelFilter)` computed from that kind's own spec falling back to `spec.defaults`. Results are stored per kind in `ChainData.EndpointsByKind`; kinds whose source hasn't produced a successful collection yet (`Ready(kind)` false — e.g. right after a controller restart, before informers sync) are marked in `ChainData.PreserveKinds` so a later step doesn't treat "not synced yet" as "authoritatively empty."
 
-### Step 2 — AggregateFQDNs
+If no `SourceEndpointReader` is wired at all, the handler fails hard rather than silently clearing every auto FQDN.
 
-Converts spec groups to `FQDNGroupStatus` objects with `source: manual`. Groups are sorted alphabetically by name for deterministic output.
+### Step 2 — IntraDNSDedupHandler
 
-### Step 3 — ResolveDNS
+Enforces `spec.sources.priority` at the **FQDN-name level**, not per record type: the first (highest-priority) kind to produce a given DNS name owns it entirely, and every endpoint for that name from a lower-priority kind — even a different record type — is dropped. A kind that wins a name keeps all record types it produced for that name (e.g. both `A` and `AAAA`). Result goes into `ChainData.KeptEndpointsByKind`.
 
-For each FQDN in the aggregated groups (except those with source `remote`):
+### Step 3 — ValidateEntriesHandler
 
-| DNS Result | SyncStatus |
+Because a single `DNSRecord.spec.entries` write is all-or-nothing at the API server, one endpoint with an invalid FQDN or an unsupported record type would otherwise make the whole `CreateOrUpdate` fail and abandon every valid entry for that source. This handler pre-filters using the exact same constraints as the `DNSRecord` CRD (`domaindns.FQDNPattern`, `domaindns.ValidRecordTypes`):
+
+| Check | Skip reason |
 |---|---|
-| Resolved IPs match targets | `sync` |
-| Resolved IPs differ from targets | `notFound` |
-| DNS lookup error | `error` |
-| Lookup exceeds 5s | `timeout` |
+| FQDN fails the DNS name pattern | `invalid_fqdn` |
+| Record type not in `A;AAAA;CNAME;TXT` | `invalid_record_type` |
 
-Resolution uses up to 10 concurrent goroutines. This step is skipped entirely when `reconciliation.disableDNSCheck: true` is set in the operator config.
+Dropped endpoints are recorded on `ChainData.SkippedEntries`, counted per `(namespace, name, kind, reason)` in the `sreportal_dns_entries_invalid_total` metric, and the surviving count is set on `sreportal_dns_entries_valid`. A kind with any drop this cycle is added to `PreserveKinds` so its last-good `DNSRecord` isn't deleted if filtering happens to leave it with zero valid entries.
 
-### Step 4 — UpdateStatus
+### Step 4 — UpsertDNSRecordsHandler
 
-1. Patches `DNS.status.groups` with the resolved data
-2. Sets `DNS.status.lastReconcileTime`
-3. Sets a `Ready` condition (True on success, False with reason on error)
-4. **Projects to ReadStore**: converts status groups to `[]FQDNView` and writes via `fqdnWriter.Replace(key, views)`
+For each kind with at least one kept endpoint: `CreateOrUpdate`s a `DNSRecord` named `{dns-name}-{sourceType}`, owned by the `DNS` CR (`SetControllerReference`), with `spec.origin: auto`, `spec.sourceType: <kind>`, `spec.portalRef` copied from the `DNS` CR, and `spec.entries` built from the endpoints:
 
-On CR deletion, the controller removes the corresponding key from the FQDNWriter.
+- entries are deduplicated by `(FQDN, RecordType)`, each entry's `Targets` deduplicated and sorted, and the whole list sorted by `(FQDN, RecordType)` — deterministic output keeps the write idempotent so a no-op cycle doesn't bump `DNSRecord`'s generation
+- `Group` / `Groups` are carried from the `sreportal.io/group` / `sreportal.io/groups` endpoint labels
+- `OriginRef` is carried from the external-dns `resource` label (`kind/namespace/name`)
 
-### Step 5 — ReconcileManualComponents
+Any existing auto `DNSRecord` owned by this `DNS` CR whose kind no longer produced entries is deleted — **unless** that kind is in `PreserveKinds` (not-yet-synced or all-invalid-this-cycle), in which case the last-good record is left alone.
 
-If the DNS CR has a `sreportal.io/component` annotation:
+### Step 5 — SourcesStatusHandler
 
-1. **Skip** if the portal's status page feature is disabled
-2. **Create or update** a Component CR from the annotation metadata
-3. **Sync metadata** (`displayName`, `group`, `description`, `link`) but **never overwrite `spec.status`**
-4. **Label** the component with `sreportal.io/managed-by: dns-controller`
+Sets the DNS CR's status conditions:
 
-If the annotation is **removed**, any previously created `dns-controller`-managed component for this portal is deleted.
+| Condition | Meaning |
+|---|---|
+| `SourcesReady` | `True/Producing` when at least one source kind is enabled; `Unknown/NoSourcesEnabled` when `spec.sources` has nothing enabled. A chain failure upstream is instead surfaced as `False/ReconcileFailed` by the controller's `Reconcile` method. |
+| `EntriesValid` | `True/AllValid` when nothing was dropped in step 3; `False/InvalidEntriesSkipped` otherwise, with a bounded (max 100) sample mirrored onto `status.skippedEntries` |
+| `TargetsConflict` | `True/FirstWriterWins` when the FQDN read store reports this DNS CR lost a first-writer-wins conflict against another `DNSRecord` producing different targets for the same `(FQDN, recordType)` (cross-portal or cross-DNS-CR collisions, resolved at the read-store projection layer — see `domaindns.FQDNConflictReader`) |
 
-See the [Annotations]({{< relref "annotations" >}}) page for the full list of `sreportal.io/component-*` annotations.
+## What this CR does *not* do anymore
 
-## ReadStore Projection
-
-Each `FQDNView` from a DNS CR has:
-- `Source: "manual"` (distinguishes from external-dns sources)
-- `PortalName`: from the DNS CR's `spec.portalRef`
-- `Groups`: from the spec group name
-- `SyncStatus`: from DNS resolution
+Compared to the previous `v1alpha1` DNS controller: there is no manual-entries mode (`spec.groups` is gone — use a manual `DNSRecord` instead), no live DNS resolution in this chain (moved to the async `dnsresolve` runnable, see [DNSRecord Controller Flow]({{< relref "dnsrecord" >}})), and no Component reconciliation (moved to the separate Components Reconciler, see [Component Flow]({{< relref "component" >}})).
