@@ -95,7 +95,7 @@ Only the value `"true"` activates the ignore behavior. Any other value (includin
 
 ## `sreportal.io/component`
 
-Triggers automatic creation of a `Component` CR for the annotated resource. The value is the component **display name** shown on the status page. When this annotation is present, the source controller (for discovered endpoints) or the DNS controller (for manual DNS entries) creates and maintains a Component CR linked to the same portal.
+Triggers automatic creation of a `Component` CR for the annotated resource. The value is the component **display name** shown on the status page. When this annotation is present on a source resource (Service, Ingress, Gateway route, etc.), the Components Reconciler creates and maintains a Component CR linked to the same portal — see the [Component Flow]({{< relref "flows/component" >}}).
 
 Removing the annotation deletes the auto-managed component.
 
@@ -132,30 +132,11 @@ spec:
 
 ### Lifecycle
 
-- **Creation**: When the annotation first appears on a source resource, a Component CR is created with a `sreportal.io/managed-by` label (`source-controller` or `dns-controller`).
+- **Creation**: When the annotation first appears on a source resource, a Component CR is created with a `sreportal.io/managed-by: source-controller` label.
 - **Update**: On every reconciliation, metadata fields (display name, group, description, link) are synced from the annotation. The `spec.status` field is **never overwritten** — if a user manually sets a component to `degraded`, the annotation sync preserves that change.
 - **Deletion**: When the annotation is removed from the resource, the auto-managed Component CR is hard-deleted. Manually created components (without the `managed-by` label) are never touched.
 
-### On DNS CRs
-
-The same annotations can be placed on a `DNS` CR to create a component for manually defined DNS entries:
-
-```yaml
-apiVersion: sreportal.io/v1alpha1
-kind: DNS
-metadata:
-  name: manual-entries
-  namespace: sreportal-system
-  annotations:
-    sreportal.io/component: "DNS Infrastructure"
-    sreportal.io/component-group: "Core"
-spec:
-  portalRef: main
-  groups:
-    - name: Internal
-      entries:
-        - fqdn: internal.example.com
-```
+These annotations are only read from the discovered source resource (Service, Ingress, Gateway route, etc.) — they have no effect when placed on a `DNS` or `DNSRecord` CR. To manage a Component for an entry that has no backing Kubernetes resource, create the `Component` CR directly.
 
 ### Deduplication
 
@@ -163,10 +144,10 @@ When the same component display name appears on multiple source resources for th
 
 ## How Enrichment Works
 
-The source controller enriches discovered endpoints with annotation values from the original Kubernetes resource:
+The global source collector (`SourceReconciler`, see the [DNS Source Flow]({{< relref "flows/dns-source" >}})) enriches discovered endpoints with annotation values from the original Kubernetes resource:
 
 1. External-dns sources produce endpoints with a resource label (`kind/namespace/name`)
-2. The source controller looks up the original resource via the Kubernetes API
+2. The collector reads the original resource's annotations while listing it
 3. Any `sreportal.io/*` annotations on the resource are copied to the endpoint labels
 4. These labels are then used for portal routing and group assignment
 
