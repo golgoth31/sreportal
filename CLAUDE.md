@@ -4,22 +4,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-SRE Portal is a Kubernetes operator with a web dashboard for managing service status pages and DNS discovery across multiple clusters.
+SRE Portal is a Kubernetes operator with a web dashboard for managing DNS discovery, service status pages, network flows, image inventories, and release tracking across multiple clusters.
 
 ### Current Implementation Status
 
 **Implemented:**
-- DNS discovery: 4 CRDs (DNS, DNSRecord, Portal, Alertmanager), Chain-of-Responsibility reconciliation, external-dns integration
-- Portal routing via `sreportal.io/portal` annotation on K8s resources
-- Alertmanager: CRD linked to Portal (portalRef), URL (local/remote), controller fetches active alerts from Alertmanager API and stores them in status
-- Web UI: React 19 app (Vite + shadcn/ui) with Links page (FQDN display), Alerts page (per-portal), left sidebar (Links / Alerts)
-- Connect protocol gRPC API (DNSService, PortalService, AlertmanagerService)
-- ConfigMap-driven operator configuration
-- MCP: Streamable HTTP servers at `/mcp` and `/mcp/dns` (DNS/portals), `/mcp/alerts`, `/mcp/metrics`, `/mcp/releases`, `/mcp/netpol`, `/mcp/status`, `/mcp/image`
-
-**Not yet implemented:**
-- Status pages (Component, Incident, Maintenance CRDs)
-- Additional web pages (status page UI)
+- **DNS discovery**: CRDs DNS/DNSRecord (v1alpha2), Portal, Alertmanager; Chain-of-Responsibility reconciliation; external-dns integration
+- **Portal routing**: `sreportal.io/portal` annotation on K8s resources; remote portal federation
+- **Alertmanager**: CRD linked to Portal (portalRef), URL (local/remote), controller fetches active alerts from Alertmanager API
+- **Status pages**: Component, Incident, Maintenance CRDs with aggregated platform status per portal
+- **Release tracker**: Release CRD; per-portal, per-date release entries
+- **Network flow discovery**: FlowObserver, NetworkFlowDiscovery, FlowNodeSet, FlowEdgeSet CRDs; service topology graph
+- **Image inventory**: ImageInventory, ImageRegistry CRDs; upgrade detection and mutation tracking
+- **Web UI**: React 19 app (Vite + shadcn/ui) with DNS/Links, Alerts, Status, Image, Netpol, Release, Metrics pages; sidebar navigation
+- **Connect gRPC API**: DNSService, PortalService, AlertmanagerService, StatusService, ReleaseService, ImageService, MetricsService, NetpolService
+- **MCP servers** (7, enabled with `--enable-mcp`): `/mcp` `/mcp/dns` `/mcp/alerts` `/mcp/metrics` `/mcp/releases` `/mcp/netpol` `/mcp/status` `/mcp/image`
+- **ConfigMap-driven operator configuration**
+- **Slack client**: notification integration (`internal/slackclient`)
+- **Auth**: authentication layer (`internal/auth`)
 
 ## Architecture Principles
 
@@ -33,12 +35,14 @@ SRE Portal is a Kubernetes operator with a web dashboard for managing service st
 
 - **Operator**: Go 1.26, Kubebuilder, controller-runtime v0.23
 - **API**: Connect protocol (connectrpc.com/connect v1.19), Buf for codegen
-- **Web server**: Echo v5 with h2c (HTTP/2 without TLS)
+- **Web server**: Echo v5 with h2c (HTTP/2 without TLS), port `:8090`
 - **Web UI**: React 19, Vite, Tailwind CSS v4, shadcn/ui, TanStack Query v5, React Router v7
 - **External DNS**: sigs.k8s.io/external-dns v0.20
 - **Testing**: Ginkgo v2 + Gomega with envtest (Go), Vitest (Web)
-- **MCP**: Model Context Protocol (mark3labs/mcp-go)
+- **MCP**: Model Context Protocol (mark3labs/mcp-go), 7 servers, flag `--enable-mcp`
 - **Metrics**: Custom Prometheus metrics (prometheus/client_golang) registered on controller-runtime registry
+- **Notifications**: Slack client (`internal/slackclient`)
+- **Auth**: Authentication layer (`internal/auth`)
 - **Deployment**: Single container (controller + gRPC + web UI + MCP)
 
 ## Critical Rules
