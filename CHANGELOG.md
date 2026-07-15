@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.36.3](https://github.com/golgoth31/sreportal/compare/v1.36.2...v1.36.3) (2026-07-15)
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/labstack/echo/v5 to v5.3.0 ([#334](https://github.com/golgoth31/sreportal/issues/334)) ([73adf31](https://github.com/golgoth31/sreportal/commit/73adf3177c07055f91c6a5107b83b0cc87db34c1))
+
 ## [1.36.2](https://github.com/golgoth31/sreportal/compare/v1.36.1...v1.36.2) (2026-07-10)
 
 
