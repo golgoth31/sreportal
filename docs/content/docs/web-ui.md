@@ -136,8 +136,8 @@ The Dashboard page displays key metrics from the operator's Prometheus registry 
 ### Help / MCP Page
 
 The Help page (`/help`) provides:
-- Four MCP endpoints: DNS/portals (`/mcp` or `/mcp/dns`), Alerts (`/mcp/alerts`), Metrics (`/mcp/metrics`), and Releases (`/mcp/releases`), each with its tools table
-- Tools: `search_fqdns`, `list_portals`, `get_fqdn_details` (DNS); `list_alerts` (Alerts); `list_metrics` (Metrics); `list_releases` (Releases)
+- MCP endpoints: DNS/portals (`/mcp` or `/mcp/dns`), Alerts (`/mcp/alerts`), Metrics (`/mcp/metrics`), Releases (`/mcp/releases`), Network flows (`/mcp/netpol`), and Image inventory (`/mcp/image`), each with its tools table
+- Tools: `search_fqdns`, `list_portals`, `get_fqdn_details` (DNS); `list_alerts` (Alerts); `list_metrics` (Metrics); `list_releases` (Releases); `list_network_flows`, `get_service_flows` (Network flows); `list_images` (Image inventory)
 - Setup instructions for Claude Desktop, Claude Code, and Cursor with copy-to-clipboard config snippets
 - Example queries to try with an AI assistant
 
