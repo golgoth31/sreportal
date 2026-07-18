@@ -8,6 +8,7 @@ type PortalFeatures struct {
 	Alerts         bool
 	StatusPage     bool
 	ImageInventory bool
+	DeployStatus   bool
 }
 
 // PortalView is the read-side projection of a Portal, pre-aggregated by the controller.

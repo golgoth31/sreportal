@@ -38,6 +38,7 @@ import (
 	"github.com/golgoth31/sreportal/internal/config"
 	domainalertmanager "github.com/golgoth31/sreportal/internal/domain/alertmanagerreadmodel"
 	domaincomponent "github.com/golgoth31/sreportal/internal/domain/component"
+	domaindeploystatus "github.com/golgoth31/sreportal/internal/domain/deploystatus"
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
 	domainemoji "github.com/golgoth31/sreportal/internal/domain/emoji"
 	domainimage "github.com/golgoth31/sreportal/internal/domain/image"
@@ -103,6 +104,9 @@ type Config struct {
 
 	// ImageReader is the read-side interface for Image inventory data.
 	ImageReader domainimage.ImageReader
+
+	// DeployStatusReader is the read-side interface for Deploy Status data.
+	DeployStatusReader domaindeploystatus.Reader
 
 	// StatusPageService is the write-path service for status page CRs (nil = read-only)
 	StatusPageService *statuspagesvc.Service
@@ -187,6 +191,12 @@ func (s *Server) setupRoutes() {
 		imageService := grpc.NewImageService(s.config.ImageReader, s.config.PortalReader)
 		imagePath, imageHandler := sreportalv1connect.NewImageServiceHandler(imageService, connectOpts)
 		s.echo.Any(imagePath+"*", echo.WrapHandler(imageHandler))
+	}
+
+	if s.config.DeployStatusReader != nil {
+		deployStatusService := grpc.NewDeployStatusService(s.config.DeployStatusReader, s.config.PortalReader)
+		deployStatusPath, deployStatusHandler := sreportalv1connect.NewDeployStatusServiceHandler(deployStatusService, connectOpts)
+		s.echo.Any(deployStatusPath+"*", echo.WrapHandler(deployStatusHandler))
 	}
 
 	if s.config.Gatherer != nil {

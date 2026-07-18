@@ -35,3 +35,14 @@ func CRName(portal, host, namespace string) string {
 	sum := sha256.Sum256([]byte(portal + "|" + host + "|" + namespace))
 	return hex.EncodeToString(sum[:])[:crNameLen]
 }
+
+// DeployStatusCRName returns a deterministic, RFC 1123-safe CR name for the
+// per-(portal, namespace) DeployStatus CR projected from image observations.
+//
+// Mirrors CRName's scheme but for the (portal, namespace) tuple — the
+// "deploystatus" domain prefix in the hashed input keeps these names disjoint
+// from any other CR family even on identical (portal, namespace) inputs.
+func DeployStatusCRName(portal, namespace string) string {
+	sum := sha256.Sum256([]byte("deploystatus|" + portal + "|" + namespace))
+	return hex.EncodeToString(sum[:])[:crNameLen]
+}

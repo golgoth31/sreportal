@@ -59,7 +59,10 @@ type ImageInventoryReconciler struct {
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch
 
 // NewImageInventoryReconciler creates a new ImageInventoryReconciler with the handler chain.
-func NewImageInventoryReconciler(c client.Client, store domainimage.ImageWriter, remoteClientCache *remoteclient.Cache) *ImageInventoryReconciler {
+//
+// labelReader reads OCI image config labels (org.opencontainers.image.*) so the
+// projection step can resolve first-party images to their git source.
+func NewImageInventoryReconciler(c client.Client, store domainimage.ImageWriter, remoteClientCache *remoteclient.Cache, labelReader imageinventorychain.ImageLabelReader) *ImageInventoryReconciler {
 	chain := reconciler.NewChain(
 		"imageinventory",
 		imageinventorychain.NewValidateSpecHandler(c),
@@ -67,6 +70,7 @@ func NewImageInventoryReconciler(c client.Client, store domainimage.ImageWriter,
 		imageinventorychain.NewFetchRemoteImagesHandler(c, remoteClientCache, store),
 		imageinventorychain.NewScanWorkloadsHandler(c),
 		imageinventorychain.NewSyncRegistryCRsHandler(c),
+		imageinventorychain.NewProjectDeployStatusHandler(c, labelReader),
 		imageinventorychain.NewUpdateStatusHandler(c),
 	)
 	return &ImageInventoryReconciler{
@@ -80,6 +84,7 @@ func NewImageInventoryReconciler(c client.Client, store domainimage.ImageWriter,
 // +kubebuilder:rbac:groups=sreportal.io,resources=imageinventories/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=sreportal.io,resources=imageinventories/finalizers,verbs=update
 // +kubebuilder:rbac:groups=sreportal.io,resources=imageregistries,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=sreportal.io,resources=deploystatuses,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile validates an ImageInventory resource via the handler chain.
 func (r *ImageInventoryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -159,6 +164,7 @@ func (r *ImageInventoryReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&sreportalv1alpha1.ImageInventory{}).
 		Owns(&sreportalv1alpha1.ImageRegistry{}).
+		Owns(&sreportalv1alpha1.DeployStatus{}).
 		Named("imageinventory").
 		Complete(r)
 }

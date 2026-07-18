@@ -66,6 +66,11 @@ spec:
                     default: true
                     description: alerts enables alertmanager integration for this portal.
                     type: boolean
+                  deployStatus:
+                    default: true
+                    description: deployStatus enables the deploy status page (per-service
+                      deployment lag) for this portal.
+                    type: boolean
                   dns:
                     default: true
                     description: dns enables DNS discovery (controllers, gRPC, MCP,
@@ -241,6 +246,10 @@ spec:
                         description: alerts indicates whether the remote portal has
                           alertmanager integration enabled.
                         type: boolean
+                      deployStatus:
+                        description: deployStatus indicates whether the remote portal
+                          has deploy status enabled.
+                        type: boolean
                       dns:
                         description: dns indicates whether the remote portal has DNS
                           discovery enabled.
@@ -263,6 +272,7 @@ spec:
                         type: boolean
                     required:
                     - alerts
+                    - deployStatus
                     - dns
                     - imageInventory
                     - networkPolicy

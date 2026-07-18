@@ -59,7 +59,7 @@ func newDNSSchemeAndClient(t *testing.T, objs ...client.Object) (*runtime.Scheme
 func mainPortal() *sreportalv1alpha1.Portal {
 	return &sreportalv1alpha1.Portal{
 		ObjectMeta: metav1.ObjectMeta{Name: tPortalMain, Namespace: nsDefault, UID: "portal-uid"},
-		Spec:       sreportalv1alpha1.PortalSpec{Title: "Main", Main: true},
+		Spec:       sreportalv1alpha1.PortalSpec{Title: tTitleMain, Main: true},
 	}
 }
 

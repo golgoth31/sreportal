@@ -33,6 +33,7 @@ var (
 	CheckAlerts        FeatureChecker = func(f domainportal.PortalFeatures) bool { return f.Alerts }
 	CheckStatusPage    FeatureChecker = func(f domainportal.PortalFeatures) bool { return f.StatusPage }
 	CheckImages        FeatureChecker = func(f domainportal.PortalFeatures) bool { return f.ImageInventory }
+	CheckDeployStatus  FeatureChecker = func(f domainportal.PortalFeatures) bool { return f.DeployStatus }
 )
 
 // IsFeatureEnabled looks up a portal by name and checks whether the given
