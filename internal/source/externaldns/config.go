@@ -29,6 +29,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/labels"
 	externaldnssource "sigs.k8s.io/external-dns/source"
+	"sigs.k8s.io/external-dns/source/annotations"
 	"sigs.k8s.io/external-dns/source/template"
 
 	sreportalv1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
@@ -174,15 +175,22 @@ func (c *EffectiveConfig) toConfig(kind registry.SourceType) (*externaldnssource
 		}
 		lf = sel
 	}
+	// external-dns v0.22 types AnnotationFilter as labels.Selector; ParseFilter
+	// returns labels.Everything() (i.e. no filtering) for an empty string.
+	af, err := annotations.ParseFilter(single(c.annotationFilters))
+	if err != nil {
+		return nil, fmt.Errorf("parse annotationFilter for %s: %w", kind, err)
+	}
 	cfg := &externaldnssource.Config{
 		Namespace:        c.namespace(),
-		AnnotationFilter: single(c.annotationFilters),
+		AnnotationFilter: af,
 		LabelFilter:      lf,
 	}
 	// FQDN templating (when configured) applies to every source kind that
 	// supports it; an empty template leaves TemplateEngine nil (no-op).
+	// v0.22 NewEngine takes the three template flavours as []string.
 	if ft := single(c.fqdnTemplates); ft != "" {
-		eng, err := template.NewEngine(ft, "", "", c.combineFQDN)
+		eng, err := template.NewEngine([]string{ft}, nil, nil, c.combineFQDN)
 		if err != nil {
 			return nil, fmt.Errorf("parse fqdnTemplate %q for %s: %w", ft, kind, err)
 		}
