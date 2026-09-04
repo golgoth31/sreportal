@@ -29,9 +29,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/external-dns/endpoint"
 	externaldnssource "sigs.k8s.io/external-dns/source"
+	"sigs.k8s.io/external-dns/source/annotations"
 
 	"github.com/golgoth31/sreportal/internal/source/registry"
 )
+
+// annotationPrefix is the annotation prefix the operator consumes on user
+// resources (Service/Ingress/...). external-dns v0.22 renamed its default from
+// "external-dns.alpha.kubernetes.io/" to "external-dns.kubernetes.io/"; we pin
+// the long-standing public prefix so every annotation written against
+// previous external-dns releases keeps being discovered.
+const annotationPrefix = "external-dns.alpha.kubernetes.io/"
 
 // ErrSourceNotReady is returned while a kind's source is still being built (its
 // informer cache has not synced yet). It is NOT a failure: the caller must
@@ -95,6 +103,9 @@ type Provider struct {
 // (CRD) source is requested — those builds then fail (preserved + retried),
 // they don't panic.
 func NewProvider(kube kubernetes.Interface, istio istioclient.Interface, restConfig *rest.Config) *Provider {
+	// Must happen before any source construction: the annotation key vars and
+	// the informer transforms read the global prefix at build time.
+	annotations.SetAnnotationPrefix(annotationPrefix)
 	return &Provider{
 		kube:       kube,
 		istio:      istio,
