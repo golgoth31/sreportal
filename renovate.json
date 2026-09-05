@@ -8,34 +8,33 @@
     "helpers:pinGitHubActionDigests"
   ],
   "timezone": "Europe/Paris",
-  "separateMajorMinor": false,
+  "separateMultipleMajor": true,
   "prConcurrentLimit": 5,
   "prHourlyLimit": 2,
   "packageRules": [
     {
-      "description": "Une PR pour toutes les mises à jour des actions GitHub",
+      "description": "Une PR pour toutes les mises à jour des actions GitHub (hors majeures)",
       "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["minor", "patch", "digest", "pin"],
       "groupName": "github-actions"
     },
     {
-      "description": "Une PR pour toutes les mises à jour Docker",
+      "description": "Une PR pour toutes les mises à jour Docker (hors majeures)",
       "matchManagers": ["dockerfile"],
+      "matchUpdateTypes": ["minor", "patch", "digest", "pin"],
       "groupName": "docker"
     },
     {
-      "description": "Une PR pour toutes les dépendances Go (k8s, connect, prometheus, tests, etc.)",
+      "description": "Une PR pour toutes les dépendances Go mineures/patch (k8s, connect, prometheus, tests, etc.)",
       "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["minor", "patch", "digest", "pin"],
       "groupName": "go-deps"
     },
     {
-      "description": "Une PR pour toutes les dépendances web (npm)",
+      "description": "Une PR pour toutes les dépendances web mineures/patch (npm)",
       "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch", "digest", "pin"],
       "groupName": "web-deps"
-    },
-    {
-      "description": "Une PR unique pour toutes les mises à jour majeures (toutes branches confondues)",
-      "matchUpdateTypes": ["major"],
-      "groupName": "major-updates"
     }
   ]
 }
