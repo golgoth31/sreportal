@@ -16,9 +16,9 @@ require (
 	github.com/onsi/gomega v1.42.1
 	github.com/openshift/client-go v0.0.0-20260810202730-ddca5e0b7146
 	github.com/prometheus/client_golang v1.24.1
-	github.com/prometheus/client_model v0.6.2
-	github.com/prometheus/common v0.70.1
-	github.com/stretchr/testify v1.12.0
+	github.com/prometheus/client_model v0.6.3
+	github.com/prometheus/common v0.71.0
+	github.com/stretchr/testify v1.12.1
 	go.elastic.co/ecszap v1.0.3
 	go.uber.org/zap v1.28.0
 	go.uber.org/zap/exp v0.3.0
