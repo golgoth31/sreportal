@@ -8,6 +8,7 @@
     "helpers:pinGitHubActionDigests"
   ],
   "timezone": "Europe/Paris",
+  "separateMajorMinor": false,
   "prConcurrentLimit": 5,
   "prHourlyLimit": 2,
   "packageRules": [
@@ -17,147 +18,19 @@
       "groupName": "github-actions"
     },
     {
-      "description": "Image de base Docker (évite une PR par couche si extension ultérieure)",
+      "description": "Une PR pour toutes les mises à jour Docker",
       "matchManagers": ["dockerfile"],
-      "groupName": "dockerfile"
+      "groupName": "docker"
     },
     {
-      "description": "Écosystème Kubernetes / kubebuilder (souvent aligné en version)",
+      "description": "Une PR pour toutes les dépendances Go (k8s, connect, prometheus, tests, etc.)",
       "matchManagers": ["gomod"],
-      "matchPackageNames": ["k8s.io/*", "sigs.k8s.io/*", "istio.io/*"],
-      "groupName": "kubernetes"
+      "groupName": "go-deps"
     },
     {
-      "description": "Connect RPC + protobuf côté Go",
-      "matchManagers": ["gomod"],
-      "matchPackageNames": ["connectrpc.com/*", "google.golang.org/protobuf"],
-      "groupName": "connect-go"
-    },
-    {
-      "description": "Prometheus / métriques",
-      "matchManagers": ["gomod"],
-      "matchPackageNames": ["github.com/prometheus/*"],
-      "groupName": "prometheus-go"
-    },
-    {
-      "description": "Tests Go (Ginkgo / Gomega / testify)",
-      "matchManagers": ["gomod"],
-      "matchPackageNames": ["github.com/onsi/*", "github.com/stretchr/testify"],
-      "groupName": "go-testing"
-    },
-    {
-      "description": "Connect + Buf côté frontend",
+      "description": "Une PR pour toutes les dépendances web (npm)",
       "matchManagers": ["npm"],
-      "matchFileNames": ["web/package.json"],
-      "matchPackageNames": ["@connectrpc/*", "@bufbuild/*"],
-      "groupName": "web-connect"
-    },
-    {
-      "description": "Tailwind v4 + plugins associés",
-      "matchManagers": ["npm"],
-      "matchFileNames": ["web/package.json"],
-      "matchPackageNames": [
-        "@tailwindcss/*",
-        "tailwindcss",
-        "tailwind-merge",
-        "tw-animate-css"
-      ],
-      "groupName": "web-tailwind"
-    },
-    {
-      "description": "React core + bindings (router, day-picker, themes, types, plugin Vite, plugins ESLint react)",
-      "matchManagers": ["npm"],
-      "matchFileNames": ["web/package.json"],
-      "matchPackageNames": [
-        "react",
-        "react-dom",
-        "@types/react",
-        "@types/react-dom",
-        "react-router",
-        "react-day-picker",
-        "next-themes",
-        "@vitejs/plugin-react",
-        "eslint-plugin-react-hooks",
-        "eslint-plugin-react-refresh"
-      ],
-      "groupName": "web-react"
-    },
-    {
-      "description": "TanStack (Query, etc.)",
-      "matchManagers": ["npm"],
-      "matchFileNames": ["web/package.json"],
-      "matchPackageNames": ["@tanstack/*"],
-      "groupName": "web-tanstack"
-    },
-    {
-      "description": "Composants UI (Radix, Base UI, shadcn, Lucide, Recharts, Sonner, helpers de styling)",
-      "matchManagers": ["npm"],
-      "matchFileNames": ["web/package.json"],
-      "matchPackageNames": [
-        "radix-ui",
-        "@radix-ui/*",
-        "@base-ui/react",
-        "shadcn",
-        "lucide-react",
-        "recharts",
-        "sonner",
-        "class-variance-authority",
-        "clsx"
-      ],
-      "groupName": "web-ui"
-    },
-    {
-      "description": "Fonts (Fontsource)",
-      "matchManagers": ["npm"],
-      "matchFileNames": ["web/package.json"],
-      "matchPackageNames": ["@fontsource/*", "@fontsource-variable/*"],
-      "groupName": "web-fonts"
-    },
-    {
-      "description": "Outillage de tests (Vitest, Testing Library, happy-dom, MSW, Playwright)",
-      "matchManagers": ["npm"],
-      "matchFileNames": ["web/package.json"],
-      "matchPackageNames": [
-        "vitest",
-        "@testing-library/*",
-        "happy-dom",
-        "msw",
-        "@playwright/test"
-      ],
-      "groupName": "web-testing"
-    },
-    {
-      "description": "Lint + TypeScript (ESLint, TS, typescript-eslint, types Node, globals)",
-      "matchManagers": ["npm"],
-      "matchFileNames": ["web/package.json"],
-      "matchPackageNames": [
-        "eslint",
-        "@eslint/js",
-        "typescript",
-        "typescript-eslint",
-        "@types/node",
-        "globals"
-      ],
-      "groupName": "web-lint"
-    },
-    {
-      "description": "Outillage de build (Vite, tsx, emojibase-data, date-fns)",
-      "matchManagers": ["npm"],
-      "matchFileNames": ["web/package.json"],
-      "matchPackageNames": [
-        "vite",
-        "tsx",
-        "emojibase-data",
-        "date-fns"
-      ],
-      "groupName": "web-build"
-    },
-    {
-      "description": "Filet de sécurité : regroupe toutes les autres mises à jour non-major web non couvertes par les règles ci-dessus",
-      "matchManagers": ["npm"],
-      "matchFileNames": ["web/package.json"],
-      "matchUpdateTypes": ["minor", "patch"],
-      "groupName": "web-misc"
+      "groupName": "web-deps"
     }
   ]
 }
