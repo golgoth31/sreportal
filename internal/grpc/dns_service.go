@@ -209,8 +209,8 @@ func fqdnViewToProto(v domaindns.FQDNView) *dnsv1.FQDN {
 		RecordType:           v.RecordType,
 		Targets:              v.Targets,
 		LastSeen:             timestamppb.New(v.LastSeen),
-		DnsResourceName:      v.FirstPortal(),
-		DnsResourceNamespace: v.Namespace,
+		DnsResourceName:      v.FirstPortal(), //nolint:staticcheck // back-compat for older clients
+		DnsResourceNamespace: v.Namespace,     //nolint:staticcheck // back-compat for older clients
 		SyncStatus:           v.SyncStatus,
 		Portals:              v.Portals,
 	}
