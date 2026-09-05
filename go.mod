@@ -11,7 +11,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-containerregistry v0.21.7
 	github.com/labstack/echo/v5 v5.3.0
-	github.com/mark3labs/mcp-go v0.56.0
+	github.com/mark3labs/mcp-go v1.0.0
 	github.com/onsi/ginkgo/v2 v2.32.0
 	github.com/onsi/gomega v1.42.1
 	github.com/openshift/client-go v0.0.0-20260810202730-ddca5e0b7146
