@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.36.4](https://github.com/golgoth31/sreportal/compare/v1.36.3...v1.36.4) (2026-09-05)
+
+
+### Bug Fixes
+
+* **deps:** update go-deps ([#357](https://github.com/golgoth31/sreportal/issues/357)) ([3a593bb](https://github.com/golgoth31/sreportal/commit/3a593bbc2c4606a19ca9e5eb3c34c7705acc1f1b))
+* **deps:** update kubernetes ([#342](https://github.com/golgoth31/sreportal/issues/342)) ([cec13dc](https://github.com/golgoth31/sreportal/commit/cec13dc95ae9a5cfacaab5fb4d266deabf9e6400))
+* **deps:** update web-deps ([#358](https://github.com/golgoth31/sreportal/issues/358)) ([e6507ca](https://github.com/golgoth31/sreportal/commit/e6507ca63ed80cf484a420d59f6589922a5c12de))
+
 ## [1.36.3](https://github.com/golgoth31/sreportal/compare/v1.36.2...v1.36.3) (2026-07-15)
 
 
