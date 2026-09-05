@@ -65,8 +65,7 @@ func (c *CraneClient) ListTags(ctx context.Context, host, repository string) ([]
 	}
 
 	// Map transport errors. go-containerregistry wraps registry HTTP errors as *transport.Error.
-	var te *transport.Error
-	if errors.As(err, &te) {
+	if te, ok := errors.AsType[*transport.Error](err); ok {
 		switch te.StatusCode {
 		case http.StatusNotFound:
 			// Repository does not exist on the registry — return empty.

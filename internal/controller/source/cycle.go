@@ -269,7 +269,7 @@ func extractItems(list client.ObjectList) (items []client.Object, skipped int) {
 		if elem.Kind() != reflect.Pointer {
 			elem = elem.Addr()
 		}
-		obj, ok := elem.Interface().(client.Object)
+		obj, ok := reflect.TypeAssert[client.Object](elem)
 		if !ok {
 			// Defensive: every source resolver's list element is a client.Object
 			// once registered in the scheme. Skip rather than panic so a stray

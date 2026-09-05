@@ -140,8 +140,8 @@ func TestCrossplaneScalewayRecordResolver_WrongType(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected UnexpectedObjectTypeError, got nil")
 	}
-	var typed *registry.UnexpectedObjectTypeError
-	if !errors.As(err, &typed) {
+	_, ok := errors.AsType[*registry.UnexpectedObjectTypeError](err)
+	if !ok {
 		t.Fatalf("expected *registry.UnexpectedObjectTypeError, got %T (%v)", err, err)
 	}
 	if eps != nil {
