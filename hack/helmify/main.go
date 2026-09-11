@@ -1,5 +1,6 @@
 // hack/helmify is a post-processor that runs helmify then patches the generated
-// Helm chart to support optional auth configuration.
+// Helm chart to support optional auth configuration and to keep the rendered
+// manifests valid YAML.
 package main
 
 import (
@@ -7,6 +8,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -31,6 +34,10 @@ func run() error {
 
 	if err := runHelmify(rootDir, kustomize, helmifyBin); err != nil {
 		return fmt.Errorf("running helmify: %w", err)
+	}
+
+	if err := patchTemplates(filepath.Join(helmDir, "templates"), dedupeSelectorLabels); err != nil {
+		return fmt.Errorf("patching chart templates (selector labels): %w", err)
 	}
 
 	if err := patchFile(valuesFile, injectAuthBlock); err != nil {
@@ -111,6 +118,95 @@ func patchFile(path string, transform func(string) string) error {
 	}
 
 	return nil
+}
+
+// patchTemplates applies a transform function to every chart template.
+func patchTemplates(dir string, transform func(string) string) error {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return fmt.Errorf("reading %s: %w", dir, err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".yaml" {
+			continue
+		}
+
+		if err := patchFile(filepath.Join(dir, entry.Name()), transform); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// selectorLabelsInclude matches the helm.selectorLabels helper call helmify writes in
+// place of the labels it templated, capturing the helper's nindent argument.
+var selectorLabelsInclude = regexp.MustCompile(`^\s*\{\{- include "helm\.selectorLabels" \. \| nindent (\d+) \}\}\s*$`)
+
+// selectorLabelPrefixes are the labels the helm.selectorLabels helper emits. helmify
+// appends the helper call but leaves the literal labels it replaced in place, so the
+// rendered manifest carries the same mapping key twice. Strict parsers reject it -
+// notably Flux's HelmRelease post-renderer, which fails the whole release with
+// "mapping key \"app.kubernetes.io/name\" already defined".
+var selectorLabelPrefixes = []string{
+	"app.kubernetes.io/name:",
+	"app.kubernetes.io/instance:",
+}
+
+// dedupeSelectorLabels drops the literal selector labels the helm.selectorLabels
+// helper already emits at the same indentation, so each label is rendered once.
+func dedupeSelectorLabels(content string) string {
+	lines := strings.Split(content, "\n")
+	dropped := make(map[int]bool)
+
+	for i, line := range lines {
+		match := selectorLabelsInclude.FindStringSubmatch(line)
+		if match == nil {
+			continue
+		}
+
+		nindent, err := strconv.Atoi(match[1])
+		if err != nil {
+			continue
+		}
+
+		// The labels the helper replaces sit right above it, indented with nindent.
+		// Walk back over that block and drop the labels the helper emits.
+		for j := i - 1; j >= 0 && indentWidth(lines[j]) == nindent; j-- {
+			if hasSelectorLabelPrefix(lines[j]) {
+				dropped[j] = true
+			}
+		}
+	}
+
+	if len(dropped) == 0 {
+		return content
+	}
+
+	kept := make([]string, 0, len(lines))
+	for i, line := range lines {
+		if !dropped[i] {
+			kept = append(kept, line)
+		}
+	}
+
+	return strings.Join(kept, "\n")
+}
+
+func indentWidth(line string) int {
+	return len(line) - len(strings.TrimLeft(line, " "))
+}
+
+func hasSelectorLabelPrefix(line string) bool {
+	trimmed := strings.TrimSpace(line)
+	for _, prefix := range selectorLabelPrefixes {
+		if strings.HasPrefix(trimmed, prefix) {
+			return true
+		}
+	}
+
+	return false
 }
 
 const authBlock = `auth:
