@@ -52,7 +52,7 @@ func TestSyncRemoteImageInventoryNoOpForLocalPortal(t *testing.T) {
 
 	portal := &sreportalv1alpha1.Portal{
 		ObjectMeta: metav1.ObjectMeta{Name: tPortalMain, Namespace: nsDefault},
-		Spec:       sreportalv1alpha1.PortalSpec{Title: "Main", Main: true},
+		Spec:       sreportalv1alpha1.PortalSpec{Title: tTitleMain, Main: true},
 	}
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.Portal, chain.ChainData]{Resource: portal}
 	require.NoError(t, h.Handle(context.Background(), rc))
@@ -151,7 +151,7 @@ func TestCleanupDisabledFeaturesHandlerDeletesRemoteImageInventoryWhenFeatureDis
 	portal := &sreportalv1alpha1.Portal{
 		ObjectMeta: metav1.ObjectMeta{Name: "remote-cleanup", Namespace: nsDefault, UID: "uid-clean"},
 		Spec: sreportalv1alpha1.PortalSpec{
-			Title:    "Cleanup",
+			Title:    tTitleCleanup,
 			Remote:   &sreportalv1alpha1.RemotePortalSpec{URL: remoteURL, Portal: tPortalMain},
 			Features: &sreportalv1alpha1.PortalFeatures{ImageInventory: &disabled},
 		},
@@ -161,7 +161,7 @@ func TestCleanupDisabledFeaturesHandlerDeletesRemoteImageInventoryWhenFeatureDis
 			Name:      chain.RemoteImageInventoryName(portal.Name),
 			Namespace: portal.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
-				{APIVersion: "sreportal.io/v1alpha1", Kind: "Portal", Name: portal.Name, UID: portal.UID},
+				{APIVersion: tAPIVersion, Kind: tKindPortal, Name: portal.Name, UID: portal.UID},
 			},
 		},
 		Spec: sreportalv1alpha1.ImageInventorySpec{PortalRef: portal.Name, IsRemote: true},
@@ -186,7 +186,7 @@ func TestCleanupDisabledFeaturesHandlerSkipsRemoteImageInventoryNotOwned(t *test
 	portal := &sreportalv1alpha1.Portal{
 		ObjectMeta: metav1.ObjectMeta{Name: "remote-cleanup", Namespace: nsDefault, UID: "uid-clean"},
 		Spec: sreportalv1alpha1.PortalSpec{
-			Title:    "Cleanup",
+			Title:    tTitleCleanup,
 			Remote:   &sreportalv1alpha1.RemotePortalSpec{URL: remoteURL, Portal: tPortalMain},
 			Features: &sreportalv1alpha1.PortalFeatures{ImageInventory: &disabled},
 		},
@@ -197,7 +197,7 @@ func TestCleanupDisabledFeaturesHandlerSkipsRemoteImageInventoryNotOwned(t *test
 			Name:      chain.RemoteImageInventoryName(portal.Name),
 			Namespace: portal.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
-				{APIVersion: "sreportal.io/v1alpha1", Kind: "Portal", Name: "other-portal", UID: "uid-other"},
+				{APIVersion: tAPIVersion, Kind: tKindPortal, Name: "other-portal", UID: "uid-other"},
 			},
 		},
 		Spec: sreportalv1alpha1.ImageInventorySpec{PortalRef: "other-portal", IsRemote: true},

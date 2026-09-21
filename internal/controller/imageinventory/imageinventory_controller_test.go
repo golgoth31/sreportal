@@ -36,6 +36,15 @@ import (
 	"github.com/golgoth31/sreportal/internal/remoteclient"
 )
 
+// noopLabelReader satisfies chain.ImageLabelReader for tests that don't
+// exercise the deploy-status projection path (their chains short-circuit at
+// portal validation before projection runs).
+type noopLabelReader struct{}
+
+func (noopLabelReader) ImageConfigLabels(_ context.Context, _, _, _ string) (map[string]string, error) {
+	return nil, nil
+}
+
 // trackingImageWriter records calls to the ImageWriter interface so tests can
 // assert which scopes were created/cleared during reconciliation.
 type trackingImageWriter struct {
@@ -89,7 +98,7 @@ func TestReconcileAddsFinalizerOnFirstPass(t *testing.T) {
 		Build()
 	writer := &trackingImageWriter{}
 
-	r := NewImageInventoryReconciler(c, writer, remoteclient.NewCache())
+	r := NewImageInventoryReconciler(c, writer, remoteclient.NewCache(), noopLabelReader{})
 	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Namespace: tNsSre, Name: tNameInv}})
 	if err != nil {
 		t.Fatalf("Reconcile: %v", err)
@@ -130,7 +139,7 @@ func TestReconcileRemovesScopesOnDeletion(t *testing.T) {
 		Build()
 	writer := &trackingImageWriter{}
 
-	r := NewImageInventoryReconciler(c, writer, remoteclient.NewCache())
+	r := NewImageInventoryReconciler(c, writer, remoteclient.NewCache(), noopLabelReader{})
 	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Namespace: tNsSre, Name: tNameInv}})
 	if err != nil {
 		t.Fatalf("Reconcile: %v", err)
@@ -185,7 +194,7 @@ func TestReconcileDeletesMetricsOnDeletion(t *testing.T) {
 		Build()
 	writer := &trackingImageWriter{}
 
-	r := NewImageInventoryReconciler(c, writer, remoteclient.NewCache())
+	r := NewImageInventoryReconciler(c, writer, remoteclient.NewCache(), noopLabelReader{})
 	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Namespace: tNsSre, Name: inventoryName}})
 	if err != nil {
 		t.Fatalf("Reconcile: %v", err)

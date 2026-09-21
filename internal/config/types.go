@@ -22,6 +22,13 @@ import (
 	"time"
 )
 
+const (
+	// DefaultGroupName is the default group name for ungrouped services.
+	DefaultGroupName = "Services"
+	// ForgeKindGitHub is the forge kind identifier for GitHub.
+	ForgeKindGitHub = "github"
+)
+
 // Duration is a wrapper around time.Duration that supports YAML/JSON unmarshaling from strings.
 type Duration time.Duration
 
@@ -63,6 +70,7 @@ type OperatorConfig struct {
 	Release        ReleaseConfig        `json:"release,omitempty" yaml:"release,omitempty"`
 	Auth           AuthConfig           `json:"auth,omitempty" yaml:"auth,omitempty"`
 	Emoji          *EmojiConfig         `json:"emoji,omitempty" yaml:"emoji,omitempty"`
+	DeployStatus   *DeployStatusConfig  `json:"deployStatus,omitempty" yaml:"deployStatus,omitempty"`
 }
 
 // AuthConfig configures authentication for write endpoints.
@@ -119,6 +127,50 @@ type SlackEmojiConfig struct {
 	Enabled bool `json:"enabled" yaml:"enabled"`
 	// RefreshInterval is the time between Slack emoji list refreshes (default: 24h).
 	RefreshInterval Duration `json:"refreshInterval,omitempty" yaml:"refreshInterval,omitempty"`
+}
+
+// DeployStatusConfig configures the deploy-status feature. Token VALUES are never
+// stored here — only the name of the env var holding each forge token (see ForgeConfig.TokenEnv / GitHubAppConfig.PrivateKeyEnv).
+type DeployStatusConfig struct {
+	// Enabled toggles the feature at operator level.
+	Enabled bool `json:"enabled" yaml:"enabled"`
+	// RefreshInterval paces per-entry re-checks (isDue). Default 5m when zero.
+	RefreshInterval Duration `json:"refreshInterval,omitempty" yaml:"refreshInterval,omitempty"`
+	// Forges lists the configured git forges. The OCI source-label host is matched
+	// against Forge.Host; no match -> entry state "unresolved".
+	Forges []ForgeConfig `json:"forges,omitempty" yaml:"forges,omitempty"`
+}
+
+// ForgeConfig configures one git forge endpoint.
+type ForgeConfig struct {
+	// Host matched against the OCI source label, e.g. "github.com", "ghe.example.com".
+	Host string `json:"host" yaml:"host"`
+	// Kind selects the forge client implementation. v1: "github".
+	Kind string `json:"kind,omitempty" yaml:"kind,omitempty"`
+	// Auth configures how the forge token is obtained (exactly one mode).
+	Auth ForgeAuthConfig `json:"auth" yaml:"auth"`
+	// DeployWorkflow is the workflow file to resolve for the "deploy to prod" link
+	// (empty -> fall back to the CI/Actions page filtered on the default branch).
+	DeployWorkflow string `json:"deployWorkflow,omitempty" yaml:"deployWorkflow,omitempty"`
+}
+
+// ForgeAuthConfig selects exactly one authentication mode. All secret VALUES are
+// read from named env vars via os.Getenv — never stored in config or a CR.
+type ForgeAuthConfig struct {
+	// TokenEnv names the env var holding a (fine-grained) PAT. Set this XOR App.
+	TokenEnv string `json:"tokenEnv,omitempty" yaml:"tokenEnv,omitempty"`
+	// App configures GitHub App authentication. Set this XOR TokenEnv.
+	App *GitHubAppConfig `json:"app,omitempty" yaml:"app,omitempty"`
+}
+
+// GitHubAppConfig authenticates as a GitHub App installation: the client signs a
+// short-lived App JWT (RS256) and exchanges it for an installation access token
+// (~1h TTL), cached and refreshed before expiry.
+type GitHubAppConfig struct {
+	AppID          int64 `json:"appID" yaml:"appID"`
+	InstallationID int64 `json:"installationID" yaml:"installationID"`
+	// PrivateKeyEnv names the env var holding the App private key (PEM).
+	PrivateKeyEnv string `json:"privateKeyEnv" yaml:"privateKeyEnv"`
 }
 
 // ReleaseConfig configures the Release CRD feature.
@@ -318,7 +370,7 @@ func DefaultConfig() *OperatorConfig {
 	return &OperatorConfig{
 		Sources: SourcesConfig{},
 		GroupMapping: GroupMappingConfig{
-			DefaultGroup: "Services",
+			DefaultGroup: DefaultGroupName,
 		},
 		Reconciliation: ReconciliationConfig{
 			Interval:     Duration(5 * time.Minute),
@@ -340,6 +392,29 @@ func (c *OperatorConfig) Validate() error {
 	}
 	if err := c.Auth.validate(); err != nil {
 		return fmt.Errorf("auth: %w", err)
+	}
+	if c.DeployStatus != nil && c.DeployStatus.Enabled {
+		for i, f := range c.DeployStatus.Forges {
+			if f.Host == "" {
+				return fmt.Errorf("deployStatus.forges[%d]: host is required", i)
+			}
+			if f.Kind != "" && f.Kind != ForgeKindGitHub {
+				return fmt.Errorf("deployStatus.forges[%d]: unsupported kind %q (v1 supports %q)", i, f.Kind, ForgeKindGitHub)
+			}
+			hasPAT := f.Auth.TokenEnv != ""
+			hasApp := f.Auth.App != nil
+			switch {
+			case hasPAT && hasApp:
+				return fmt.Errorf("deployStatus.forges[%d]: set exactly one of auth.tokenEnv or auth.app, not both", i)
+			case !hasPAT && !hasApp:
+				return fmt.Errorf("deployStatus.forges[%d]: one of auth.tokenEnv or auth.app is required", i)
+			case hasApp:
+				a := f.Auth.App
+				if a.AppID == 0 || a.InstallationID == 0 || a.PrivateKeyEnv == "" {
+					return fmt.Errorf("deployStatus.forges[%d]: auth.app requires appID, installationID and privateKeyEnv", i)
+				}
+			}
+		}
 	}
 	return nil
 }

@@ -15,14 +15,14 @@ import (
 
 func TestListImages(t *testing.T) {
 	store := imagestore.NewStore()
-	require.NoError(t, store.ReplaceForNamespace(context.Background(), tPortalMain, "ghcr.io", "default", []domainimage.ImageView{
+	require.NoError(t, store.ReplaceForNamespace(context.Background(), tPortalMain, "ghcr.io", tNsDefault, []domainimage.ImageView{
 		{
 			PortalRef:  tPortalMain,
 			Registry:   "ghcr.io",
-			Repository: "acme/api",
+			Repository: tRepoACMEAPI,
 			Tag:        "1.0.0",
 			TagType:    domainimage.TagTypeSemver,
-			Workloads:  []domainimage.WorkloadRef{{Kind: "Deployment", Namespace: "default", Name: tNameAPI, Container: tPortalMain}},
+			Workloads:  []domainimage.WorkloadRef{{Kind: tWorkloadKindDeployment, Namespace: tNsDefault, Name: tNameAPI, Container: tPortalMain}},
 		},
 	}))
 

@@ -13,6 +13,26 @@ webhooks:
     service:
       name: '{{ include "helm.fullname" . }}-webhook-service'
       namespace: '{{ .Release.Namespace }}'
+      path: /validate-sreportal-io-v1alpha1-deploystatus
+  failurePolicy: Fail
+  name: vdeploystatus-v1alpha1.kb.io
+  rules:
+  - apiGroups:
+    - sreportal.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - deploystatuses
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: '{{ include "helm.fullname" . }}-webhook-service'
+      namespace: '{{ .Release.Namespace }}'
       path: /validate-sreportal-io-v1alpha1-dns
   failurePolicy: Fail
   name: vdns-v1alpha1.kb.io

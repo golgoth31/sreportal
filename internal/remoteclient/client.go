@@ -590,6 +590,143 @@ func (c *Client) doFetchImages(ctx context.Context, baseURL string, portalName s
 	return &ImagesFetchResult{Images: images}, nil
 }
 
+// RemoteDeployStatusEntry is a domain-friendly view of a single deploy-status
+// entry returned by a remote portal's DeployStatusService. It exists so chain
+// handlers / controllers don't need to import the proto package directly.
+type RemoteDeployStatusEntry struct {
+	Key              string
+	Workload         RemoteDeployWorkload
+	Image            string
+	SourceRepo       string
+	DeployedRef      string
+	DefaultBranch    string
+	AheadBy          int
+	PendingCommits   []RemoteDeployCommit
+	PendingTruncated bool
+	DeployedAt       *time.Time
+	DeployRunURL     string
+	State            string
+	Error            string
+	LastCheckedAt    *time.Time
+}
+
+// RemoteDeployWorkload identifies the workload owning a remote deploy-status entry.
+type RemoteDeployWorkload struct {
+	Kind      string
+	Namespace string
+	Name      string
+	Container string
+}
+
+// RemoteDeployCommit is a pending commit ahead of the deployed ref.
+type RemoteDeployCommit struct {
+	Sha     string
+	Message string
+	Author  string
+	Date    *time.Time
+	URL     string
+}
+
+// DeployStatusFetchResult contains the result of fetching deploy status from a remote portal.
+type DeployStatusFetchResult struct {
+	// Entries contains the deploy-status entries returned by the remote DeployStatusService.
+	Entries []RemoteDeployStatusEntry
+}
+
+// FetchDeployStatus fetches the deploy status of a remote portal via the
+// DeployStatusService Connect API. The portalName parameter filters entries by
+// portal on the remote side.
+func (c *Client) FetchDeployStatus(ctx context.Context, baseURL string, portalName string) (*DeployStatusFetchResult, error) {
+	var lastErr error
+
+	for attempt := 0; attempt < c.retryAttempts; attempt++ {
+		if attempt > 0 {
+			delay := c.retryDelay * time.Duration(1<<(attempt-1))
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(delay):
+			}
+		}
+
+		result, err := c.doFetchDeployStatus(ctx, baseURL, portalName)
+		if err == nil {
+			return result, nil
+		}
+		lastErr = err
+	}
+
+	return nil, fmt.Errorf("fetch deploy status failed after %d attempts: %w", c.retryAttempts, lastErr)
+}
+
+func (c *Client) doFetchDeployStatus(ctx context.Context, baseURL string, portalName string) (*DeployStatusFetchResult, error) {
+	deployClient := sreportalv1connect.NewDeployStatusServiceClient(
+		c.httpClient,
+		baseURL,
+	)
+
+	resp, err := deployClient.ListDeployStatus(ctx, connect.NewRequest(&sreportalv1.ListDeployStatusRequest{
+		Portal: portalName,
+	}))
+	if err != nil {
+		return nil, fmt.Errorf("fetch deploy status from remote portal: %w", err)
+	}
+
+	entries := make([]RemoteDeployStatusEntry, 0, len(resp.Msg.Entries))
+	for _, in := range resp.Msg.Entries {
+		if in == nil {
+			continue
+		}
+		commits := make([]RemoteDeployCommit, 0, len(in.PendingCommits))
+		for _, ci := range in.PendingCommits {
+			commit := RemoteDeployCommit{
+				Sha:     ci.Sha,
+				Message: ci.Message,
+				Author:  ci.Author,
+				URL:     ci.Url,
+			}
+			if ci.Date != nil {
+				d := ci.Date.AsTime()
+				commit.Date = &d
+			}
+			commits = append(commits, commit)
+		}
+
+		entry := RemoteDeployStatusEntry{
+			Key:              in.Key,
+			Image:            in.Image,
+			SourceRepo:       in.SourceRepo,
+			DeployedRef:      in.DeployedRef,
+			DefaultBranch:    in.DefaultBranch,
+			AheadBy:          int(in.AheadBy),
+			PendingCommits:   commits,
+			PendingTruncated: in.PendingTruncated,
+			DeployRunURL:     in.DeployRunUrl,
+			State:            in.State,
+			Error:            in.Error,
+		}
+		if in.Workload != nil {
+			entry.Workload = RemoteDeployWorkload{
+				Kind:      in.Workload.Kind,
+				Namespace: in.Workload.Namespace,
+				Name:      in.Workload.Name,
+				Container: in.Workload.Container,
+			}
+		}
+		if in.DeployedAt != nil {
+			t := in.DeployedAt.AsTime()
+			entry.DeployedAt = &t
+		}
+		if in.LastCheckedAt != nil {
+			t := in.LastCheckedAt.AsTime()
+			entry.LastCheckedAt = &t
+		}
+		entries = append(entries, entry)
+	}
+
+	return &DeployStatusFetchResult{Entries: entries}, nil
+}
+
 // HealthCheck performs a health check on a remote portal by attempting to list portals.
 func (c *Client) HealthCheck(ctx context.Context, baseURL string) error {
 	portalClient := sreportalv1connect.NewPortalServiceClient(

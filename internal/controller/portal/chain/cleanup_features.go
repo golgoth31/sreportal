@@ -77,6 +77,16 @@ func (h *CleanupDisabledFeaturesHandler) Handle(ctx context.Context, rc *reconci
 		}
 	}
 
+	// Clean up the remote DeployStatus shadow CR under the same conditions as
+	// the ImageInventory shadow CR above.
+	shouldCleanupRemoteDeployStatus := portal.Spec.Remote == nil ||
+		!portal.Spec.Features.IsDeployStatusEnabled()
+	if shouldCleanupRemoteDeployStatus {
+		if err := h.cleanupRemoteDeployStatus(ctx, portal); err != nil {
+			logger.Error(err, "failed to clean up remote DeployStatus")
+		}
+	}
+
 	return nil
 }
 
@@ -193,6 +203,40 @@ func (h *CleanupDisabledFeaturesHandler) cleanupRemoteImageInventory(ctx context
 		return fmt.Errorf("delete remote ImageInventory: %w", err)
 	}
 	logger.Info("deleted remote ImageInventory (feature disabled or portal no longer remote)", "name", invName)
+	return nil
+}
+
+// cleanupRemoteDeployStatus deletes the shadow DeployStatus CR (named
+// "remote-<portal>") when the deployStatus feature is disabled on a remote
+// portal, or when the portal is no longer remote. The DeployStatus finalizer
+// purges the read-store projection on its own as part of CR deletion.
+func (h *CleanupDisabledFeaturesHandler) cleanupRemoteDeployStatus(ctx context.Context, portal *sreportalv1alpha1.Portal) error {
+	logger := log.FromContext(ctx)
+
+	dsName := RemoteDeployStatusName(portal.Name)
+	ds := &sreportalv1alpha1.DeployStatus{}
+	if err := h.client.Get(ctx, types.NamespacedName{Name: dsName, Namespace: portal.Namespace}, ds); err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("get remote DeployStatus: %w", err)
+	}
+
+	owned := false
+	for _, ref := range ds.OwnerReferences {
+		if ref.UID == portal.UID {
+			owned = true
+			break
+		}
+	}
+	if !owned {
+		return nil
+	}
+
+	if err := h.client.Delete(ctx, ds); err != nil && !errors.IsNotFound(err) {
+		return fmt.Errorf("delete remote DeployStatus: %w", err)
+	}
+	logger.Info("deleted remote DeployStatus (feature disabled or portal no longer remote)", "name", dsName)
 	return nil
 }
 

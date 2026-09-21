@@ -92,3 +92,27 @@ data:
       jwt:
         enabled: false
         issuers: []
+
+    # Deploy-status feature: resolves the deploy state of OCI images against their
+    # source git forge. Token VALUES are never stored here — only the NAME of the env
+    # var holding each forge token. Wire those env vars to a Secret via the chart's
+    # `deployStatus.secretEnv` values block (rendered as secretKeyRef on the manager).
+    deployStatus:
+      enabled: false
+      refreshInterval: 5m
+      forges: []
+        # PAT (fine-grained personal access token) mode:
+        # - host: github.com          # matched against the OCI source label host
+        #   kind: github
+        #   deployWorkflow: deploy-prod.yml   # optional; else falls back to the Actions page
+        #   auth:
+        #     tokenEnv: GITHUB_TOKEN   # env var name holding the PAT
+        #
+        # GitHub App mode (set auth.app XOR auth.tokenEnv):
+        # - host: github.com
+        #   kind: github
+        #   auth:
+        #     app:
+        #       appID: 123456
+        #       installationID: 7891011
+        #       privateKeyEnv: GH_APP_PRIVATE_KEY   # env var name holding the PEM key

@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package sreportal.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// DeployStatusService exposes per-service deployment lag for a portal.
+service DeployStatusService {
+  rpc ListDeployStatus(ListDeployStatusRequest) returns (ListDeployStatusResponse);
+}
+
+message ListDeployStatusRequest {
+  // portal filters to a Portal metadata.name (defaults to "main" if unset).
+  string portal = 1;
+  // search optionally filters by service/repo substring.
+  string search = 2;
+  // state_filter optionally filters by state (ok|behind|unresolved|error).
+  string state_filter = 3;
+}
+
+message ListDeployStatusResponse {
+  repeated DeployStatusEntry entries = 1;
+}
+
+message DeployStatusEntry {
+  string key = 1;
+  DeployWorkloadRef workload = 2;
+  string image = 3;
+  string source_repo = 4;
+  string deployed_ref = 5;
+  string default_branch = 6;
+  int32 ahead_by = 7;
+  repeated DeployStatusCommit pending_commits = 8;
+  bool pending_truncated = 9;
+  google.protobuf.Timestamp deployed_at = 10;
+  string deploy_run_url = 11;
+  string state = 12;
+  string error = 13;
+  google.protobuf.Timestamp last_checked_at = 14;
+}
+
+message DeployStatusCommit {
+  string sha = 1;
+  string message = 2;
+  string author = 3;
+  google.protobuf.Timestamp date = 4;
+  string url = 5;
+}
+
+// DeployWorkloadRef identifies a workload+container. Named distinctly from the
+// image inventory's WorkloadRef to keep the deploy-status contract self-contained.
+message DeployWorkloadRef {
+  string kind = 1;
+  string namespace = 2;
+  string name = 3;
+  string container = 4;
+}

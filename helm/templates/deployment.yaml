@@ -45,6 +45,13 @@ spec:
           value: system:serviceaccount:{{ .Release.Namespace }}:{{ include "helm.serviceAccountName" . }}
         - name: KUBERNETES_CLUSTER_DOMAIN
           value: {{ quote .Values.kubernetesClusterDomain }}
+        {{- range $name, $ref := .Values.deployStatus.secretEnv }}
+        - name: {{ $name }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ $ref.name | quote }}
+              key: {{ $ref.key | quote }}
+        {{- end }}
         image: {{ .Values.controllerManager.manager.image.repository }}:{{ .Values.controllerManager.manager.image.tag
           | default .Chart.AppVersion }}
         livenessProbe:

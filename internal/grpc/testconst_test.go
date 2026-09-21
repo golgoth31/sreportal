@@ -36,4 +36,14 @@ const (
 	tNameStripe       = "stripe"
 	tNodeSvcCoreAPI   = "svc:core:api"
 	tNodeSvcPayStripe = "svc:pay:stripe"
+
+	// deploystatus / image service test constants
+	tWorkloadKindDeployment = "Deployment"
+	tKeyAPIApp              = "default/api/app"
+	tRepoACMEAPI            = "acme/api"
+	tStateBehind            = "behind"
+	tKeyWorkerWorker        = "default/worker/worker"
+	tNameWorker             = "worker"
+	tRepoACMEWorker         = "acme/worker"
+	tImageACMEAPIv1         = "ghcr.io/acme/api:v1"
 )

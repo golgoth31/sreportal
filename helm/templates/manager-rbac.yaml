@@ -111,6 +111,7 @@ rules:
   resources:
   - alertmanagers
   - components
+  - deploystatuses
   - dns
   - dnsrecords
   - imageinventories
@@ -133,6 +134,7 @@ rules:
   resources:
   - alertmanagers/finalizers
   - components/finalizers
+  - deploystatuses/finalizers
   - dns/finalizers
   - dnsrecords/finalizers
   - imageinventories/finalizers
@@ -149,6 +151,7 @@ rules:
   resources:
   - alertmanagers/status
   - components/status
+  - deploystatuses/status
   - dns/status
   - dnsrecords/status
   - flowedgesets/status

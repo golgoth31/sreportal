@@ -53,6 +53,14 @@ func run() error {
 		return fmt.Errorf("patching values.yaml (extraVolumes): %w", err)
 	}
 
+	if err := patchFile(valuesFile, injectDeployStatusSecretEnvBlock); err != nil {
+		return fmt.Errorf("patching values.yaml (deployStatus.secretEnv): %w", err)
+	}
+
+	if err := patchFile(deploymentFile, injectDeployStatusSecretEnv); err != nil {
+		return fmt.Errorf("patching deployment.yaml (deployStatus.secretEnv): %w", err)
+	}
+
 	fmt.Println("helmify post-processing complete")
 
 	return nil
@@ -233,4 +241,54 @@ func injectExtraVolumes(content string) string {
 	content = strings.Replace(content, oldVolumesEnd, newVolumesEnd, 1)
 
 	return content
+}
+
+const deployStatusSecretEnvValuesBlock = `deployStatus:
+  # Maps a container env var name -> a Secret key, rendered as a secretKeyRef on the
+  # controller-manager. The operator reads each forge token via os.Getenv, so the env
+  # var names here must match the tokenEnv / app.privateKeyEnv referenced in the
+  # operator config (config.configYaml deployStatus.forges[].auth). The Secret itself
+  # is managed out-of-band (not created by this chart).
+  secretEnv: {}
+    # GITHUB_TOKEN:
+    #   name: deploystatus-forge-secrets
+    #   key: github-token
+    # GH_APP_PRIVATE_KEY:
+    #   name: deploystatus-forge-secrets
+    #   key: app-private-key
+`
+
+// injectDeployStatusSecretEnvBlock appends the deployStatus.secretEnv configuration block
+// to values.yaml if it is not already present.
+func injectDeployStatusSecretEnvBlock(content string) string {
+	if strings.Contains(content, "\ndeployStatus:\n") || strings.HasPrefix(content, "deployStatus:\n") {
+		return content
+	}
+
+	if !strings.HasSuffix(content, "\n") {
+		content += "\n"
+	}
+
+	return content + deployStatusSecretEnvValuesBlock
+}
+
+const (
+	deployStatusSecretEnvAnchor = `        - name: KUBERNETES_CLUSTER_DOMAIN
+          value: {{ quote .Values.kubernetesClusterDomain }}`
+
+	deployStatusSecretEnvReplacement = `        - name: KUBERNETES_CLUSTER_DOMAIN
+          value: {{ quote .Values.kubernetesClusterDomain }}
+        {{- range $name, $ref := .Values.deployStatus.secretEnv }}
+        - name: {{ $name }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ $ref.name | quote }}
+              key: {{ $ref.key | quote }}
+        {{- end }}`
+)
+
+// injectDeployStatusSecretEnv patches the controller-manager container env to render a
+// secretKeyRef for each entry of deployStatus.secretEnv (env var name -> Secret name/key).
+func injectDeployStatusSecretEnv(content string) string {
+	return strings.Replace(content, deployStatusSecretEnvAnchor, deployStatusSecretEnvReplacement, 1)
 }

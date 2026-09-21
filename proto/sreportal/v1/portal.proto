@@ -72,6 +72,9 @@ message PortalFeatures {
 
   // image_inventory enables the image inventory page for this portal
   bool image_inventory = 6;
+
+  // deploy_status enables the deploy status page for this portal
+  bool deploy_status = 7;
 }
 
 // RemoteSyncStatus contains status information about remote portal synchronization
