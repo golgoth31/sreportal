@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.36.5](https://github.com/golgoth31/sreportal/compare/v1.36.4...v1.36.5) (2026-10-17)
+
+
+### Bug Fixes
+
+* **deps:** update web-deps ([#367](https://github.com/golgoth31/sreportal/issues/367)) ([e03557b](https://github.com/golgoth31/sreportal/commit/e03557bdde90de0a48076484600ad899f82e4967))
+
 ## [1.36.4](https://github.com/golgoth31/sreportal/compare/v1.36.3...v1.36.4) (2026-10-17)
 
 
