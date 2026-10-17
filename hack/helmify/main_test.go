@@ -152,3 +152,134 @@ func TestInjectExtraVolumes_WhenAlreadyPatched_ReturnsUnchanged(t *testing.T) {
 
 	assert.Equal(t, input, got)
 }
+
+func TestDedupeSelectorLabels_WhenDeploymentHasLiteralLabels_RemovesThem(t *testing.T) {
+	input := `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "helm.fullname" . }}-controller-manager
+  labels:
+    control-plane: controller-manager
+  {{- include "helm.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sreportal
+      control-plane: controller-manager
+    {{- include "helm.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: sreportal
+        control-plane: controller-manager
+      {{- include "helm.selectorLabels" . | nindent 8 }}
+`
+
+	want := `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "helm.fullname" . }}-controller-manager
+  labels:
+    control-plane: controller-manager
+  {{- include "helm.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      control-plane: controller-manager
+    {{- include "helm.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        control-plane: controller-manager
+      {{- include "helm.selectorLabels" . | nindent 8 }}
+`
+
+	got := dedupeSelectorLabels(input)
+
+	assert.Equal(t, want, got)
+}
+
+func TestDedupeSelectorLabels_WhenServiceHasLiteralLabels_RemovesThem(t *testing.T) {
+	input := `apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "helm.fullname" . }}-metrics-service
+spec:
+  selector:
+    app.kubernetes.io/name: sreportal
+    control-plane: controller-manager
+    {{- include "helm.selectorLabels" . | nindent 4 }}
+`
+
+	got := dedupeSelectorLabels(input)
+
+	assert.NotContains(t, got, "app.kubernetes.io/name")
+	assert.Contains(t, got, "control-plane: controller-manager")
+	assert.Contains(t, got, `{{- include "helm.selectorLabels" . | nindent 4 }}`)
+}
+
+func TestDedupeSelectorLabels_WhenInstanceLabelIsLiteral_RemovesIt(t *testing.T) {
+	input := `  selector:
+    app.kubernetes.io/name: sreportal
+    app.kubernetes.io/instance: sreportal
+    control-plane: controller-manager
+    {{- include "helm.selectorLabels" . | nindent 4 }}
+`
+
+	got := dedupeSelectorLabels(input)
+
+	assert.NotContains(t, got, "app.kubernetes.io/name: sreportal")
+	assert.NotContains(t, got, "app.kubernetes.io/instance: sreportal")
+	assert.Contains(t, got, "control-plane: controller-manager")
+}
+
+func TestDedupeSelectorLabels_WhenOnlyHelperIsPresent_ReturnsUnchanged(t *testing.T) {
+	input := `  selector:
+    matchLabels:
+      control-plane: controller-manager
+    {{- include "helm.selectorLabels" . | nindent 6 }}
+`
+
+	got := dedupeSelectorLabels(input)
+
+	assert.Equal(t, input, got)
+}
+
+func TestDedupeSelectorLabels_WhenLiteralLabelHasNoHelper_ReturnsUnchanged(t *testing.T) {
+	input := `  selector:
+    matchLabels:
+      app.kubernetes.io/name: sreportal
+      control-plane: controller-manager
+`
+
+	got := dedupeSelectorLabels(input)
+
+	assert.Equal(t, input, got)
+}
+
+func TestDedupeSelectorLabels_WhenAlreadyDeduped_ReturnsUnchanged(t *testing.T) {
+	input := `  selector:
+    matchLabels:
+      app.kubernetes.io/name: sreportal
+      control-plane: controller-manager
+    {{- include "helm.selectorLabels" . | nindent 6 }}
+`
+
+	got := dedupeSelectorLabels(input)
+
+	assert.Equal(t, got, dedupeSelectorLabels(got))
+	assert.NotContains(t, got, "app.kubernetes.io/name: sreportal")
+}
+
+func TestDedupeSelectorLabels_WhenTemplateHasNoSelectorLabels_ReturnsUnchanged(t *testing.T) {
+	input := `metadata:
+  name: {{ include "helm.fullname" . }}-webhook-service
+  labels:
+    control-plane: controller-manager
+  {{- include "helm.labels" . | nindent 4 }}
+`
+
+	got := dedupeSelectorLabels(input)
+
+	assert.Equal(t, input, got)
+}

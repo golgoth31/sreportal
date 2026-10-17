@@ -8,7 +8,6 @@ metadata:
 spec:
   type: {{ .Values.webMcpService.type }}
   selector:
-    app.kubernetes.io/name: sreportal
     control-plane: controller-manager
     {{- include "helm.selectorLabels" . | nindent 4 }}
   ports:

@@ -7,7 +7,6 @@ metadata:
 spec:
   type: {{ .Values.webhookService.type }}
   selector:
-    app.kubernetes.io/name: sreportal
     control-plane: controller-manager
     {{- include "helm.selectorLabels" . | nindent 4 }}
   ports:
