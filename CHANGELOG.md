@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.36.4](https://github.com/golgoth31/sreportal/compare/v1.36.3...v1.36.4) (2026-10-17)
+
+
+### Bug Fixes
+
+* **deps:** update go-deps ([#357](https://github.com/golgoth31/sreportal/issues/357)) ([3a593bb](https://github.com/golgoth31/sreportal/commit/3a593bbc2c4606a19ca9e5eb3c34c7705acc1f1b))
+* **deps:** update kubernetes ([#342](https://github.com/golgoth31/sreportal/issues/342)) ([cec13dc](https://github.com/golgoth31/sreportal/commit/cec13dc95ae9a5cfacaab5fb4d266deabf9e6400))
+* **deps:** update web-deps ([#358](https://github.com/golgoth31/sreportal/issues/358)) ([e6507ca](https://github.com/golgoth31/sreportal/commit/e6507ca63ed80cf484a420d59f6589922a5c12de))
+* **helm:** drop duplicate selector labels from the generated chart ([#363](https://github.com/golgoth31/sreportal/issues/363)) ([c89f27f](https://github.com/golgoth31/sreportal/commit/c89f27f97634a9a508a6256b31e16792dcc24f6a))
+
 ## [1.36.3](https://github.com/golgoth31/sreportal/compare/v1.36.2...v1.36.3) (2026-07-15)
 
 
