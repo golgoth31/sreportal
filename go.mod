@@ -3,7 +3,8 @@ module github.com/golgoth31/sreportal
 go 1.26.6
 
 require (
-	connectrpc.com/connect v1.20.0
+	connectrpc.com/connect v1.21.1
+	connectrpc.com/connect/v2 v2.0.2
 	github.com/MicahParks/jwkset v0.11.3
 	github.com/MicahParks/keyfunc/v3 v3.8.2
 	github.com/go-logr/logr v1.4.4
