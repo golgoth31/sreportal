@@ -248,4 +248,45 @@ var _ = Describe("BuildGraphHandler", func() {
 			Expect(rc.Data.Edges[0].EdgeType).To(Equal("cron"))
 		})
 	})
+
+	Context("when a service and a cron share a name in the same namespace", func() {
+		It("should order nodes the same way on every reconcile", func() {
+			jobEgressPolicy := &networkingv1.NetworkPolicy{
+				ObjectMeta: metav1.ObjectMeta{Name: "job-egress-policy", Namespace: tCore},
+			}
+			webIngressPolicy := &networkingv1.NetworkPolicy{
+				ObjectMeta: metav1.ObjectMeta{Name: tWebIngressPolicy, Namespace: tCore},
+				Spec: networkingv1.NetworkPolicySpec{
+					PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
+					Ingress: []networkingv1.NetworkPolicyIngressRule{{
+						From: []networkingv1.NetworkPolicyPeer{{
+							PodSelector: &metav1.LabelSelector{
+								MatchExpressions: []metav1.LabelSelectorRequirement{
+									{Key: tLabelAppKey, Operator: metav1.LabelSelectorOpIn, Values: []string{"job"}},
+									{Key: "basename", Operator: metav1.LabelSelectorOpIn, Values: []string{"job"}},
+								},
+							},
+						}},
+					}},
+				},
+			}
+
+			k8sClient := fake.NewClientBuilder().
+				WithScheme(newScheme()).
+				WithObjects(jobEgressPolicy, webIngressPolicy).
+				Build()
+			handler := nfdchain.NewBuildGraphHandler(k8sClient)
+
+			for range 20 {
+				rc := newRC(false)
+				Expect(handler.Handle(context.Background(), rc)).To(Succeed())
+
+				ids := make([]string, 0, len(rc.Data.Nodes))
+				for _, n := range rc.Data.Nodes {
+					ids = append(ids, n.ID)
+				}
+				Expect(ids).To(Equal([]string{"cron:core:job", "service:core:job", "service:core:web"}))
+			}
+		})
+	})
 })
