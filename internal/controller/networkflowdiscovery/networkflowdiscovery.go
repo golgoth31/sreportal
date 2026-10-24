@@ -25,6 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 
@@ -152,7 +153,12 @@ func (r *NetworkFlowDiscoveryReconciler) Reconcile(ctx context.Context, req ctrl
 // SetupWithManager sets up the controller with the Manager.
 func (r *NetworkFlowDiscoveryReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&sreportalv1alpha1.NetworkFlowDiscovery{}).
+		For(
+			&sreportalv1alpha1.NetworkFlowDiscovery{},
+			// The status patch (LastReconcileTime) bumps resourceVersion and would re-enqueue the
+			// resource at once, a tight loop; spec changes still bump generation and trigger.
+			builder.WithPredicates(predicate.GenerationChangedPredicate{}),
+		).
 		Watches(
 			&sreportalv1alpha1.Portal{},
 			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []ctrl.Request {
