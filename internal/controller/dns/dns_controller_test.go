@@ -23,7 +23,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -58,10 +57,8 @@ var _ = Describe("DNS Controller", func() {
 			controllerReconciler := NewDNSReconciler(k8sClient, k8sClient.Scheme(), emptySourceReader{}, nil)
 
 			_, err := controllerReconciler.Reconcile(context.Background(), reconcile.Request{
-				NamespacedName: types.NamespacedName{
-					Name:      "non-existent",
-					Namespace: tNsDefault,
-				},
+				Name:      "non-existent",
+				Namespace: tNsDefault,
 			})
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -82,10 +79,8 @@ var _ = Describe("DNS Controller", func() {
 			err := k8sClient.Get(ctx, typeNamespacedName, dns)
 			if err != nil && errors.IsNotFound(err) {
 				resource := &v1alpha2.DNS{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
-						Namespace: tNsDefault,
-					},
+					Name:      resourceName,
+					Namespace: tNsDefault,
 					Spec: v1alpha2.DNSSpec{
 						PortalRef:    tPortalMain,
 						GroupMapping: v1alpha2.GroupMappingSpec{DefaultGroup: tGroupServices},
@@ -139,7 +134,7 @@ var _ = Describe("DNS Controller", func() {
 			dns := &v1alpha2.DNS{}
 			if err := k8sClient.Get(ctx, dnsNN, dns); err != nil && errors.IsNotFound(err) {
 				Expect(k8sClient.Create(ctx, &v1alpha2.DNS{
-					ObjectMeta: metav1.ObjectMeta{Name: dnsName, Namespace: tNsDefault},
+					Name: dnsName, Namespace: tNsDefault,
 					Spec: v1alpha2.DNSSpec{
 						PortalRef:    dnsName,
 						GroupMapping: v1alpha2.GroupMappingSpec{DefaultGroup: tGroupServices},
@@ -151,7 +146,7 @@ var _ = Describe("DNS Controller", func() {
 			rec := &v1alpha2.DNSRecord{}
 			if err := k8sClient.Get(ctx, recordNN, rec); err != nil && errors.IsNotFound(err) {
 				rec = &v1alpha2.DNSRecord{
-					ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: tNsDefault},
+					Name: recordName, Namespace: tNsDefault,
 					Spec: v1alpha2.DNSRecordSpec{
 						Origin:     v1alpha2.DNSRecordOriginAuto,
 						SourceType: "ingress",
@@ -208,10 +203,8 @@ var _ = Describe("DNS Controller", func() {
 			err := k8sClient.Get(ctx, typeNamespacedName, dns)
 			if err != nil && errors.IsNotFound(err) {
 				resource := &v1alpha2.DNS{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
-						Namespace: tNsDefault,
-					},
+					Name:      resourceName,
+					Namespace: tNsDefault,
 					Spec: v1alpha2.DNSSpec{
 						PortalRef:    "test-portal",
 						IsRemote:     true,

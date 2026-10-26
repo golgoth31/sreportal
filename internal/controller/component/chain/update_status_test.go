@@ -22,7 +22,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -51,10 +50,8 @@ var _ = Describe("UpdateStatusHandler", func() {
 
 	newComponent := func() *sreportalv1alpha1.Component {
 		return &sreportalv1alpha1.Component{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      tNameTestComp,
-				Namespace: tNsDefault,
-			},
+			Name:      tNameTestComp,
+			Namespace: tNsDefault,
 			Spec: sreportalv1alpha1.ComponentSpec{
 				PortalRef: "my-portal",
 				Status:    sreportalv1alpha1.ComponentStatusOperational,

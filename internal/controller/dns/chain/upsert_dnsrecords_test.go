@@ -26,7 +26,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/external-dns/endpoint"
 
@@ -49,20 +48,18 @@ func TestUpsertDNSRecords_CreatesAndDeletes(t *testing.T) {
 	require.NoError(t, sreportalv1alpha2.AddToScheme(scheme))
 
 	dns := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: upsertTestNS1, UID: "u1"},
-		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: "p"},
+		Name: "d", Namespace: upsertTestNS1, UID: "u1",
+		Spec: sreportalv1alpha2.DNSSpec{PortalRef: "p"},
 	}
 	existing := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: upsertTestRecordIng, Namespace: upsertTestNS1,
-			OwnerReferences: []metav1.OwnerReference{{
-				APIVersion: sreportalv1alpha2.GroupVersion.String(),
-				Kind:       "DNS",
-				Name:       dns.Name,
-				UID:        dns.UID,
-				Controller: ptr.To(true), //nolint:modernize // new(bool) yields false, not true
-			}},
-		},
+		Name: upsertTestRecordIng, Namespace: upsertTestNS1,
+		OwnerReferences: []metav1.OwnerReference{{
+			APIVersion: sreportalv1alpha2.GroupVersion.String(),
+			Kind:       "DNS",
+			Name:       dns.Name,
+			UID:        dns.UID,
+			Controller: new(true), //nolint:modernize // new(bool) yields false, not true
+		}},
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:     sreportalv1alpha2.DNSRecordOriginAuto,
 			SourceType: sreportalv1alpha2.SourceType(externaldns.KindIngress),
@@ -111,20 +108,18 @@ func TestUpsertDNSRecords_PreservesNotReadyKind(t *testing.T) {
 	require.NoError(t, sreportalv1alpha2.AddToScheme(scheme))
 
 	dns := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: upsertTestNS1, UID: "u1"},
-		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: "p"},
+		Name: "d", Namespace: upsertTestNS1, UID: "u1",
+		Spec: sreportalv1alpha2.DNSSpec{PortalRef: "p"},
 	}
 	existing := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: upsertTestRecordIng, Namespace: upsertTestNS1,
-			OwnerReferences: []metav1.OwnerReference{{
-				APIVersion: sreportalv1alpha2.GroupVersion.String(),
-				Kind:       "DNS",
-				Name:       dns.Name,
-				UID:        dns.UID,
-				Controller: ptr.To(true), //nolint:modernize // new(bool) yields false, not true
-			}},
-		},
+		Name: upsertTestRecordIng, Namespace: upsertTestNS1,
+		OwnerReferences: []metav1.OwnerReference{{
+			APIVersion: sreportalv1alpha2.GroupVersion.String(),
+			Kind:       "DNS",
+			Name:       dns.Name,
+			UID:        dns.UID,
+			Controller: new(true), //nolint:modernize // new(bool) yields false, not true
+		}},
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:     sreportalv1alpha2.DNSRecordOriginAuto,
 			SourceType: sreportalv1alpha2.SourceType(externaldns.KindIngress),
@@ -163,8 +158,8 @@ func TestUpsertDNSRecordsHandler_MultipleKinds(t *testing.T) {
 	require.NoError(t, sreportalv1alpha2.AddToScheme(scheme))
 
 	dns := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: upsertTestNS1, UID: "uid-multi"},
-		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: "portal-a"},
+		Name: "d", Namespace: upsertTestNS1, UID: "uid-multi",
+		Spec: sreportalv1alpha2.DNSSpec{PortalRef: "portal-a"},
 	}
 	c := fake.NewClientBuilder().
 		WithScheme(scheme).
@@ -250,8 +245,8 @@ func TestUpsertDNSRecordsHandler_DualStack(t *testing.T) {
 	require.NoError(t, sreportalv1alpha2.AddToScheme(scheme))
 
 	dns := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: upsertTestNS1, UID: "uid-dual"},
-		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: "p"},
+		Name: "d", Namespace: upsertTestNS1, UID: "uid-dual",
+		Spec: sreportalv1alpha2.DNSSpec{PortalRef: "p"},
 	}
 	c := fake.NewClientBuilder().
 		WithScheme(scheme).
@@ -296,8 +291,8 @@ func TestUpsertDNSRecordsHandler_DeterministicOrder(t *testing.T) {
 	require.NoError(t, sreportalv1alpha2.AddToScheme(scheme))
 
 	dns := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: upsertTestNS1, UID: "uid-det"},
-		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: "p"},
+		Name: "d", Namespace: upsertTestNS1, UID: "uid-det",
+		Spec: sreportalv1alpha2.DNSSpec{PortalRef: "p"},
 	}
 	c := fake.NewClientBuilder().
 		WithScheme(scheme).
@@ -358,8 +353,8 @@ func TestUpsertDNSRecordsHandler_DedupSameKey(t *testing.T) {
 	require.NoError(t, sreportalv1alpha2.AddToScheme(scheme))
 
 	dns := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: upsertTestNS1, UID: "uid-dedup"},
-		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: "p"},
+		Name: "d", Namespace: upsertTestNS1, UID: "uid-dedup",
+		Spec: sreportalv1alpha2.DNSSpec{PortalRef: "p"},
 	}
 	c := fake.NewClientBuilder().
 		WithScheme(scheme).
@@ -396,8 +391,8 @@ func TestUpsertDNSRecordsHandler_NoOpWhenUnchanged(t *testing.T) {
 	require.NoError(t, sreportalv1alpha2.AddToScheme(scheme))
 
 	dns := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: upsertTestNS1, UID: "uid-noop"},
-		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: "p"},
+		Name: "d", Namespace: upsertTestNS1, UID: "uid-noop",
+		Spec: sreportalv1alpha2.DNSSpec{PortalRef: "p"},
 	}
 	c := fake.NewClientBuilder().
 		WithScheme(scheme).
@@ -441,8 +436,8 @@ func TestUpsertDNSRecordsHandler_PropagatesOriginRef(t *testing.T) {
 	require.NoError(t, sreportalv1alpha2.AddToScheme(scheme))
 
 	dns := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: upsertTestNS1, UID: "u1"},
-		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: "p"},
+		Name: "d", Namespace: upsertTestNS1, UID: "u1",
+		Spec: sreportalv1alpha2.DNSSpec{PortalRef: "p"},
 	}
 	c := fake.NewClientBuilder().
 		WithScheme(scheme).
@@ -479,8 +474,8 @@ func TestUpsertDNSRecordsHandler_OriginRefFollowsPriority(t *testing.T) {
 	require.NoError(t, sreportalv1alpha2.AddToScheme(scheme))
 
 	dns := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: upsertTestNS1, UID: "u1"},
-		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: "p"},
+		Name: "d", Namespace: upsertTestNS1, UID: "u1",
+		Spec: sreportalv1alpha2.DNSSpec{PortalRef: "p"},
 	}
 	c := fake.NewClientBuilder().
 		WithScheme(scheme).

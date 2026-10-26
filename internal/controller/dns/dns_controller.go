@@ -24,7 +24,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -218,7 +217,7 @@ func (r *DNSReconciler) enqueueDNSForRecord(_ context.Context, obj client.Object
 	}
 	for _, ref := range dr.GetOwnerReferences() {
 		if ref.Controller != nil && *ref.Controller && ref.Kind == "DNS" {
-			return []ctrl.Request{{NamespacedName: types.NamespacedName{Namespace: dr.Namespace, Name: ref.Name}}}
+			return []ctrl.Request{{Namespace: dr.Namespace, Name: ref.Name}}
 		}
 	}
 	return nil
@@ -239,9 +238,8 @@ func (r *DNSReconciler) enqueueDNSForPortal(ctx context.Context, obj client.Obje
 	reqs := make([]ctrl.Request, 0, len(list.Items))
 	for i := range list.Items {
 		if list.Items[i].Spec.PortalRef == portal.Name {
-			reqs = append(reqs, ctrl.Request{NamespacedName: types.NamespacedName{
-				Namespace: list.Items[i].Namespace, Name: list.Items[i].Name,
-			}})
+			reqs = append(reqs, ctrl.Request{
+				Namespace: list.Items[i].Namespace, Name: list.Items[i].Name})
 		}
 	}
 	return reqs

@@ -22,7 +22,6 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -56,7 +55,7 @@ func TestLoadDNSConfigHandler_PopulatesChainData(t *testing.T) {
 	_ = v1alpha2.AddToScheme(scheme)
 
 	dns := &v1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: "main", Namespace: tNsDefault},
+		Name: "main", Namespace: tNsDefault,
 		Spec: v1alpha2.DNSSpec{
 			PortalRef: tPortalMain,
 			GroupMapping: v1alpha2.GroupMappingSpec{
@@ -71,7 +70,7 @@ func TestLoadDNSConfigHandler_PopulatesChainData(t *testing.T) {
 	c := newFakeClientWithDNSIndex(scheme, dns)
 
 	record := &v1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Name: "main-ingress", Namespace: tNsDefault},
+		Name: "main-ingress", Namespace: tNsDefault,
 		Spec: v1alpha2.DNSRecordSpec{
 			Origin:     v1alpha2.DNSRecordOriginAuto,
 			PortalRef:  tPortalMain,
@@ -101,8 +100,8 @@ func TestLoadDNSConfigHandler_MissingDNS_ShortCircuits(t *testing.T) {
 
 	rc := &reconciler.ReconcileContext[*v1alpha2.DNSRecord, chain.ChainData]{
 		Resource: &v1alpha2.DNSRecord{
-			ObjectMeta: metav1.ObjectMeta{Name: "orphan", Namespace: tNsDefault},
-			Spec:       v1alpha2.DNSRecordSpec{PortalRef: "missing"},
+			Name: "orphan", Namespace: tNsDefault,
+			Spec: v1alpha2.DNSRecordSpec{PortalRef: "missing"},
 		},
 	}
 
@@ -122,7 +121,7 @@ func TestLoadDNSConfigHandler_DNSNameMismatchesPortalRef(t *testing.T) {
 
 	// DNS CR where Name != PortalRef value used by the record.
 	dns := &v1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: "dns-platform", Namespace: tNsDefault},
+		Name: "dns-platform", Namespace: tNsDefault,
 		Spec: v1alpha2.DNSSpec{
 			PortalRef: tPortalMain,
 			GroupMapping: v1alpha2.GroupMappingSpec{
@@ -135,7 +134,7 @@ func TestLoadDNSConfigHandler_DNSNameMismatchesPortalRef(t *testing.T) {
 
 	rc := &reconciler.ReconcileContext[*v1alpha2.DNSRecord, chain.ChainData]{
 		Resource: &v1alpha2.DNSRecord{
-			ObjectMeta: metav1.ObjectMeta{Name: "svc-ingress", Namespace: tNsDefault},
+			Name: "svc-ingress", Namespace: tNsDefault,
 			Spec: v1alpha2.DNSRecordSpec{
 				Origin:    v1alpha2.DNSRecordOriginAuto,
 				PortalRef: tPortalMain,
@@ -159,14 +158,14 @@ func TestLoadDNSConfigHandler_MultipleDNS_PrefersOwner(t *testing.T) {
 	g.Expect(v1alpha2.AddToScheme(scheme)).To(Succeed())
 
 	dnsA := &v1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: "dns-a", Namespace: tNsDefault},
+		Name: "dns-a", Namespace: tNsDefault,
 		Spec: v1alpha2.DNSSpec{
 			PortalRef:    tPortalMain,
 			GroupMapping: v1alpha2.GroupMappingSpec{DefaultGroup: "GroupA"},
 		},
 	}
 	dnsB := &v1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: "dns-b", Namespace: tNsDefault},
+		Name: "dns-b", Namespace: tNsDefault,
 		Spec: v1alpha2.DNSSpec{
 			PortalRef:    tPortalMain,
 			GroupMapping: v1alpha2.GroupMappingSpec{DefaultGroup: "GroupB"},
@@ -176,7 +175,7 @@ func TestLoadDNSConfigHandler_MultipleDNS_PrefersOwner(t *testing.T) {
 
 	rc := &reconciler.ReconcileContext[*v1alpha2.DNSRecord, chain.ChainData]{
 		Resource: &v1alpha2.DNSRecord{
-			ObjectMeta: metav1.ObjectMeta{Name: "svc-ingress", Namespace: tNsDefault},
+			Name: "svc-ingress", Namespace: tNsDefault,
 			Spec: v1alpha2.DNSRecordSpec{
 				Origin:    v1alpha2.DNSRecordOriginAuto,
 				PortalRef: tPortalMain,
@@ -202,14 +201,14 @@ func TestLoadDNSConfigHandler_MultipleDNS_NoOwner_LowestName(t *testing.T) {
 	g.Expect(v1alpha2.AddToScheme(scheme)).To(Succeed())
 
 	dnsZ := &v1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: "dns-z", Namespace: tNsDefault},
+		Name: "dns-z", Namespace: tNsDefault,
 		Spec: v1alpha2.DNSSpec{
 			PortalRef:    tPortalMain,
 			GroupMapping: v1alpha2.GroupMappingSpec{DefaultGroup: "GroupZ"},
 		},
 	}
 	dnsA := &v1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: "dns-a", Namespace: tNsDefault},
+		Name: "dns-a", Namespace: tNsDefault,
 		Spec: v1alpha2.DNSSpec{
 			PortalRef:    tPortalMain,
 			GroupMapping: v1alpha2.GroupMappingSpec{DefaultGroup: "GroupA"},
@@ -220,7 +219,7 @@ func TestLoadDNSConfigHandler_MultipleDNS_NoOwner_LowestName(t *testing.T) {
 
 	rc := &reconciler.ReconcileContext[*v1alpha2.DNSRecord, chain.ChainData]{
 		Resource: &v1alpha2.DNSRecord{
-			ObjectMeta: metav1.ObjectMeta{Name: "manual-rec", Namespace: tNsDefault},
+			Name: "manual-rec", Namespace: tNsDefault,
 			Spec: v1alpha2.DNSRecordSpec{
 				Origin:    v1alpha2.DNSRecordOriginManual,
 				PortalRef: tPortalMain,

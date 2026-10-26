@@ -181,8 +181,12 @@ func (c *EffectiveConfig) toConfig(kind registry.SourceType) (*externaldnssource
 	if err != nil {
 		return nil, fmt.Errorf("parse annotationFilter for %s: %w", kind, err)
 	}
+	var namespaces []string
+	if ns := c.namespace(); ns != "" {
+		namespaces = []string{ns}
+	}
 	cfg := &externaldnssource.Config{
-		Namespace:        c.namespace(),
+		Namespaces:       namespaces,
 		AnnotationFilter: af,
 		LabelFilter:      lf,
 	}
@@ -210,9 +214,9 @@ func (c *EffectiveConfig) toConfig(kind registry.SourceType) (*externaldnssource
 	case KindIstioGateway, KindIstioVirtualService:
 		cfg.IgnoreHostnameAnnotation = c.ignoreHostnameSet && c.ignoreHostnameAll
 	case KindDNSEndpoint:
-		// external-dns' NewCRDSource (v0.21) hardwires the DNSEndpoint type
+		// external-dns' NewCRDSource hardwires the DNSEndpoint type
 		// (externaldns.k8s.io/v1alpha1) via its scheme and consumes only
-		// Namespace + LabelFilter from cfg — nothing kind-specific to set here.
+		// Namespaces + LabelFilter from cfg — nothing kind-specific to set here.
 	}
 	return cfg, nil
 }
@@ -226,7 +230,7 @@ func (c *EffectiveConfig) hash(kind registry.SourceType) string {
 	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "ns=%q;af=%q;lf=%q;it=%v;pi=%t;ph=%t;icn=%v;ihn=%t;itls=%t;irul=%t;ft=%q;cf=%t",
-		cfg.Namespace, cfg.AnnotationFilter, cfg.LabelFilter.String(), cfg.ServiceTypeFilter,
+		cfg.Namespace(), cfg.AnnotationFilter, cfg.LabelFilter.String(), cfg.ServiceTypeFilter,
 		cfg.PublishInternal, cfg.PublishHostIP,
 		cfg.IngressClassNames, cfg.IgnoreHostnameAnnotation, cfg.IgnoreIngressTLSSpec, cfg.IgnoreIngressRulesSpec,
 		single(c.fqdnTemplates), c.combineFQDN)

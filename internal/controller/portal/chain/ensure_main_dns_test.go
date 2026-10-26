@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -58,8 +57,8 @@ func newDNSSchemeAndClient(t *testing.T, objs ...client.Object) (*runtime.Scheme
 
 func mainPortal() *sreportalv1alpha1.Portal {
 	return &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: tPortalMain, Namespace: nsDefault, UID: "portal-uid"},
-		Spec:       sreportalv1alpha1.PortalSpec{Title: "Main", Main: true},
+		Name: tPortalMain, Namespace: nsDefault, UID: "portal-uid",
+		Spec: sreportalv1alpha1.PortalSpec{Title: "Main", Main: true},
 	}
 }
 
@@ -161,8 +160,8 @@ func TestEnsureMainDNS_AllPriorityEntriesDropped(t *testing.T) {
 // arbitrary name) gets backfilled and marked.
 func TestEnsureMainDNS_BackfillsConvertedDNS(t *testing.T) {
 	converted := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: "legacy-dns", Namespace: nsDefault},
-		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: tPortalMain},
+		Name: "legacy-dns", Namespace: nsDefault,
+		Spec: sreportalv1alpha2.DNSSpec{PortalRef: tPortalMain},
 	}
 	scheme, cli := newDNSSchemeAndClient(t, converted)
 	h := chain.NewEnsureMainDNSHandler(cli, scheme, nil)
@@ -183,12 +182,10 @@ func TestEnsureMainDNS_BackfillsConvertedDNS(t *testing.T) {
 // Once marked, the handler never touches sources again (even if empty).
 func TestEnsureMainDNS_NoopWhenMarked(t *testing.T) {
 	marked := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        tPortalMain,
-			Namespace:   nsDefault,
-			Annotations: map[string]string{sourcesMigratedAnnotation: "true"},
-		},
-		Spec: sreportalv1alpha2.DNSSpec{PortalRef: tPortalMain},
+		Name:        tPortalMain,
+		Namespace:   nsDefault,
+		Annotations: map[string]string{sourcesMigratedAnnotation: "true"},
+		Spec:        sreportalv1alpha2.DNSSpec{PortalRef: tPortalMain},
 	}
 	scheme, cli := newDNSSchemeAndClient(t, marked)
 	h := chain.NewEnsureMainDNSHandler(cli, scheme, nil)

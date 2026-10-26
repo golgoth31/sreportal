@@ -19,7 +19,6 @@ package features
 import (
 	"context"
 
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -128,10 +127,9 @@ func listReleasesForPortal(ctx context.Context, c client.Client, ns, portalName 
 	}
 	out := make([]ctrl.Request, 0, len(list.Items))
 	for i := range list.Items {
-		out = append(out, ctrl.Request{NamespacedName: types.NamespacedName{
+		out = append(out, ctrl.Request{
 			Namespace: list.Items[i].Namespace,
-			Name:      list.Items[i].Name,
-		}})
+			Name:      list.Items[i].Name})
 	}
 	return out, nil
 }
@@ -146,10 +144,9 @@ func listDNSForPortal(ctx context.Context, c client.Client, ns, portalName strin
 	}
 	out := make([]ctrl.Request, 0, len(list.Items))
 	for i := range list.Items {
-		out = append(out, ctrl.Request{NamespacedName: types.NamespacedName{
+		out = append(out, ctrl.Request{
 			Namespace: list.Items[i].Namespace,
-			Name:      list.Items[i].Name,
-		}})
+			Name:      list.Items[i].Name})
 	}
 	return out, nil
 }
@@ -164,10 +161,9 @@ func listDNSRecordsForPortal(ctx context.Context, c client.Client, ns, portalNam
 	}
 	out := make([]ctrl.Request, 0, len(list.Items))
 	for i := range list.Items {
-		out = append(out, ctrl.Request{NamespacedName: types.NamespacedName{
+		out = append(out, ctrl.Request{
 			Namespace: list.Items[i].Namespace,
-			Name:      list.Items[i].Name,
-		}})
+			Name:      list.Items[i].Name})
 	}
 	return out, nil
 }
@@ -182,10 +178,9 @@ func listAlertmanagersForPortal(ctx context.Context, c client.Client, ns, portal
 	}
 	out := make([]ctrl.Request, 0, len(list.Items))
 	for i := range list.Items {
-		out = append(out, ctrl.Request{NamespacedName: types.NamespacedName{
+		out = append(out, ctrl.Request{
 			Namespace: list.Items[i].Namespace,
-			Name:      list.Items[i].Name,
-		}})
+			Name:      list.Items[i].Name})
 	}
 	return out, nil
 }
@@ -200,10 +195,9 @@ func listNetworkFlowDiscoveriesForPortal(ctx context.Context, c client.Client, n
 	}
 	out := make([]ctrl.Request, 0, len(list.Items))
 	for i := range list.Items {
-		out = append(out, ctrl.Request{NamespacedName: types.NamespacedName{
+		out = append(out, ctrl.Request{
 			Namespace: list.Items[i].Namespace,
-			Name:      list.Items[i].Name,
-		}})
+			Name:      list.Items[i].Name})
 	}
 	return out, nil
 }
@@ -218,10 +212,9 @@ func listComponentsForPortal(ctx context.Context, c client.Client, ns, portalNam
 	}
 	out := make([]ctrl.Request, 0, len(list.Items))
 	for i := range list.Items {
-		out = append(out, ctrl.Request{NamespacedName: types.NamespacedName{
+		out = append(out, ctrl.Request{
 			Namespace: list.Items[i].Namespace,
-			Name:      list.Items[i].Name,
-		}})
+			Name:      list.Items[i].Name})
 	}
 	return out, nil
 }
@@ -236,10 +229,9 @@ func listIncidentsForPortal(ctx context.Context, c client.Client, ns, portalName
 	}
 	out := make([]ctrl.Request, 0, len(list.Items))
 	for i := range list.Items {
-		out = append(out, ctrl.Request{NamespacedName: types.NamespacedName{
+		out = append(out, ctrl.Request{
 			Namespace: list.Items[i].Namespace,
-			Name:      list.Items[i].Name,
-		}})
+			Name:      list.Items[i].Name})
 	}
 	return out, nil
 }
@@ -254,10 +246,9 @@ func listMaintenancesForPortal(ctx context.Context, c client.Client, ns, portalN
 	}
 	out := make([]ctrl.Request, 0, len(list.Items))
 	for i := range list.Items {
-		out = append(out, ctrl.Request{NamespacedName: types.NamespacedName{
+		out = append(out, ctrl.Request{
 			Namespace: list.Items[i].Namespace,
-			Name:      list.Items[i].Name,
-		}})
+			Name:      list.Items[i].Name})
 	}
 	return out, nil
 }

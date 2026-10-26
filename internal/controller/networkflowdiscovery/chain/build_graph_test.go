@@ -34,7 +34,7 @@ var _ = Describe("BuildGraphHandler", func() {
 	newRC := func(isRemote bool, namespaces ...string) *reconciler.ReconcileContext[*sreportalv1alpha1.NetworkFlowDiscovery, nfdchain.ChainData] {
 		return &reconciler.ReconcileContext[*sreportalv1alpha1.NetworkFlowDiscovery, nfdchain.ChainData]{
 			Resource: &sreportalv1alpha1.NetworkFlowDiscovery{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-nfd", Namespace: tNsDefault},
+				Name: "test-nfd", Namespace: tNsDefault,
 				Spec: sreportalv1alpha1.NetworkFlowDiscoverySpec{
 					PortalRef:  "main",
 					IsRemote:   isRemote,
@@ -74,13 +74,13 @@ var _ = Describe("BuildGraphHandler", func() {
 		It("should build nodes and edges from ingress rules", func() {
 			// Create two apps: api and web. web-ingress-policy allows ingress from api.
 			apiEgressPolicy := &networkingv1.NetworkPolicy{
-				ObjectMeta: metav1.ObjectMeta{Name: "api-egress-policy", Namespace: tCore},
+				Name: "api-egress-policy", Namespace: tCore,
 				Spec: networkingv1.NetworkPolicySpec{
 					PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeEgress},
 				},
 			}
 			webIngressPolicy := &networkingv1.NetworkPolicy{
-				ObjectMeta: metav1.ObjectMeta{Name: tWebIngressPolicy, Namespace: tCore},
+				Name: tWebIngressPolicy, Namespace: tCore,
 				Spec: networkingv1.NetworkPolicySpec{
 					PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
 					Ingress: []networkingv1.NetworkPolicyIngressRule{
@@ -124,13 +124,13 @@ var _ = Describe("BuildGraphHandler", func() {
 		It("should detect cross-namespace edges", func() {
 			// api in "backend" namespace, web-ingress-policy in "frontend" allows ingress from api
 			apiEgressPolicy := &networkingv1.NetworkPolicy{
-				ObjectMeta: metav1.ObjectMeta{Name: "api-egress-policy", Namespace: "backend"},
+				Name: "api-egress-policy", Namespace: "backend",
 				Spec: networkingv1.NetworkPolicySpec{
 					PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeEgress},
 				},
 			}
 			webIngressPolicy := &networkingv1.NetworkPolicy{
-				ObjectMeta: metav1.ObjectMeta{Name: tWebIngressPolicy, Namespace: "frontend"},
+				Name: tWebIngressPolicy, Namespace: "frontend",
 				Spec: networkingv1.NetworkPolicySpec{
 					PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
 					Ingress: []networkingv1.NetworkPolicyIngressRule{
@@ -171,7 +171,7 @@ var _ = Describe("BuildGraphHandler", func() {
 			// Each namespace has its own web-ingress-policy allowing ingress from api.
 			policyIn := func(ns string) *networkingv1.NetworkPolicy {
 				return &networkingv1.NetworkPolicy{
-					ObjectMeta: metav1.ObjectMeta{Name: tWebIngressPolicy, Namespace: ns},
+					Name: tWebIngressPolicy, Namespace: ns,
 					Spec: networkingv1.NetworkPolicySpec{
 						PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
 						Ingress: []networkingv1.NetworkPolicyIngressRule{
@@ -211,7 +211,7 @@ var _ = Describe("BuildGraphHandler", func() {
 
 		It("should detect cron edges from basename selector", func() {
 			cronIngressPolicy := &networkingv1.NetworkPolicy{
-				ObjectMeta: metav1.ObjectMeta{Name: "api-ingress-policy", Namespace: tCore},
+				Name: "api-ingress-policy", Namespace: tCore,
 				Spec: networkingv1.NetworkPolicySpec{
 					PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
 					Ingress: []networkingv1.NetworkPolicyIngressRule{
@@ -246,6 +246,47 @@ var _ = Describe("BuildGraphHandler", func() {
 			Expect(rc.Data.Nodes).To(HaveLen(2))
 			Expect(rc.Data.Edges).To(HaveLen(1))
 			Expect(rc.Data.Edges[0].EdgeType).To(Equal("cron"))
+		})
+	})
+
+	Context("when a service and a cron share a name in the same namespace", func() {
+		It("should order nodes the same way on every reconcile", func() {
+			jobEgressPolicy := &networkingv1.NetworkPolicy{
+				ObjectMeta: metav1.ObjectMeta{Name: "job-egress-policy", Namespace: tCore},
+			}
+			webIngressPolicy := &networkingv1.NetworkPolicy{
+				ObjectMeta: metav1.ObjectMeta{Name: tWebIngressPolicy, Namespace: tCore},
+				Spec: networkingv1.NetworkPolicySpec{
+					PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
+					Ingress: []networkingv1.NetworkPolicyIngressRule{{
+						From: []networkingv1.NetworkPolicyPeer{{
+							PodSelector: &metav1.LabelSelector{
+								MatchExpressions: []metav1.LabelSelectorRequirement{
+									{Key: tLabelAppKey, Operator: metav1.LabelSelectorOpIn, Values: []string{"job"}},
+									{Key: "basename", Operator: metav1.LabelSelectorOpIn, Values: []string{"job"}},
+								},
+							},
+						}},
+					}},
+				},
+			}
+
+			k8sClient := fake.NewClientBuilder().
+				WithScheme(newScheme()).
+				WithObjects(jobEgressPolicy, webIngressPolicy).
+				Build()
+			handler := nfdchain.NewBuildGraphHandler(k8sClient)
+
+			for range 20 {
+				rc := newRC(false)
+				Expect(handler.Handle(context.Background(), rc)).To(Succeed())
+
+				ids := make([]string, 0, len(rc.Data.Nodes))
+				for _, n := range rc.Data.Nodes {
+					ids = append(ids, n.ID)
+				}
+				Expect(ids).To(Equal([]string{"cron:core:job", "service:core:job", "service:core:web"}))
+			}
 		})
 	})
 })

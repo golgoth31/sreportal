@@ -23,7 +23,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/controller/imageregistry/chain"
@@ -45,7 +44,7 @@ var _ = Describe("ResolveLatestVersionsHandler", func() {
 
 	makeIR := func(host string) *sreportalv1alpha1.ImageRegistry {
 		return &sreportalv1alpha1.ImageRegistry{
-			ObjectMeta: metav1.ObjectMeta{Name: tTestName, Namespace: tNsDefault},
+			Name: tTestName, Namespace: tNsDefault,
 			Spec: sreportalv1alpha1.ImageRegistrySpec{
 				Host:      host,
 				PortalRef: tPortalMain,

@@ -96,10 +96,8 @@ func (h *SyncRemoteNetworkFlowsHandler) reconcileRemoteNetworkFlows(ctx context.
 	isNew := errors.IsNotFound(err)
 	if isNew {
 		nfd = &sreportalv1alpha1.NetworkFlowDiscovery{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      nfdName,
-				Namespace: portal.Namespace,
-			},
+			Name:      nfdName,
+			Namespace: portal.Namespace,
 			Spec: sreportalv1alpha1.NetworkFlowDiscoverySpec{
 				PortalRef: portal.Name,
 				IsRemote:  true,

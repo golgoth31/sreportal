@@ -51,8 +51,8 @@ var _ = Describe("Component Controller", func() {
 			err := k8sClient.Get(ctx, types.NamespacedName{Name: portalName, Namespace: tNsDefault}, portal)
 			if err != nil && errors.IsNotFound(err) {
 				portal = &sreportalv1alpha1.Portal{
-					ObjectMeta: metav1.ObjectMeta{Name: portalName, Namespace: tNsDefault},
-					Spec:       sreportalv1alpha1.PortalSpec{Title: "Test Portal"},
+					Name: portalName, Namespace: tNsDefault,
+					Spec: sreportalv1alpha1.PortalSpec{Title: "Test Portal"},
 				}
 				Expect(k8sClient.Create(ctx, portal)).To(Succeed())
 			}
@@ -62,7 +62,7 @@ var _ = Describe("Component Controller", func() {
 			err = k8sClient.Get(ctx, typeNamespacedName, comp)
 			if err != nil && errors.IsNotFound(err) {
 				resource := &sreportalv1alpha1.Component{
-					ObjectMeta: metav1.ObjectMeta{Name: resourceName, Namespace: tNsDefault},
+					Name: resourceName, Namespace: tNsDefault,
 					Spec: sreportalv1alpha1.ComponentSpec{
 						DisplayName: "Test Component",
 						Group:       "Infrastructure",
@@ -127,14 +127,14 @@ var _ = Describe("Component Controller", func() {
 
 			By("creating dedicated Portal and Component")
 			portal := &sreportalv1alpha1.Portal{
-				ObjectMeta: metav1.ObjectMeta{Name: statusChangePortal, Namespace: tNsDefault},
-				Spec:       sreportalv1alpha1.PortalSpec{Title: "Status Change Portal"},
+				Name: statusChangePortal, Namespace: tNsDefault,
+				Spec: sreportalv1alpha1.PortalSpec{Title: "Status Change Portal"},
 			}
 			Expect(k8sClient.Create(ctx, portal)).To(Succeed())
 			defer func() { _ = k8sClient.Delete(ctx, portal) }()
 
 			comp := &sreportalv1alpha1.Component{
-				ObjectMeta: metav1.ObjectMeta{Name: statusChangeComp, Namespace: tNsDefault},
+				Name: statusChangeComp, Namespace: tNsDefault,
 				Spec: sreportalv1alpha1.ComponentSpec{
 					DisplayName: "Status Change Comp",
 					Group:       tKindTest,
@@ -189,7 +189,7 @@ var _ = Describe("Component Controller", func() {
 			controllerReconciler := NewComponentReconciler(k8sClient, maintStore, compStore)
 
 			badComp := &sreportalv1alpha1.Component{
-				ObjectMeta: metav1.ObjectMeta{Name: "comp-bad-portal", Namespace: tNsDefault},
+				Name: "comp-bad-portal", Namespace: tNsDefault,
 				Spec: sreportalv1alpha1.ComponentSpec{
 					DisplayName: "Bad Portal Comp",
 					Group:       tKindTest,
@@ -205,7 +205,7 @@ var _ = Describe("Component Controller", func() {
 			// Wait for cache to sync, then reconcile — the chain should requeue
 			Eventually(func(g Gomega) {
 				result, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-					NamespacedName: types.NamespacedName{Name: "comp-bad-portal", Namespace: tNsDefault},
+					Name: "comp-bad-portal", Namespace: tNsDefault,
 				})
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(result.RequeueAfter).To(BeNumerically(">", 0), "should requeue on portal not found")
@@ -219,14 +219,14 @@ var _ = Describe("Component Controller", func() {
 
 			By("creating dedicated Portal and Component")
 			portal := &sreportalv1alpha1.Portal{
-				ObjectMeta: metav1.ObjectMeta{Name: incPortalName, Namespace: tNsDefault},
-				Spec:       sreportalv1alpha1.PortalSpec{Title: "Incident Portal"},
+				Name: incPortalName, Namespace: tNsDefault,
+				Spec: sreportalv1alpha1.PortalSpec{Title: "Incident Portal"},
 			}
 			Expect(k8sClient.Create(ctx, portal)).To(Succeed())
 			defer func() { _ = k8sClient.Delete(ctx, portal) }()
 
 			comp := &sreportalv1alpha1.Component{
-				ObjectMeta: metav1.ObjectMeta{Name: incCompName, Namespace: tNsDefault},
+				Name: incCompName, Namespace: tNsDefault,
 				Spec: sreportalv1alpha1.ComponentSpec{
 					DisplayName: "Incident Comp",
 					Group:       tKindTest,
@@ -239,11 +239,9 @@ var _ = Describe("Component Controller", func() {
 
 			By("creating an Incident CR with a critical investigating update")
 			inc := &sreportalv1alpha1.Incident{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "inc-1",
-					Namespace: tNsDefault,
-					Labels:    map[string]string{"sreportal.io/portal": incPortalName},
-				},
+				Name:      "inc-1",
+				Namespace: tNsDefault,
+				Labels:    map[string]string{"sreportal.io/portal": incPortalName},
 				Spec: sreportalv1alpha1.IncidentSpec{
 					Title:      "Test Incident",
 					PortalRef:  incPortalName,
@@ -285,14 +283,14 @@ var _ = Describe("Component Controller", func() {
 
 			By("creating dedicated Portal and Component")
 			portal := &sreportalv1alpha1.Portal{
-				ObjectMeta: metav1.ObjectMeta{Name: resPortalName, Namespace: tNsDefault},
-				Spec:       sreportalv1alpha1.PortalSpec{Title: "Resolve Portal"},
+				Name: resPortalName, Namespace: tNsDefault,
+				Spec: sreportalv1alpha1.PortalSpec{Title: "Resolve Portal"},
 			}
 			Expect(k8sClient.Create(ctx, portal)).To(Succeed())
 			defer func() { _ = k8sClient.Delete(ctx, portal) }()
 
 			comp := &sreportalv1alpha1.Component{
-				ObjectMeta: metav1.ObjectMeta{Name: resCompName, Namespace: tNsDefault},
+				Name: resCompName, Namespace: tNsDefault,
 				Spec: sreportalv1alpha1.ComponentSpec{
 					DisplayName: "Resolve Comp",
 					Group:       tKindTest,
@@ -310,11 +308,9 @@ var _ = Describe("Component Controller", func() {
 			By("creating an Incident CR with a critical investigating update")
 			now := metav1.Now()
 			inc := &sreportalv1alpha1.Incident{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "inc-res",
-					Namespace: tNsDefault,
-					Labels:    map[string]string{"sreportal.io/portal": resPortalName},
-				},
+				Name:      "inc-res",
+				Namespace: tNsDefault,
+				Labels:    map[string]string{"sreportal.io/portal": resPortalName},
 				Spec: sreportalv1alpha1.IncidentSpec{
 					Title:      "Resolve Test Incident",
 					PortalRef:  resPortalName,

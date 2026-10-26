@@ -98,10 +98,8 @@ func (h *SyncRemoteImageInventoryHandler) reconcileRemoteImageInventory(ctx cont
 	isNew := errors.IsNotFound(err)
 	if isNew {
 		inv = &sreportalv1alpha1.ImageInventory{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      invName,
-				Namespace: portal.Namespace,
-			},
+			Name:      invName,
+			Namespace: portal.Namespace,
 			Spec: sreportalv1alpha1.ImageInventorySpec{
 				PortalRef: portal.Name,
 				IsRemote:  true,

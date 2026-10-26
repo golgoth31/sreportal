@@ -26,7 +26,6 @@ import (
 	"connectrpc.com/connect/v2"
 	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -107,8 +106,8 @@ func TestFetchRemoteImagesHandlerNoOpWhenLocal(t *testing.T) {
 	h := NewFetchRemoteImagesHandler(cli, remoteclient.NewCache(), writer)
 
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "local-inv", Namespace: tNsDefault},
-		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: tPortalMain, IsRemote: false},
+		Name: "local-inv", Namespace: tNsDefault,
+		Spec: sreportalv1alpha1.ImageInventorySpec{PortalRef: tPortalMain, IsRemote: false},
 	}
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.ImageInventory, ChainData]{Resource: inv}
 	require.NoError(t, h.Handle(context.Background(), rc))
@@ -141,14 +140,14 @@ func TestFetchRemoteImagesHandlerPopulatesFromRemote(t *testing.T) {
 	defer server.Close()
 
 	portal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: tPortalRemote, Namespace: tNsDefault},
+		Name: tPortalRemote, Namespace: tNsDefault,
 		Spec: sreportalv1alpha1.PortalSpec{
 			Title:  tTypeRemote,
 			Remote: &sreportalv1alpha1.RemotePortalSpec{URL: server.URL, Portal: tPortalMain},
 		},
 	}
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: tPortalRemoteInv, Namespace: tNsDefault},
+		Name: tPortalRemoteInv, Namespace: tNsDefault,
 		Spec: sreportalv1alpha1.ImageInventorySpec{
 			PortalRef: tPortalRemote,
 			IsRemote:  true,
@@ -188,7 +187,7 @@ func TestFetchRemoteImagesHandlerErrorWhenPortalMissing(t *testing.T) {
 	h := NewFetchRemoteImagesHandler(cli, remoteclient.NewCache(), writer)
 
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "remote-inv", Namespace: tNsDefault},
+		Name: "remote-inv", Namespace: tNsDefault,
 		Spec: sreportalv1alpha1.ImageInventorySpec{
 			PortalRef: "missing-portal",
 			IsRemote:  true,
@@ -203,15 +202,15 @@ func TestFetchRemoteImagesHandlerErrorWhenPortalNotRemote(t *testing.T) {
 	t.Parallel()
 	scheme := newFetchRemoteImagesScheme(t)
 	portal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: "main-portal", Namespace: tNsDefault},
-		Spec:       sreportalv1alpha1.PortalSpec{Title: "Main", Main: true},
+		Name: "main-portal", Namespace: tNsDefault,
+		Spec: sreportalv1alpha1.PortalSpec{Title: "Main", Main: true},
 	}
 	cli := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
 	writer := newFakeImageWriter()
 	h := NewFetchRemoteImagesHandler(cli, remoteclient.NewCache(), writer)
 
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "remote-inv", Namespace: tNsDefault},
+		Name: "remote-inv", Namespace: tNsDefault,
 		Spec: sreportalv1alpha1.ImageInventorySpec{
 			PortalRef: "main-portal",
 			IsRemote:  true,
@@ -260,14 +259,14 @@ func TestFetchRemoteImagesHandlerBucketsByHostAndNamespace(t *testing.T) {
 	defer server.Close()
 
 	portal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: tPortalRemote, Namespace: tNsDefault},
+		Name: tPortalRemote, Namespace: tNsDefault,
 		Spec: sreportalv1alpha1.PortalSpec{
 			Title:  tTypeRemote,
 			Remote: &sreportalv1alpha1.RemotePortalSpec{URL: server.URL, Portal: tPortalMain},
 		},
 	}
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: tPortalRemoteInv, Namespace: tNsDefault},
+		Name: tPortalRemoteInv, Namespace: tNsDefault,
 		Spec: sreportalv1alpha1.ImageInventorySpec{
 			PortalRef: tPortalRemote,
 			IsRemote:  true,
@@ -328,14 +327,14 @@ func TestFetchRemoteImagesHandlerDropsMissingScopes(t *testing.T) {
 	defer server.Close()
 
 	portal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: tPortalRemote, Namespace: tNsDefault},
+		Name: tPortalRemote, Namespace: tNsDefault,
 		Spec: sreportalv1alpha1.PortalSpec{
 			Title:  tTypeRemote,
 			Remote: &sreportalv1alpha1.RemotePortalSpec{URL: server.URL, Portal: tPortalMain},
 		},
 	}
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: tPortalRemoteInv, Namespace: tNsDefault},
+		Name: tPortalRemoteInv, Namespace: tNsDefault,
 		Spec: sreportalv1alpha1.ImageInventorySpec{
 			PortalRef: tPortalRemote,
 			IsRemote:  true,

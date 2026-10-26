@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -20,7 +19,7 @@ func TestMaterialiseEntriesHandler_ConvertEntriesToEndpoints(t *testing.T) {
 	g := NewWithT(t)
 
 	record := &v1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Name: "main-manual-apis", Namespace: tNsDefault},
+		Name: "main-manual-apis", Namespace: tNsDefault,
 		Spec: v1alpha2.DNSRecordSpec{
 			Origin:    v1alpha2.DNSRecordOriginManual,
 			PortalRef: tPortalMain,
@@ -55,7 +54,7 @@ func TestMaterialiseEntriesHandler_ConvertEntriesToEndpoints(t *testing.T) {
 func TestMaterialiseEntriesHandler_MaterialisesForAuto(t *testing.T) {
 	g := NewWithT(t)
 	record := &v1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Name: "auto", Namespace: tNsDefault},
+		Name: "auto", Namespace: tNsDefault,
 		Spec: v1alpha2.DNSRecordSpec{
 			Origin:     v1alpha2.DNSRecordOriginAuto,
 			SourceType: "ingress",
@@ -76,7 +75,7 @@ func TestMaterialiseEntriesHandler_MaterialisesForAuto(t *testing.T) {
 func TestMaterialiseEntriesHandler_EmptyEntries(t *testing.T) {
 	g := NewWithT(t)
 	record := &v1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Name: "empty", Namespace: tNsDefault},
+		Name: "empty", Namespace: tNsDefault,
 		Spec: v1alpha2.DNSRecordSpec{
 			Origin:    v1alpha2.DNSRecordOriginManual,
 			PortalRef: tPortalMain,
@@ -94,7 +93,7 @@ func TestMaterialiseEntriesHandler_EmptyEntries(t *testing.T) {
 func TestMaterialiseEntriesHandler_RecordTypeVariants(t *testing.T) {
 	g := NewWithT(t)
 	record := &v1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Name: "variants", Namespace: tNsDefault},
+		Name: "variants", Namespace: tNsDefault,
 		Spec: v1alpha2.DNSRecordSpec{
 			Origin:    v1alpha2.DNSRecordOriginManual,
 			PortalRef: tPortalMain,
@@ -127,7 +126,7 @@ func TestMaterialiseEntriesHandler_PersistsStatus(t *testing.T) {
 	g.Expect(v1alpha2.AddToScheme(scheme)).To(Succeed())
 
 	record := &v1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Name: persistName, Namespace: tNsDefault, Generation: 3},
+		Name: persistName, Namespace: tNsDefault, Generation: 3,
 		Spec: v1alpha2.DNSRecordSpec{
 			Origin:    v1alpha2.DNSRecordOriginManual,
 			PortalRef: tPortalMain,
@@ -163,7 +162,7 @@ func TestMaterialiseEntriesHandler_PersistsStatus(t *testing.T) {
 func TestMaterialiseEntriesHandler_Idempotent(t *testing.T) {
 	g := NewWithT(t)
 	record := &v1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Name: "idem", Namespace: tNsDefault},
+		Name: "idem", Namespace: tNsDefault,
 		Spec: v1alpha2.DNSRecordSpec{
 			Origin:    v1alpha2.DNSRecordOriginManual,
 			PortalRef: tPortalMain,
@@ -192,7 +191,7 @@ func TestMaterialiseEntriesHandler_ReinjectsOriginRef(t *testing.T) {
 	g := NewWithT(t)
 
 	withOrigin := &v1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Name: "auto-origin", Namespace: tNsDefault},
+		Name: "auto-origin", Namespace: tNsDefault,
 		Spec: v1alpha2.DNSRecordSpec{
 			Origin:     v1alpha2.DNSRecordOriginAuto,
 			SourceType: tSrcService,
@@ -213,7 +212,7 @@ func TestMaterialiseEntriesHandler_ReinjectsOriginRef(t *testing.T) {
 	// Same entry without OriginRef: the hash must be identical (resource label
 	// is excluded from the hash), and no resource label is set.
 	noOrigin := &v1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Name: "auto-noorigin", Namespace: tNsDefault},
+		Name: "auto-noorigin", Namespace: tNsDefault,
 		Spec: v1alpha2.DNSRecordSpec{
 			Origin:     v1alpha2.DNSRecordOriginAuto,
 			SourceType: tSrcService,

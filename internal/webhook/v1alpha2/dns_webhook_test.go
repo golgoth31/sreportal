@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	sreportalv1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 	webhookv1alpha2 "github.com/golgoth31/sreportal/internal/webhook/v1alpha2"
@@ -44,8 +43,8 @@ func TestDNSWebhook_NameDiffFromPortalRef(t *testing.T) {
 	g := NewWithT(t)
 	v := webhookv1alpha2.NewDNSCustomValidator()
 	dns := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: tPortalMain},
-		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: tPortalOther},
+		Name: tPortalMain,
+		Spec: sreportalv1alpha2.DNSSpec{PortalRef: tPortalOther},
 	}
 	_, err := v.ValidateCreate(context.Background(), dns)
 	g.Expect(err).NotTo(HaveOccurred())
@@ -56,8 +55,8 @@ func TestDNSWebhook_CreateNameEqualsPortalRef(t *testing.T) {
 	g := NewWithT(t)
 	v := webhookv1alpha2.NewDNSCustomValidator()
 	dns := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: tPortalMain},
-		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: tPortalMain},
+		Name: tPortalMain,
+		Spec: sreportalv1alpha2.DNSSpec{PortalRef: tPortalMain},
 	}
 	_, err := v.ValidateCreate(context.Background(), dns)
 	g.Expect(err).NotTo(HaveOccurred())
@@ -69,8 +68,8 @@ func TestDNSWebhook_CreateMultiDNSPerPortal(t *testing.T) {
 	g := NewWithT(t)
 	v := webhookv1alpha2.NewDNSCustomValidator()
 	dns := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: tDNSTeamA},
-		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: tPortalMy},
+		Name: tDNSTeamA,
+		Spec: sreportalv1alpha2.DNSSpec{PortalRef: tPortalMy},
 	}
 	_, err := v.ValidateCreate(context.Background(), dns)
 	g.Expect(err).NotTo(HaveOccurred())
@@ -80,12 +79,12 @@ func TestDNSWebhook_PortalRefImmutable(t *testing.T) {
 	g := NewWithT(t)
 	v := webhookv1alpha2.NewDNSCustomValidator()
 	old := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: tPortalMain},
-		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: tPortalMain},
+		Name: tPortalMain,
+		Spec: sreportalv1alpha2.DNSSpec{PortalRef: tPortalMain},
 	}
 	newDNS := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: tPortalMain},
-		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: tPortalOther},
+		Name: tPortalMain,
+		Spec: sreportalv1alpha2.DNSSpec{PortalRef: tPortalOther},
 	}
 	_, err := v.ValidateUpdate(context.Background(), old, newDNS)
 	g.Expect(err).To(HaveOccurred())
@@ -96,12 +95,12 @@ func TestDNSWebhook_ValidUpdate(t *testing.T) {
 	g := NewWithT(t)
 	v := webhookv1alpha2.NewDNSCustomValidator()
 	old := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: tPortalMain},
-		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: tPortalMain},
+		Name: tPortalMain,
+		Spec: sreportalv1alpha2.DNSSpec{PortalRef: tPortalMain},
 	}
 	newDNS := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: tPortalMain},
-		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: tPortalMain},
+		Name: tPortalMain,
+		Spec: sreportalv1alpha2.DNSSpec{PortalRef: tPortalMain},
 	}
 	_, err := v.ValidateUpdate(context.Background(), old, newDNS)
 	g.Expect(err).NotTo(HaveOccurred())
@@ -113,12 +112,12 @@ func TestDNSWebhook_UpdateNameDiffFromPortalRef(t *testing.T) {
 	g := NewWithT(t)
 	v := webhookv1alpha2.NewDNSCustomValidator()
 	old := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: tDNSTeamA},
-		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: tPortalMy},
+		Name: tDNSTeamA,
+		Spec: sreportalv1alpha2.DNSSpec{PortalRef: tPortalMy},
 	}
 	newDNS := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: tDNSTeamA},
-		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: tPortalMy},
+		Name: tDNSTeamA,
+		Spec: sreportalv1alpha2.DNSSpec{PortalRef: tPortalMy},
 	}
 	_, err := v.ValidateUpdate(context.Background(), old, newDNS)
 	g.Expect(err).NotTo(HaveOccurred())
@@ -128,8 +127,8 @@ func TestDNSWebhook_DeleteNoOp(t *testing.T) {
 	g := NewWithT(t)
 	v := webhookv1alpha2.NewDNSCustomValidator()
 	dns := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: tPortalMain},
-		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: tPortalMain},
+		Name: tPortalMain,
+		Spec: sreportalv1alpha2.DNSSpec{PortalRef: tPortalMain},
 	}
 	_, err := v.ValidateDelete(context.Background(), dns)
 	g.Expect(err).NotTo(HaveOccurred())
@@ -143,7 +142,7 @@ func TestDNSWebhook_DefaultsLabelFilterInvalid(t *testing.T) {
 	g := NewWithT(t)
 	v := webhookv1alpha2.NewDNSCustomValidator()
 	dns := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: tPortalMain},
+		Name: tPortalMain,
 		Spec: sreportalv1alpha2.DNSSpec{
 			PortalRef: tPortalMain,
 			Defaults: sreportalv1alpha2.SourceFilterDefaults{
@@ -162,7 +161,7 @@ func TestDNSWebhook_DefaultsLabelFilterValid(t *testing.T) {
 	g := NewWithT(t)
 	v := webhookv1alpha2.NewDNSCustomValidator()
 	dns := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: tPortalMain},
+		Name: tPortalMain,
 		Spec: sreportalv1alpha2.DNSSpec{
 			PortalRef: tPortalMain,
 			Defaults: sreportalv1alpha2.SourceFilterDefaults{
@@ -180,15 +179,13 @@ func TestDNSWebhook_SourceServiceLabelFilterInvalid(t *testing.T) {
 	g := NewWithT(t)
 	v := webhookv1alpha2.NewDNSCustomValidator()
 	dns := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: tPortalMain},
+		Name: tPortalMain,
 		Spec: sreportalv1alpha2.DNSSpec{
 			PortalRef: tPortalMain,
 			Sources: sreportalv1alpha2.SourcesSpec{
 				Service: &sreportalv1alpha2.ServiceSourceSpec{
-					CommonSourceSpec: sreportalv1alpha2.CommonSourceSpec{
-						Enabled:     true,
-						LabelFilter: "app=foo,!=",
-					},
+					Enabled:     true,
+					LabelFilter: "app=foo,!=",
 				},
 			},
 		},
@@ -206,13 +203,13 @@ func TestDNSWebhook_PriorityRefersNotEnabledSource(t *testing.T) {
 	g := NewWithT(t)
 	v := webhookv1alpha2.NewDNSCustomValidator()
 	dns := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: tPortalMain},
+		Name: tPortalMain,
 		Spec: sreportalv1alpha2.DNSSpec{
 			PortalRef: tPortalMain,
 			Sources: sreportalv1alpha2.SourcesSpec{
 				// service enabled; ingress pointer is nil — not present at all
 				Service: &sreportalv1alpha2.ServiceSourceSpec{
-					CommonSourceSpec: sreportalv1alpha2.CommonSourceSpec{Enabled: true},
+					Enabled: true,
 				},
 				Priority: []sreportalv1alpha2.SourceType{
 					sreportalv1alpha2.SourceTypeService,
@@ -232,12 +229,12 @@ func TestDNSWebhook_PriorityIngressNotEnabled(t *testing.T) {
 	g := NewWithT(t)
 	v := webhookv1alpha2.NewDNSCustomValidator()
 	dns := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: tPortalMain},
+		Name: tPortalMain,
 		Spec: sreportalv1alpha2.DNSSpec{
 			PortalRef: tPortalMain,
 			Sources: sreportalv1alpha2.SourcesSpec{
 				Ingress: &sreportalv1alpha2.IngressSourceSpec{
-					CommonSourceSpec: sreportalv1alpha2.CommonSourceSpec{Enabled: false},
+					Enabled: false,
 				},
 				Priority: []sreportalv1alpha2.SourceType{
 					sreportalv1alpha2.SourceTypeIngress,
@@ -256,12 +253,12 @@ func TestDNSWebhook_PriorityValidSubset(t *testing.T) {
 	g := NewWithT(t)
 	v := webhookv1alpha2.NewDNSCustomValidator()
 	dns := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: tPortalMain},
+		Name: tPortalMain,
 		Spec: sreportalv1alpha2.DNSSpec{
 			PortalRef: tPortalMain,
 			Sources: sreportalv1alpha2.SourcesSpec{
 				Service: &sreportalv1alpha2.ServiceSourceSpec{
-					CommonSourceSpec: sreportalv1alpha2.CommonSourceSpec{Enabled: true},
+					Enabled: true,
 				},
 				Priority: []sreportalv1alpha2.SourceType{
 					sreportalv1alpha2.SourceTypeService,

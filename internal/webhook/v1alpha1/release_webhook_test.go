@@ -42,16 +42,14 @@ var _ = Describe("Release Webhook", func() {
 		scheme := runtime.NewScheme()
 		Expect(sreportalv1alpha1.AddToScheme(scheme)).To(Succeed())
 		portal := &sreportalv1alpha1.Portal{
-			ObjectMeta: metav1.ObjectMeta{Name: tPortalMain, Namespace: tNsDefault},
-			Spec:       sreportalv1alpha1.PortalSpec{Title: "Main Portal"},
+			Name: tPortalMain, Namespace: tNsDefault,
+			Spec: sreportalv1alpha1.PortalSpec{Title: "Main Portal"},
 		}
 		k8sClient = fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
 
 		obj = &sreportalv1alpha1.Release{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "release-2026-03-22",
-				Namespace: tNsDefault,
-			},
+			Name:      "release-2026-03-22",
+			Namespace: tNsDefault,
 			Spec: sreportalv1alpha1.ReleaseSpec{
 				PortalRef: tPortalMain,
 				Entries: []sreportalv1alpha1.ReleaseEntry{

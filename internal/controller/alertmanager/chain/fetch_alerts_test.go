@@ -22,7 +22,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -53,7 +52,7 @@ var _ = Describe("FetchAlertsHandler", func() {
 	newRC := func(isRemote bool) *reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager, alertmanagerctrl.ChainData] {
 		return &reconciler.ReconcileContext[*sreportalv1alpha1.Alertmanager, alertmanagerctrl.ChainData]{
 			Resource: &sreportalv1alpha1.Alertmanager{
-				ObjectMeta: metav1.ObjectMeta{Name: tNameTestAM, Namespace: tNsDefault},
+				Name: tNameTestAM, Namespace: tNsDefault,
 				Spec: sreportalv1alpha1.AlertmanagerSpec{
 					PortalRef: tPortalMain,
 					URL: sreportalv1alpha1.AlertmanagerURL{
@@ -124,8 +123,8 @@ var _ = Describe("FetchAlertsHandler", func() {
 
 		It("should fail when portal has no remote configuration", func() {
 			portal := &sreportalv1alpha1.Portal{
-				ObjectMeta: metav1.ObjectMeta{Name: tPortalMain, Namespace: tNsDefault},
-				Spec:       sreportalv1alpha1.PortalSpec{Title: "Main"},
+				Name: tPortalMain, Namespace: tNsDefault,
+				Spec: sreportalv1alpha1.PortalSpec{Title: "Main"},
 			}
 			localFetcher := &fakeFetcher{}
 			k8sClient := fake.NewClientBuilder().

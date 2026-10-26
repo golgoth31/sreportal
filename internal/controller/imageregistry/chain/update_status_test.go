@@ -56,7 +56,7 @@ var _ = Describe("UpdateStatusHandler", func() {
 			},
 		}
 		ir := &sreportalv1alpha1.ImageRegistry{
-			ObjectMeta: metav1.ObjectMeta{Name: tTestName, Namespace: tNsDefault},
+			Name: tTestName, Namespace: tNsDefault,
 			Spec: sreportalv1alpha1.ImageRegistrySpec{
 				Host:      tRegistryGhcr,
 				PortalRef: tPortalMain,
@@ -93,7 +93,7 @@ var _ = Describe("UpdateStatusHandler", func() {
 	It("computes counters from current Status.Images (not Spec.Images)", func() {
 		checkedAt := metav1.NewTime(time.Now().Add(-time.Hour))
 		ir := &sreportalv1alpha1.ImageRegistry{
-			ObjectMeta: metav1.ObjectMeta{Name: tTestName, Namespace: tNsDefault},
+			Name: tTestName, Namespace: tNsDefault,
 			Spec: sreportalv1alpha1.ImageRegistrySpec{
 				Host:      tRegistryGhcr,
 				PortalRef: tPortalMain,
@@ -133,7 +133,7 @@ var _ = Describe("UpdateStatusHandler", func() {
 
 	It("is idempotent — second reconcile does not bump resourceVersion", func() {
 		ir := &sreportalv1alpha1.ImageRegistry{
-			ObjectMeta: metav1.ObjectMeta{Name: tTestName, Namespace: tNsDefault},
+			Name: tTestName, Namespace: tNsDefault,
 			Spec: sreportalv1alpha1.ImageRegistrySpec{
 				Host:      tRegistryGhcr,
 				PortalRef: tPortalMain,
@@ -165,7 +165,7 @@ var _ = Describe("UpdateStatusHandler", func() {
 
 	It("sets the Ready condition", func() {
 		ir := &sreportalv1alpha1.ImageRegistry{
-			ObjectMeta: metav1.ObjectMeta{Name: tTestName, Namespace: tNsDefault},
+			Name: tTestName, Namespace: tNsDefault,
 			Spec: sreportalv1alpha1.ImageRegistrySpec{
 				Host:      tRegistryGhcr,
 				PortalRef: tPortalMain,

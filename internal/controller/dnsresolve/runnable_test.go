@@ -43,8 +43,8 @@ func (s stubResolver) LookupCNAME(context.Context, string) (string, error)  { re
 
 func recordWithEndpoint() *v1alpha2.DNSRecord {
 	return &v1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Name: "r", Namespace: "ns"},
-		Spec:       v1alpha2.DNSRecordSpec{PortalRef: "p", SourceType: "ingress"},
+		Name: "r", Namespace: "ns",
+		Spec: v1alpha2.DNSRecordSpec{PortalRef: "p", SourceType: "ingress"},
 		Status: v1alpha2.DNSRecordStatus{Endpoints: []v1alpha2.EndpointStatus{
 			{DNSName: testFQDN, RecordType: "A", Targets: []string{testTargetIP}, LastSeen: metav1.Now()},
 		}},
@@ -97,8 +97,8 @@ func TestRunnable_ForceThenTickResolves(t *testing.T) {
 func TestRunnable_ForceRetainedUntilMaterialised(t *testing.T) {
 	// Record exists but has NO status endpoints yet.
 	rec := &v1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Name: "r", Namespace: "ns"},
-		Spec:       v1alpha2.DNSRecordSpec{PortalRef: "p"},
+		Name: "r", Namespace: "ns",
+		Spec: v1alpha2.DNSRecordSpec{PortalRef: "p"},
 	}
 	c := newTestClient(t, rec)
 	r := New(c, stubResolver{addrs: []string{testTargetIP}})
@@ -120,7 +120,7 @@ func TestRunnable_HonorsDisableDNSCheck(t *testing.T) {
 	require.NoError(t, v1alpha2.AddToScheme(scheme))
 
 	dns := &v1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "ns"},
+		Name: "d", Namespace: "ns",
 		Spec: v1alpha2.DNSSpec{
 			PortalRef:      "p",
 			Reconciliation: v1alpha2.ReconciliationSpec{DisableDNSCheck: true},

@@ -29,13 +29,11 @@ import (
 
 func newPod(name, ns string, lbls map[string]string, phase corev1.PodPhase, created time.Time) *corev1.Pod {
 	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:              name,
-			Namespace:         ns,
-			Labels:            lbls,
-			CreationTimestamp: metav1.NewTime(created),
-		},
-		Status: corev1.PodStatus{Phase: phase},
+		Name:              name,
+		Namespace:         ns,
+		Labels:            lbls,
+		CreationTimestamp: metav1.NewTime(created),
+		Status:            corev1.PodStatus{Phase: phase},
 	}
 }
 

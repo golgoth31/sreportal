@@ -52,10 +52,8 @@ var _ = Describe("UpdateStatusHandler", func() {
 
 	newAM := func() *sreportalv1alpha1.Alertmanager {
 		return &sreportalv1alpha1.Alertmanager{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      tNameTestAM,
-				Namespace: tNsDefault,
-			},
+			Name:      tNameTestAM,
+			Namespace: tNsDefault,
 			Spec: sreportalv1alpha1.AlertmanagerSpec{
 				PortalRef: tPortalMain,
 				URL: sreportalv1alpha1.AlertmanagerURL{

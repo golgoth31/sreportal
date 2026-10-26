@@ -88,7 +88,7 @@ func (s *Service) CreateComponent(ctx context.Context, in CreateComponentInput) 
 	}
 
 	comp := sreportalv1alpha1.Component{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: s.namespace},
+		Name: name, Namespace: s.namespace,
 		Spec: sreportalv1alpha1.ComponentSpec{
 			DisplayName: in.DisplayName,
 			Description: in.Description,
@@ -168,7 +168,7 @@ func (s *Service) DeleteComponent(ctx context.Context, name string) error {
 		return ErrNameRequired
 	}
 	comp := &sreportalv1alpha1.Component{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: s.namespace},
+		Name: name, Namespace: s.namespace,
 	}
 	if err := s.client.Delete(ctx, comp); err != nil {
 		if apierrors.IsNotFound(err) {
@@ -217,7 +217,7 @@ func (s *Service) CreateMaintenance(ctx context.Context, in CreateMaintenanceInp
 	}
 
 	maint := sreportalv1alpha1.Maintenance{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: s.namespace},
+		Name: name, Namespace: s.namespace,
 		Spec: sreportalv1alpha1.MaintenanceSpec{
 			Title:          in.Title,
 			Description:    in.Description,
@@ -302,7 +302,7 @@ func (s *Service) DeleteMaintenance(ctx context.Context, name string) error {
 		return ErrNameRequired
 	}
 	maint := &sreportalv1alpha1.Maintenance{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: s.namespace},
+		Name: name, Namespace: s.namespace,
 	}
 	if err := s.client.Delete(ctx, maint); err != nil {
 		if apierrors.IsNotFound(err) {
@@ -347,7 +347,7 @@ func (s *Service) CreateIncident(ctx context.Context, in CreateIncidentInput) (s
 	}
 
 	inc := sreportalv1alpha1.Incident{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: s.namespace},
+		Name: name, Namespace: s.namespace,
 		Spec: sreportalv1alpha1.IncidentSpec{
 			Title:      in.Title,
 			PortalRef:  in.PortalRef,
@@ -420,7 +420,7 @@ func (s *Service) DeleteIncident(ctx context.Context, name string) error {
 		return ErrNameRequired
 	}
 	inc := &sreportalv1alpha1.Incident{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: s.namespace},
+		Name: name, Namespace: s.namespace,
 	}
 	if err := s.client.Delete(ctx, inc); err != nil {
 		if apierrors.IsNotFound(err) {
