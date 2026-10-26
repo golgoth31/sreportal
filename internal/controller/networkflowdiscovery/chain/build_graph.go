@@ -276,7 +276,10 @@ func (g *graphBuilder) sortedNodes() []sreportalv1alpha1.FlowNode {
 		if c := strings.Compare(a.Group, b.Group); c != 0 {
 			return c
 		}
-		return strings.Compare(a.Label, b.Label)
+		if c := strings.Compare(a.Label, b.Label); c != 0 {
+			return c
+		}
+		return strings.Compare(a.ID, b.ID)
 	})
 	return nodes
 }
@@ -286,7 +289,10 @@ func (g *graphBuilder) sortedEdges() []sreportalv1alpha1.FlowEdge {
 		if c := strings.Compare(a.From, b.From); c != 0 {
 			return c
 		}
-		return strings.Compare(a.To, b.To)
+		if c := strings.Compare(a.To, b.To); c != 0 {
+			return c
+		}
+		return strings.Compare(a.EdgeType, b.EdgeType)
 	})
 	return g.edges
 }
