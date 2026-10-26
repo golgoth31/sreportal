@@ -21,14 +21,13 @@ import (
 
 	istionetworkingv1 "istio.io/client-go/pkg/apis/networking/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // TestExtractItems_ValueSlice covers k8s core lists whose Items is []T.
 func TestExtractItems_ValueSlice(t *testing.T) {
 	list := &corev1.ServiceList{Items: []corev1.Service{
-		{ObjectMeta: metav1.ObjectMeta{Name: "a"}},
-		{ObjectMeta: metav1.ObjectMeta{Name: "b"}},
+		{Name: "a"},
+		{Name: "b"},
 	}}
 	got, skipped := extractItems(list)
 	if len(got) != 2 || skipped != 0 {
@@ -44,7 +43,7 @@ func TestExtractItems_ValueSlice(t *testing.T) {
 // and panicked on the client.Object assertion.
 func TestExtractItems_PointerSlice(t *testing.T) {
 	list := &istionetworkingv1.GatewayList{Items: []*istionetworkingv1.Gateway{
-		{ObjectMeta: metav1.ObjectMeta{Name: "gw"}},
+		{Name: "gw"},
 	}}
 	got, skipped := extractItems(list)
 	if len(got) != 1 || skipped != 0 {

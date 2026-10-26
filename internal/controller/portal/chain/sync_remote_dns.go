@@ -100,10 +100,8 @@ func (h *SyncRemoteDNSHandler) reconcileRemoteDNS(ctx context.Context, portal *s
 	isNew := errors.IsNotFound(err)
 	if isNew {
 		dns = &sreportalv1alpha2.DNS{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      dnsName,
-				Namespace: portal.Namespace,
-			},
+			Name:      dnsName,
+			Namespace: portal.Namespace,
 			Spec: sreportalv1alpha2.DNSSpec{
 				PortalRef:    portal.Name,
 				IsRemote:     true,

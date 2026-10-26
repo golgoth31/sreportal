@@ -162,11 +162,9 @@ func (h *EnsureMainDNSHandler) findLocalDNS(ctx context.Context, portal *sreport
 func (h *EnsureMainDNSHandler) createMainDNS(ctx context.Context, portal *sreportalv1alpha1.Portal) error {
 	logger := log.FromContext(ctx).WithName("ensure-main-dns")
 	dns := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        portal.Name,
-			Namespace:   portal.Namespace,
-			Annotations: map[string]string{annotationSourcesMigrated: sourcesMigratedValue},
-		},
+		Name:        portal.Name,
+		Namespace:   portal.Namespace,
+		Annotations: map[string]string{annotationSourcesMigrated: sourcesMigratedValue},
 		Spec: sreportalv1alpha2.DNSSpec{
 			PortalRef:      portal.Name,
 			Sources:        h.sources,

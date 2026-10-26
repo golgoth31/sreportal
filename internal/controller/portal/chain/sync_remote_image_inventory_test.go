@@ -51,8 +51,8 @@ func TestSyncRemoteImageInventoryNoOpForLocalPortal(t *testing.T) {
 	h := chain.NewSyncRemoteImageInventoryHandler(cli, scheme)
 
 	portal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: tPortalMain, Namespace: nsDefault},
-		Spec:       sreportalv1alpha1.PortalSpec{Title: "Main", Main: true},
+		Name: tPortalMain, Namespace: nsDefault,
+		Spec: sreportalv1alpha1.PortalSpec{Title: "Main", Main: true},
 	}
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha1.Portal, chain.ChainData]{Resource: portal}
 	require.NoError(t, h.Handle(context.Background(), rc))
@@ -65,7 +65,7 @@ func TestSyncRemoteImageInventoryNoOpForLocalPortal(t *testing.T) {
 func TestSyncRemoteImageInventoryCreatesShadowCRForRemotePortal(t *testing.T) {
 	scheme := newSchemeForSyncRemoteImageInventoryTest(t)
 	portal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: "remote-a", Namespace: nsDefault, UID: "uid-a"},
+		Name: "remote-a", Namespace: nsDefault, UID: "uid-a",
 		Spec: sreportalv1alpha1.PortalSpec{
 			Title:  "Remote A",
 			Remote: &sreportalv1alpha1.RemotePortalSpec{URL: remoteURL, Portal: tPortalMain},
@@ -92,17 +92,15 @@ func TestSyncRemoteImageInventoryCreatesShadowCRForRemotePortal(t *testing.T) {
 func TestSyncRemoteImageInventoryUpdatesExistingShadowCR(t *testing.T) {
 	scheme := newSchemeForSyncRemoteImageInventoryTest(t)
 	portal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: "remote-update", Namespace: nsDefault, UID: "uid-update"},
+		Name: "remote-update", Namespace: nsDefault, UID: "uid-update",
 		Spec: sreportalv1alpha1.PortalSpec{
 			Title:  "Remote Update",
 			Remote: &sreportalv1alpha1.RemotePortalSpec{URL: "http://old.example/", Portal: tPortalMain},
 		},
 	}
 	stale := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      chain.RemoteImageInventoryName(portal.Name),
-			Namespace: portal.Namespace,
-		},
+		Name:      chain.RemoteImageInventoryName(portal.Name),
+		Namespace: portal.Namespace,
 		Spec: sreportalv1alpha1.ImageInventorySpec{
 			PortalRef: "wrong-portal",
 			IsRemote:  false,
@@ -127,7 +125,7 @@ func TestSyncRemoteImageInventoryNoOpWhenFeatureDisabled(t *testing.T) {
 	scheme := newSchemeForSyncRemoteImageInventoryTest(t)
 	disabled := false
 	portal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: "remote-disabled", Namespace: nsDefault},
+		Name: "remote-disabled", Namespace: nsDefault,
 		Spec: sreportalv1alpha1.PortalSpec{
 			Title:    "Remote Disabled",
 			Remote:   &sreportalv1alpha1.RemotePortalSpec{URL: remoteURL, Portal: tPortalMain},
@@ -149,7 +147,7 @@ func TestCleanupDisabledFeaturesHandlerDeletesRemoteImageInventoryWhenFeatureDis
 	scheme := newSchemeForSyncRemoteImageInventoryTest(t)
 	disabled := false
 	portal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: "remote-cleanup", Namespace: nsDefault, UID: "uid-clean"},
+		Name: "remote-cleanup", Namespace: nsDefault, UID: "uid-clean",
 		Spec: sreportalv1alpha1.PortalSpec{
 			Title:    "Cleanup",
 			Remote:   &sreportalv1alpha1.RemotePortalSpec{URL: remoteURL, Portal: tPortalMain},
@@ -157,12 +155,10 @@ func TestCleanupDisabledFeaturesHandlerDeletesRemoteImageInventoryWhenFeatureDis
 		},
 	}
 	shadow := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      chain.RemoteImageInventoryName(portal.Name),
-			Namespace: portal.Namespace,
-			OwnerReferences: []metav1.OwnerReference{
-				{APIVersion: "sreportal.io/v1alpha1", Kind: "Portal", Name: portal.Name, UID: portal.UID},
-			},
+		Name:      chain.RemoteImageInventoryName(portal.Name),
+		Namespace: portal.Namespace,
+		OwnerReferences: []metav1.OwnerReference{
+			{APIVersion: "sreportal.io/v1alpha1", Kind: "Portal", Name: portal.Name, UID: portal.UID},
 		},
 		Spec: sreportalv1alpha1.ImageInventorySpec{PortalRef: portal.Name, IsRemote: true},
 	}
@@ -184,7 +180,7 @@ func TestCleanupDisabledFeaturesHandlerSkipsRemoteImageInventoryNotOwned(t *test
 	scheme := newSchemeForSyncRemoteImageInventoryTest(t)
 	disabled := false
 	portal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: "remote-cleanup", Namespace: nsDefault, UID: "uid-clean"},
+		Name: "remote-cleanup", Namespace: nsDefault, UID: "uid-clean",
 		Spec: sreportalv1alpha1.PortalSpec{
 			Title:    "Cleanup",
 			Remote:   &sreportalv1alpha1.RemotePortalSpec{URL: remoteURL, Portal: tPortalMain},
@@ -193,12 +189,10 @@ func TestCleanupDisabledFeaturesHandlerSkipsRemoteImageInventoryNotOwned(t *test
 	}
 	// Shadow CR exists but owned by a different portal.
 	shadow := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      chain.RemoteImageInventoryName(portal.Name),
-			Namespace: portal.Namespace,
-			OwnerReferences: []metav1.OwnerReference{
-				{APIVersion: "sreportal.io/v1alpha1", Kind: "Portal", Name: "other-portal", UID: "uid-other"},
-			},
+		Name:      chain.RemoteImageInventoryName(portal.Name),
+		Namespace: portal.Namespace,
+		OwnerReferences: []metav1.OwnerReference{
+			{APIVersion: "sreportal.io/v1alpha1", Kind: "Portal", Name: "other-portal", UID: "uid-other"},
 		},
 		Spec: sreportalv1alpha1.ImageInventorySpec{PortalRef: "other-portal", IsRemote: true},
 	}
@@ -218,8 +212,8 @@ func TestCleanupDisabledFeaturesHandlerSkipsRemoteImageInventoryNotOwned(t *test
 func TestCleanupDisabledFeaturesHandlerNoOpWhenRemoteImageInventoryAbsent(t *testing.T) {
 	scheme := newSchemeForSyncRemoteImageInventoryTest(t)
 	portal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: "local-portal", Namespace: nsDefault},
-		Spec:       sreportalv1alpha1.PortalSpec{Title: "Local", Main: true},
+		Name: "local-portal", Namespace: nsDefault,
+		Spec: sreportalv1alpha1.PortalSpec{Title: "Local", Main: true},
 	}
 	cli := fake.NewClientBuilder().WithScheme(scheme).Build()
 	h := chain.NewCleanupDisabledFeaturesHandler(cli)

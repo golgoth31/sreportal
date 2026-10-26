@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -87,10 +86,8 @@ func (r *EnsureMainPortalRunnable) Start(ctx context.Context) error {
 
 	// No main portal found, create one
 	mainPortal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      MainPortalName,
-			Namespace: r.namespace,
-		},
+		Name:      MainPortalName,
+		Namespace: r.namespace,
 		Spec: sreportalv1alpha1.PortalSpec{
 			Title: MainPortalTitle,
 			Main:  true,

@@ -46,8 +46,8 @@ func newScheme() *runtime.Scheme {
 
 func mainPortal() *sreportalv1alpha1.Portal {
 	return &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: "main", Namespace: nsDefault},
-		Spec:       sreportalv1alpha1.PortalSpec{Title: "Main"},
+		Name: "main", Namespace: nsDefault,
+		Spec: sreportalv1alpha1.PortalSpec{Title: "Main"},
 	}
 }
 
@@ -82,10 +82,8 @@ func TestAddEntry_AppendsToExistingCR(t *testing.T) {
 	scheme := newScheme()
 
 	existing := &sreportalv1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      releaseCRName,
-			Namespace: nsDefault,
-		},
+		Name:      releaseCRName,
+		Namespace: nsDefault,
 		Spec: sreportalv1alpha1.ReleaseSpec{
 			PortalRef: "main",
 			Entries: []sreportalv1alpha1.ReleaseEntry{

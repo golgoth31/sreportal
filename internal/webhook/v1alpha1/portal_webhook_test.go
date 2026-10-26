@@ -21,7 +21,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 )
@@ -38,19 +37,15 @@ var _ = Describe("Portal Webhook", func() {
 
 	BeforeEach(func() {
 		obj = &sreportalv1alpha1.Portal{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-portal",
-				Namespace: tNsDefault,
-			},
+			Name:      "test-portal",
+			Namespace: tNsDefault,
 			Spec: sreportalv1alpha1.PortalSpec{
 				Title: "Test Portal",
 			},
 		}
 		oldObj = &sreportalv1alpha1.Portal{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-portal",
-				Namespace: tNsDefault,
-			},
+			Name:      "test-portal",
+			Namespace: tNsDefault,
 			Spec: sreportalv1alpha1.PortalSpec{
 				Title: "Test Portal",
 			},

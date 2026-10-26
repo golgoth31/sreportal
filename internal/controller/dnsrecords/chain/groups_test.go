@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	v1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
 	"github.com/golgoth31/sreportal/internal/controller/dnsrecords/chain"
@@ -18,7 +17,7 @@ import (
 func TestMaterialiseEntriesHandler_ReinjectsGroups(t *testing.T) {
 	g := NewWithT(t)
 	record := &v1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Name: "auto-groups", Namespace: tNsDefault},
+		Name: "auto-groups", Namespace: tNsDefault,
 		Spec: v1alpha2.DNSRecordSpec{
 			Origin:    v1alpha2.DNSRecordOriginAuto,
 			PortalRef: tPortalMain,

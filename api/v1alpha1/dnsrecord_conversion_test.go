@@ -103,10 +103,8 @@ func TestDNSRecordConvertTo_CorruptedAnnotation(t *testing.T) {
 	g := NewWithT(t)
 
 	src := &v1alpha1.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{
-			Annotations: map[string]string{
-				"sreportal.io/v1alpha2-dnsrecord-spec": tInvalidJSON,
-			},
+		Annotations: map[string]string{
+			"sreportal.io/v1alpha2-dnsrecord-spec": tInvalidJSON,
 		},
 		Spec: v1alpha1.DNSRecordSpec{PortalRef: tPortalMain, SourceType: "ingress"},
 	}

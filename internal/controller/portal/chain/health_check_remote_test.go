@@ -20,7 +20,6 @@ import (
 	"context"
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -39,7 +38,7 @@ func TestHealthCheckRemoteHandlerGuardsNilRemoteClient(t *testing.T) {
 	h := chain.NewHealthCheckRemoteHandler(cli)
 
 	portal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: "remote-portal", Namespace: nsDefault},
+		Name: "remote-portal", Namespace: nsDefault,
 		Spec: sreportalv1alpha1.PortalSpec{
 			Title:  "Remote",
 			Remote: &sreportalv1alpha1.RemotePortalSpec{URL: "https://example"},

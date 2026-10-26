@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -25,8 +24,8 @@ func TestUpsertDNSRecordsHandler_PropagatesGroups(t *testing.T) {
 	require.NoError(t, sreportalv1alpha2.AddToScheme(scheme))
 
 	dns := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: upsertTestNS1, UID: "u1"},
-		Spec:       sreportalv1alpha2.DNSSpec{PortalRef: "p"},
+		Name: "d", Namespace: upsertTestNS1, UID: "u1",
+		Spec: sreportalv1alpha2.DNSSpec{PortalRef: "p"},
 	}
 	c := fake.NewClientBuilder().
 		WithScheme(scheme).

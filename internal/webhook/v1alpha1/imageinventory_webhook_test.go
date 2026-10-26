@@ -21,7 +21,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -38,17 +37,15 @@ var _ = Describe("ImageInventory Webhook", func() {
 		scheme := runtime.NewScheme()
 		Expect(sreportalv1alpha1.AddToScheme(scheme)).To(Succeed())
 		portal := &sreportalv1alpha1.Portal{
-			ObjectMeta: metav1.ObjectMeta{Name: tPortalMain, Namespace: tNsDefault},
-			Spec:       sreportalv1alpha1.PortalSpec{Title: "Main Portal"},
+			Name: tPortalMain, Namespace: tNsDefault,
+			Spec: sreportalv1alpha1.PortalSpec{Title: "Main Portal"},
 		}
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(portal).Build()
 		validator = ImageInventoryCustomValidator{client: fakeClient}
 
 		obj = &sreportalv1alpha1.ImageInventory{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-inventory",
-				Namespace: tNsDefault,
-			},
+			Name:      "test-inventory",
+			Namespace: tNsDefault,
 			Spec: sreportalv1alpha1.ImageInventorySpec{
 				PortalRef: tPortalMain,
 			},

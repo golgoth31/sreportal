@@ -94,7 +94,7 @@ func (o *PrometheusObserver) Available(ctx context.Context) (bool, error) {
 	for i := range o.descriptors {
 		desc := &o.descriptors[i]
 
-		result, _, err := o.api.Query(ctx, desc.ProbeQuery, time.Now())
+		result, _, _, err := o.api.Query(ctx, desc.ProbeQuery, time.Now())
 		if err != nil {
 			continue
 		}
@@ -162,7 +162,7 @@ func (o *PrometheusObserver) Observed(ctx context.Context, edges []domainnetpol.
 	window := formatPromDuration(o.queryWindow)
 	query := fmt.Sprintf(active.ObservedQueryTemplate, window)
 
-	result, _, err := o.api.Query(ctx, query, time.Now())
+	result, _, _, err := o.api.Query(ctx, query, time.Now())
 	if err != nil {
 		return nil, fmt.Errorf("prometheus query failed: %w", err)
 	}

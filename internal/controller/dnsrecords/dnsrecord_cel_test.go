@@ -20,7 +20,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	v1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
@@ -34,13 +33,13 @@ var _ = Describe("DNSRecord CRD CEL validation", func() {
 
 	BeforeEach(func() {
 		Expect(k8sClient.Create(ctx, &corev1.Namespace{
-			ObjectMeta: metav1.ObjectMeta{Name: ns},
+			Name: ns,
 		})).To(Or(Succeed(), MatchError(ContainSubstring("already exists"))))
 	})
 
 	It("rejects origin=auto without sourceType", func() {
 		rec := &v1alpha2.DNSRecord{
-			ObjectMeta: metav1.ObjectMeta{Name: "cel-auto-missing-source", Namespace: ns},
+			Name: "cel-auto-missing-source", Namespace: ns,
 			Spec: v1alpha2.DNSRecordSpec{
 				Origin:    v1alpha2.DNSRecordOriginAuto,
 				PortalRef: "p",
@@ -53,7 +52,7 @@ var _ = Describe("DNSRecord CRD CEL validation", func() {
 
 	It("rejects origin=manual with sourceType set", func() {
 		rec := &v1alpha2.DNSRecord{
-			ObjectMeta: metav1.ObjectMeta{Name: "cel-manual-with-source", Namespace: ns},
+			Name: "cel-manual-with-source", Namespace: ns,
 			Spec: v1alpha2.DNSRecordSpec{
 				Origin:     v1alpha2.DNSRecordOriginManual,
 				PortalRef:  "p",
@@ -68,7 +67,7 @@ var _ = Describe("DNSRecord CRD CEL validation", func() {
 
 	It("rejects mutation of immutable origin", func() {
 		rec := &v1alpha2.DNSRecord{
-			ObjectMeta: metav1.ObjectMeta{Name: "cel-immutable-origin", Namespace: ns},
+			Name: "cel-immutable-origin", Namespace: ns,
 			Spec: v1alpha2.DNSRecordSpec{
 				Origin:     v1alpha2.DNSRecordOriginAuto,
 				PortalRef:  "p",
@@ -89,7 +88,7 @@ var _ = Describe("DNSRecord CRD CEL validation", func() {
 
 	It("rejects mutation of immutable portalRef", func() {
 		rec := &v1alpha2.DNSRecord{
-			ObjectMeta: metav1.ObjectMeta{Name: "cel-immutable-portalref", Namespace: ns},
+			Name: "cel-immutable-portalref", Namespace: ns,
 			Spec: v1alpha2.DNSRecordSpec{
 				Origin:     v1alpha2.DNSRecordOriginAuto,
 				PortalRef:  "p1",
@@ -110,7 +109,7 @@ var _ = Describe("DNSRecord CRD CEL validation", func() {
 
 	It("accepts valid auto record", func() {
 		rec := &v1alpha2.DNSRecord{
-			ObjectMeta: metav1.ObjectMeta{Name: "cel-valid-auto", Namespace: ns},
+			Name: "cel-valid-auto", Namespace: ns,
 			Spec: v1alpha2.DNSRecordSpec{
 				Origin:     v1alpha2.DNSRecordOriginAuto,
 				PortalRef:  "p",
@@ -122,7 +121,7 @@ var _ = Describe("DNSRecord CRD CEL validation", func() {
 
 	It("accepts valid manual record", func() {
 		rec := &v1alpha2.DNSRecord{
-			ObjectMeta: metav1.ObjectMeta{Name: "cel-valid-manual", Namespace: ns},
+			Name: "cel-valid-manual", Namespace: ns,
 			Spec: v1alpha2.DNSRecordSpec{
 				Origin:    v1alpha2.DNSRecordOriginManual,
 				PortalRef: "p",

@@ -25,7 +25,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -46,8 +45,8 @@ func releaseScheme() *runtime.Scheme {
 
 func mainPortalCR() *sreportalv1alpha1.Portal {
 	return &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: tPortalMain, Namespace: tNsDefault},
-		Spec:       sreportalv1alpha1.PortalSpec{Title: "Main"},
+		Name: tPortalMain, Namespace: tNsDefault,
+		Spec: sreportalv1alpha1.PortalSpec{Title: "Main"},
 	}
 }
 

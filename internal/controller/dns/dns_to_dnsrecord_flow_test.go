@@ -77,8 +77,8 @@ var _ = Describe("DNS → DNSRecord E2E flow", func() {
 		p := &sreportalv1alpha1.Portal{}
 		if err := k8sClient.Get(ctx, types.NamespacedName{Name: portalName, Namespace: tNsDefault}, p); err != nil && errors.IsNotFound(err) {
 			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.Portal{
-				ObjectMeta: metav1.ObjectMeta{Name: portalName, Namespace: tNsDefault},
-				Spec:       sreportalv1alpha1.PortalSpec{Title: portalName},
+				Name: portalName, Namespace: tNsDefault,
+				Spec: sreportalv1alpha1.PortalSpec{Title: portalName},
 			})).To(Succeed())
 		}
 	})
@@ -109,7 +109,7 @@ var _ = Describe("DNS → DNSRecord E2E flow", func() {
 	It("propagates source endpoints from DNS down to the FQDN read store", func() {
 		By("creating a DNS CR with sources.service enabled")
 		Expect(k8sClient.Create(ctx, &v1alpha2.DNS{
-			ObjectMeta: metav1.ObjectMeta{Name: dnsName, Namespace: tNsDefault},
+			Name: dnsName, Namespace: tNsDefault,
 			Spec: v1alpha2.DNSSpec{
 				PortalRef: portalName,
 				GroupMapping: v1alpha2.GroupMappingSpec{
@@ -117,7 +117,7 @@ var _ = Describe("DNS → DNSRecord E2E flow", func() {
 				},
 				Sources: v1alpha2.SourcesSpec{
 					Service: &v1alpha2.ServiceSourceSpec{
-						CommonSourceSpec: v1alpha2.CommonSourceSpec{Enabled: true},
+						Enabled: true,
 					},
 				},
 				Reconciliation: v1alpha2.ReconciliationSpec{

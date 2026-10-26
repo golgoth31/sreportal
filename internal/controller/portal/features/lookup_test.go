@@ -23,7 +23,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -41,14 +40,14 @@ func TestLookupPortalFeature(t *testing.T) {
 
 	trueRef := true
 	enabledPortal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: tPortalMain, Namespace: tNsDefault},
+		Name: tPortalMain, Namespace: tNsDefault,
 		Spec: sreportalv1alpha1.PortalSpec{
 			Features: &sreportalv1alpha1.PortalFeatures{DNS: &trueRef},
 		},
 	}
 	falseRef := false
 	disabledPortal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: "disabled", Namespace: tNsDefault},
+		Name: "disabled", Namespace: tNsDefault,
 		Spec: sreportalv1alpha1.PortalSpec{
 			Features: &sreportalv1alpha1.PortalFeatures{DNS: &falseRef},
 		},

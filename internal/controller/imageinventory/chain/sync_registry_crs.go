@@ -157,10 +157,8 @@ func (h *SyncRegistryCRsHandler) upsertCR(
 	logger := log.FromContext(ctx).WithValues("imageregistry", hash, "host", group.Host, "namespace", group.Namespace)
 
 	cr := &sreportalv1alpha1.ImageRegistry{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      hash,
-			Namespace: inv.Namespace,
-		},
+		Name:      hash,
+		Namespace: inv.Namespace,
 	}
 	op, err := controllerutil.CreateOrPatch(ctx, h.client, cr, func() error {
 		// Owner reference for cascading delete.
@@ -202,10 +200,8 @@ func (h *SyncRegistryCRsHandler) deleteOrphans(
 		}
 		eg.Go(func() error {
 			cr := &sreportalv1alpha1.ImageRegistry{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      prev.Hash,
-					Namespace: inv.Namespace,
-				},
+				Name:      prev.Hash,
+				Namespace: inv.Namespace,
 			}
 			if err := h.client.Delete(egCtx, cr); err != nil {
 				if apierrors.IsNotFound(err) {

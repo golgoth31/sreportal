@@ -44,7 +44,7 @@ func ensureDNS(ctx context.Context, portal string, disableDNSCheck bool) {
 	err := k8sClient.Get(ctx, nn, &existing)
 	if errors.IsNotFound(err) {
 		Expect(k8sClient.Create(ctx, &v1alpha2.DNS{
-			ObjectMeta: metav1.ObjectMeta{Name: portal, Namespace: tNsDefault},
+			Name: portal, Namespace: tNsDefault,
 			Spec: v1alpha2.DNSSpec{
 				PortalRef: portal,
 				GroupMapping: v1alpha2.GroupMappingSpec{
@@ -85,8 +85,8 @@ var _ = Describe("DNSRecord Controller", func() {
 			p := &sreportalv1alpha1.Portal{}
 			if err := k8sClient.Get(ctx, nn, p); err != nil && errors.IsNotFound(err) {
 				Expect(k8sClient.Create(ctx, &sreportalv1alpha1.Portal{
-					ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: tNsDefault},
-					Spec:       sreportalv1alpha1.PortalSpec{Title: name},
+					Name: name, Namespace: tNsDefault,
+					Spec: sreportalv1alpha1.PortalSpec{Title: name},
 				})).To(Succeed())
 			}
 			// By default DNS check disabled; specific Contexts override via ensureDNS.
@@ -104,7 +104,7 @@ var _ = Describe("DNSRecord Controller", func() {
 			rec := &v1alpha2.DNSRecord{}
 			if err := k8sClient.Get(ctx, recordNN, rec); errors.IsNotFound(err) {
 				Expect(k8sClient.Create(ctx, &v1alpha2.DNSRecord{
-					ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: tNsDefault},
+					Name: recordName, Namespace: tNsDefault,
 					Spec: v1alpha2.DNSRecordSpec{
 						Origin:     v1alpha2.DNSRecordOriginAuto,
 						SourceType: tSrcService,
@@ -160,7 +160,7 @@ var _ = Describe("DNSRecord Controller", func() {
 
 			By("creating and populating the DNSRecord")
 			Expect(k8sClient.Create(ctx, &v1alpha2.DNSRecord{
-				ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: tNsDefault},
+				Name: recordName, Namespace: tNsDefault,
 				Spec: v1alpha2.DNSRecordSpec{
 					Origin:     v1alpha2.DNSRecordOriginAuto,
 					SourceType: tSrcService,
@@ -218,7 +218,7 @@ var _ = Describe("DNSRecord Controller", func() {
 
 			By("creating a DNSRecord with spec entries")
 			Expect(k8sClient.Create(ctx, &v1alpha2.DNSRecord{
-				ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: tNsDefault},
+				Name: recordName, Namespace: tNsDefault,
 				Spec: v1alpha2.DNSRecordSpec{
 					Origin:     v1alpha2.DNSRecordOriginAuto,
 					SourceType: tSrcService,
@@ -257,7 +257,7 @@ var _ = Describe("DNSRecord Controller", func() {
 
 			By("creating a DNSRecord with spec entries")
 			Expect(k8sClient.Create(ctx, &v1alpha2.DNSRecord{
-				ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: tNsDefault},
+				Name: recordName, Namespace: tNsDefault,
 				Spec: v1alpha2.DNSRecordSpec{
 					Origin:     v1alpha2.DNSRecordOriginAuto,
 					SourceType: tSrcService,
@@ -318,7 +318,7 @@ var _ = Describe("DNSRecord Controller", func() {
 
 			By("creating an owner DNS that references a portal which doesn't exist")
 			dns := &v1alpha2.DNS{
-				ObjectMeta: metav1.ObjectMeta{Name: orphanDNS, Namespace: tNsDefault},
+				Name: orphanDNS, Namespace: tNsDefault,
 				Spec: v1alpha2.DNSSpec{
 					PortalRef: orphanPortal,
 					GroupMapping: v1alpha2.GroupMappingSpec{
@@ -341,18 +341,16 @@ var _ = Describe("DNSRecord Controller", func() {
 			isController := true
 			blockOwner := true
 			rec := &v1alpha2.DNSRecord{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      orphanRecord,
-					Namespace: tNsDefault,
-					OwnerReferences: []metav1.OwnerReference{{
-						APIVersion:         v1alpha2.GroupVersion.String(),
-						Kind:               "DNS",
-						Name:               orphanDNS,
-						UID:                dns.UID,
-						Controller:         &isController,
-						BlockOwnerDeletion: &blockOwner,
-					}},
-				},
+				Name:      orphanRecord,
+				Namespace: tNsDefault,
+				OwnerReferences: []metav1.OwnerReference{{
+					APIVersion:         v1alpha2.GroupVersion.String(),
+					Kind:               "DNS",
+					Name:               orphanDNS,
+					UID:                dns.UID,
+					Controller:         &isController,
+					BlockOwnerDeletion: &blockOwner,
+				}},
 				Spec: v1alpha2.DNSRecordSpec{
 					Origin:    v1alpha2.DNSRecordOriginManual,
 					PortalRef: orphanPortal,
@@ -402,7 +400,7 @@ var _ = Describe("DNSRecord Controller", func() {
 			reconciler.SetFQDNWriter(store)
 
 			Expect(k8sClient.Create(ctx, &v1alpha2.DNSRecord{
-				ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: tNsDefault},
+				Name: recordName, Namespace: tNsDefault,
 				Spec: v1alpha2.DNSRecordSpec{
 					Origin:     v1alpha2.DNSRecordOriginAuto,
 					SourceType: tSrcService,
@@ -439,20 +437,16 @@ var _ = Describe("DNSRecord Controller", func() {
 			// GenerationChangedPredicate must return false for a status-only patch.
 			gen := int64(3)
 			oldObj := &v1alpha2.DNSRecord{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            recordName,
-					Namespace:       tNsDefault,
-					Generation:      gen,
-					ResourceVersion: "100",
-				},
+				Name:            recordName,
+				Namespace:       tNsDefault,
+				Generation:      gen,
+				ResourceVersion: "100",
 			}
 			newObj := &v1alpha2.DNSRecord{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            recordName,
-					Namespace:       tNsDefault,
-					Generation:      gen, // same generation → status-only change
-					ResourceVersion: "101",
-				},
+				Name:            recordName,
+				Namespace:       tNsDefault,
+				Generation:      gen, // same generation → status-only change
+				ResourceVersion: "101",
 				Status: v1alpha2.DNSRecordStatus{
 					EndpointsHash: "some-new-hash",
 				},
@@ -475,7 +469,7 @@ var _ = Describe("DNSRecord Controller", func() {
 			rec.SetFQDNWriter(store)
 
 			Expect(k8sClient.Create(ctx, &v1alpha2.DNSRecord{
-				ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: tNsDefault},
+				Name: recordName, Namespace: tNsDefault,
 				Spec: v1alpha2.DNSRecordSpec{
 					Origin:     v1alpha2.DNSRecordOriginAuto,
 					SourceType: tSrcService,
