@@ -39,7 +39,7 @@ func TestEndpoints_BoundedWaitReturnsNotReady(t *testing.T) {
 	cfgs := BuildEffectiveConfigs([]sreportalv1alpha2.DNS{{Spec: sreportalv1alpha2.DNSSpec{
 		Sources: sreportalv1alpha2.SourcesSpec{
 			Service: &sreportalv1alpha2.ServiceSourceSpec{
-				CommonSourceSpec: sreportalv1alpha2.CommonSourceSpec{Enabled: true},
+				Enabled: true,
 			},
 		},
 	}}})
@@ -81,10 +81,9 @@ func TestToConfig_DNSEndpoint(t *testing.T) {
 func TestToConfig_FQDNTemplate(t *testing.T) {
 	withTmpl := BuildEffectiveConfigs([]sreportalv1alpha2.DNS{{Spec: sreportalv1alpha2.DNSSpec{
 		Sources: sreportalv1alpha2.SourcesSpec{
-			Ingress: &sreportalv1alpha2.IngressSourceSpec{CommonSourceSpec: sreportalv1alpha2.CommonSourceSpec{
+			Ingress: &sreportalv1alpha2.IngressSourceSpec{
 				Enabled:      true,
-				FQDNTemplate: "{{.Name}}.example.com",
-			}},
+				FQDNTemplate: "{{.Name}}.example.com"},
 		},
 	}}})
 	if _, err := withTmpl[KindIngress].toConfig(KindIngress); err != nil {
@@ -93,7 +92,7 @@ func TestToConfig_FQDNTemplate(t *testing.T) {
 
 	noTmpl := BuildEffectiveConfigs([]sreportalv1alpha2.DNS{{Spec: sreportalv1alpha2.DNSSpec{
 		Sources: sreportalv1alpha2.SourcesSpec{
-			Ingress: &sreportalv1alpha2.IngressSourceSpec{CommonSourceSpec: sreportalv1alpha2.CommonSourceSpec{Enabled: true}},
+			Ingress: &sreportalv1alpha2.IngressSourceSpec{Enabled: true},
 		},
 	}}})
 

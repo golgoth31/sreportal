@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -90,7 +89,7 @@ func Migrate(ctx context.Context, c client.Client, dryRun bool) (Summary, error)
 				})
 			}
 			record := &v1alpha2.DNSRecord{
-				ObjectMeta: metav1.ObjectMeta{Name: recordName, Namespace: dns.Namespace},
+				Name: recordName, Namespace: dns.Namespace,
 				Spec: v1alpha2.DNSRecordSpec{
 					Origin:    v1alpha2.DNSRecordOriginManual,
 					PortalRef: dns.Spec.PortalRef,

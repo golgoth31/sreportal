@@ -50,12 +50,10 @@ func TestUpdateStatusHandlerPreservesForeignCondition(t *testing.T) {
 
 	// Inventory at generation=2 with stale observedGeneration=1.
 	stored := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:       name,
-			Namespace:  ns,
-			Generation: 2,
-		},
-		Spec: sreportalv1alpha1.ImageInventorySpec{PortalRef: tPortalMain},
+		Name:       name,
+		Namespace:  ns,
+		Generation: 2,
+		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: tPortalMain},
 		Status: sreportalv1alpha1.ImageInventoryStatus{
 			ObservedGeneration: 1,
 		},

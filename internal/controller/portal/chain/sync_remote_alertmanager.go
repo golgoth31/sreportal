@@ -129,12 +129,10 @@ func (h *SyncRemoteAlertmanagerHandler) ensureAlertmanagerCR(
 	isNew := errors.IsNotFound(err)
 	if isNew {
 		am = &sreportalv1alpha1.Alertmanager{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      amName,
-				Namespace: portal.Namespace,
-				Labels: map[string]string{
-					alertmanagerctrl.LabelRemoteAlertmanagerName: remoteAM.Name,
-				},
+			Name:      amName,
+			Namespace: portal.Namespace,
+			Labels: map[string]string{
+				alertmanagerctrl.LabelRemoteAlertmanagerName: remoteAM.Name,
 			},
 			Spec: sreportalv1alpha1.AlertmanagerSpec{
 				PortalRef: portal.Name,

@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -58,7 +57,7 @@ func (r *fakeResolver) ResolveObject(_ context.Context, obj client.Object) ([]*e
 // crossDNS builds a DNS CR (namespace ns) that enables only the crossplane kind.
 func crossDNS(name, ns string) *sreportalv1alpha2.DNS {
 	return &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
+		Name: name, Namespace: ns,
 		Spec: sreportalv1alpha2.DNSSpec{
 			PortalRef: ns,
 			Sources: sreportalv1alpha2.SourcesSpec{
@@ -73,7 +72,7 @@ func TestCycle_ProducesEndpoints(t *testing.T) {
 	require.NoError(t, sreportalv1alpha2.AddToScheme(scheme))
 	require.NoError(t, corev1.AddToScheme(scheme))
 
-	svc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "echo", Namespace: tTeamA}}
+	svc := &corev1.Service{Name: "echo", Namespace: tTeamA}
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(crossDNS("d", tTeamA), svc).Build()
 	reg := registry.NewRegistry(&fakeResolver{})
 	store := rsource.NewStore()
@@ -94,7 +93,7 @@ func TestCycle_SetsResourceLabelWhenResolverOmitsIt(t *testing.T) {
 	require.NoError(t, sreportalv1alpha2.AddToScheme(scheme))
 	require.NoError(t, corev1.AddToScheme(scheme))
 
-	svc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "echo", Namespace: tTeamA}}
+	svc := &corev1.Service{Name: "echo", Namespace: tTeamA}
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(crossDNS("d", tTeamA), svc).Build()
 	reg := registry.NewRegistry(&fakeResolver{})
 	store := rsource.NewStore()
@@ -133,13 +132,13 @@ func TestCycle_RemoteDNSSkipped(t *testing.T) {
 	localDNS := crossDNS("local", tTeamA)
 	// remote DNS: ingress enabled — must be ignored entirely.
 	remoteDNS := &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: "remote", Namespace: "team-b"},
+		Name: "remote", Namespace: "team-b",
 		Spec: sreportalv1alpha2.DNSSpec{
 			PortalRef: "team-b",
 			IsRemote:  true,
 			Sources: sreportalv1alpha2.SourcesSpec{
 				Ingress: &sreportalv1alpha2.IngressSourceSpec{
-					CommonSourceSpec: sreportalv1alpha2.CommonSourceSpec{Enabled: true},
+					Enabled: true,
 				},
 			},
 		},
@@ -215,8 +214,8 @@ func TestCycle_PartialResolveError(t *testing.T) {
 	require.NoError(t, sreportalv1alpha2.AddToScheme(scheme))
 	require.NoError(t, corev1.AddToScheme(scheme))
 
-	goodSvc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "good", Namespace: "ns"}}
-	badSvc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "bad", Namespace: "ns"}}
+	goodSvc := &corev1.Service{Name: "good", Namespace: "ns"}
+	badSvc := &corev1.Service{Name: "bad", Namespace: "ns"}
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(crossDNS("d", "ns"), goodSvc, badSvc).Build()
 
 	reg := registry.NewRegistry(&fakeResolver{
@@ -250,8 +249,8 @@ func TestCycle_AllObjectsFailResolve(t *testing.T) {
 	require.NoError(t, sreportalv1alpha2.AddToScheme(scheme))
 	require.NoError(t, corev1.AddToScheme(scheme))
 
-	svc1 := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "svc1", Namespace: "ns"}}
-	svc2 := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "svc2", Namespace: "ns"}}
+	svc1 := &corev1.Service{Name: "svc1", Namespace: "ns"}
+	svc2 := &corev1.Service{Name: "svc2", Namespace: "ns"}
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(crossDNS("d", "ns"), svc1, svc2).Build()
 
 	reg := registry.NewRegistry(&fakeResolver{

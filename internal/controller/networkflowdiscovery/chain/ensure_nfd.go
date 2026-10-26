@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -94,10 +93,8 @@ func (r *EnsureNFDRunnable) Start(ctx context.Context) error {
 
 	// Create it
 	nfd := &sreportalv1alpha1.NetworkFlowDiscovery{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      nfdName,
-			Namespace: r.namespace,
-		},
+		Name:      nfdName,
+		Namespace: r.namespace,
 		Spec: sreportalv1alpha1.NetworkFlowDiscoverySpec{
 			PortalRef: r.portalRef,
 		},

@@ -115,10 +115,8 @@ func (h *UpdateStatusHandler) ensureFlowNodeSet(ctx context.Context, nfd *srepor
 	err := h.client.Get(ctx, client.ObjectKey{Name: name, Namespace: ns}, &nodeSet)
 	if errors.IsNotFound(err) {
 		nodeSet = sreportalv1alpha1.FlowNodeSet{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: ns,
-			},
+			Name:      name,
+			Namespace: ns,
 			Spec: sreportalv1alpha1.FlowNodeSetSpec{
 				DiscoveryRef: nfdName,
 			},
@@ -150,10 +148,8 @@ func (h *UpdateStatusHandler) ensureFlowEdgeSet(ctx context.Context, nfd *srepor
 	err := h.client.Get(ctx, client.ObjectKey{Name: name, Namespace: ns}, &edgeSet)
 	if errors.IsNotFound(err) {
 		edgeSet = sreportalv1alpha1.FlowEdgeSet{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: ns,
-			},
+			Name:      name,
+			Namespace: ns,
 			Spec: sreportalv1alpha1.FlowEdgeSetSpec{
 				DiscoveryRef: nfdName,
 			},

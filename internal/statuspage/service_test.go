@@ -50,7 +50,7 @@ func newTestService(objects ...runtime.Object) *statuspage.Service {
 
 func makeIncidentCR(updates []sreportalv1alpha1.IncidentUpdate) *sreportalv1alpha1.Incident {
 	return &sreportalv1alpha1.Incident{
-		ObjectMeta: metav1.ObjectMeta{Name: tIncID, Namespace: testNamespace},
+		Name: tIncID, Namespace: testNamespace,
 		Spec: sreportalv1alpha1.IncidentSpec{
 			Title:     tIncTitle,
 			PortalRef: tPortalMain,
@@ -64,7 +64,7 @@ func makeIncidentCR(updates []sreportalv1alpha1.IncidentUpdate) *sreportalv1alph
 
 func makeComponentCR() *sreportalv1alpha1.Component {
 	return &sreportalv1alpha1.Component{
-		ObjectMeta: metav1.ObjectMeta{Name: tCompID, Namespace: testNamespace},
+		Name: tCompID, Namespace: testNamespace,
 		Spec: sreportalv1alpha1.ComponentSpec{
 			DisplayName: tCompAPIGW,
 			Description: "original desc",
@@ -128,7 +128,7 @@ func TestCreateComponent_AlreadyExists(t *testing.T) {
 	// Pre-create a CR whose name matches GenerateCRName(tPortalMain, tCompAPIGW)
 	generatedName := statuspage.GenerateCRName(tPortalMain, tCompAPIGW)
 	existing := &sreportalv1alpha1.Component{
-		ObjectMeta: metav1.ObjectMeta{Name: generatedName, Namespace: testNamespace},
+		Name: generatedName, Namespace: testNamespace,
 		Spec: sreportalv1alpha1.ComponentSpec{
 			DisplayName: tCompAPIGW,
 			Group:       tGroupInfra,
@@ -297,7 +297,7 @@ func TestCreateIncident_AutoGeneratesName(t *testing.T) {
 
 func makeMaintenanceCR() *sreportalv1alpha1.Maintenance {
 	return &sreportalv1alpha1.Maintenance{
-		ObjectMeta: metav1.ObjectMeta{Name: tMaintID, Namespace: testNamespace},
+		Name: tMaintID, Namespace: testNamespace,
 		Spec: sreportalv1alpha1.MaintenanceSpec{
 			Title:          tMaintTitle,
 			PortalRef:      tPortalMain,
@@ -361,7 +361,7 @@ func TestCreateMaintenance_DefaultAffectedStatus(t *testing.T) {
 func TestCreateMaintenance_AlreadyExists(t *testing.T) {
 	generatedName := statuspage.GenerateCRName(tPortalMain, tMaintTitle)
 	existing := &sreportalv1alpha1.Maintenance{
-		ObjectMeta: metav1.ObjectMeta{Name: generatedName, Namespace: testNamespace},
+		Name: generatedName, Namespace: testNamespace,
 		Spec: sreportalv1alpha1.MaintenanceSpec{
 			Title:     tMaintTitle,
 			PortalRef: tPortalMain,
@@ -572,7 +572,7 @@ func TestCreateIncident_Success(t *testing.T) {
 func TestCreateIncident_AlreadyExists(t *testing.T) {
 	generatedName := statuspage.GenerateCRName(tPortalMain, tIncTitle)
 	existing := &sreportalv1alpha1.Incident{
-		ObjectMeta: metav1.ObjectMeta{Name: generatedName, Namespace: testNamespace},
+		Name: generatedName, Namespace: testNamespace,
 		Spec: sreportalv1alpha1.IncidentSpec{
 			Title:     tIncTitle,
 			PortalRef: tPortalMain,

@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
-	admissionv1 "k8s.io/api/admission/v1"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -39,9 +38,7 @@ const testControllerSA = "system:serviceaccount:sreportal-system:sreportal-contr
 
 func ctxWithUser(username string) context.Context {
 	req := admission.Request{
-		AdmissionRequest: admissionv1.AdmissionRequest{
-			UserInfo: authenticationv1.UserInfo{Username: username},
-		},
+		UserInfo: authenticationv1.UserInfo{Username: username},
 	}
 	return admission.NewContextWithRequest(context.Background(), req)
 }
@@ -62,10 +59,8 @@ func newFakeClient(t *testing.T, objs ...client.Object) client.Client {
 // newDNS constructs a minimal DNS object for seeding the fake client.
 func newDNS() *sreportalv1alpha2.DNS {
 	return &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      tDNSName,
-			Namespace: tNamespace,
-		},
+		Name:      tDNSName,
+		Namespace: tNamespace,
 		Spec: sreportalv1alpha2.DNSSpec{
 			PortalRef: tPortalMain,
 		},
@@ -75,10 +70,8 @@ func newDNS() *sreportalv1alpha2.DNS {
 // newPortal constructs a minimal Portal object for seeding the fake client.
 func newPortal() *sreportalv1alpha1.Portal {
 	return &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      tPortalMain,
-			Namespace: tNamespace,
-		},
+		Name:      tPortalMain,
+		Namespace: tNamespace,
 		Spec: sreportalv1alpha1.PortalSpec{
 			Title: "Main Portal",
 		},
@@ -114,7 +107,7 @@ func TestDNSRecordWebhook_AutoRequiresSourceType(t *testing.T) {
 	g := NewWithT(t)
 	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t), "")
 	r := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Name: tRecordIngress},
+		Name: tRecordIngress,
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:    sreportalv1alpha2.DNSRecordOriginAuto,
 			PortalRef: tPortalMain,
@@ -129,7 +122,7 @@ func TestDNSRecordWebhook_ManualRequiresEntries(t *testing.T) {
 	g := NewWithT(t)
 	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t), "")
 	r := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Name: tRecordManual},
+		Name: tRecordManual,
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:    sreportalv1alpha2.DNSRecordOriginManual,
 			PortalRef: tPortalMain,
@@ -147,7 +140,7 @@ func TestDNSRecordWebhook_UnknownOriginRejected(t *testing.T) {
 	g := NewWithT(t)
 	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t), testControllerSA)
 	r := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Name: tRecordManual},
+		Name: tRecordManual,
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:    "bogus",
 			PortalRef: tPortalMain,
@@ -162,7 +155,7 @@ func TestDNSRecordWebhook_ManualRejectsSourceType(t *testing.T) {
 	g := NewWithT(t)
 	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t), "")
 	r := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Name: tRecordManual},
+		Name: tRecordManual,
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:     sreportalv1alpha2.DNSRecordOriginManual,
 			PortalRef:  tPortalMain,
@@ -223,7 +216,7 @@ func TestDNSRecordWebhook_AutoBlockedForNonControllerSA(t *testing.T) {
 	g := NewWithT(t)
 	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t), testControllerSA)
 	r := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Name: tRecordIngress},
+		Name: tRecordIngress,
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:     sreportalv1alpha2.DNSRecordOriginAuto,
 			PortalRef:  tPortalMain,
@@ -242,11 +235,9 @@ func TestDNSRecordWebhook_AutoValidCreate(t *testing.T) {
 	dns := newDNS()
 	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), testControllerSA)
 	r := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            tRecordIngress,
-			Namespace:       tNamespace,
-			OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
-		},
+		Name:            tRecordIngress,
+		Namespace:       tNamespace,
+		OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:     sreportalv1alpha2.DNSRecordOriginAuto,
 			PortalRef:  tPortalMain,
@@ -265,10 +256,8 @@ func TestDNSRecordWebhook_ManualValidCreate(t *testing.T) {
 	portal := newPortal()
 	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, portal), "")
 	r := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      tRecordManual,
-			Namespace: tNamespace,
-		},
+		Name:      tRecordManual,
+		Namespace: tNamespace,
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:    sreportalv1alpha2.DNSRecordOriginManual,
 			PortalRef: tPortalMain,
@@ -285,7 +274,7 @@ func TestDNSRecordWebhook_ValidUpdate(t *testing.T) {
 	portal := newPortal()
 	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, portal), "")
 	old := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Namespace: tNamespace},
+		Namespace: tNamespace,
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:    sreportalv1alpha2.DNSRecordOriginManual,
 			PortalRef: tPortalMain,
@@ -293,7 +282,7 @@ func TestDNSRecordWebhook_ValidUpdate(t *testing.T) {
 		},
 	}
 	newR := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Namespace: tNamespace},
+		Namespace: tNamespace,
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:    sreportalv1alpha2.DNSRecordOriginManual,
 			PortalRef: tPortalMain,
@@ -324,11 +313,9 @@ func TestDNSRecordWebhook_AutoAllowedForControllerSA(t *testing.T) {
 	dns := newDNS()
 	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), controllerSA)
 	r := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            tRecordIngress,
-			Namespace:       tNamespace,
-			OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
-		},
+		Name:            tRecordIngress,
+		Namespace:       tNamespace,
+		OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:     sreportalv1alpha2.DNSRecordOriginAuto,
 			PortalRef:  tPortalMain,
@@ -346,7 +333,7 @@ func TestDNSRecordWebhook_AutoRejectsMissingOwnerRef(t *testing.T) {
 	dns := newDNS()
 	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), testControllerSA)
 	r := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Name: tRecordIngress, Namespace: tNamespace},
+		Name: tRecordIngress, Namespace: tNamespace,
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:     sreportalv1alpha2.DNSRecordOriginAuto,
 			PortalRef:  tPortalMain,
@@ -366,11 +353,9 @@ func TestDNSRecordWebhook_RejectsMultipleDNSControllerOwnerRefs(t *testing.T) {
 	ref2.Name = "second-dns"
 	ref2.UID = "dns-uid-second"
 	r := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            tRecordIngress,
-			Namespace:       tNamespace,
-			OwnerReferences: []metav1.OwnerReference{validOwnerRef(), ref2},
-		},
+		Name:            tRecordIngress,
+		Namespace:       tNamespace,
+		OwnerReferences: []metav1.OwnerReference{validOwnerRef(), ref2},
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:     sreportalv1alpha2.DNSRecordOriginAuto,
 			PortalRef:  tPortalMain,
@@ -389,11 +374,9 @@ func TestDNSRecordWebhook_RejectsOwnerRefWithoutBlockOwnerDeletion(t *testing.T)
 	ref := validOwnerRef()
 	ref.BlockOwnerDeletion = nil
 	r := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            tRecordIngress,
-			Namespace:       tNamespace,
-			OwnerReferences: []metav1.OwnerReference{ref},
-		},
+		Name:            tRecordIngress,
+		Namespace:       tNamespace,
+		OwnerReferences: []metav1.OwnerReference{ref},
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:     sreportalv1alpha2.DNSRecordOriginAuto,
 			PortalRef:  tPortalMain,
@@ -410,11 +393,9 @@ func TestDNSRecordWebhook_RejectsDanglingOwnerDNS(t *testing.T) {
 	// fake client has no DNS objects → owner lookup returns NotFound.
 	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t), testControllerSA)
 	r := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            tRecordIngress,
-			Namespace:       tNamespace,
-			OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
-		},
+		Name:            tRecordIngress,
+		Namespace:       tNamespace,
+		OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:     sreportalv1alpha2.DNSRecordOriginAuto,
 			PortalRef:  tPortalMain,
@@ -431,11 +412,9 @@ func TestDNSRecordWebhook_RejectsPortalRefMismatch(t *testing.T) {
 	dns := newDNS() // owner DNS has spec.portalRef=tPortalMain.
 	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), testControllerSA)
 	r := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            tRecordIngress,
-			Namespace:       tNamespace,
-			OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
-		},
+		Name:            tRecordIngress,
+		Namespace:       tNamespace,
+		OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:     sreportalv1alpha2.DNSRecordOriginAuto,
 			PortalRef:  tPortalOther,
@@ -452,7 +431,7 @@ func TestDNSRecordWebhook_ManualWithoutOwnerRefAccepted(t *testing.T) {
 	portal := newPortal()
 	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, portal), "")
 	r := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Name: tRecordManual, Namespace: tNamespace},
+		Name: tRecordManual, Namespace: tNamespace,
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:    sreportalv1alpha2.DNSRecordOriginManual,
 			PortalRef: tPortalMain,
@@ -468,7 +447,7 @@ func TestDNSRecordWebhook_ManualWithoutOwnerRefRejectedWhenPortalMissing(t *test
 	// fake client has no Portal objects → portalRef lookup returns NotFound.
 	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t), "")
 	r := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Name: tRecordManual, Namespace: tNamespace},
+		Name: tRecordManual, Namespace: tNamespace,
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:    sreportalv1alpha2.DNSRecordOriginManual,
 			PortalRef: tPortalMain,
@@ -491,11 +470,9 @@ func TestDNSRecordWebhook_ManualWithOwnerRefRejectedOnCreate(t *testing.T) {
 	dns := newDNS()
 	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), "")
 	r := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            tRecordManual,
-			Namespace:       tNamespace,
-			OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
-		},
+		Name:            tRecordManual,
+		Namespace:       tNamespace,
+		OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:    sreportalv1alpha2.DNSRecordOriginManual,
 			PortalRef: tPortalMain,
@@ -515,7 +492,7 @@ func TestDNSRecordWebhook_ManualAdoptionViaUpdateRejected(t *testing.T) {
 	dns := newDNS()
 	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), "")
 	old := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Namespace: tNamespace},
+		Namespace: tNamespace,
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:    sreportalv1alpha2.DNSRecordOriginManual,
 			PortalRef: tPortalMain,
@@ -523,10 +500,8 @@ func TestDNSRecordWebhook_ManualAdoptionViaUpdateRejected(t *testing.T) {
 		},
 	}
 	newR := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:       tNamespace,
-			OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
-		},
+		Namespace:       tNamespace,
+		OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:    sreportalv1alpha2.DNSRecordOriginManual,
 			PortalRef: tPortalMain,
@@ -543,10 +518,8 @@ func TestDNSRecordWebhook_UpdateOwnerRefRemovalRejected(t *testing.T) {
 	dns := newDNS()
 	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), "")
 	old := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:       tNamespace,
-			OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
-		},
+		Namespace:       tNamespace,
+		OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:    sreportalv1alpha2.DNSRecordOriginManual,
 			PortalRef: tPortalMain,
@@ -554,7 +527,7 @@ func TestDNSRecordWebhook_UpdateOwnerRefRemovalRejected(t *testing.T) {
 		},
 	}
 	newR := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Namespace: tNamespace},
+		Namespace: tNamespace,
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:    sreportalv1alpha2.DNSRecordOriginManual,
 			PortalRef: tPortalMain,
@@ -574,10 +547,8 @@ func TestDNSRecordWebhook_UpdateReparentingRejected(t *testing.T) {
 	other.Name = "team-b-dns"
 	other.UID = "dns-uid-team-b"
 	old := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:       tNamespace,
-			OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
-		},
+		Namespace:       tNamespace,
+		OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:    sreportalv1alpha2.DNSRecordOriginManual,
 			PortalRef: tPortalMain,
@@ -585,10 +556,8 @@ func TestDNSRecordWebhook_UpdateReparentingRejected(t *testing.T) {
 		},
 	}
 	newR := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:       tNamespace,
-			OwnerReferences: []metav1.OwnerReference{other},
-		},
+		Namespace:       tNamespace,
+		OwnerReferences: []metav1.OwnerReference{other},
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:    sreportalv1alpha2.DNSRecordOriginManual,
 			PortalRef: tPortalMain,
@@ -609,11 +578,9 @@ func TestDNSRecordWebhook_AutoRejectedWhenNoSAConfigured(t *testing.T) {
 	dns := newDNS()
 	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), "")
 	r := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            tRecordIngress,
-			Namespace:       tNamespace,
-			OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
-		},
+		Name:            tRecordIngress,
+		Namespace:       tNamespace,
+		OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:     sreportalv1alpha2.DNSRecordOriginAuto,
 			PortalRef:  tPortalMain,
@@ -631,11 +598,9 @@ func TestDNSRecordWebhook_AutoAllowsEntriesFromControllerSA(t *testing.T) {
 	dns := newDNS()
 	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), controllerSA)
 	r := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            tRecordIngress,
-			Namespace:       tNamespace,
-			OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
-		},
+		Name:            tRecordIngress,
+		Namespace:       tNamespace,
+		OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:     sreportalv1alpha2.DNSRecordOriginAuto,
 			PortalRef:  tPortalMain,
@@ -655,11 +620,9 @@ func TestDNSRecordWebhook_AutoRejectsEntriesFromNonControllerSA(t *testing.T) {
 	dns := newDNS()
 	v := webhookv1alpha2.NewDNSRecordCustomValidator(newFakeClient(t, dns), controllerSA)
 	r := &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            tRecordIngress,
-			Namespace:       tNamespace,
-			OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
-		},
+		Name:            tRecordIngress,
+		Namespace:       tNamespace,
+		OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:     sreportalv1alpha2.DNSRecordOriginAuto,
 			PortalRef:  tPortalMain,
@@ -678,11 +641,9 @@ func TestDNSRecordWebhook_AutoRejectsEntriesFromNonControllerSA(t *testing.T) {
 // shared by the ValidateUpdate SA-check tests below.
 func autoRecordWithEntry(target string) *sreportalv1alpha2.DNSRecord {
 	return &sreportalv1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            tRecordIngress,
-			Namespace:       tNamespace,
-			OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
-		},
+		Name:            tRecordIngress,
+		Namespace:       tNamespace,
+		OwnerReferences: []metav1.OwnerReference{validOwnerRef()},
 		Spec: sreportalv1alpha2.DNSRecordSpec{
 			Origin:     sreportalv1alpha2.DNSRecordOriginAuto,
 			PortalRef:  tPortalMain,

@@ -45,10 +45,8 @@ var _ = Describe("DNSRecordToFQDNViews", func() {
 	Context("with endpoints", func() {
 		It("should convert endpoints to FQDNViews with PortalRef and SourceType", func() {
 			record := &v1alpha2.DNSRecord{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "my-portal-service",
-					Namespace: "test-ns",
-				},
+				Name:      "my-portal-service",
+				Namespace: "test-ns",
 				Spec: v1alpha2.DNSRecordSpec{
 					Origin:     v1alpha2.DNSRecordOriginAuto,
 					SourceType: tSrcService,
@@ -87,10 +85,8 @@ var _ = Describe("DNSRecordToFQDNViews", func() {
 	Context("with empty endpoints", func() {
 		It("should return nil", func() {
 			record := &v1alpha2.DNSRecord{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "empty-record",
-					Namespace: tNsDefault,
-				},
+				Name:      "empty-record",
+				Namespace: tNsDefault,
 				Spec: v1alpha2.DNSRecordSpec{
 					Origin:     v1alpha2.DNSRecordOriginAuto,
 					SourceType: tSrcService,
@@ -106,7 +102,7 @@ var _ = Describe("DNSRecordToFQDNViews", func() {
 	Context("with OriginRef on endpoints", func() {
 		It("should propagate OriginRef to FQDNView", func() {
 			record := &v1alpha2.DNSRecord{
-				ObjectMeta: metav1.ObjectMeta{Name: "origin-record", Namespace: tNsDefault},
+				Name: "origin-record", Namespace: tNsDefault,
 				Spec: v1alpha2.DNSRecordSpec{
 					Origin:     v1alpha2.DNSRecordOriginAuto,
 					SourceType: tSrcService,
@@ -140,10 +136,8 @@ var _ = Describe("DNSRecordToFQDNViews", func() {
 	Context("with group mapping config", func() {
 		It("should apply group mapping from config", func() {
 			record := &v1alpha2.DNSRecord{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "mapped-record",
-					Namespace: tNsDefault,
-				},
+				Name:      "mapped-record",
+				Namespace: tNsDefault,
 				Spec: v1alpha2.DNSRecordSpec{
 					Origin:     v1alpha2.DNSRecordOriginAuto,
 					SourceType: tSrcService,
@@ -175,10 +169,8 @@ var _ = Describe("DNSRecordToFQDNViews", func() {
 	Context("with duplicate FQDNs across groups", func() {
 		It("should deduplicate and merge groups", func() {
 			record := &v1alpha2.DNSRecord{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "dedup-record",
-					Namespace: tNsDefault,
-				},
+				Name:      "dedup-record",
+				Namespace: tNsDefault,
 				Spec: v1alpha2.DNSRecordSpec{
 					Origin:     v1alpha2.DNSRecordOriginAuto,
 					SourceType: tSrcService,
@@ -209,7 +201,7 @@ var _ = Describe("DNSRecordToFQDNViews", func() {
 	Context("with manual origin", func() {
 		It("should set Source to SourceManual", func() {
 			record := &v1alpha2.DNSRecord{
-				ObjectMeta: metav1.ObjectMeta{Name: "main-manual", Namespace: tNsDefault},
+				Name: "main-manual", Namespace: tNsDefault,
 				Spec: v1alpha2.DNSRecordSpec{
 					Origin:    v1alpha2.DNSRecordOriginManual,
 					PortalRef: tPortalMain,

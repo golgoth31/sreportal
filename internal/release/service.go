@@ -80,10 +80,8 @@ func (s *Service) AddEntry(ctx context.Context, entry domainrelease.Entry) (stri
 		if apierrors.IsNotFound(err) {
 			// Create new CR
 			rel = sreportalv1alpha1.Release{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      crName,
-					Namespace: s.namespace,
-				},
+				Name:      crName,
+				Namespace: s.namespace,
 				Spec: sreportalv1alpha1.ReleaseSpec{
 					PortalRef: portalRef,
 					Entries:   []sreportalv1alpha1.ReleaseEntry{k8sEntry},

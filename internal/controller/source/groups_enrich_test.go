@@ -6,7 +6,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -26,10 +25,8 @@ func TestCycle_FoldsGroupsAnnotationOntoEndpoint(t *testing.T) {
 	require.NoError(t, corev1.AddToScheme(scheme))
 
 	svc := &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "grpsvc", Namespace: tTeamA,
-			Annotations: map[string]string{"sreportal.io/groups": "Team A, Shared"},
-		},
+		Name: "grpsvc", Namespace: tTeamA,
+		Annotations: map[string]string{"sreportal.io/groups": "Team A, Shared"},
 	}
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(crossDNS("d", tTeamA), svc).Build()
 	reg := registry.NewRegistry(&fakeResolver{})

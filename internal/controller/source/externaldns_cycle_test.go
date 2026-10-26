@@ -7,7 +7,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/require"
 	networkingv1 "k8s.io/api/networking/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -26,12 +25,12 @@ const tNsDefault = "default"
 
 func ingressDNS() *sreportalv1alpha2.DNS {
 	return &sreportalv1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: tNsDefault},
+		Name: "d", Namespace: tNsDefault,
 		Spec: sreportalv1alpha2.DNSSpec{
 			PortalRef: tNsDefault,
 			Sources: sreportalv1alpha2.SourcesSpec{
 				Ingress: &sreportalv1alpha2.IngressSourceSpec{
-					CommonSourceSpec: sreportalv1alpha2.CommonSourceSpec{Enabled: true},
+					Enabled: true,
 				},
 			},
 		},
@@ -49,11 +48,9 @@ func TestCycle_NativeIngressFromRules(t *testing.T) {
 	require.NoError(t, networkingv1.AddToScheme(scheme))
 
 	ing := &networkingv1.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "app", Namespace: tNsDefault,
-			Annotations: map[string]string{adapter.GroupsAnnotationKey: "team-x"},
-		},
-		Spec: networkingv1.IngressSpec{Rules: []networkingv1.IngressRule{{Host: "app.example.com"}}},
+		Name: "app", Namespace: tNsDefault,
+		Annotations: map[string]string{adapter.GroupsAnnotationKey: "team-x"},
+		Spec:        networkingv1.IngressSpec{Rules: []networkingv1.IngressRule{{Host: "app.example.com"}}},
 		Status: networkingv1.IngressStatus{LoadBalancer: networkingv1.IngressLoadBalancerStatus{
 			Ingress: []networkingv1.IngressLoadBalancerIngress{{IP: tLBIP}},
 		}},

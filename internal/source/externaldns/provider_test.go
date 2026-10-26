@@ -22,7 +22,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 
 	sreportalv1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
@@ -40,7 +39,7 @@ func dnsEnabling(set func(*sreportalv1alpha2.SourcesSpec)) []sreportalv1alpha2.D
 // endpoint — exactly the case the hand-rolled resolver dropped (194→5).
 func TestProvider_IngressFromRules(t *testing.T) {
 	ing := &networkingv1.Ingress{
-		ObjectMeta: metav1.ObjectMeta{Name: "app", Namespace: "default"},
+		Name: "app", Namespace: "default",
 		Spec: networkingv1.IngressSpec{
 			Rules: []networkingv1.IngressRule{{Host: "app.example.com"}},
 		},
@@ -51,7 +50,7 @@ func TestProvider_IngressFromRules(t *testing.T) {
 	kube := kubefake.NewSimpleClientset(ing)
 	p := externaldns.NewProvider(kube, nil, nil)
 	cfgs := externaldns.BuildEffectiveConfigs(dnsEnabling(func(s *sreportalv1alpha2.SourcesSpec) {
-		s.Ingress = &sreportalv1alpha2.IngressSourceSpec{CommonSourceSpec: sreportalv1alpha2.CommonSourceSpec{Enabled: true}}
+		s.Ingress = &sreportalv1alpha2.IngressSourceSpec{Enabled: true}
 	}))
 
 	eps, err := p.Endpoints(context.Background(), externaldns.KindIngress, cfgs[externaldns.KindIngress])
@@ -73,11 +72,9 @@ func TestProvider_IngressFromRules(t *testing.T) {
 // hostname annotation.
 func TestProvider_ServiceAnnotated(t *testing.T) {
 	svc := &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "echo", Namespace: "default",
-			Annotations: map[string]string{"external-dns.alpha.kubernetes.io/hostname": "echo.example.com"},
-		},
-		Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer},
+		Name: "echo", Namespace: "default",
+		Annotations: map[string]string{"external-dns.alpha.kubernetes.io/hostname": "echo.example.com"},
+		Spec:        corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer},
 		Status: corev1.ServiceStatus{LoadBalancer: corev1.LoadBalancerStatus{
 			Ingress: []corev1.LoadBalancerIngress{{IP: "5.6.7.8"}},
 		}},
@@ -86,7 +83,7 @@ func TestProvider_ServiceAnnotated(t *testing.T) {
 	p := externaldns.NewProvider(kube, nil, nil)
 	cfgs := externaldns.BuildEffectiveConfigs(dnsEnabling(func(s *sreportalv1alpha2.SourcesSpec) {
 		s.Service = &sreportalv1alpha2.ServiceSourceSpec{
-			CommonSourceSpec:  sreportalv1alpha2.CommonSourceSpec{Enabled: true},
+			Enabled:           true,
 			ServiceTypeFilter: []string{"LoadBalancer"},
 		}
 	}))
@@ -113,7 +110,7 @@ func TestProvider_IstioGatewayWithoutIstioClient(t *testing.T) {
 	p := externaldns.NewProvider(kubefake.NewSimpleClientset(), nil, nil) // istio == nil
 	cfgs := externaldns.BuildEffectiveConfigs(dnsEnabling(func(s *sreportalv1alpha2.SourcesSpec) {
 		s.IstioGateway = &sreportalv1alpha2.IstioGatewaySourceSpec{
-			CommonSourceSpec: sreportalv1alpha2.CommonSourceSpec{Enabled: true},
+			Enabled: true,
 		}
 	}))
 

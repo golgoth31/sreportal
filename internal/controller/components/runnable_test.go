@@ -23,7 +23,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -55,7 +54,7 @@ func newTestScheme(t *testing.T) *runtime.Scheme {
 
 func newTestPortal(features *sreportalv1alpha1.PortalFeatures) *sreportalv1alpha1.Portal {
 	return &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: tPortalMain, Namespace: tNsDefault},
+		Name: tPortalMain, Namespace: tNsDefault,
 		Spec: sreportalv1alpha1.PortalSpec{
 			Title:    tPortalMain,
 			Main:     true,
@@ -131,13 +130,11 @@ func TestReconciler_UpdatesComponentMetadataButNotStatus(t *testing.T) {
 
 	compName := statuspage.GenerateCRName(tPortalMain, tCompName)
 	existing := &sreportalv1alpha1.Component{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      compName,
-			Namespace: tNsDefault,
-			Labels: map[string]string{
-				adapter.ManagedByLabelKey:   adapter.ManagedBySourceController,
-				adapter.PortalAnnotationKey: tPortalMain,
-			},
+		Name:      compName,
+		Namespace: tNsDefault,
+		Labels: map[string]string{
+			adapter.ManagedByLabelKey:   adapter.ManagedBySourceController,
+			adapter.PortalAnnotationKey: tPortalMain,
 		},
 		Spec: sreportalv1alpha1.ComponentSpec{
 			DisplayName: tCompName,
@@ -189,13 +186,11 @@ func TestReconciler_DeletesOrphanedComponent(t *testing.T) {
 
 	orphanName := statuspage.GenerateCRName(tPortalMain, "Removed Service")
 	orphan := &sreportalv1alpha1.Component{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      orphanName,
-			Namespace: tNsDefault,
-			Labels: map[string]string{
-				adapter.ManagedByLabelKey:   adapter.ManagedBySourceController,
-				adapter.PortalAnnotationKey: tPortalMain,
-			},
+		Name:      orphanName,
+		Namespace: tNsDefault,
+		Labels: map[string]string{
+			adapter.ManagedByLabelKey:   adapter.ManagedBySourceController,
+			adapter.PortalAnnotationKey: tPortalMain,
 		},
 		Spec: sreportalv1alpha1.ComponentSpec{
 			DisplayName: "Removed Service",

@@ -15,15 +15,13 @@ import (
 	"strings"
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 )
 
 func mkIR(t *testing.T, mutate func(*sreportalv1alpha1.ImageRegistry)) *sreportalv1alpha1.ImageRegistry {
 	t.Helper()
 	ir := &sreportalv1alpha1.ImageRegistry{
-		ObjectMeta: metav1.ObjectMeta{Name: "abc123def456", Namespace: "default"},
+		Name: "abc123def456", Namespace: "default",
 		Spec: sreportalv1alpha1.ImageRegistrySpec{
 			Host:      "docker.io",
 			PortalRef: "main",

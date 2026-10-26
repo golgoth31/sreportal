@@ -46,7 +46,7 @@ type fakeConflicts struct{ events []domaindns.ConflictEvent }
 func (f fakeConflicts) Conflicts(string, string) []domaindns.ConflictEvent { return f.events }
 
 func TestSourcesStatus_NoConflicts(t *testing.T) {
-	dns := &sreportalv1alpha2.DNS{ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "n"}}
+	dns := &sreportalv1alpha2.DNS{Name: "d", Namespace: "n"}
 	h := &dnschain.SourcesStatusHandler{Conflicts: fakeConflicts{}}
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{Resource: dns, Data: chainDataWithEnabledKind()}
 	require.NoError(t, h.Handle(context.Background(), rc))
@@ -55,7 +55,7 @@ func TestSourcesStatus_NoConflicts(t *testing.T) {
 }
 
 func TestSourcesStatus_WithConflicts(t *testing.T) {
-	dns := &sreportalv1alpha2.DNS{ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "n"}}
+	dns := &sreportalv1alpha2.DNS{Name: "d", Namespace: "n"}
 	h := &dnschain.SourcesStatusHandler{Conflicts: fakeConflicts{events: []domaindns.ConflictEvent{{LoserRecord: "n/d"}}}}
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{Resource: dns, Data: chainDataWithEnabledKind()}
 	require.NoError(t, h.Handle(context.Background(), rc))
@@ -63,7 +63,7 @@ func TestSourcesStatus_WithConflicts(t *testing.T) {
 }
 
 func TestSourcesStatus_NilConflictsReader(t *testing.T) {
-	dns := &sreportalv1alpha2.DNS{ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "n"}}
+	dns := &sreportalv1alpha2.DNS{Name: "d", Namespace: "n"}
 	h := &dnschain.SourcesStatusHandler{}
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{Resource: dns, Data: chainDataWithEnabledKind()}
 	require.NoError(t, h.Handle(context.Background(), rc))
@@ -75,7 +75,7 @@ func TestSourcesStatus_NilConflictsReader(t *testing.T) {
 // emitted when no source kind is enabled on the DNS CR. The condition must
 // not unconditionally report True — that masked "DNS does nothing" configs.
 func TestSourcesStatus_NoSourcesEnabled(t *testing.T) {
-	dns := &sreportalv1alpha2.DNS{ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "n"}}
+	dns := &sreportalv1alpha2.DNS{Name: "d", Namespace: "n"}
 	h := &dnschain.SourcesStatusHandler{Conflicts: fakeConflicts{}}
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{Resource: dns}
 	require.NoError(t, h.Handle(context.Background(), rc))
@@ -107,7 +107,7 @@ func findCondition(dns *sreportalv1alpha2.DNS, t string) *metav1.Condition {
 // that calling Handle twice with the same status does NOT update
 // LastTransitionTime — the timestamp must be stable across repeated reconciles.
 func TestSourcesStatusHandler_LastTransitionTimeStableOnRepeatedHandle(t *testing.T) {
-	dns := &sreportalv1alpha2.DNS{ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "n"}}
+	dns := &sreportalv1alpha2.DNS{Name: "d", Namespace: "n"}
 	h := &dnschain.SourcesStatusHandler{Conflicts: fakeConflicts{}}
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{Resource: dns, Data: chainDataWithEnabledKind()}
 
@@ -140,7 +140,7 @@ func TestSourcesStatusHandler_LastTransitionTimeStableOnRepeatedHandle(t *testin
 // contrast: LastTransitionTime IS updated when the condition status changes
 // (e.g. TargetsConflict flips from False → True on a new conflict event).
 func TestSourcesStatusHandler_LastTransitionTimeUpdatesOnStatusFlip(t *testing.T) {
-	dns := &sreportalv1alpha2.DNS{ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "n"}}
+	dns := &sreportalv1alpha2.DNS{Name: "d", Namespace: "n"}
 
 	// First call: no conflicts → TargetsConflict=False
 	h1 := &dnschain.SourcesStatusHandler{Conflicts: fakeConflicts{}}
@@ -177,7 +177,7 @@ func TestSourcesStatusHandler_LastTransitionTimeUpdatesOnStatusFlip(t *testing.T
 }
 
 func TestSourcesStatus_SkippedEntriesProjected(t *testing.T) {
-	dns := &sreportalv1alpha2.DNS{ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "n"}}
+	dns := &sreportalv1alpha2.DNS{Name: "d", Namespace: "n"}
 	h := &dnschain.SourcesStatusHandler{Conflicts: fakeConflicts{}}
 	data := chainDataWithEnabledKind()
 	data.SkippedEntries = []dnschain.SkippedEntry{
@@ -195,7 +195,7 @@ func TestSourcesStatus_SkippedEntriesProjected(t *testing.T) {
 }
 
 func TestSourcesStatus_NoSkippedEntriesClearsStatus(t *testing.T) {
-	dns := &sreportalv1alpha2.DNS{ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "n"}}
+	dns := &sreportalv1alpha2.DNS{Name: "d", Namespace: "n"}
 	// Pre-seed a stale skipped entry to prove a clean reconcile clears it.
 	dns.Status.SkippedEntries = []sreportalv1alpha2.SkippedFQDNStatus{{FQDN: "stale.example.com", Reason: testReasonInvalidFQDN}}
 	h := &dnschain.SourcesStatusHandler{Conflicts: fakeConflicts{}}
@@ -207,7 +207,7 @@ func TestSourcesStatus_NoSkippedEntriesClearsStatus(t *testing.T) {
 }
 
 func TestSourcesStatus_SkippedEntriesBounded(t *testing.T) {
-	dns := &sreportalv1alpha2.DNS{ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "n"}}
+	dns := &sreportalv1alpha2.DNS{Name: "d", Namespace: "n"}
 	data := chainDataWithEnabledKind()
 	for range 250 {
 		data.SkippedEntries = append(data.SkippedEntries, dnschain.SkippedEntry{
@@ -224,7 +224,7 @@ func TestSourcesStatus_SkippedEntriesBounded(t *testing.T) {
 }
 
 func TestSourcesStatus_SkippedEntriesTruncated(t *testing.T) {
-	dns := &sreportalv1alpha2.DNS{ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "n"}}
+	dns := &sreportalv1alpha2.DNS{Name: "d", Namespace: "n"}
 	data := chainDataWithEnabledKind()
 	data.SkippedEntries = []dnschain.SkippedEntry{{
 		FQDN:       strings.Repeat("é", 300), // 300 runes / 600 bytes

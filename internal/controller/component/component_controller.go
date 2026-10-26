@@ -22,7 +22,6 @@ import (
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -129,10 +128,8 @@ func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				var requests []ctrlreconcile.Request
 				for _, compName := range maint.Spec.Components {
 					requests = append(requests, ctrlreconcile.Request{
-						NamespacedName: types.NamespacedName{
-							Namespace: maint.Namespace,
-							Name:      compName,
-						},
+						Namespace: maint.Namespace,
+						Name:      compName,
 					})
 				}
 				return requests
@@ -147,10 +144,8 @@ func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				var requests []ctrlreconcile.Request
 				for _, compName := range inc.Spec.Components {
 					requests = append(requests, ctrlreconcile.Request{
-						NamespacedName: types.NamespacedName{
-							Namespace: inc.Namespace,
-							Name:      compName,
-						},
+						Namespace: inc.Namespace,
+						Name:      compName,
 					})
 				}
 				return requests

@@ -80,8 +80,8 @@ func TestReconcileAddsFinalizerOnFirstPass(t *testing.T) {
 	sch := newControllerScheme(t)
 
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: tNameInv, Namespace: tNsSre},
-		Spec:       sreportalv1alpha1.ImageInventorySpec{PortalRef: tPortalA},
+		Name: tNameInv, Namespace: tNsSre,
+		Spec: sreportalv1alpha1.ImageInventorySpec{PortalRef: tPortalA},
 	}
 	c := fake.NewClientBuilder().WithScheme(sch).
 		WithObjects(inv).
@@ -90,7 +90,7 @@ func TestReconcileAddsFinalizerOnFirstPass(t *testing.T) {
 	writer := &trackingImageWriter{}
 
 	r := NewImageInventoryReconciler(c, writer, remoteclient.NewCache())
-	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Namespace: tNsSre, Name: tNameInv}})
+	_, err := r.Reconcile(context.Background(), ctrl.Request{Namespace: tNsSre, Name: tNameInv})
 	if err != nil {
 		t.Fatalf("Reconcile: %v", err)
 	}
@@ -110,13 +110,11 @@ func TestReconcileRemovesScopesOnDeletion(t *testing.T) {
 
 	now := metav1.Now()
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:              tNameInv,
-			Namespace:         tNsSre,
-			Finalizers:        []string{finalizerName},
-			DeletionTimestamp: &now,
-		},
-		Spec: sreportalv1alpha1.ImageInventorySpec{PortalRef: tPortalA},
+		Name:              tNameInv,
+		Namespace:         tNsSre,
+		Finalizers:        []string{finalizerName},
+		DeletionTimestamp: &now,
+		Spec:              sreportalv1alpha1.ImageInventorySpec{PortalRef: tPortalA},
 		Status: sreportalv1alpha1.ImageInventoryStatus{
 			Registries: []sreportalv1alpha1.ImageRegistryRef{
 				{Hash: "h1", Host: "ghcr.io", Namespace: "default"},
@@ -131,7 +129,7 @@ func TestReconcileRemovesScopesOnDeletion(t *testing.T) {
 	writer := &trackingImageWriter{}
 
 	r := NewImageInventoryReconciler(c, writer, remoteclient.NewCache())
-	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Namespace: tNsSre, Name: tNameInv}})
+	_, err := r.Reconcile(context.Background(), ctrl.Request{Namespace: tNsSre, Name: tNameInv})
 	if err != nil {
 		t.Fatalf("Reconcile: %v", err)
 	}
@@ -171,13 +169,11 @@ func TestReconcileDeletesMetricsOnDeletion(t *testing.T) {
 	sch := newControllerScheme(t)
 	now := metav1.Now()
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:              inventoryName,
-			Namespace:         tNsSre,
-			Finalizers:        []string{finalizerName},
-			DeletionTimestamp: &now,
-		},
-		Spec: sreportalv1alpha1.ImageInventorySpec{PortalRef: portalRef},
+		Name:              inventoryName,
+		Namespace:         tNsSre,
+		Finalizers:        []string{finalizerName},
+		DeletionTimestamp: &now,
+		Spec:              sreportalv1alpha1.ImageInventorySpec{PortalRef: portalRef},
 	}
 	c := fake.NewClientBuilder().WithScheme(sch).
 		WithObjects(inv).
@@ -186,7 +182,7 @@ func TestReconcileDeletesMetricsOnDeletion(t *testing.T) {
 	writer := &trackingImageWriter{}
 
 	r := NewImageInventoryReconciler(c, writer, remoteclient.NewCache())
-	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Namespace: tNsSre, Name: inventoryName}})
+	_, err := r.Reconcile(context.Background(), ctrl.Request{Namespace: tNsSre, Name: inventoryName})
 	if err != nil {
 		t.Fatalf("Reconcile: %v", err)
 	}

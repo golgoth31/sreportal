@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/external-dns/endpoint"
 
 	sreportalv1alpha2 "github.com/golgoth31/sreportal/api/v1alpha2"
@@ -50,12 +49,12 @@ func TestLookupSourcesHandler_FiltersByNamespaceAndLabel(t *testing.T) {
 	h := &dnschain.LookupSourcesHandler{Source: store}
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{
 		Resource: &sreportalv1alpha2.DNS{
-			ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: tNS1},
+			Name: "d", Namespace: tNS1,
 			Spec: sreportalv1alpha2.DNSSpec{
 				Defaults: sreportalv1alpha2.SourceFilterDefaults{Namespace: tNS1},
 				Sources: sreportalv1alpha2.SourcesSpec{
 					Service: &sreportalv1alpha2.ServiceSourceSpec{
-						CommonSourceSpec: sreportalv1alpha2.CommonSourceSpec{Enabled: true, LabelFilter: "team=a"},
+						Enabled: true, LabelFilter: "team=a",
 					},
 				},
 			},
@@ -78,12 +77,12 @@ func TestLookupSourcesHandler_PerKindOverridesDefaults(t *testing.T) {
 	h := &dnschain.LookupSourcesHandler{Source: store}
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{
 		Resource: &sreportalv1alpha2.DNS{
-			ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "x"},
+			Name: "d", Namespace: "x",
 			Spec: sreportalv1alpha2.DNSSpec{
 				Defaults: sreportalv1alpha2.SourceFilterDefaults{Namespace: "defaultNS"},
 				Sources: sreportalv1alpha2.SourcesSpec{
 					Ingress: &sreportalv1alpha2.IngressSourceSpec{
-						CommonSourceSpec: sreportalv1alpha2.CommonSourceSpec{Enabled: true, Namespace: "perKind"},
+						Enabled: true, Namespace: "perKind",
 					},
 				},
 			},
@@ -111,14 +110,14 @@ func TestLookupSourcesHandler_PriorityOrder(t *testing.T) {
 	h := &dnschain.LookupSourcesHandler{Source: store}
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{
 		Resource: &sreportalv1alpha2.DNS{
-			ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "x"},
+			Name: "d", Namespace: "x",
 			Spec: sreportalv1alpha2.DNSSpec{
 				Defaults: sreportalv1alpha2.SourceFilterDefaults{Namespace: "ns"},
 				Sources: sreportalv1alpha2.SourcesSpec{
-					Service: &sreportalv1alpha2.ServiceSourceSpec{CommonSourceSpec: sreportalv1alpha2.CommonSourceSpec{Enabled: true}},
-					Ingress: &sreportalv1alpha2.IngressSourceSpec{CommonSourceSpec: sreportalv1alpha2.CommonSourceSpec{Enabled: true}},
+					Service: &sreportalv1alpha2.ServiceSourceSpec{Enabled: true},
+					Ingress: &sreportalv1alpha2.IngressSourceSpec{Enabled: true},
 					GatewayHTTPRoute: &sreportalv1alpha2.GatewayRouteSourceSpec{
-						CommonSourceSpec: sreportalv1alpha2.CommonSourceSpec{Enabled: true},
+						Enabled: true,
 					},
 					Priority: []sreportalv1alpha2.SourceType{
 						sreportalv1alpha2.SourceTypeGatewayHTTPRoute,
@@ -161,7 +160,7 @@ func TestLookupSourcesHandler_DNSEndpoint(t *testing.T) {
 	h := &dnschain.LookupSourcesHandler{Source: store}
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{
 		Resource: &sreportalv1alpha2.DNS{
-			ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "ns"},
+			Name: "d", Namespace: "ns",
 			Spec: sreportalv1alpha2.DNSSpec{
 				Defaults: sreportalv1alpha2.SourceFilterDefaults{Namespace: "ns"},
 				Sources: sreportalv1alpha2.SourcesSpec{
@@ -206,7 +205,7 @@ func TestLookupSourcesHandler_CrossplaneScalewayRecord(t *testing.T) {
 	h := &dnschain.LookupSourcesHandler{Source: store}
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{
 		Resource: &sreportalv1alpha2.DNS{
-			ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: tInfra},
+			Name: "d", Namespace: tInfra,
 			Spec: sreportalv1alpha2.DNSSpec{
 				Defaults: sreportalv1alpha2.SourceFilterDefaults{Namespace: tInfra},
 				Sources: sreportalv1alpha2.SourcesSpec{
@@ -235,12 +234,12 @@ func TestLookupSourcesHandler_InvalidLabelSelectorReturnsError(t *testing.T) {
 	h := &dnschain.LookupSourcesHandler{Source: store}
 	rc := &reconciler.ReconcileContext[*sreportalv1alpha2.DNS, dnschain.ChainData]{
 		Resource: &sreportalv1alpha2.DNS{
-			ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "x"},
+			Name: "d", Namespace: "x",
 			Spec: sreportalv1alpha2.DNSSpec{
 				Defaults: sreportalv1alpha2.SourceFilterDefaults{Namespace: "ns"},
 				Sources: sreportalv1alpha2.SourcesSpec{
 					Service: &sreportalv1alpha2.ServiceSourceSpec{
-						CommonSourceSpec: sreportalv1alpha2.CommonSourceSpec{Enabled: true, LabelFilter: "!!!"},
+						Enabled: true, LabelFilter: "!!!",
 					},
 				},
 			},

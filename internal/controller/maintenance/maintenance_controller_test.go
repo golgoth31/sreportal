@@ -49,7 +49,7 @@ var _ = Describe("Maintenance Controller", func() {
 			err := k8sClient.Get(ctx, typeNamespacedName, maint)
 			if err != nil && errors.IsNotFound(err) {
 				resource := &sreportalv1alpha1.Maintenance{
-					ObjectMeta: metav1.ObjectMeta{Name: resourceName, Namespace: tNsDefault},
+					Name: resourceName, Namespace: tNsDefault,
 					Spec: sreportalv1alpha1.MaintenanceSpec{
 						Title:          "Test Maintenance",
 						PortalRef:      "main",
@@ -98,7 +98,7 @@ var _ = Describe("Maintenance Controller", func() {
 			controllerReconciler := NewMaintenanceReconciler(k8sClient, store)
 
 			badMaint := &sreportalv1alpha1.Maintenance{
-				ObjectMeta: metav1.ObjectMeta{Name: "maint-bad-schedule", Namespace: tNsDefault},
+				Name: "maint-bad-schedule", Namespace: tNsDefault,
 				Spec: sreportalv1alpha1.MaintenanceSpec{
 					Title:          "Bad Schedule",
 					PortalRef:      "main",

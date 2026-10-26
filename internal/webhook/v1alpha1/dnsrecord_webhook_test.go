@@ -21,7 +21,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 )
@@ -35,11 +34,10 @@ var _ = Describe("DNSRecord v1alpha1 Webhook", func() {
 
 	Context("ValidateUpdate", func() {
 		It("rejects updates on records flagged as v1alpha2-manual", func() {
-			old := &sreportalv1alpha1.DNSRecord{ObjectMeta: metav1.ObjectMeta{
+			old := &sreportalv1alpha1.DNSRecord{
 				Annotations: map[string]string{
 					annotationV1Alpha2DNSRecordSpec: `{"origin":"manual","entries":[{"fqdn":"a.example.com"}]}`,
-				},
-			}}
+				}}
 			newObj := old.DeepCopy()
 			newObj.Spec.SourceType = "service"
 

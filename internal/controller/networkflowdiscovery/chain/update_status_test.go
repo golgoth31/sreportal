@@ -46,11 +46,9 @@ var _ = Describe("UpdateStatusHandler", func() {
 
 	newNFD := func() *sreportalv1alpha1.NetworkFlowDiscovery {
 		return &sreportalv1alpha1.NetworkFlowDiscovery{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      tNameTestNFD,
-				Namespace: tNsDefault,
-				UID:       "test-uid",
-			},
+			Name:      tNameTestNFD,
+			Namespace: tNsDefault,
+			UID:       "test-uid",
 			Spec: sreportalv1alpha1.NetworkFlowDiscoverySpec{
 				PortalRef: "main",
 			},
@@ -142,11 +140,9 @@ var _ = Describe("UpdateStatusHandler", func() {
 		It("should update their status with new data", func() {
 			nfd := newNFD()
 			existingNodeSet := &sreportalv1alpha1.FlowNodeSet{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      tNameNFDNodes,
-					Namespace: tNsDefault,
-				},
-				Spec: sreportalv1alpha1.FlowNodeSetSpec{DiscoveryRef: tNameTestNFD},
+				Name:      tNameNFDNodes,
+				Namespace: tNsDefault,
+				Spec:      sreportalv1alpha1.FlowNodeSetSpec{DiscoveryRef: tNameTestNFD},
 				Status: sreportalv1alpha1.FlowNodeSetStatus{
 					Nodes: []sreportalv1alpha1.FlowNode{
 						{ID: "old-node", Label: tOldVal, Namespace: tOldVal, NodeType: tNodeTypeService, Group: tOldVal},
@@ -154,11 +150,9 @@ var _ = Describe("UpdateStatusHandler", func() {
 				},
 			}
 			existingEdgeSet := &sreportalv1alpha1.FlowEdgeSet{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      tNameNFDEdges,
-					Namespace: tNsDefault,
-				},
-				Spec: sreportalv1alpha1.FlowEdgeSetSpec{DiscoveryRef: tNameTestNFD},
+				Name:      tNameNFDEdges,
+				Namespace: tNsDefault,
+				Spec:      sreportalv1alpha1.FlowEdgeSetSpec{DiscoveryRef: tNameTestNFD},
 				Status: sreportalv1alpha1.FlowEdgeSetStatus{
 					Edges: []sreportalv1alpha1.FlowEdge{
 						{From: "old-a", To: "old-b", EdgeType: "internal"},

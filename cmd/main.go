@@ -33,7 +33,6 @@ import (
 	istionetworkingv1 "istio.io/client-go/pkg/apis/networking/v1"
 	istioclientset "istio.io/client-go/pkg/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -940,15 +939,13 @@ func stripPodForCache(obj any) (any, error) {
 		return obj, nil
 	}
 	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:              p.Name,
-			Namespace:         p.Namespace,
-			Labels:            p.Labels,
-			CreationTimestamp: p.CreationTimestamp,
-			UID:               p.UID,
-			ResourceVersion:   p.ResourceVersion,
-		},
-		Status: corev1.PodStatus{Phase: p.Status.Phase},
+		Name:              p.Name,
+		Namespace:         p.Namespace,
+		Labels:            p.Labels,
+		CreationTimestamp: p.CreationTimestamp,
+		UID:               p.UID,
+		ResourceVersion:   p.ResourceVersion,
+		Status:            corev1.PodStatus{Phase: p.Status.Phase},
 		Spec: corev1.PodSpec{
 			Containers:     stripContainers(p.Spec.Containers),
 			InitContainers: stripContainers(p.Spec.InitContainers),

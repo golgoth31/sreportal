@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
@@ -19,15 +18,13 @@ func TestMigrate_PartialFailure_KeepsAnnotation_NonZeroExit(t *testing.T) {
 	g := NewWithT(t)
 	scheme := newScheme()
 	dns := &v1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "p1",
-			Namespace: "ns",
-			Annotations: map[string]string{
-				annotationV1Alpha1Groups: `[` +
-					`{"name":"Apps","entries":[{"fqdn":"a.example.com"}]},` +
-					`{"name":"Other","entries":[{"fqdn":"b.example.com"}]}` +
-					`]`,
-			},
+		Name:      "p1",
+		Namespace: "ns",
+		Annotations: map[string]string{
+			annotationV1Alpha1Groups: `[` +
+				`{"name":"Apps","entries":[{"fqdn":"a.example.com"}]},` +
+				`{"name":"Other","entries":[{"fqdn":"b.example.com"}]}` +
+				`]`,
 		},
 		Spec: v1alpha2.DNSSpec{PortalRef: "p1"},
 	}
@@ -35,8 +32,8 @@ func TestMigrate_PartialFailure_KeepsAnnotation_NonZeroExit(t *testing.T) {
 	// Use a distinct slug ("apps") to collide with the *first* group, then force a different
 	// failure on the second group via the interceptor.
 	existing := &v1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Name: "p1-manual-apps", Namespace: "ns"},
-		Spec:       v1alpha2.DNSRecordSpec{Origin: v1alpha2.DNSRecordOriginManual, PortalRef: "p1"},
+		Name: "p1-manual-apps", Namespace: "ns",
+		Spec: v1alpha2.DNSRecordSpec{Origin: v1alpha2.DNSRecordOriginManual, PortalRef: "p1"},
 	}
 	cli := fake.NewClientBuilder().
 		WithScheme(scheme).
@@ -64,12 +61,10 @@ func TestMigrate_DryRun_PassesDryRunAll(t *testing.T) {
 	g := NewWithT(t)
 	scheme := newScheme()
 	dns := &v1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "p1",
-			Namespace: "ns",
-			Annotations: map[string]string{
-				annotationV1Alpha1Groups: `[{"name":"Apps","entries":[{"fqdn":"a.example.com"}]}]`,
-			},
+		Name:      "p1",
+		Namespace: "ns",
+		Annotations: map[string]string{
+			annotationV1Alpha1Groups: `[{"name":"Apps","entries":[{"fqdn":"a.example.com"}]}]`,
 		},
 		Spec: v1alpha2.DNSSpec{PortalRef: "p1"},
 	}
@@ -105,12 +100,10 @@ func TestMigrate_DryRun_PassesDryRunAll(t *testing.T) {
 // that only differ in name and JSON payload.
 func newAnnotatedDNS(name, groupsJSON string) *v1alpha2.DNS {
 	return &v1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: "ns",
-			Annotations: map[string]string{
-				annotationV1Alpha1Groups: groupsJSON,
-			},
+		Name:      name,
+		Namespace: "ns",
+		Annotations: map[string]string{
+			annotationV1Alpha1Groups: groupsJSON,
 		},
 		Spec: v1alpha2.DNSSpec{PortalRef: name},
 	}
@@ -170,15 +163,13 @@ func TestMigrate_AllAlreadyExists(t *testing.T) {
 	scheme := newScheme()
 
 	dns := &v1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "p3",
-			Namespace: "ns",
-			Annotations: map[string]string{
-				annotationV1Alpha1Groups: `[` +
-					`{"name":"Apps","entries":[{"fqdn":"a.example.com"}]},` +
-					`{"name":"Infra","entries":[{"fqdn":"b.example.com"}]}` +
-					`]`,
-			},
+		Name:      "p3",
+		Namespace: "ns",
+		Annotations: map[string]string{
+			annotationV1Alpha1Groups: `[` +
+				`{"name":"Apps","entries":[{"fqdn":"a.example.com"}]},` +
+				`{"name":"Infra","entries":[{"fqdn":"b.example.com"}]}` +
+				`]`,
 		},
 		Spec: v1alpha2.DNSSpec{PortalRef: "p3"},
 	}
@@ -186,14 +177,14 @@ func TestMigrate_AllAlreadyExists(t *testing.T) {
 	// would write, so every Create returns AlreadyExists and the
 	// sameEntries check passes (true idempotent re-run).
 	existing1 := &v1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Name: "p3-manual-apps", Namespace: "ns"},
+		Name: "p3-manual-apps", Namespace: "ns",
 		Spec: v1alpha2.DNSRecordSpec{
 			Origin: v1alpha2.DNSRecordOriginManual, PortalRef: "p3",
 			Entries: []v1alpha2.DNSRecordEntry{{FQDN: "a.example.com", Group: testGroupApps, RecordType: "A"}},
 		},
 	}
 	existing2 := &v1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Name: "p3-manual-infra", Namespace: "ns"},
+		Name: "p3-manual-infra", Namespace: "ns",
 		Spec: v1alpha2.DNSRecordSpec{
 			Origin: v1alpha2.DNSRecordOriginManual, PortalRef: "p3",
 			Entries: []v1alpha2.DNSRecordEntry{{FQDN: "b.example.com", Group: "Infra", RecordType: "A"}},
@@ -224,16 +215,14 @@ func TestMigrate_SlugCollision_DistinctGroups(t *testing.T) {
 	g := NewWithT(t)
 	scheme := newScheme()
 	dns := &v1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "p4",
-			Namespace: "ns",
-			Annotations: map[string]string{
-				// "API Endpoints" and "api-endpoints" both slug to "api-endpoints".
-				annotationV1Alpha1Groups: `[` +
-					`{"name":"API Endpoints","entries":[{"fqdn":"a.example.com"}]},` +
-					`{"name":"api-endpoints","entries":[{"fqdn":"b.example.com"}]}` +
-					`]`,
-			},
+		Name:      "p4",
+		Namespace: "ns",
+		Annotations: map[string]string{
+			// "API Endpoints" and "api-endpoints" both slug to "api-endpoints".
+			annotationV1Alpha1Groups: `[` +
+				`{"name":"API Endpoints","entries":[{"fqdn":"a.example.com"}]},` +
+				`{"name":"api-endpoints","entries":[{"fqdn":"b.example.com"}]}` +
+				`]`,
 		},
 		Spec: v1alpha2.DNSSpec{PortalRef: "p4"},
 	}
@@ -258,19 +247,17 @@ func TestMigrate_AlreadyExists_DifferentEntries_Fails(t *testing.T) {
 	g := NewWithT(t)
 	scheme := newScheme()
 	dns := &v1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "p5",
-			Namespace: "ns",
-			Annotations: map[string]string{
-				annotationV1Alpha1Groups: `[` +
-					`{"name":"Apps","entries":[{"fqdn":"new.example.com"}]}` +
-					`]`,
-			},
+		Name:      "p5",
+		Namespace: "ns",
+		Annotations: map[string]string{
+			annotationV1Alpha1Groups: `[` +
+				`{"name":"Apps","entries":[{"fqdn":"new.example.com"}]}` +
+				`]`,
 		},
 		Spec: v1alpha2.DNSSpec{PortalRef: "p5"},
 	}
 	existing := &v1alpha2.DNSRecord{
-		ObjectMeta: metav1.ObjectMeta{Name: "p5-manual-apps", Namespace: "ns"},
+		Name: "p5-manual-apps", Namespace: "ns",
 		Spec: v1alpha2.DNSRecordSpec{
 			Origin: v1alpha2.DNSRecordOriginManual, PortalRef: "p5",
 			Entries: []v1alpha2.DNSRecordEntry{{FQDN: "stale.example.com", Group: testGroupApps, RecordType: "A"}},

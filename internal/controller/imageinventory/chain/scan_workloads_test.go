@@ -53,7 +53,7 @@ func TestScanWorkloadsPopulatesObservations(t *testing.T) {
 	sch := newChainScheme(t)
 
 	dep := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{Name: tNameAPI, Namespace: tNsDefault},
+		Name: tNameAPI, Namespace: tNsDefault,
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{tLabelApp: tNameAPI}},
 			Template: corev1.PodTemplateSpec{
@@ -65,7 +65,7 @@ func TestScanWorkloadsPopulatesObservations(t *testing.T) {
 	h := NewScanWorkloadsHandler(c)
 
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: tNameInv, Namespace: tNsSre},
+		Name: tNameInv, Namespace: tNsSre,
 		Spec: sreportalv1alpha1.ImageInventorySpec{
 			PortalRef:    tPortalA,
 			WatchedKinds: []sreportalv1alpha1.ImageInventoryKind{sreportalv1alpha1.ImageInventoryKindDeployment},
@@ -106,7 +106,7 @@ func TestScanWorkloadsCapturesMutatedAndInjectedFromPod(t *testing.T) {
 	sch := newChainScheme(t)
 
 	dep := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{Name: tNameAPI, Namespace: tNsDefault},
+		Name: tNameAPI, Namespace: tNsDefault,
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{tLabelApp: tNameAPI}},
 			Template: corev1.PodTemplateSpec{
@@ -115,10 +115,8 @@ func TestScanWorkloadsCapturesMutatedAndInjectedFromPod(t *testing.T) {
 		},
 	}
 	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "api-1", Namespace: tNsDefault,
-			Labels: map[string]string{tLabelApp: tNameAPI},
-		},
+		Name: "api-1", Namespace: tNsDefault,
+		Labels: map[string]string{tLabelApp: tNameAPI},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{Name: tNameWeb, Image: tImgGhcrAPIv2},              // mutated
@@ -131,7 +129,7 @@ func TestScanWorkloadsCapturesMutatedAndInjectedFromPod(t *testing.T) {
 	h := NewScanWorkloadsHandler(c)
 
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: tNameInv, Namespace: tNsSre},
+		Name: tNameInv, Namespace: tNsSre,
 		Spec: sreportalv1alpha1.ImageInventorySpec{
 			PortalRef:    tPortalA,
 			WatchedKinds: []sreportalv1alpha1.ImageInventoryKind{sreportalv1alpha1.ImageInventoryKindDeployment},
@@ -179,7 +177,7 @@ func TestScanWorkloadsIsRemoteNoOp(t *testing.T) {
 	sch := newChainScheme(t)
 
 	dep := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{Name: tNameAPI, Namespace: tNsDefault},
+		Name: tNameAPI, Namespace: tNsDefault,
 		Spec: appsv1.DeploymentSpec{
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: tNameWeb, Image: tImgGhcrAPIv1}}},
@@ -190,7 +188,7 @@ func TestScanWorkloadsIsRemoteNoOp(t *testing.T) {
 	h := NewScanWorkloadsHandler(c)
 
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: tNameInv, Namespace: tNsSre},
+		Name: tNameInv, Namespace: tNsSre,
 		Spec: sreportalv1alpha1.ImageInventorySpec{
 			PortalRef:    tPortalA,
 			IsRemote:     true,
@@ -213,7 +211,7 @@ func TestScanWorkloadsPropagatesScanError(t *testing.T) {
 
 	// Build a client with an invalid labelSelector so scanAll returns an error.
 	inv := &sreportalv1alpha1.ImageInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: tNameInv, Namespace: tNsSre},
+		Name: tNameInv, Namespace: tNsSre,
 		Spec: sreportalv1alpha1.ImageInventorySpec{
 			PortalRef:     tPortalA,
 			LabelSelector: "!!!invalid!!!",

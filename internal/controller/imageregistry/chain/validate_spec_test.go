@@ -22,7 +22,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	"github.com/golgoth31/sreportal/internal/controller/imageregistry/chain"
@@ -40,8 +39,8 @@ var _ = Describe("ValidateSpecHandler", func() {
 	DescribeTable("spec validation",
 		func(spec sreportalv1alpha1.ImageRegistrySpec, wantErr bool) {
 			ir := &sreportalv1alpha1.ImageRegistry{
-				ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: tNsDefault},
-				Spec:       spec,
+				Name: "test", Namespace: tNsDefault,
+				Spec: spec,
 			}
 			c := newFakeClient(ir)
 			handler := chain.NewValidateSpecHandler(c)

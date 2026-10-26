@@ -25,7 +25,6 @@ import (
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -272,13 +271,11 @@ func (r *Reconciler) reconcileComponent(
 	err := r.Client.Get(ctx, nn, &existing)
 	if apierrors.IsNotFound(err) {
 		comp := &sreportalv1alpha1.Component{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: portal.Namespace,
-				Labels: map[string]string{
-					adapter.ManagedByLabelKey:   adapter.ManagedBySourceController,
-					adapter.PortalAnnotationKey: portal.Name,
-				},
+			Name:      name,
+			Namespace: portal.Namespace,
+			Labels: map[string]string{
+				adapter.ManagedByLabelKey:   adapter.ManagedBySourceController,
+				adapter.PortalAnnotationKey: portal.Name,
 			},
 			Spec: sreportalv1alpha1.ComponentSpec{
 				DisplayName: req.DisplayName,

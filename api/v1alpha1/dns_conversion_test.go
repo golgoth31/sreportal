@@ -71,10 +71,8 @@ func TestDNSConvertFrom_RestoresGroups(t *testing.T) {
 	raw, _ := json.Marshal(groups)
 
 	src := &v1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{
-			Annotations: map[string]string{tAnnotGroupsV1: string(raw)},
-		},
-		Spec: v1alpha2.DNSSpec{PortalRef: tPortalMain},
+		Annotations: map[string]string{tAnnotGroupsV1: string(raw)},
+		Spec:        v1alpha2.DNSSpec{PortalRef: tPortalMain},
 	}
 
 	dst := &v1alpha1.DNS{}
@@ -101,10 +99,8 @@ func TestDNSConvertFrom_AnnotationCleanedUp(t *testing.T) {
 	groups := []v1alpha1.DNSGroup{{Name: tGroupAPIs, Entries: []v1alpha1.DNSEntry{{FQDN: tFQDNAPIExamp}}}}
 	raw, _ := json.Marshal(groups)
 	src := &v1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{
-			Annotations: map[string]string{tAnnotGroupsV1: string(raw)},
-		},
-		Spec: v1alpha2.DNSSpec{PortalRef: tPortalMain},
+		Annotations: map[string]string{tAnnotGroupsV1: string(raw)},
+		Spec:        v1alpha2.DNSSpec{PortalRef: tPortalMain},
 	}
 	dst := &v1alpha1.DNS{}
 	g.Expect(dst.ConvertFrom(src)).To(Succeed())
@@ -120,7 +116,7 @@ func TestDNSRoundTrip_PreservesV1Alpha2OnlySpec(t *testing.T) {
 			PortalRef: "main",
 			Sources: v1alpha2.SourcesSpec{
 				Service: &v1alpha2.ServiceSourceSpec{
-					CommonSourceSpec: v1alpha2.CommonSourceSpec{Enabled: true, Namespace: "prod"},
+					Enabled: true, Namespace: "prod",
 				},
 				Priority: []v1alpha2.SourceType{v1alpha2.SourceTypeService},
 			},
@@ -156,10 +152,8 @@ func TestDNSConvertTo_CorruptedAnnotation(t *testing.T) {
 	g := NewWithT(t)
 
 	src := &v1alpha1.DNS{
-		ObjectMeta: metav1.ObjectMeta{
-			Annotations: map[string]string{
-				"sreportal.io/v1alpha2-spec": tInvalidJSON,
-			},
+		Annotations: map[string]string{
+			"sreportal.io/v1alpha2-spec": tInvalidJSON,
 		},
 		Spec: v1alpha1.DNSSpec{PortalRef: tPortalMain},
 	}
@@ -176,10 +170,8 @@ func TestDNSConvertFrom_CorruptedAnnotation(t *testing.T) {
 	g := NewWithT(t)
 
 	src := &v1alpha2.DNS{
-		ObjectMeta: metav1.ObjectMeta{
-			Annotations: map[string]string{
-				tAnnotGroupsV1: tInvalidJSON,
-			},
+		Annotations: map[string]string{
+			tAnnotGroupsV1: tInvalidJSON,
 		},
 		Spec: v1alpha2.DNSSpec{PortalRef: tPortalMain},
 	}
@@ -192,9 +184,7 @@ func TestDNSConvertFrom_CorruptedAnnotation(t *testing.T) {
 func TestDNSConvertTo_DoesNotMutateSource(t *testing.T) {
 	g := NewWithT(t)
 	src := &v1alpha1.DNS{
-		ObjectMeta: metav1.ObjectMeta{
-			Annotations: map[string]string{"existing-key": "existing-value"},
-		},
+		Annotations: map[string]string{"existing-key": "existing-value"},
 		Spec: v1alpha1.DNSSpec{
 			PortalRef: tPortalMain,
 			Groups:    []v1alpha1.DNSGroup{{Name: tGroupAPIs}},

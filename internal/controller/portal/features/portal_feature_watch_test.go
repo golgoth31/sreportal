@@ -22,7 +22,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -37,15 +36,15 @@ func TestPortalReleasesFeatureWakeupPredicate_Create(t *testing.T) {
 
 	t.Run("features nil defaults enabled", func(t *testing.T) {
 		portal := &sreportalv1alpha1.Portal{
-			ObjectMeta: metav1.ObjectMeta{Name: "p", Namespace: "ns"},
-			Spec:       sreportalv1alpha1.PortalSpec{Title: "t"},
+			Name: "p", Namespace: "ns",
+			Spec: sreportalv1alpha1.PortalSpec{Title: "t"},
 		}
 		assert.True(t, p.Create(event.CreateEvent{Object: portal}))
 	})
 
 	t.Run("releases explicitly true", func(t *testing.T) {
 		portal := &sreportalv1alpha1.Portal{
-			ObjectMeta: metav1.ObjectMeta{Name: "p", Namespace: "ns"},
+			Name: "p", Namespace: "ns",
 			Spec: sreportalv1alpha1.PortalSpec{
 				Title:    "t",
 				Features: &sreportalv1alpha1.PortalFeatures{Releases: new(true)},
@@ -56,7 +55,7 @@ func TestPortalReleasesFeatureWakeupPredicate_Create(t *testing.T) {
 
 	t.Run("releases explicitly false", func(t *testing.T) {
 		portal := &sreportalv1alpha1.Portal{
-			ObjectMeta: metav1.ObjectMeta{Name: "p", Namespace: "ns"},
+			Name: "p", Namespace: "ns",
 			Spec: sreportalv1alpha1.PortalSpec{
 				Title:    "t",
 				Features: &sreportalv1alpha1.PortalFeatures{Releases: new(false)},
@@ -74,7 +73,7 @@ func TestPortalReleasesFeatureWakeupPredicate_Update(t *testing.T) {
 	p := PortalReleasesFeatureWakeupPredicate()
 
 	baseOld := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: "p", Namespace: "ns", ResourceVersion: "1"},
+		Name: "p", Namespace: "ns", ResourceVersion: "1",
 		Spec: sreportalv1alpha1.PortalSpec{
 			Title:    "t",
 			Features: &sreportalv1alpha1.PortalFeatures{Releases: new(false)},
@@ -112,15 +111,15 @@ func TestPortalReleasesFeatureWakeupPredicate_Update(t *testing.T) {
 
 	t.Run("nil features old disabled implied new enabled default", func(t *testing.T) {
 		oldP := &sreportalv1alpha1.Portal{
-			ObjectMeta: metav1.ObjectMeta{Name: "p", Namespace: "ns"},
+			Name: "p", Namespace: "ns",
 			Spec: sreportalv1alpha1.PortalSpec{
 				Title:    "t",
 				Features: &sreportalv1alpha1.PortalFeatures{Releases: new(false)},
 			},
 		}
 		newP := &sreportalv1alpha1.Portal{
-			ObjectMeta: metav1.ObjectMeta{Name: "p", Namespace: "ns", ResourceVersion: "2"},
-			Spec:       sreportalv1alpha1.PortalSpec{Title: "t"},
+			Name: "p", Namespace: "ns", ResourceVersion: "2",
+			Spec: sreportalv1alpha1.PortalSpec{Title: "t"},
 		}
 		assert.True(t, p.Update(event.UpdateEvent{ObjectOld: oldP, ObjectNew: newP}))
 	})
@@ -129,7 +128,7 @@ func TestPortalReleasesFeatureWakeupPredicate_Update(t *testing.T) {
 func TestPortalDNSEnabledWakeupPredicate_Update_DisabledToEnabled(t *testing.T) {
 	p := PortalDNSEnabledWakeupPredicate()
 	oldP := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: "p", Namespace: "ns", ResourceVersion: "1"},
+		Name: "p", Namespace: "ns", ResourceVersion: "1",
 		Spec: sreportalv1alpha1.PortalSpec{
 			Title:    "t",
 			Features: &sreportalv1alpha1.PortalFeatures{DNS: new(false)},
@@ -144,8 +143,8 @@ func TestPortalDNSEnabledWakeupPredicate_Update_DisabledToEnabled(t *testing.T) 
 func TestPortalReleasesFeatureWakeupPredicate_DeleteAndGeneric(t *testing.T) {
 	p := PortalReleasesFeatureWakeupPredicate()
 	portal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: "p", Namespace: "ns"},
-		Spec:       sreportalv1alpha1.PortalSpec{Title: "t"},
+		Name: "p", Namespace: "ns",
+		Spec: sreportalv1alpha1.PortalSpec{Title: "t"},
 	}
 	assert.False(t, p.Delete(event.DeleteEvent{Object: portal}))
 	assert.False(t, p.Generic(event.GenericEvent{Object: portal}))
@@ -157,12 +156,12 @@ func TestReleaseReconcileRequestsForPortal(t *testing.T) {
 	require.NoError(t, sreportalv1alpha1.AddToScheme(s))
 
 	portal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: tPortalMain, Namespace: tNsDefault},
-		Spec:       sreportalv1alpha1.PortalSpec{Title: "Main"},
+		Name: tPortalMain, Namespace: tNsDefault,
+		Spec: sreportalv1alpha1.PortalSpec{Title: "Main"},
 	}
 	rel := &sreportalv1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Name: "release-2026-03-21", Namespace: tNsDefault},
-		Spec:       sreportalv1alpha1.ReleaseSpec{PortalRef: tPortalMain},
+		Name: "release-2026-03-21", Namespace: tNsDefault,
+		Spec: sreportalv1alpha1.ReleaseSpec{PortalRef: tPortalMain},
 	}
 
 	c := fake.NewClientBuilder().
@@ -184,7 +183,7 @@ func TestReleaseReconcileRequestsForPortal_ReleasesDisabled_ReturnsNil(t *testin
 	s := runtime.NewScheme()
 	require.NoError(t, sreportalv1alpha1.AddToScheme(s))
 	portal := &sreportalv1alpha1.Portal{
-		ObjectMeta: metav1.ObjectMeta{Name: tPortalMain, Namespace: tNsDefault},
+		Name: tPortalMain, Namespace: tNsDefault,
 		Spec: sreportalv1alpha1.PortalSpec{
 			Title:    "Main",
 			Features: &sreportalv1alpha1.PortalFeatures{Releases: new(false)},

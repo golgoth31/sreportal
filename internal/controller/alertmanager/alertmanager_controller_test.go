@@ -28,8 +28,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
 	domainalertmanager "github.com/golgoth31/sreportal/internal/domain/alertmanager"
 	"github.com/golgoth31/sreportal/internal/remoteclient"
@@ -72,8 +70,8 @@ var _ = Describe("Alertmanager Controller", func() {
 			portal := &sreportalv1alpha1.Portal{}
 			if err := directClient.Get(ctx, portalNN, portal); err != nil && errors.IsNotFound(err) {
 				Expect(directClient.Create(ctx, &sreportalv1alpha1.Portal{
-					ObjectMeta: metav1.ObjectMeta{Name: portalNN.Name, Namespace: portalNN.Namespace},
-					Spec:       sreportalv1alpha1.PortalSpec{Title: "Main"},
+					Name: portalNN.Name, Namespace: portalNN.Namespace,
+					Spec: sreportalv1alpha1.PortalSpec{Title: "Main"},
 				})).To(Succeed())
 			}
 
@@ -81,10 +79,8 @@ var _ = Describe("Alertmanager Controller", func() {
 			err = directClient.Get(ctx, typeNamespacedName, alertmanager)
 			if err != nil && errors.IsNotFound(err) {
 				resource := &sreportalv1alpha1.Alertmanager{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
-						Namespace: tNsDefault,
-					},
+					Name:      resourceName,
+					Namespace: tNsDefault,
 					Spec: sreportalv1alpha1.AlertmanagerSpec{
 						PortalRef: "main",
 						URL: sreportalv1alpha1.AlertmanagerURL{

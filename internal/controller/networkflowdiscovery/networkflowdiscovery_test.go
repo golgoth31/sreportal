@@ -23,7 +23,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -51,8 +50,8 @@ var _ = Describe("NetworkFlowDiscovery Controller", func() {
 			portal := &sreportalv1alpha1.Portal{}
 			if err := k8sClient.Get(ctx, mainPortalNN, portal); err != nil && errors.IsNotFound(err) {
 				Expect(k8sClient.Create(ctx, &sreportalv1alpha1.Portal{
-					ObjectMeta: metav1.ObjectMeta{Name: mainPortalNN.Name, Namespace: mainPortalNN.Namespace},
-					Spec:       sreportalv1alpha1.PortalSpec{Title: "Main"},
+					Name: mainPortalNN.Name, Namespace: mainPortalNN.Namespace,
+					Spec: sreportalv1alpha1.PortalSpec{Title: "Main"},
 				})).To(Succeed())
 			}
 
@@ -61,10 +60,8 @@ var _ = Describe("NetworkFlowDiscovery Controller", func() {
 			err := k8sClient.Get(ctx, typeNamespacedName, nfd)
 			if err != nil && errors.IsNotFound(err) {
 				resource := &sreportalv1alpha1.NetworkFlowDiscovery{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
-						Namespace: tNsDefault,
-					},
+					Name:      resourceName,
+					Namespace: tNsDefault,
 					Spec: sreportalv1alpha1.NetworkFlowDiscoverySpec{
 						PortalRef: "main",
 					},
@@ -150,7 +147,7 @@ var _ = Describe("NetworkFlowDiscovery Controller", func() {
 			By("creating a portal with networkPolicy disabled")
 			netpolOff := false
 			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.Portal{
-				ObjectMeta: metav1.ObjectMeta{Name: portalName, Namespace: tNsDefault},
+				Name: portalName, Namespace: tNsDefault,
 				Spec: sreportalv1alpha1.PortalSpec{
 					Title:    "Netpol Toggle Portal",
 					Features: &sreportalv1alpha1.PortalFeatures{NetworkPolicy: &netpolOff},
@@ -159,7 +156,7 @@ var _ = Describe("NetworkFlowDiscovery Controller", func() {
 
 			By("creating an NFD referencing the portal")
 			Expect(k8sClient.Create(ctx, &sreportalv1alpha1.NetworkFlowDiscovery{
-				ObjectMeta: metav1.ObjectMeta{Name: nfdName, Namespace: tNsDefault},
+				Name: nfdName, Namespace: tNsDefault,
 				Spec: sreportalv1alpha1.NetworkFlowDiscoverySpec{
 					PortalRef: portalName,
 				},
