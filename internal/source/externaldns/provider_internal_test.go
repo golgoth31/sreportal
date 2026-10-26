@@ -66,8 +66,8 @@ func TestToConfig_DNSEndpoint(t *testing.T) {
 	if err != nil {
 		t.Fatalf("toConfig: %v", err)
 	}
-	if cfg.Namespace != "team-a" {
-		t.Fatalf("expected namespace passthrough, got %q", cfg.Namespace)
+	if cfg.Namespace() != "team-a" {
+		t.Fatalf("expected namespace passthrough, got %q", cfg.Namespace())
 	}
 	if cfg.LabelFilter.String() != "team=a" {
 		t.Fatalf("expected labelFilter passthrough, got %q", cfg.LabelFilter.String())
