@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -72,10 +71,8 @@ func (h *EnsureLocalResourcesHandler) ensureNetworkFlowDiscovery(ctx context.Con
 	}
 
 	nfd := &sreportalv1alpha1.NetworkFlowDiscovery{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      nfdName,
-			Namespace: portal.Namespace,
-		},
+		Name:      nfdName,
+		Namespace: portal.Namespace,
 		Spec: sreportalv1alpha1.NetworkFlowDiscoverySpec{
 			PortalRef: portal.Name,
 		},
