@@ -48,7 +48,7 @@ func (s *PortalService) ListPortals(
 
 	views, err := s.reader.List(ctx, filters)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInternal, err)
 	}
 
 	portals := make([]*portalv1.Portal, 0, len(views))

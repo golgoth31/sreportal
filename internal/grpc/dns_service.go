@@ -51,7 +51,7 @@ func (s *DNSService) ListFQDNs(
 	req *dnsv1.ListFQDNsRequest,
 ) (*dnsv1.ListFQDNsResponse, error) {
 	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, req.Portal, CheckDNS); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInternal, err)
 	} else if !enabled {
 		return &dnsv1.ListFQDNsResponse{}, nil
 	}
@@ -65,7 +65,7 @@ func (s *DNSService) ListFQDNs(
 
 	views, err := s.reader.List(ctx, filters)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInternal, err)
 	}
 
 	fqdns := make([]*dnsv1.FQDN, 0, len(views))

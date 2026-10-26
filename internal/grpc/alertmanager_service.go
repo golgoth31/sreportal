@@ -48,7 +48,7 @@ func (s *AlertmanagerService) ListAlerts(
 	req *alertmanagerv1.ListAlertsRequest,
 ) (*alertmanagerv1.ListAlertsResponse, error) {
 	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, req.Portal, CheckAlerts); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInternal, err)
 	} else if !enabled {
 		return &alertmanagerv1.ListAlertsResponse{}, nil
 	}
@@ -60,7 +60,7 @@ func (s *AlertmanagerService) ListAlerts(
 
 	views, err := s.reader.List(ctx, filters)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInternal, err)
 	}
 
 	resources := make([]*alertmanagerv1.AlertmanagerResource, 0, len(views))

@@ -43,7 +43,7 @@ func (s *ImageService) ListImages(
 	req *imagev1.ListImagesRequest,
 ) (*imagev1.ListImagesResponse, error) {
 	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, req.Portal, CheckImages); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInternal, err)
 	} else if !enabled {
 		return &imagev1.ListImagesResponse{}, nil
 	}
@@ -55,7 +55,7 @@ func (s *ImageService) ListImages(
 		TagType:  req.TagTypeFilter,
 	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInternal, err)
 	}
 
 	images := make([]*imagev1.Image, 0, len(views))

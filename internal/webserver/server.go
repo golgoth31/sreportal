@@ -152,63 +152,49 @@ func New(cfg Config, c client.Client, operatorConfig *config.OperatorConfig, all
 	return s
 }
 
-// echoConnectMux adapts Echo to connecthttp.ServeMux so Connect can register
-// procedures while keeping Echo as the outer router (SPA, swagger, MCP).
-type echoConnectMux struct {
-	echo *echo.Echo
-}
-
-func (m *echoConnectMux) Handle(pattern string, handler http.Handler) {
-	if strings.HasSuffix(pattern, "/") {
-		// Service catch-all from connecthttp.Mount needs Echo's wildcard.
-		m.echo.Any(pattern+"*", echo.WrapHandler(handler))
-		return
-	}
-	m.echo.Any(pattern, echo.WrapHandler(handler))
-}
-
 // setupRoutes configures all routes
 func (s *Server) setupRoutes() {
-	mux := &echoConnectMux{echo: s.echo}
+	// Connect returns HTTP 200 even on coded errors, so the logging interceptor
+	// logs them at WARN — they are invisible to the Echo request logger
+	// middleware. The auth interceptor only guards auth.WriteProcedures.
+	interceptors := []connect.ServerInterceptor{grpc.LoggingInterceptor()}
+	if s.config.AuthChain != nil {
+		interceptors = append(interceptors, auth.AuthInterceptor(s.config.AuthChain))
+	}
 
-	// Read-only / public Connect services share one server with logging only.
-	// Connect returns HTTP 200 even on coded errors, so the interceptor logs
-	// them at WARN — they are invisible to the Echo request logger middleware.
-	public := connect.NewServer(grpc.LoggingInterceptor())
-	sreportalv1connect.RegisterDNSServiceHandler(public, grpc.NewDNSService(s.config.FQDNReader, s.config.PortalReader))
-	sreportalv1connect.RegisterPortalServiceHandler(public, grpc.NewPortalService(s.config.PortalReader))
-	sreportalv1connect.RegisterAlertmanagerServiceHandler(public, grpc.NewAlertmanagerService(s.config.AlertmanagerReader, s.config.PortalReader))
-	sreportalv1connect.RegisterNetworkPolicyServiceHandler(public, grpc.NewNetworkPolicyService(s.config.FlowGraphReader, s.config.PortalReader))
-	sreportalv1connect.RegisterVersionServiceHandler(public, grpc.NewVersionService())
-	sreportalv1connect.RegisterEmojiServiceHandler(public, grpc.NewEmojiService(s.config.EmojiReader))
+	srv := connect.NewServer(interceptors...)
+	sreportalv1connect.RegisterDNSServiceHandler(srv, grpc.NewDNSService(s.config.FQDNReader, s.config.PortalReader))
+	sreportalv1connect.RegisterPortalServiceHandler(srv, grpc.NewPortalService(s.config.PortalReader))
+	sreportalv1connect.RegisterAlertmanagerServiceHandler(srv, grpc.NewAlertmanagerService(s.config.AlertmanagerReader, s.config.PortalReader))
+	sreportalv1connect.RegisterNetworkPolicyServiceHandler(srv, grpc.NewNetworkPolicyService(s.config.FlowGraphReader, s.config.PortalReader))
+	sreportalv1connect.RegisterVersionServiceHandler(srv, grpc.NewVersionService())
+	sreportalv1connect.RegisterEmojiServiceHandler(srv, grpc.NewEmojiService(s.config.EmojiReader))
 	if s.config.ImageReader != nil {
-		sreportalv1connect.RegisterImageServiceHandler(public, grpc.NewImageService(s.config.ImageReader, s.config.PortalReader))
+		sreportalv1connect.RegisterImageServiceHandler(srv, grpc.NewImageService(s.config.ImageReader, s.config.PortalReader))
 	}
 	if s.config.Gatherer != nil {
-		sreportalv1connect.RegisterMetricsServiceHandler(public, grpc.NewMetricsService(s.config.Gatherer))
+		sreportalv1connect.RegisterMetricsServiceHandler(srv, grpc.NewMetricsService(s.config.Gatherer))
 	}
-	connecthttp.Mount(mux, public)
-
-	// Write-capable services get their own servers so auth can be layered on.
 	if s.config.ReleaseReader != nil {
-		releaseServer := connect.NewServer(s.writeConnectInterceptors()...)
-		sreportalv1connect.RegisterReleaseServiceHandler(releaseServer, grpc.NewReleaseService(
+		sreportalv1connect.RegisterReleaseServiceHandler(srv, grpc.NewReleaseService(
 			s.config.ReleaseReader, s.config.ReleaseService, s.config.ReleaseTTL, s.config.ReleaseAllowedTypes, s.config.PortalReader,
 		))
-		connecthttp.Mount(mux, releaseServer)
 	}
-
 	if s.config.ComponentReader != nil {
-		statusServer := connect.NewServer(s.writeConnectInterceptors()...)
-		sreportalv1connect.RegisterStatusServiceHandler(statusServer, grpc.NewStatusService(
+		sreportalv1connect.RegisterStatusServiceHandler(srv, grpc.NewStatusService(
 			s.config.ComponentReader,
 			s.config.MaintenanceReader,
 			s.config.IncidentReader,
 			s.config.StatusPageService,
 			s.config.PortalReader,
 		))
-		connecthttp.Mount(mux, statusServer)
 	}
+
+	// Connect routes live on a standard mux; Echo forwards the whole
+	// /sreportal.v1.* namespace to it and keeps routing SPA, swagger and MCP.
+	connectMux := http.NewServeMux()
+	connecthttp.Mount(connectMux, srv)
+	s.echo.Any("/sreportal.v1.*", echo.WrapHandler(connectMux))
 
 	// Swagger UI — serve embedded OpenAPI files at /swagger
 	swaggerFS, _ := fs.Sub(openapi.Swagger, "swagger")
@@ -223,15 +209,6 @@ func (s *Server) setupRoutes() {
 
 	// Serve static files for Angular SPA
 	s.setupStaticFiles()
-}
-
-// writeConnectInterceptors returns logging plus optional auth for write-capable Connect servers.
-func (s *Server) writeConnectInterceptors() []connect.ServerInterceptor {
-	interceptors := []connect.ServerInterceptor{grpc.LoggingInterceptor()}
-	if s.config.AuthChain != nil {
-		interceptors = append(interceptors, auth.AuthInterceptor(s.config.AuthChain))
-	}
-	return interceptors
 }
 
 // setupStaticFiles configures static file serving for the Angular app

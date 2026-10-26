@@ -45,7 +45,7 @@ func (s *MetricsService) ListMetrics(
 ) (*metricsv1.ListMetricsResponse, error) {
 	families, err := domainmetrics.Gather(s.gatherer, req.Subsystem, req.Search)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInternal, err)
 	}
 
 	protoFamilies := make([]*metricsv1.MetricFamily, 0, len(families))

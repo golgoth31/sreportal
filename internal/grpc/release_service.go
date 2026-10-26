@@ -65,42 +65,41 @@ func (s *ReleaseService) AddRelease(
 	ctx context.Context,
 	req *releasev1.ReleaseEntry,
 ) (*releasev1.AddReleaseResponse, error) {
-	e := req
-	portal := e.GetPortal()
+	portal := req.GetPortal()
 	if portal == "" {
 		portal = portalctrl.MainPortalName
 	}
 	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, portal, CheckReleases); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInternal, err)
 	} else if !enabled {
 		return nil, connect.Errorf(connect.CodeFailedPrecondition, "releases feature is disabled for portal %q", portal)
 	}
 
-	date := e.Date.AsTime()
-	entry, err := domainrelease.NewEntry(e.Type, e.Version, e.Origin, date)
+	date := req.Date.AsTime()
+	entry, err := domainrelease.NewEntry(req.Type, req.Version, req.Origin, date)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInvalidArgument, err)
 	}
 	allowedNames := make([]string, len(s.allowedTypes))
 	for i, t := range s.allowedTypes {
 		allowedNames[i] = t.Name
 	}
-	if err := domainrelease.ValidateType(e.Type, allowedNames); err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
+	if err := domainrelease.ValidateType(req.Type, allowedNames); err != nil {
+		return nil, wrapError(connect.CodeInvalidArgument, err)
 	}
-	entry.Author = e.Author
-	entry.Message = e.Message
-	entry.Link = e.Link
+	entry.Author = req.Author
+	entry.Message = req.Message
+	entry.Link = req.Link
 	entry.PortalRef = portal
 
 	day, count, created, err := s.writer.AddEntry(ctx, entry)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInternal, err)
 	}
 
 	if created {
 		logger := log.Default().WithName("release-service")
-		logger.Info("release CR created", "day", day, "type", e.Type, "version", e.Version, "origin", e.Origin)
+		logger.Info("release CR created", "day", day, "type", req.Type, "version", req.Version, "origin", req.Origin)
 	}
 
 	return &releasev1.AddReleaseResponse{
@@ -121,7 +120,7 @@ func (s *ReleaseService) ListReleases(
 	}
 
 	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, portal, CheckReleases); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInternal, err)
 	} else if !enabled {
 		return &releasev1.ListReleasesResponse{}, nil
 	}
@@ -130,7 +129,7 @@ func (s *ReleaseService) ListReleases(
 	if day == "" {
 		days, err := s.reader.ListDays(ctx, portal)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+			return nil, wrapError(connect.CodeInternal, err)
 		}
 		if len(days) == 0 {
 			return &releasev1.ListReleasesResponse{}, nil
@@ -140,7 +139,7 @@ func (s *ReleaseService) ListReleases(
 
 	entries, err := s.reader.ListEntries(ctx, day, portal)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInternal, err)
 	}
 
 	// Build proto entries
@@ -152,7 +151,7 @@ func (s *ReleaseService) ListReleases(
 	// Determine previous/next day navigation
 	days, err := s.reader.ListDays(ctx, portal)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInternal, err)
 	}
 
 	var prevDay, nextDay string
@@ -187,14 +186,14 @@ func (s *ReleaseService) ListReleaseDays(
 	}
 
 	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, portal, CheckReleases); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInternal, err)
 	} else if !enabled {
 		return &releasev1.ListReleaseDaysResponse{}, nil
 	}
 
 	days, err := s.reader.ListDays(ctx, portal)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInternal, err)
 	}
 
 	ttlDays := int32(s.ttl.Hours() / 24)

@@ -70,7 +70,7 @@ func (s *StatusService) ListComponents(
 	req *sreportalv1.ListComponentsRequest,
 ) (*sreportalv1.ListComponentsResponse, error) {
 	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, req.PortalRef, CheckStatusPage); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInternal, err)
 	} else if !enabled {
 		return &sreportalv1.ListComponentsResponse{}, nil
 	}
@@ -82,7 +82,7 @@ func (s *StatusService) ListComponents(
 
 	views, err := s.componentReader.List(ctx, opts)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInternal, err)
 	}
 
 	components := make([]*sreportalv1.ComponentResource, 0, len(views))
@@ -130,7 +130,7 @@ func (s *StatusService) ListMaintenances(
 	req *sreportalv1.ListMaintenancesRequest,
 ) (*sreportalv1.ListMaintenancesResponse, error) {
 	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, req.PortalRef, CheckStatusPage); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInternal, err)
 	} else if !enabled {
 		return &sreportalv1.ListMaintenancesResponse{}, nil
 	}
@@ -142,7 +142,7 @@ func (s *StatusService) ListMaintenances(
 
 	views, err := s.maintenanceReader.List(ctx, opts)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInternal, err)
 	}
 
 	maintenances := make([]*sreportalv1.MaintenanceResource, 0, len(views))
@@ -172,7 +172,7 @@ func (s *StatusService) ListIncidents(
 	req *sreportalv1.ListIncidentsRequest,
 ) (*sreportalv1.ListIncidentsResponse, error) {
 	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, req.PortalRef, CheckStatusPage); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInternal, err)
 	} else if !enabled {
 		return &sreportalv1.ListIncidentsResponse{}, nil
 	}
@@ -184,7 +184,7 @@ func (s *StatusService) ListIncidents(
 
 	views, err := s.incidentReader.List(ctx, opts)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInternal, err)
 	}
 
 	incidents := make([]*sreportalv1.IncidentResource, 0, len(views))
@@ -319,14 +319,14 @@ func (s *StatusService) CreateComponent(
 	req *sreportalv1.CreateComponentRequest,
 ) (*sreportalv1.CreateComponentResponse, error) {
 	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, req.PortalRef, CheckStatusPage); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInternal, err)
 	} else if !enabled {
 		return nil, connect.Errorf(connect.CodeFailedPrecondition, "statusPage feature is disabled for portal %q", req.PortalRef)
 	}
 
 	status, err := componentStatusFromProto(req.Status)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInvalidArgument, err)
 	}
 
 	in := statuspage.CreateComponentInput{
@@ -372,7 +372,7 @@ func (s *StatusService) UpdateComponent(
 	if req.Status != nil {
 		status, err := componentStatusFromProto(*req.Status)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
+			return nil, wrapError(connect.CodeInvalidArgument, err)
 		}
 		in.Status = &status
 	}
@@ -404,7 +404,7 @@ func (s *StatusService) CreateMaintenance(
 	req *sreportalv1.CreateMaintenanceRequest,
 ) (*sreportalv1.CreateMaintenanceResponse, error) {
 	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, req.PortalRef, CheckStatusPage); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInternal, err)
 	} else if !enabled {
 		return nil, connect.Errorf(connect.CodeFailedPrecondition, "statusPage feature is disabled for portal %q", req.PortalRef)
 	}
@@ -419,7 +419,7 @@ func (s *StatusService) CreateMaintenance(
 
 	affectedStatus, err := maintenanceAffectedStatusFromProto(req.AffectedStatus)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInvalidArgument, err)
 	}
 
 	in := statuspage.CreateMaintenanceInput{
@@ -469,7 +469,7 @@ func (s *StatusService) UpdateMaintenance(
 	if req.AffectedStatus != nil {
 		status, err := maintenanceAffectedStatusFromProto(*req.AffectedStatus)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
+			return nil, wrapError(connect.CodeInvalidArgument, err)
 		}
 		in.AffectedStatus = &status
 	}
@@ -501,14 +501,14 @@ func (s *StatusService) CreateIncident(
 	req *sreportalv1.CreateIncidentRequest,
 ) (*sreportalv1.CreateIncidentResponse, error) {
 	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, req.PortalRef, CheckStatusPage); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInternal, err)
 	} else if !enabled {
 		return nil, connect.Errorf(connect.CodeFailedPrecondition, "statusPage feature is disabled for portal %q", req.PortalRef)
 	}
 
 	severity, err := incidentSeverityFromProto(req.Severity)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInvalidArgument, err)
 	}
 
 	if req.InitialUpdate == nil {
@@ -518,7 +518,7 @@ func (s *StatusService) CreateIncident(
 
 	update, err := protoToIncidentUpdate(req.InitialUpdate, "initial_update")
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInvalidArgument, err)
 	}
 
 	in := statuspage.CreateIncidentInput{
@@ -551,7 +551,7 @@ func (s *StatusService) UpdateIncident(
 
 	update, err := protoToIncidentUpdate(req.Update, "update")
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInvalidArgument, err)
 	}
 
 	in := statuspage.UpdateIncidentInput{
@@ -566,7 +566,7 @@ func (s *StatusService) UpdateIncident(
 	if req.Severity != nil {
 		sev, err := incidentSeverityFromProto(*req.Severity)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
+			return nil, wrapError(connect.CodeInvalidArgument, err)
 		}
 		in.Severity = &sev
 	}
@@ -661,12 +661,12 @@ func toConnectError(err error) *connect.Error {
 		errors.Is(err, statuspage.ErrGroupRequired),
 		errors.Is(err, statuspage.ErrTitleRequired),
 		errors.Is(err, statuspage.ErrSeverityRequired):
-		return connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
+		return wrapError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, statuspage.ErrNotFound):
-		return connect.NewError(connect.CodeNotFound, err.Error()).WithCause(err)
+		return wrapError(connect.CodeNotFound, err)
 	case errors.Is(err, statuspage.ErrAlreadyExists):
-		return connect.NewError(connect.CodeAlreadyExists, err.Error()).WithCause(err)
+		return wrapError(connect.CodeAlreadyExists, err)
 	default:
-		return connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+		return wrapError(connect.CodeInternal, err)
 	}
 }

@@ -45,7 +45,7 @@ func (s *EmojiService) ListCustomEmojis(
 ) (*portalv1.ListCustomEmojisResponse, error) {
 	emojis, err := s.reader.All(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInternal, err)
 	}
 
 	return &portalv1.ListCustomEmojisResponse{

@@ -48,7 +48,7 @@ func (s *NetworkPolicyService) ListNetworkPolicies(
 	req *netpolv1.ListNetworkPoliciesRequest,
 ) (*netpolv1.ListNetworkPoliciesResponse, error) {
 	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, req.Portal, CheckNetworkPolicy); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInternal, err)
 	} else if !enabled {
 		return &netpolv1.ListNetworkPoliciesResponse{}, nil
 	}
@@ -61,12 +61,12 @@ func (s *NetworkPolicyService) ListNetworkPolicies(
 
 	nodes, err := s.reader.ListNodes(ctx, filters)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInternal, err)
 	}
 
 	edges, err := s.reader.ListEdges(ctx, filters)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+		return nil, wrapError(connect.CodeInternal, err)
 	}
 
 	return &netpolv1.ListNetworkPoliciesResponse{
