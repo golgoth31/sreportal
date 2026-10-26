@@ -18,6 +18,7 @@ package auth
 
 import (
 	"context"
+	"maps"
 	"net/http"
 
 	"connectrpc.com/connect/v2"
@@ -61,8 +62,6 @@ func AuthInterceptor(chain *Chain) connect.ServerInterceptor {
 
 func headerToHTTP(h *connect.Header) http.Header {
 	out := make(http.Header, h.Len())
-	for k, vals := range h.All() {
-		out[k] = vals
-	}
+	maps.Insert(out, h.All())
 	return out
 }
