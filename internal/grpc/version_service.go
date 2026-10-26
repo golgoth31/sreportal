@@ -19,8 +19,6 @@ package grpc
 import (
 	"context"
 
-	"connectrpc.com/connect"
-
 	portalv1 "github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1"
 	"github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1/sreportalv1connect"
 	"github.com/golgoth31/sreportal/internal/version"
@@ -39,11 +37,11 @@ func NewVersionService() *VersionService {
 // GetVersion returns the current build version information
 func (s *VersionService) GetVersion(
 	_ context.Context,
-	_ *connect.Request[portalv1.GetVersionRequest],
-) (*connect.Response[portalv1.GetVersionResponse], error) {
-	return connect.NewResponse(&portalv1.GetVersionResponse{
+	_ *portalv1.GetVersionRequest,
+) (*portalv1.GetVersionResponse, error) {
+	return &portalv1.GetVersionResponse{
 		Version: version.Version(),
 		Commit:  version.Commit(),
 		Date:    version.Date(),
-	}), nil
+	}, nil
 }

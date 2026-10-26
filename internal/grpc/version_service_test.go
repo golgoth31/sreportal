@@ -20,7 +20,6 @@ import (
 	"context"
 	"testing"
 
-	"connectrpc.com/connect"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -32,10 +31,10 @@ import (
 func TestGetVersion_ReturnsVersionInfo(t *testing.T) {
 	svc := svcgrpc.NewVersionService()
 
-	resp, err := svc.GetVersion(context.Background(), connect.NewRequest(&versionv1.GetVersionRequest{}))
+	resp, err := svc.GetVersion(context.Background(), &versionv1.GetVersionRequest{})
 	require.NoError(t, err)
 
-	assert.Equal(t, version.Version(), resp.Msg.Version)
-	assert.Equal(t, version.Commit(), resp.Msg.Commit)
-	assert.Equal(t, version.Date(), resp.Msg.Date)
+	assert.Equal(t, version.Version(), resp.Version)
+	assert.Equal(t, version.Commit(), resp.Commit)
+	assert.Equal(t, version.Date(), resp.Date)
 }

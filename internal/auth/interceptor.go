@@ -18,8 +18,9 @@ package auth
 
 import (
 	"context"
+	"net/http"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 )
 
 // WriteProcedures lists the Connect procedures that require authentication.
@@ -36,21 +37,32 @@ var WriteProcedures = map[string]bool{
 	"/sreportal.v1.StatusService/DeleteIncident":    true,
 }
 
-// AuthInterceptor returns a Connect unary interceptor that enforces authentication
+// AuthInterceptor returns a Connect server interceptor that enforces authentication
 // on write procedures. Unprotected procedures pass through without auth checks.
-func AuthInterceptor(chain *Chain) connect.UnaryInterceptorFunc {
-	return func(next connect.UnaryFunc) connect.UnaryFunc {
-		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-			if !WriteProcedures[req.Spec().Procedure] {
-				return next(ctx, req)
+func AuthInterceptor(chain *Chain) connect.ServerInterceptor {
+	return func(next connect.ServerFunc) connect.ServerFunc {
+		return func(ctx context.Context, spec connect.Spec, stream connect.ServerStream) error {
+			if !WriteProcedures[spec.Procedure] {
+				return next(ctx, spec, stream)
 			}
 
-			headers := req.Header()
-			if err := chain.Authenticate(ctx, headers); err != nil {
-				return nil, connect.NewError(connect.CodeUnauthenticated, err)
+			info, ok := connect.CallInfoForServerContext(ctx)
+			if !ok {
+				return connect.NewError(connect.CodeInternal, "missing call info")
+			}
+			if err := chain.Authenticate(ctx, headerToHTTP(info.RequestHeader())); err != nil {
+				return connect.NewError(connect.CodeUnauthenticated, err.Error()).WithCause(err)
 			}
 
-			return next(ctx, req)
+			return next(ctx, spec, stream)
 		}
 	}
+}
+
+func headerToHTTP(h *connect.Header) http.Header {
+	out := make(http.Header, h.Len())
+	for k, vals := range h.All() {
+		out[k] = vals
+	}
+	return out
 }

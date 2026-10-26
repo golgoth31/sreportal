@@ -21,7 +21,7 @@ import (
 	"encoding/base64"
 	"strconv"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	domaindns "github.com/golgoth31/sreportal/internal/domain/dns"
@@ -48,24 +48,24 @@ func NewDNSService(reader domaindns.FQDNReader, portalReader domainportal.Portal
 // ListFQDNs returns all aggregated FQDNs with optional filters and cursor-based pagination.
 func (s *DNSService) ListFQDNs(
 	ctx context.Context,
-	req *connect.Request[dnsv1.ListFQDNsRequest],
-) (*connect.Response[dnsv1.ListFQDNsResponse], error) {
-	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, req.Msg.Portal, CheckDNS); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+	req *dnsv1.ListFQDNsRequest,
+) (*dnsv1.ListFQDNsResponse, error) {
+	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, req.Portal, CheckDNS); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	} else if !enabled {
-		return connect.NewResponse(&dnsv1.ListFQDNsResponse{}), nil
+		return &dnsv1.ListFQDNsResponse{}, nil
 	}
 
 	filters := domaindns.FQDNFilters{
-		Portal:    req.Msg.Portal,
-		Namespace: req.Msg.Namespace,
-		Source:    req.Msg.Source,
-		Search:    req.Msg.Search,
+		Portal:    req.Portal,
+		Namespace: req.Namespace,
+		Source:    req.Source,
+		Search:    req.Search,
 	}
 
 	views, err := s.reader.List(ctx, filters)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 
 	fqdns := make([]*dnsv1.FQDN, 0, len(views))
@@ -76,12 +76,12 @@ func (s *DNSService) ListFQDNs(
 	// Pagination: page_size=0 means return all (backward-compatible default).
 	totalSize := int32(len(fqdns))
 	var nextPageToken string
-	if req.Msg.PageSize > 0 {
-		offset := decodePageToken(req.Msg.PageToken)
+	if req.PageSize > 0 {
+		offset := decodePageToken(req.PageToken)
 		if offset < 0 || offset > len(fqdns) {
 			offset = 0
 		}
-		end := offset + int(req.Msg.PageSize)
+		end := offset + int(req.PageSize)
 		if end < len(fqdns) {
 			nextPageToken = encodePageToken(end)
 			fqdns = fqdns[offset:end]
@@ -90,31 +90,31 @@ func (s *DNSService) ListFQDNs(
 		}
 	}
 
-	return connect.NewResponse(&dnsv1.ListFQDNsResponse{
+	return &dnsv1.ListFQDNsResponse{
 		Fqdns:         fqdns,
 		NextPageToken: nextPageToken,
 		TotalSize:     totalSize,
-	}), nil
+	}, nil
 }
 
 // StreamFQDNs streams FQDN updates in real-time using the ReadStore's
 // Subscribe() notification channel instead of polling.
 func (s *DNSService) StreamFQDNs(
 	ctx context.Context,
-	req *connect.Request[dnsv1.StreamFQDNsRequest],
-	stream *connect.ServerStream[dnsv1.StreamFQDNsResponse],
+	req *dnsv1.StreamFQDNsRequest,
+	stream sreportalv1connect.DNSServiceStreamFQDNsServerStream,
 ) error {
-	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, req.Msg.Portal, CheckDNS); err != nil {
+	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, req.Portal, CheckDNS); err != nil {
 		return err
 	} else if !enabled {
 		return nil
 	}
 
 	filters := domaindns.FQDNFilters{
-		Portal:    req.Msg.Portal,
-		Namespace: req.Msg.Namespace,
-		Source:    req.Msg.Source,
-		Search:    req.Msg.Search,
+		Portal:    req.Portal,
+		Namespace: req.Namespace,
+		Source:    req.Source,
+		Search:    req.Search,
 	}
 
 	// Send initial state.
@@ -149,7 +149,7 @@ func (s *DNSService) StreamFQDNs(
 		}
 
 		// Re-check feature gate: if disabled mid-stream, close gracefully.
-		if enabled, gateErr := IsFeatureEnabled(ctx, s.portalReader, req.Msg.Portal, CheckDNS); gateErr != nil {
+		if enabled, gateErr := IsFeatureEnabled(ctx, s.portalReader, req.Portal, CheckDNS); gateErr != nil {
 			return gateErr
 		} else if !enabled {
 			return nil

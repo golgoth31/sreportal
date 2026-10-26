@@ -19,7 +19,7 @@ package grpc
 import (
 	"context"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	domainemoji "github.com/golgoth31/sreportal/internal/domain/emoji"
 	portalv1 "github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1"
@@ -41,14 +41,14 @@ func NewEmojiService(reader domainemoji.EmojiReader) *EmojiService {
 // Returns an empty map if no emojis are loaded (graceful degradation).
 func (s *EmojiService) ListCustomEmojis(
 	ctx context.Context,
-	_ *connect.Request[portalv1.ListCustomEmojisRequest],
-) (*connect.Response[portalv1.ListCustomEmojisResponse], error) {
+	_ *portalv1.ListCustomEmojisRequest,
+) (*portalv1.ListCustomEmojisResponse, error) {
 	emojis, err := s.reader.All(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 
-	return connect.NewResponse(&portalv1.ListCustomEmojisResponse{
+	return &portalv1.ListCustomEmojisResponse{
 		Emojis: emojis,
-	}), nil
+	}, nil
 }

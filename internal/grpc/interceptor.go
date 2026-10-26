@@ -19,29 +19,28 @@ package grpc
 import (
 	"context"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/golgoth31/sreportal/internal/log"
 )
 
-// LoggingInterceptor returns a Connect interceptor that logs handler errors
+// LoggingInterceptor returns a Connect server interceptor that logs handler errors
 // at WARN level. Connect errors are invisible to HTTP middleware because the
 // protocol returns HTTP 200 even when the handler returns a coded error.
-func LoggingInterceptor() connect.UnaryInterceptorFunc {
+func LoggingInterceptor() connect.ServerInterceptor {
 	logger := log.Default().WithName("connect")
 
-	return func(next connect.UnaryFunc) connect.UnaryFunc {
-		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-			resp, err := next(ctx, req)
+	return func(next connect.ServerFunc) connect.ServerFunc {
+		return func(ctx context.Context, spec connect.Spec, stream connect.ServerStream) error {
+			err := next(ctx, spec, stream)
 			if err != nil {
-				code := connect.CodeOf(err)
 				logger.Warn("request error",
-					"procedure", req.Spec().Procedure,
-					"code", code.String(),
+					"procedure", spec.Procedure,
+					"code", connect.CodeOf(err).String(),
 					"error", err.Error(),
 				)
 			}
-			return resp, err
+			return err
 		}
 	}
 }

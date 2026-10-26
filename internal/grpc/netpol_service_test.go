@@ -20,7 +20,6 @@ import (
 	"context"
 	"testing"
 
-	"connectrpc.com/connect"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -77,15 +76,15 @@ func TestListNetworkPolicies_ReturnsAllNodesAndEdges_WhenNoFilter(t *testing.T) 
 
 	resp, err := svc.ListNetworkPolicies(
 		context.Background(),
-		connect.NewRequest(&netpolv1.ListNetworkPoliciesRequest{}),
+		&netpolv1.ListNetworkPoliciesRequest{},
 	)
 
 	require.NoError(t, err)
-	assert.Len(t, resp.Msg.Nodes, 2)
-	assert.Len(t, resp.Msg.Edges, 1)
-	assert.Contains(t, nodeIDs(resp.Msg.Nodes), tNodeSvcCoreAPI)
-	assert.Contains(t, nodeIDs(resp.Msg.Nodes), tNodeSvcWeb)
-	assert.Contains(t, edgePairs(resp.Msg.Edges), "svc:core:web->svc:core:api")
+	assert.Len(t, resp.Nodes, 2)
+	assert.Len(t, resp.Edges, 1)
+	assert.Contains(t, nodeIDs(resp.Nodes), tNodeSvcCoreAPI)
+	assert.Contains(t, nodeIDs(resp.Nodes), tNodeSvcWeb)
+	assert.Contains(t, edgePairs(resp.Edges), "svc:core:web->svc:core:api")
 }
 
 func TestListNetworkPolicies_DeduplicatesNodesAndEdges_AcrossMultipleSets(t *testing.T) {
@@ -105,12 +104,12 @@ func TestListNetworkPolicies_DeduplicatesNodesAndEdges_AcrossMultipleSets(t *tes
 
 	resp, err := svc.ListNetworkPolicies(
 		context.Background(),
-		connect.NewRequest(&netpolv1.ListNetworkPoliciesRequest{}),
+		&netpolv1.ListNetworkPoliciesRequest{},
 	)
 
 	require.NoError(t, err)
-	assert.Len(t, resp.Msg.Nodes, 2, "duplicate node should be deduplicated")
-	assert.Len(t, resp.Msg.Edges, 1, "duplicate edge should be deduplicated")
+	assert.Len(t, resp.Nodes, 2, "duplicate node should be deduplicated")
+	assert.Len(t, resp.Edges, 1, "duplicate edge should be deduplicated")
 }
 
 func TestListNetworkPolicies_FiltersByPortal(t *testing.T) {
@@ -130,12 +129,12 @@ func TestListNetworkPolicies_FiltersByPortal(t *testing.T) {
 
 	resp, err := svc.ListNetworkPolicies(
 		context.Background(),
-		connect.NewRequest(&netpolv1.ListNetworkPoliciesRequest{Portal: tPortalMain}),
+		&netpolv1.ListNetworkPoliciesRequest{Portal: tPortalMain},
 	)
 
 	require.NoError(t, err)
-	assert.Len(t, resp.Msg.Nodes, 1)
-	assert.Equal(t, tNodeSvcCoreAPI, resp.Msg.Nodes[0].Id)
+	assert.Len(t, resp.Nodes, 1)
+	assert.Equal(t, tNodeSvcCoreAPI, resp.Nodes[0].Id)
 }
 
 func TestListNetworkPolicies_FiltersByNamespace(t *testing.T) {
@@ -153,13 +152,13 @@ func TestListNetworkPolicies_FiltersByNamespace(t *testing.T) {
 
 	resp, err := svc.ListNetworkPolicies(
 		context.Background(),
-		connect.NewRequest(&netpolv1.ListNetworkPoliciesRequest{Namespace: tNsCore}),
+		&netpolv1.ListNetworkPoliciesRequest{Namespace: tNsCore},
 	)
 
 	require.NoError(t, err)
-	assert.Len(t, resp.Msg.Nodes, 1)
-	assert.Equal(t, tNodeSvcCoreAPI, resp.Msg.Nodes[0].Id)
-	assert.Empty(t, resp.Msg.Edges, "cross-namespace edge should be pruned")
+	assert.Len(t, resp.Nodes, 1)
+	assert.Equal(t, tNodeSvcCoreAPI, resp.Nodes[0].Id)
+	assert.Empty(t, resp.Edges, "cross-namespace edge should be pruned")
 }
 
 func TestListNetworkPolicies_SearchMatchesLabelGroupAndNamespace(t *testing.T) {
@@ -205,10 +204,10 @@ func TestListNetworkPolicies_SearchMatchesLabelGroupAndNamespace(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			resp, err := svc.ListNetworkPolicies(
 				context.Background(),
-				connect.NewRequest(&netpolv1.ListNetworkPoliciesRequest{Search: tc.search}),
+				&netpolv1.ListNetworkPoliciesRequest{Search: tc.search},
 			)
 			require.NoError(t, err)
-			assert.ElementsMatch(t, tc.wantIDs, nodeIDs(resp.Msg.Nodes))
+			assert.ElementsMatch(t, tc.wantIDs, nodeIDs(resp.Nodes))
 		})
 	}
 }
@@ -230,17 +229,17 @@ func TestListNetworkPolicies_SearchExpandsToDirectNeighbors(t *testing.T) {
 
 	resp, err := svc.ListNetworkPolicies(
 		context.Background(),
-		connect.NewRequest(&netpolv1.ListNetworkPoliciesRequest{Search: tNameAPI}),
+		&netpolv1.ListNetworkPoliciesRequest{Search: tNameAPI},
 	)
 
 	require.NoError(t, err)
-	ids := nodeIDs(resp.Msg.Nodes)
+	ids := nodeIDs(resp.Nodes)
 	assert.Contains(t, ids, "a", "direct match should be included")
 	assert.Contains(t, ids, "b", "1-hop neighbor should be included")
 	assert.NotContains(t, ids, "c", "2-hop neighbor should NOT be included")
-	assert.Len(t, resp.Msg.Edges, 1, "only A->B edge should remain")
-	assert.Equal(t, "a", resp.Msg.Edges[0].From)
-	assert.Equal(t, "b", resp.Msg.Edges[0].To)
+	assert.Len(t, resp.Edges, 1, "only A->B edge should remain")
+	assert.Equal(t, "a", resp.Edges[0].From)
+	assert.Equal(t, "b", resp.Edges[0].To)
 }
 
 func TestListNetworkPolicies_EmptyState_ReturnsEmptyGraph(t *testing.T) {
@@ -250,12 +249,12 @@ func TestListNetworkPolicies_EmptyState_ReturnsEmptyGraph(t *testing.T) {
 
 	resp, err := svc.ListNetworkPolicies(
 		context.Background(),
-		connect.NewRequest(&netpolv1.ListNetworkPoliciesRequest{}),
+		&netpolv1.ListNetworkPoliciesRequest{},
 	)
 
 	require.NoError(t, err)
-	assert.Empty(t, resp.Msg.Nodes)
-	assert.Empty(t, resp.Msg.Edges)
+	assert.Empty(t, resp.Nodes)
+	assert.Empty(t, resp.Edges)
 }
 
 func TestListNetworkPolicies_SortOrder_IsDeterministic(t *testing.T) {
@@ -275,21 +274,21 @@ func TestListNetworkPolicies_SortOrder_IsDeterministic(t *testing.T) {
 
 	resp, err := svc.ListNetworkPolicies(
 		context.Background(),
-		connect.NewRequest(&netpolv1.ListNetworkPoliciesRequest{}),
+		&netpolv1.ListNetworkPoliciesRequest{},
 	)
 
 	require.NoError(t, err)
 
 	// Nodes sorted by group, then label: Core/a-svc, Core/b-svc, Pay/z-svc
-	require.Len(t, resp.Msg.Nodes, 3)
-	assert.Equal(t, tNodeSvcA, resp.Msg.Nodes[0].Id)
-	assert.Equal(t, "svc:core:b", resp.Msg.Nodes[1].Id)
-	assert.Equal(t, "svc:pay:z", resp.Msg.Nodes[2].Id)
+	require.Len(t, resp.Nodes, 3)
+	assert.Equal(t, tNodeSvcA, resp.Nodes[0].Id)
+	assert.Equal(t, "svc:core:b", resp.Nodes[1].Id)
+	assert.Equal(t, "svc:pay:z", resp.Nodes[2].Id)
 
 	// Edges sorted by from, then to: core:a->core:b, pay:z->core:a
-	require.Len(t, resp.Msg.Edges, 2)
-	assert.Equal(t, tNodeSvcA, resp.Msg.Edges[0].From)
-	assert.Equal(t, "svc:core:b", resp.Msg.Edges[0].To)
-	assert.Equal(t, "svc:pay:z", resp.Msg.Edges[1].From)
-	assert.Equal(t, tNodeSvcA, resp.Msg.Edges[1].To)
+	require.Len(t, resp.Edges, 2)
+	assert.Equal(t, tNodeSvcA, resp.Edges[0].From)
+	assert.Equal(t, "svc:core:b", resp.Edges[0].To)
+	assert.Equal(t, "svc:pay:z", resp.Edges[1].From)
+	assert.Equal(t, tNodeSvcA, resp.Edges[1].To)
 }

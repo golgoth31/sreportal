@@ -5,107 +5,95 @@
 package sreportalv1connect
 
 import (
-	connect "connectrpc.com/connect"
+	connect "connectrpc.com/connect/v2"
 	context "context"
-	errors "errors"
 	v1 "github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1"
-	http "net/http"
-	strings "strings"
+	sync "sync"
 )
-
-// This is a compile-time assertion to ensure that this generated file and the connect package are
-// compatible. If you get a compiler error that this constant is not defined, this code was
-// generated with a version of connect newer than the one compiled into your binary. You can fix the
-// problem by either regenerating this code with an older version of connect or updating the connect
-// version compiled into your binary.
-const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// PortalServiceName is the fully-qualified name of the PortalService service.
 	PortalServiceName = "sreportal.v1.PortalService"
 )
 
-// These constants are the fully-qualified names of the RPCs defined in this package. They're
-// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+// These constants are the procedure names of the RPCs defined in this package. They're exposed at
+// runtime as Spec.Procedure and as the final two segments of the HTTP route.
 //
 // Note that these are different from the fully-qualified method names used by
 // google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// PortalServiceListPortalsProcedure is the fully-qualified name of the PortalService's ListPortals
-	// RPC.
+	// PortalServiceListPortalsProcedure is the procedure name of the PortalService's ListPortals RPC.
 	PortalServiceListPortalsProcedure = "/sreportal.v1.PortalService/ListPortals"
+)
+
+var (
+	portalServiceListPortalsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_sreportal_v1_portal_proto.Services().ByName("PortalService").Methods().ByName("ListPortals"),
+			Procedure:  PortalServiceListPortalsProcedure,
+		}
+	})
 )
 
 // PortalServiceClient is a client for the sreportal.v1.PortalService service.
 type PortalServiceClient interface {
 	// ListPortals returns all available portals
-	ListPortals(context.Context, *connect.Request[v1.ListPortalsRequest]) (*connect.Response[v1.ListPortalsResponse], error)
+	ListPortals(context.Context, *v1.ListPortalsRequest) (*v1.ListPortalsResponse, error)
 }
 
-// NewPortalServiceClient constructs a client for the sreportal.v1.PortalService service. By
-// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
-// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
-// connect.WithGRPC() or connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewPortalServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) PortalServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	portalServiceMethods := v1.File_sreportal_v1_portal_proto.Services().ByName("PortalService").Methods()
-	return &portalServiceClient{
-		listPortals: connect.NewClient[v1.ListPortalsRequest, v1.ListPortalsResponse](
-			httpClient,
-			baseURL+PortalServiceListPortalsProcedure,
-			connect.WithSchema(portalServiceMethods.ByName("ListPortals")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// portalServiceClient implements PortalServiceClient.
-type portalServiceClient struct {
-	listPortals *connect.Client[v1.ListPortalsRequest, v1.ListPortalsResponse]
-}
-
-// ListPortals calls sreportal.v1.PortalService.ListPortals.
-func (c *portalServiceClient) ListPortals(ctx context.Context, req *connect.Request[v1.ListPortalsRequest]) (*connect.Response[v1.ListPortalsResponse], error) {
-	return c.listPortals.CallUnary(ctx, req)
+// NewPortalServiceClient constructs a client for the sreportal.v1.PortalService service. Multiple
+// service clients may share a single connect.Client.
+func NewPortalServiceClient(client *connect.Client) PortalServiceClient {
+	return &portalServiceClient{client: client}
 }
 
 // PortalServiceHandler is an implementation of the sreportal.v1.PortalService service.
 type PortalServiceHandler interface {
 	// ListPortals returns all available portals
-	ListPortals(context.Context, *connect.Request[v1.ListPortalsRequest]) (*connect.Response[v1.ListPortalsResponse], error)
+	ListPortals(context.Context, *v1.ListPortalsRequest) (*v1.ListPortalsResponse, error)
 }
 
-// NewPortalServiceHandler builds an HTTP handler from the service implementation. It returns the
-// path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewPortalServiceHandler(svc PortalServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	portalServiceMethods := v1.File_sreportal_v1_portal_proto.Services().ByName("PortalService").Methods()
-	portalServiceListPortalsHandler := connect.NewUnaryHandler(
-		PortalServiceListPortalsProcedure,
-		svc.ListPortals,
-		connect.WithSchema(portalServiceMethods.ByName("ListPortals")),
-		connect.WithHandlerOptions(opts...),
+// RegisterPortalServiceHandler registers svc as the sreportal.v1.PortalService implementation on
+// server.
+func RegisterPortalServiceHandler(server *connect.Server, svc PortalServiceHandler) {
+	adapter := portalServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: portalServiceListPortalsSpec(), Handler: adapter.listPortals},
 	)
-	return "/sreportal.v1.PortalService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case PortalServiceListPortalsProcedure:
-			portalServiceListPortalsHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedPortalServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedPortalServiceHandler struct{}
 
-func (UnimplementedPortalServiceHandler) ListPortals(context.Context, *connect.Request[v1.ListPortalsRequest]) (*connect.Response[v1.ListPortalsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sreportal.v1.PortalService.ListPortals is not implemented"))
+func (UnimplementedPortalServiceHandler) ListPortals(context.Context, *v1.ListPortalsRequest) (*v1.ListPortalsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "sreportal.v1.PortalService.ListPortals is not implemented")
+}
+
+type portalServiceClient struct {
+	client *connect.Client
+}
+
+func (c *portalServiceClient) ListPortals(ctx context.Context, req *v1.ListPortalsRequest) (*v1.ListPortalsResponse, error) {
+	var res v1.ListPortalsResponse
+	if err := c.client.CallUnary(ctx, portalServiceListPortalsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type portalServiceHandler struct{ svc PortalServiceHandler }
+
+func (h portalServiceHandler) listPortals(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListPortalsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListPortals(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
 }

@@ -5,448 +5,525 @@
 package sreportalv1connect
 
 import (
-	connect "connectrpc.com/connect"
+	connect "connectrpc.com/connect/v2"
 	context "context"
-	errors "errors"
 	v1 "github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1"
-	http "net/http"
-	strings "strings"
+	sync "sync"
 )
-
-// This is a compile-time assertion to ensure that this generated file and the connect package are
-// compatible. If you get a compiler error that this constant is not defined, this code was
-// generated with a version of connect newer than the one compiled into your binary. You can fix the
-// problem by either regenerating this code with an older version of connect or updating the connect
-// version compiled into your binary.
-const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// StatusServiceName is the fully-qualified name of the StatusService service.
 	StatusServiceName = "sreportal.v1.StatusService"
 )
 
-// These constants are the fully-qualified names of the RPCs defined in this package. They're
-// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+// These constants are the procedure names of the RPCs defined in this package. They're exposed at
+// runtime as Spec.Procedure and as the final two segments of the HTTP route.
 //
 // Note that these are different from the fully-qualified method names used by
 // google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// StatusServiceListComponentsProcedure is the fully-qualified name of the StatusService's
-	// ListComponents RPC.
+	// StatusServiceListComponentsProcedure is the procedure name of the StatusService's ListComponents
+	// RPC.
 	StatusServiceListComponentsProcedure = "/sreportal.v1.StatusService/ListComponents"
-	// StatusServiceListMaintenancesProcedure is the fully-qualified name of the StatusService's
+	// StatusServiceListMaintenancesProcedure is the procedure name of the StatusService's
 	// ListMaintenances RPC.
 	StatusServiceListMaintenancesProcedure = "/sreportal.v1.StatusService/ListMaintenances"
-	// StatusServiceListIncidentsProcedure is the fully-qualified name of the StatusService's
-	// ListIncidents RPC.
+	// StatusServiceListIncidentsProcedure is the procedure name of the StatusService's ListIncidents
+	// RPC.
 	StatusServiceListIncidentsProcedure = "/sreportal.v1.StatusService/ListIncidents"
-	// StatusServiceCreateComponentProcedure is the fully-qualified name of the StatusService's
+	// StatusServiceCreateComponentProcedure is the procedure name of the StatusService's
 	// CreateComponent RPC.
 	StatusServiceCreateComponentProcedure = "/sreportal.v1.StatusService/CreateComponent"
-	// StatusServiceUpdateComponentProcedure is the fully-qualified name of the StatusService's
+	// StatusServiceUpdateComponentProcedure is the procedure name of the StatusService's
 	// UpdateComponent RPC.
 	StatusServiceUpdateComponentProcedure = "/sreportal.v1.StatusService/UpdateComponent"
-	// StatusServiceDeleteComponentProcedure is the fully-qualified name of the StatusService's
+	// StatusServiceDeleteComponentProcedure is the procedure name of the StatusService's
 	// DeleteComponent RPC.
 	StatusServiceDeleteComponentProcedure = "/sreportal.v1.StatusService/DeleteComponent"
-	// StatusServiceCreateMaintenanceProcedure is the fully-qualified name of the StatusService's
+	// StatusServiceCreateMaintenanceProcedure is the procedure name of the StatusService's
 	// CreateMaintenance RPC.
 	StatusServiceCreateMaintenanceProcedure = "/sreportal.v1.StatusService/CreateMaintenance"
-	// StatusServiceUpdateMaintenanceProcedure is the fully-qualified name of the StatusService's
+	// StatusServiceUpdateMaintenanceProcedure is the procedure name of the StatusService's
 	// UpdateMaintenance RPC.
 	StatusServiceUpdateMaintenanceProcedure = "/sreportal.v1.StatusService/UpdateMaintenance"
-	// StatusServiceDeleteMaintenanceProcedure is the fully-qualified name of the StatusService's
+	// StatusServiceDeleteMaintenanceProcedure is the procedure name of the StatusService's
 	// DeleteMaintenance RPC.
 	StatusServiceDeleteMaintenanceProcedure = "/sreportal.v1.StatusService/DeleteMaintenance"
-	// StatusServiceCreateIncidentProcedure is the fully-qualified name of the StatusService's
-	// CreateIncident RPC.
+	// StatusServiceCreateIncidentProcedure is the procedure name of the StatusService's CreateIncident
+	// RPC.
 	StatusServiceCreateIncidentProcedure = "/sreportal.v1.StatusService/CreateIncident"
-	// StatusServiceUpdateIncidentProcedure is the fully-qualified name of the StatusService's
-	// UpdateIncident RPC.
+	// StatusServiceUpdateIncidentProcedure is the procedure name of the StatusService's UpdateIncident
+	// RPC.
 	StatusServiceUpdateIncidentProcedure = "/sreportal.v1.StatusService/UpdateIncident"
-	// StatusServiceDeleteIncidentProcedure is the fully-qualified name of the StatusService's
-	// DeleteIncident RPC.
+	// StatusServiceDeleteIncidentProcedure is the procedure name of the StatusService's DeleteIncident
+	// RPC.
 	StatusServiceDeleteIncidentProcedure = "/sreportal.v1.StatusService/DeleteIncident"
+)
+
+var (
+	statusServiceListComponentsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_sreportal_v1_status_proto.Services().ByName("StatusService").Methods().ByName("ListComponents"),
+			Procedure:  StatusServiceListComponentsProcedure,
+		}
+	})
+	statusServiceListMaintenancesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_sreportal_v1_status_proto.Services().ByName("StatusService").Methods().ByName("ListMaintenances"),
+			Procedure:  StatusServiceListMaintenancesProcedure,
+		}
+	})
+	statusServiceListIncidentsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_sreportal_v1_status_proto.Services().ByName("StatusService").Methods().ByName("ListIncidents"),
+			Procedure:  StatusServiceListIncidentsProcedure,
+		}
+	})
+	statusServiceCreateComponentSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_sreportal_v1_status_proto.Services().ByName("StatusService").Methods().ByName("CreateComponent"),
+			Procedure:  StatusServiceCreateComponentProcedure,
+		}
+	})
+	statusServiceUpdateComponentSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_sreportal_v1_status_proto.Services().ByName("StatusService").Methods().ByName("UpdateComponent"),
+			Procedure:  StatusServiceUpdateComponentProcedure,
+		}
+	})
+	statusServiceDeleteComponentSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_sreportal_v1_status_proto.Services().ByName("StatusService").Methods().ByName("DeleteComponent"),
+			Procedure:  StatusServiceDeleteComponentProcedure,
+		}
+	})
+	statusServiceCreateMaintenanceSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_sreportal_v1_status_proto.Services().ByName("StatusService").Methods().ByName("CreateMaintenance"),
+			Procedure:  StatusServiceCreateMaintenanceProcedure,
+		}
+	})
+	statusServiceUpdateMaintenanceSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_sreportal_v1_status_proto.Services().ByName("StatusService").Methods().ByName("UpdateMaintenance"),
+			Procedure:  StatusServiceUpdateMaintenanceProcedure,
+		}
+	})
+	statusServiceDeleteMaintenanceSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_sreportal_v1_status_proto.Services().ByName("StatusService").Methods().ByName("DeleteMaintenance"),
+			Procedure:  StatusServiceDeleteMaintenanceProcedure,
+		}
+	})
+	statusServiceCreateIncidentSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_sreportal_v1_status_proto.Services().ByName("StatusService").Methods().ByName("CreateIncident"),
+			Procedure:  StatusServiceCreateIncidentProcedure,
+		}
+	})
+	statusServiceUpdateIncidentSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_sreportal_v1_status_proto.Services().ByName("StatusService").Methods().ByName("UpdateIncident"),
+			Procedure:  StatusServiceUpdateIncidentProcedure,
+		}
+	})
+	statusServiceDeleteIncidentSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_sreportal_v1_status_proto.Services().ByName("StatusService").Methods().ByName("DeleteIncident"),
+			Procedure:  StatusServiceDeleteIncidentProcedure,
+		}
+	})
 )
 
 // StatusServiceClient is a client for the sreportal.v1.StatusService service.
 type StatusServiceClient interface {
 	// ListComponents returns all platform components with their status
-	ListComponents(context.Context, *connect.Request[v1.ListComponentsRequest]) (*connect.Response[v1.ListComponentsResponse], error)
+	ListComponents(context.Context, *v1.ListComponentsRequest) (*v1.ListComponentsResponse, error)
 	// ListMaintenances returns maintenance windows
-	ListMaintenances(context.Context, *connect.Request[v1.ListMaintenancesRequest]) (*connect.Response[v1.ListMaintenancesResponse], error)
+	ListMaintenances(context.Context, *v1.ListMaintenancesRequest) (*v1.ListMaintenancesResponse, error)
 	// ListIncidents returns declared incidents
-	ListIncidents(context.Context, *connect.Request[v1.ListIncidentsRequest]) (*connect.Response[v1.ListIncidentsResponse], error)
+	ListIncidents(context.Context, *v1.ListIncidentsRequest) (*v1.ListIncidentsResponse, error)
 	// CreateComponent creates a new platform component CR
-	CreateComponent(context.Context, *connect.Request[v1.CreateComponentRequest]) (*connect.Response[v1.CreateComponentResponse], error)
+	CreateComponent(context.Context, *v1.CreateComponentRequest) (*v1.CreateComponentResponse, error)
 	// UpdateComponent updates an existing platform component CR
-	UpdateComponent(context.Context, *connect.Request[v1.UpdateComponentRequest]) (*connect.Response[v1.UpdateComponentResponse], error)
+	UpdateComponent(context.Context, *v1.UpdateComponentRequest) (*v1.UpdateComponentResponse, error)
 	// DeleteComponent deletes a platform component CR
-	DeleteComponent(context.Context, *connect.Request[v1.DeleteComponentRequest]) (*connect.Response[v1.DeleteComponentResponse], error)
+	DeleteComponent(context.Context, *v1.DeleteComponentRequest) (*v1.DeleteComponentResponse, error)
 	// CreateMaintenance creates a new maintenance window CR
-	CreateMaintenance(context.Context, *connect.Request[v1.CreateMaintenanceRequest]) (*connect.Response[v1.CreateMaintenanceResponse], error)
+	CreateMaintenance(context.Context, *v1.CreateMaintenanceRequest) (*v1.CreateMaintenanceResponse, error)
 	// UpdateMaintenance updates an existing maintenance window CR
-	UpdateMaintenance(context.Context, *connect.Request[v1.UpdateMaintenanceRequest]) (*connect.Response[v1.UpdateMaintenanceResponse], error)
+	UpdateMaintenance(context.Context, *v1.UpdateMaintenanceRequest) (*v1.UpdateMaintenanceResponse, error)
 	// DeleteMaintenance deletes a maintenance window CR
-	DeleteMaintenance(context.Context, *connect.Request[v1.DeleteMaintenanceRequest]) (*connect.Response[v1.DeleteMaintenanceResponse], error)
+	DeleteMaintenance(context.Context, *v1.DeleteMaintenanceRequest) (*v1.DeleteMaintenanceResponse, error)
 	// CreateIncident creates a new incident CR
-	CreateIncident(context.Context, *connect.Request[v1.CreateIncidentRequest]) (*connect.Response[v1.CreateIncidentResponse], error)
+	CreateIncident(context.Context, *v1.CreateIncidentRequest) (*v1.CreateIncidentResponse, error)
 	// UpdateIncident updates an existing incident CR, appending a timeline entry
-	UpdateIncident(context.Context, *connect.Request[v1.UpdateIncidentRequest]) (*connect.Response[v1.UpdateIncidentResponse], error)
+	UpdateIncident(context.Context, *v1.UpdateIncidentRequest) (*v1.UpdateIncidentResponse, error)
 	// DeleteIncident deletes an incident CR
-	DeleteIncident(context.Context, *connect.Request[v1.DeleteIncidentRequest]) (*connect.Response[v1.DeleteIncidentResponse], error)
+	DeleteIncident(context.Context, *v1.DeleteIncidentRequest) (*v1.DeleteIncidentResponse, error)
 }
 
-// NewStatusServiceClient constructs a client for the sreportal.v1.StatusService service. By
-// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
-// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
-// connect.WithGRPC() or connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewStatusServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) StatusServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	statusServiceMethods := v1.File_sreportal_v1_status_proto.Services().ByName("StatusService").Methods()
-	return &statusServiceClient{
-		listComponents: connect.NewClient[v1.ListComponentsRequest, v1.ListComponentsResponse](
-			httpClient,
-			baseURL+StatusServiceListComponentsProcedure,
-			connect.WithSchema(statusServiceMethods.ByName("ListComponents")),
-			connect.WithClientOptions(opts...),
-		),
-		listMaintenances: connect.NewClient[v1.ListMaintenancesRequest, v1.ListMaintenancesResponse](
-			httpClient,
-			baseURL+StatusServiceListMaintenancesProcedure,
-			connect.WithSchema(statusServiceMethods.ByName("ListMaintenances")),
-			connect.WithClientOptions(opts...),
-		),
-		listIncidents: connect.NewClient[v1.ListIncidentsRequest, v1.ListIncidentsResponse](
-			httpClient,
-			baseURL+StatusServiceListIncidentsProcedure,
-			connect.WithSchema(statusServiceMethods.ByName("ListIncidents")),
-			connect.WithClientOptions(opts...),
-		),
-		createComponent: connect.NewClient[v1.CreateComponentRequest, v1.CreateComponentResponse](
-			httpClient,
-			baseURL+StatusServiceCreateComponentProcedure,
-			connect.WithSchema(statusServiceMethods.ByName("CreateComponent")),
-			connect.WithClientOptions(opts...),
-		),
-		updateComponent: connect.NewClient[v1.UpdateComponentRequest, v1.UpdateComponentResponse](
-			httpClient,
-			baseURL+StatusServiceUpdateComponentProcedure,
-			connect.WithSchema(statusServiceMethods.ByName("UpdateComponent")),
-			connect.WithClientOptions(opts...),
-		),
-		deleteComponent: connect.NewClient[v1.DeleteComponentRequest, v1.DeleteComponentResponse](
-			httpClient,
-			baseURL+StatusServiceDeleteComponentProcedure,
-			connect.WithSchema(statusServiceMethods.ByName("DeleteComponent")),
-			connect.WithClientOptions(opts...),
-		),
-		createMaintenance: connect.NewClient[v1.CreateMaintenanceRequest, v1.CreateMaintenanceResponse](
-			httpClient,
-			baseURL+StatusServiceCreateMaintenanceProcedure,
-			connect.WithSchema(statusServiceMethods.ByName("CreateMaintenance")),
-			connect.WithClientOptions(opts...),
-		),
-		updateMaintenance: connect.NewClient[v1.UpdateMaintenanceRequest, v1.UpdateMaintenanceResponse](
-			httpClient,
-			baseURL+StatusServiceUpdateMaintenanceProcedure,
-			connect.WithSchema(statusServiceMethods.ByName("UpdateMaintenance")),
-			connect.WithClientOptions(opts...),
-		),
-		deleteMaintenance: connect.NewClient[v1.DeleteMaintenanceRequest, v1.DeleteMaintenanceResponse](
-			httpClient,
-			baseURL+StatusServiceDeleteMaintenanceProcedure,
-			connect.WithSchema(statusServiceMethods.ByName("DeleteMaintenance")),
-			connect.WithClientOptions(opts...),
-		),
-		createIncident: connect.NewClient[v1.CreateIncidentRequest, v1.CreateIncidentResponse](
-			httpClient,
-			baseURL+StatusServiceCreateIncidentProcedure,
-			connect.WithSchema(statusServiceMethods.ByName("CreateIncident")),
-			connect.WithClientOptions(opts...),
-		),
-		updateIncident: connect.NewClient[v1.UpdateIncidentRequest, v1.UpdateIncidentResponse](
-			httpClient,
-			baseURL+StatusServiceUpdateIncidentProcedure,
-			connect.WithSchema(statusServiceMethods.ByName("UpdateIncident")),
-			connect.WithClientOptions(opts...),
-		),
-		deleteIncident: connect.NewClient[v1.DeleteIncidentRequest, v1.DeleteIncidentResponse](
-			httpClient,
-			baseURL+StatusServiceDeleteIncidentProcedure,
-			connect.WithSchema(statusServiceMethods.ByName("DeleteIncident")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// statusServiceClient implements StatusServiceClient.
-type statusServiceClient struct {
-	listComponents    *connect.Client[v1.ListComponentsRequest, v1.ListComponentsResponse]
-	listMaintenances  *connect.Client[v1.ListMaintenancesRequest, v1.ListMaintenancesResponse]
-	listIncidents     *connect.Client[v1.ListIncidentsRequest, v1.ListIncidentsResponse]
-	createComponent   *connect.Client[v1.CreateComponentRequest, v1.CreateComponentResponse]
-	updateComponent   *connect.Client[v1.UpdateComponentRequest, v1.UpdateComponentResponse]
-	deleteComponent   *connect.Client[v1.DeleteComponentRequest, v1.DeleteComponentResponse]
-	createMaintenance *connect.Client[v1.CreateMaintenanceRequest, v1.CreateMaintenanceResponse]
-	updateMaintenance *connect.Client[v1.UpdateMaintenanceRequest, v1.UpdateMaintenanceResponse]
-	deleteMaintenance *connect.Client[v1.DeleteMaintenanceRequest, v1.DeleteMaintenanceResponse]
-	createIncident    *connect.Client[v1.CreateIncidentRequest, v1.CreateIncidentResponse]
-	updateIncident    *connect.Client[v1.UpdateIncidentRequest, v1.UpdateIncidentResponse]
-	deleteIncident    *connect.Client[v1.DeleteIncidentRequest, v1.DeleteIncidentResponse]
-}
-
-// ListComponents calls sreportal.v1.StatusService.ListComponents.
-func (c *statusServiceClient) ListComponents(ctx context.Context, req *connect.Request[v1.ListComponentsRequest]) (*connect.Response[v1.ListComponentsResponse], error) {
-	return c.listComponents.CallUnary(ctx, req)
-}
-
-// ListMaintenances calls sreportal.v1.StatusService.ListMaintenances.
-func (c *statusServiceClient) ListMaintenances(ctx context.Context, req *connect.Request[v1.ListMaintenancesRequest]) (*connect.Response[v1.ListMaintenancesResponse], error) {
-	return c.listMaintenances.CallUnary(ctx, req)
-}
-
-// ListIncidents calls sreportal.v1.StatusService.ListIncidents.
-func (c *statusServiceClient) ListIncidents(ctx context.Context, req *connect.Request[v1.ListIncidentsRequest]) (*connect.Response[v1.ListIncidentsResponse], error) {
-	return c.listIncidents.CallUnary(ctx, req)
-}
-
-// CreateComponent calls sreportal.v1.StatusService.CreateComponent.
-func (c *statusServiceClient) CreateComponent(ctx context.Context, req *connect.Request[v1.CreateComponentRequest]) (*connect.Response[v1.CreateComponentResponse], error) {
-	return c.createComponent.CallUnary(ctx, req)
-}
-
-// UpdateComponent calls sreportal.v1.StatusService.UpdateComponent.
-func (c *statusServiceClient) UpdateComponent(ctx context.Context, req *connect.Request[v1.UpdateComponentRequest]) (*connect.Response[v1.UpdateComponentResponse], error) {
-	return c.updateComponent.CallUnary(ctx, req)
-}
-
-// DeleteComponent calls sreportal.v1.StatusService.DeleteComponent.
-func (c *statusServiceClient) DeleteComponent(ctx context.Context, req *connect.Request[v1.DeleteComponentRequest]) (*connect.Response[v1.DeleteComponentResponse], error) {
-	return c.deleteComponent.CallUnary(ctx, req)
-}
-
-// CreateMaintenance calls sreportal.v1.StatusService.CreateMaintenance.
-func (c *statusServiceClient) CreateMaintenance(ctx context.Context, req *connect.Request[v1.CreateMaintenanceRequest]) (*connect.Response[v1.CreateMaintenanceResponse], error) {
-	return c.createMaintenance.CallUnary(ctx, req)
-}
-
-// UpdateMaintenance calls sreportal.v1.StatusService.UpdateMaintenance.
-func (c *statusServiceClient) UpdateMaintenance(ctx context.Context, req *connect.Request[v1.UpdateMaintenanceRequest]) (*connect.Response[v1.UpdateMaintenanceResponse], error) {
-	return c.updateMaintenance.CallUnary(ctx, req)
-}
-
-// DeleteMaintenance calls sreportal.v1.StatusService.DeleteMaintenance.
-func (c *statusServiceClient) DeleteMaintenance(ctx context.Context, req *connect.Request[v1.DeleteMaintenanceRequest]) (*connect.Response[v1.DeleteMaintenanceResponse], error) {
-	return c.deleteMaintenance.CallUnary(ctx, req)
-}
-
-// CreateIncident calls sreportal.v1.StatusService.CreateIncident.
-func (c *statusServiceClient) CreateIncident(ctx context.Context, req *connect.Request[v1.CreateIncidentRequest]) (*connect.Response[v1.CreateIncidentResponse], error) {
-	return c.createIncident.CallUnary(ctx, req)
-}
-
-// UpdateIncident calls sreportal.v1.StatusService.UpdateIncident.
-func (c *statusServiceClient) UpdateIncident(ctx context.Context, req *connect.Request[v1.UpdateIncidentRequest]) (*connect.Response[v1.UpdateIncidentResponse], error) {
-	return c.updateIncident.CallUnary(ctx, req)
-}
-
-// DeleteIncident calls sreportal.v1.StatusService.DeleteIncident.
-func (c *statusServiceClient) DeleteIncident(ctx context.Context, req *connect.Request[v1.DeleteIncidentRequest]) (*connect.Response[v1.DeleteIncidentResponse], error) {
-	return c.deleteIncident.CallUnary(ctx, req)
+// NewStatusServiceClient constructs a client for the sreportal.v1.StatusService service. Multiple
+// service clients may share a single connect.Client.
+func NewStatusServiceClient(client *connect.Client) StatusServiceClient {
+	return &statusServiceClient{client: client}
 }
 
 // StatusServiceHandler is an implementation of the sreportal.v1.StatusService service.
 type StatusServiceHandler interface {
 	// ListComponents returns all platform components with their status
-	ListComponents(context.Context, *connect.Request[v1.ListComponentsRequest]) (*connect.Response[v1.ListComponentsResponse], error)
+	ListComponents(context.Context, *v1.ListComponentsRequest) (*v1.ListComponentsResponse, error)
 	// ListMaintenances returns maintenance windows
-	ListMaintenances(context.Context, *connect.Request[v1.ListMaintenancesRequest]) (*connect.Response[v1.ListMaintenancesResponse], error)
+	ListMaintenances(context.Context, *v1.ListMaintenancesRequest) (*v1.ListMaintenancesResponse, error)
 	// ListIncidents returns declared incidents
-	ListIncidents(context.Context, *connect.Request[v1.ListIncidentsRequest]) (*connect.Response[v1.ListIncidentsResponse], error)
+	ListIncidents(context.Context, *v1.ListIncidentsRequest) (*v1.ListIncidentsResponse, error)
 	// CreateComponent creates a new platform component CR
-	CreateComponent(context.Context, *connect.Request[v1.CreateComponentRequest]) (*connect.Response[v1.CreateComponentResponse], error)
+	CreateComponent(context.Context, *v1.CreateComponentRequest) (*v1.CreateComponentResponse, error)
 	// UpdateComponent updates an existing platform component CR
-	UpdateComponent(context.Context, *connect.Request[v1.UpdateComponentRequest]) (*connect.Response[v1.UpdateComponentResponse], error)
+	UpdateComponent(context.Context, *v1.UpdateComponentRequest) (*v1.UpdateComponentResponse, error)
 	// DeleteComponent deletes a platform component CR
-	DeleteComponent(context.Context, *connect.Request[v1.DeleteComponentRequest]) (*connect.Response[v1.DeleteComponentResponse], error)
+	DeleteComponent(context.Context, *v1.DeleteComponentRequest) (*v1.DeleteComponentResponse, error)
 	// CreateMaintenance creates a new maintenance window CR
-	CreateMaintenance(context.Context, *connect.Request[v1.CreateMaintenanceRequest]) (*connect.Response[v1.CreateMaintenanceResponse], error)
+	CreateMaintenance(context.Context, *v1.CreateMaintenanceRequest) (*v1.CreateMaintenanceResponse, error)
 	// UpdateMaintenance updates an existing maintenance window CR
-	UpdateMaintenance(context.Context, *connect.Request[v1.UpdateMaintenanceRequest]) (*connect.Response[v1.UpdateMaintenanceResponse], error)
+	UpdateMaintenance(context.Context, *v1.UpdateMaintenanceRequest) (*v1.UpdateMaintenanceResponse, error)
 	// DeleteMaintenance deletes a maintenance window CR
-	DeleteMaintenance(context.Context, *connect.Request[v1.DeleteMaintenanceRequest]) (*connect.Response[v1.DeleteMaintenanceResponse], error)
+	DeleteMaintenance(context.Context, *v1.DeleteMaintenanceRequest) (*v1.DeleteMaintenanceResponse, error)
 	// CreateIncident creates a new incident CR
-	CreateIncident(context.Context, *connect.Request[v1.CreateIncidentRequest]) (*connect.Response[v1.CreateIncidentResponse], error)
+	CreateIncident(context.Context, *v1.CreateIncidentRequest) (*v1.CreateIncidentResponse, error)
 	// UpdateIncident updates an existing incident CR, appending a timeline entry
-	UpdateIncident(context.Context, *connect.Request[v1.UpdateIncidentRequest]) (*connect.Response[v1.UpdateIncidentResponse], error)
+	UpdateIncident(context.Context, *v1.UpdateIncidentRequest) (*v1.UpdateIncidentResponse, error)
 	// DeleteIncident deletes an incident CR
-	DeleteIncident(context.Context, *connect.Request[v1.DeleteIncidentRequest]) (*connect.Response[v1.DeleteIncidentResponse], error)
+	DeleteIncident(context.Context, *v1.DeleteIncidentRequest) (*v1.DeleteIncidentResponse, error)
 }
 
-// NewStatusServiceHandler builds an HTTP handler from the service implementation. It returns the
-// path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewStatusServiceHandler(svc StatusServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	statusServiceMethods := v1.File_sreportal_v1_status_proto.Services().ByName("StatusService").Methods()
-	statusServiceListComponentsHandler := connect.NewUnaryHandler(
-		StatusServiceListComponentsProcedure,
-		svc.ListComponents,
-		connect.WithSchema(statusServiceMethods.ByName("ListComponents")),
-		connect.WithHandlerOptions(opts...),
+// RegisterStatusServiceHandler registers svc as the sreportal.v1.StatusService implementation on
+// server.
+func RegisterStatusServiceHandler(server *connect.Server, svc StatusServiceHandler) {
+	adapter := statusServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: statusServiceListComponentsSpec(), Handler: adapter.listComponents},
+		connect.Method{Spec: statusServiceListMaintenancesSpec(), Handler: adapter.listMaintenances},
+		connect.Method{Spec: statusServiceListIncidentsSpec(), Handler: adapter.listIncidents},
+		connect.Method{Spec: statusServiceCreateComponentSpec(), Handler: adapter.createComponent},
+		connect.Method{Spec: statusServiceUpdateComponentSpec(), Handler: adapter.updateComponent},
+		connect.Method{Spec: statusServiceDeleteComponentSpec(), Handler: adapter.deleteComponent},
+		connect.Method{Spec: statusServiceCreateMaintenanceSpec(), Handler: adapter.createMaintenance},
+		connect.Method{Spec: statusServiceUpdateMaintenanceSpec(), Handler: adapter.updateMaintenance},
+		connect.Method{Spec: statusServiceDeleteMaintenanceSpec(), Handler: adapter.deleteMaintenance},
+		connect.Method{Spec: statusServiceCreateIncidentSpec(), Handler: adapter.createIncident},
+		connect.Method{Spec: statusServiceUpdateIncidentSpec(), Handler: adapter.updateIncident},
+		connect.Method{Spec: statusServiceDeleteIncidentSpec(), Handler: adapter.deleteIncident},
 	)
-	statusServiceListMaintenancesHandler := connect.NewUnaryHandler(
-		StatusServiceListMaintenancesProcedure,
-		svc.ListMaintenances,
-		connect.WithSchema(statusServiceMethods.ByName("ListMaintenances")),
-		connect.WithHandlerOptions(opts...),
-	)
-	statusServiceListIncidentsHandler := connect.NewUnaryHandler(
-		StatusServiceListIncidentsProcedure,
-		svc.ListIncidents,
-		connect.WithSchema(statusServiceMethods.ByName("ListIncidents")),
-		connect.WithHandlerOptions(opts...),
-	)
-	statusServiceCreateComponentHandler := connect.NewUnaryHandler(
-		StatusServiceCreateComponentProcedure,
-		svc.CreateComponent,
-		connect.WithSchema(statusServiceMethods.ByName("CreateComponent")),
-		connect.WithHandlerOptions(opts...),
-	)
-	statusServiceUpdateComponentHandler := connect.NewUnaryHandler(
-		StatusServiceUpdateComponentProcedure,
-		svc.UpdateComponent,
-		connect.WithSchema(statusServiceMethods.ByName("UpdateComponent")),
-		connect.WithHandlerOptions(opts...),
-	)
-	statusServiceDeleteComponentHandler := connect.NewUnaryHandler(
-		StatusServiceDeleteComponentProcedure,
-		svc.DeleteComponent,
-		connect.WithSchema(statusServiceMethods.ByName("DeleteComponent")),
-		connect.WithHandlerOptions(opts...),
-	)
-	statusServiceCreateMaintenanceHandler := connect.NewUnaryHandler(
-		StatusServiceCreateMaintenanceProcedure,
-		svc.CreateMaintenance,
-		connect.WithSchema(statusServiceMethods.ByName("CreateMaintenance")),
-		connect.WithHandlerOptions(opts...),
-	)
-	statusServiceUpdateMaintenanceHandler := connect.NewUnaryHandler(
-		StatusServiceUpdateMaintenanceProcedure,
-		svc.UpdateMaintenance,
-		connect.WithSchema(statusServiceMethods.ByName("UpdateMaintenance")),
-		connect.WithHandlerOptions(opts...),
-	)
-	statusServiceDeleteMaintenanceHandler := connect.NewUnaryHandler(
-		StatusServiceDeleteMaintenanceProcedure,
-		svc.DeleteMaintenance,
-		connect.WithSchema(statusServiceMethods.ByName("DeleteMaintenance")),
-		connect.WithHandlerOptions(opts...),
-	)
-	statusServiceCreateIncidentHandler := connect.NewUnaryHandler(
-		StatusServiceCreateIncidentProcedure,
-		svc.CreateIncident,
-		connect.WithSchema(statusServiceMethods.ByName("CreateIncident")),
-		connect.WithHandlerOptions(opts...),
-	)
-	statusServiceUpdateIncidentHandler := connect.NewUnaryHandler(
-		StatusServiceUpdateIncidentProcedure,
-		svc.UpdateIncident,
-		connect.WithSchema(statusServiceMethods.ByName("UpdateIncident")),
-		connect.WithHandlerOptions(opts...),
-	)
-	statusServiceDeleteIncidentHandler := connect.NewUnaryHandler(
-		StatusServiceDeleteIncidentProcedure,
-		svc.DeleteIncident,
-		connect.WithSchema(statusServiceMethods.ByName("DeleteIncident")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/sreportal.v1.StatusService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case StatusServiceListComponentsProcedure:
-			statusServiceListComponentsHandler.ServeHTTP(w, r)
-		case StatusServiceListMaintenancesProcedure:
-			statusServiceListMaintenancesHandler.ServeHTTP(w, r)
-		case StatusServiceListIncidentsProcedure:
-			statusServiceListIncidentsHandler.ServeHTTP(w, r)
-		case StatusServiceCreateComponentProcedure:
-			statusServiceCreateComponentHandler.ServeHTTP(w, r)
-		case StatusServiceUpdateComponentProcedure:
-			statusServiceUpdateComponentHandler.ServeHTTP(w, r)
-		case StatusServiceDeleteComponentProcedure:
-			statusServiceDeleteComponentHandler.ServeHTTP(w, r)
-		case StatusServiceCreateMaintenanceProcedure:
-			statusServiceCreateMaintenanceHandler.ServeHTTP(w, r)
-		case StatusServiceUpdateMaintenanceProcedure:
-			statusServiceUpdateMaintenanceHandler.ServeHTTP(w, r)
-		case StatusServiceDeleteMaintenanceProcedure:
-			statusServiceDeleteMaintenanceHandler.ServeHTTP(w, r)
-		case StatusServiceCreateIncidentProcedure:
-			statusServiceCreateIncidentHandler.ServeHTTP(w, r)
-		case StatusServiceUpdateIncidentProcedure:
-			statusServiceUpdateIncidentHandler.ServeHTTP(w, r)
-		case StatusServiceDeleteIncidentProcedure:
-			statusServiceDeleteIncidentHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedStatusServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedStatusServiceHandler struct{}
 
-func (UnimplementedStatusServiceHandler) ListComponents(context.Context, *connect.Request[v1.ListComponentsRequest]) (*connect.Response[v1.ListComponentsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sreportal.v1.StatusService.ListComponents is not implemented"))
+func (UnimplementedStatusServiceHandler) ListComponents(context.Context, *v1.ListComponentsRequest) (*v1.ListComponentsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "sreportal.v1.StatusService.ListComponents is not implemented")
 }
 
-func (UnimplementedStatusServiceHandler) ListMaintenances(context.Context, *connect.Request[v1.ListMaintenancesRequest]) (*connect.Response[v1.ListMaintenancesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sreportal.v1.StatusService.ListMaintenances is not implemented"))
+func (UnimplementedStatusServiceHandler) ListMaintenances(context.Context, *v1.ListMaintenancesRequest) (*v1.ListMaintenancesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "sreportal.v1.StatusService.ListMaintenances is not implemented")
 }
 
-func (UnimplementedStatusServiceHandler) ListIncidents(context.Context, *connect.Request[v1.ListIncidentsRequest]) (*connect.Response[v1.ListIncidentsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sreportal.v1.StatusService.ListIncidents is not implemented"))
+func (UnimplementedStatusServiceHandler) ListIncidents(context.Context, *v1.ListIncidentsRequest) (*v1.ListIncidentsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "sreportal.v1.StatusService.ListIncidents is not implemented")
 }
 
-func (UnimplementedStatusServiceHandler) CreateComponent(context.Context, *connect.Request[v1.CreateComponentRequest]) (*connect.Response[v1.CreateComponentResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sreportal.v1.StatusService.CreateComponent is not implemented"))
+func (UnimplementedStatusServiceHandler) CreateComponent(context.Context, *v1.CreateComponentRequest) (*v1.CreateComponentResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "sreportal.v1.StatusService.CreateComponent is not implemented")
 }
 
-func (UnimplementedStatusServiceHandler) UpdateComponent(context.Context, *connect.Request[v1.UpdateComponentRequest]) (*connect.Response[v1.UpdateComponentResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sreportal.v1.StatusService.UpdateComponent is not implemented"))
+func (UnimplementedStatusServiceHandler) UpdateComponent(context.Context, *v1.UpdateComponentRequest) (*v1.UpdateComponentResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "sreportal.v1.StatusService.UpdateComponent is not implemented")
 }
 
-func (UnimplementedStatusServiceHandler) DeleteComponent(context.Context, *connect.Request[v1.DeleteComponentRequest]) (*connect.Response[v1.DeleteComponentResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sreportal.v1.StatusService.DeleteComponent is not implemented"))
+func (UnimplementedStatusServiceHandler) DeleteComponent(context.Context, *v1.DeleteComponentRequest) (*v1.DeleteComponentResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "sreportal.v1.StatusService.DeleteComponent is not implemented")
 }
 
-func (UnimplementedStatusServiceHandler) CreateMaintenance(context.Context, *connect.Request[v1.CreateMaintenanceRequest]) (*connect.Response[v1.CreateMaintenanceResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sreportal.v1.StatusService.CreateMaintenance is not implemented"))
+func (UnimplementedStatusServiceHandler) CreateMaintenance(context.Context, *v1.CreateMaintenanceRequest) (*v1.CreateMaintenanceResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "sreportal.v1.StatusService.CreateMaintenance is not implemented")
 }
 
-func (UnimplementedStatusServiceHandler) UpdateMaintenance(context.Context, *connect.Request[v1.UpdateMaintenanceRequest]) (*connect.Response[v1.UpdateMaintenanceResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sreportal.v1.StatusService.UpdateMaintenance is not implemented"))
+func (UnimplementedStatusServiceHandler) UpdateMaintenance(context.Context, *v1.UpdateMaintenanceRequest) (*v1.UpdateMaintenanceResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "sreportal.v1.StatusService.UpdateMaintenance is not implemented")
 }
 
-func (UnimplementedStatusServiceHandler) DeleteMaintenance(context.Context, *connect.Request[v1.DeleteMaintenanceRequest]) (*connect.Response[v1.DeleteMaintenanceResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sreportal.v1.StatusService.DeleteMaintenance is not implemented"))
+func (UnimplementedStatusServiceHandler) DeleteMaintenance(context.Context, *v1.DeleteMaintenanceRequest) (*v1.DeleteMaintenanceResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "sreportal.v1.StatusService.DeleteMaintenance is not implemented")
 }
 
-func (UnimplementedStatusServiceHandler) CreateIncident(context.Context, *connect.Request[v1.CreateIncidentRequest]) (*connect.Response[v1.CreateIncidentResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sreportal.v1.StatusService.CreateIncident is not implemented"))
+func (UnimplementedStatusServiceHandler) CreateIncident(context.Context, *v1.CreateIncidentRequest) (*v1.CreateIncidentResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "sreportal.v1.StatusService.CreateIncident is not implemented")
 }
 
-func (UnimplementedStatusServiceHandler) UpdateIncident(context.Context, *connect.Request[v1.UpdateIncidentRequest]) (*connect.Response[v1.UpdateIncidentResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sreportal.v1.StatusService.UpdateIncident is not implemented"))
+func (UnimplementedStatusServiceHandler) UpdateIncident(context.Context, *v1.UpdateIncidentRequest) (*v1.UpdateIncidentResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "sreportal.v1.StatusService.UpdateIncident is not implemented")
 }
 
-func (UnimplementedStatusServiceHandler) DeleteIncident(context.Context, *connect.Request[v1.DeleteIncidentRequest]) (*connect.Response[v1.DeleteIncidentResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sreportal.v1.StatusService.DeleteIncident is not implemented"))
+func (UnimplementedStatusServiceHandler) DeleteIncident(context.Context, *v1.DeleteIncidentRequest) (*v1.DeleteIncidentResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "sreportal.v1.StatusService.DeleteIncident is not implemented")
+}
+
+type statusServiceClient struct {
+	client *connect.Client
+}
+
+func (c *statusServiceClient) ListComponents(ctx context.Context, req *v1.ListComponentsRequest) (*v1.ListComponentsResponse, error) {
+	var res v1.ListComponentsResponse
+	if err := c.client.CallUnary(ctx, statusServiceListComponentsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *statusServiceClient) ListMaintenances(ctx context.Context, req *v1.ListMaintenancesRequest) (*v1.ListMaintenancesResponse, error) {
+	var res v1.ListMaintenancesResponse
+	if err := c.client.CallUnary(ctx, statusServiceListMaintenancesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *statusServiceClient) ListIncidents(ctx context.Context, req *v1.ListIncidentsRequest) (*v1.ListIncidentsResponse, error) {
+	var res v1.ListIncidentsResponse
+	if err := c.client.CallUnary(ctx, statusServiceListIncidentsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *statusServiceClient) CreateComponent(ctx context.Context, req *v1.CreateComponentRequest) (*v1.CreateComponentResponse, error) {
+	var res v1.CreateComponentResponse
+	if err := c.client.CallUnary(ctx, statusServiceCreateComponentSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *statusServiceClient) UpdateComponent(ctx context.Context, req *v1.UpdateComponentRequest) (*v1.UpdateComponentResponse, error) {
+	var res v1.UpdateComponentResponse
+	if err := c.client.CallUnary(ctx, statusServiceUpdateComponentSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *statusServiceClient) DeleteComponent(ctx context.Context, req *v1.DeleteComponentRequest) (*v1.DeleteComponentResponse, error) {
+	var res v1.DeleteComponentResponse
+	if err := c.client.CallUnary(ctx, statusServiceDeleteComponentSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *statusServiceClient) CreateMaintenance(ctx context.Context, req *v1.CreateMaintenanceRequest) (*v1.CreateMaintenanceResponse, error) {
+	var res v1.CreateMaintenanceResponse
+	if err := c.client.CallUnary(ctx, statusServiceCreateMaintenanceSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *statusServiceClient) UpdateMaintenance(ctx context.Context, req *v1.UpdateMaintenanceRequest) (*v1.UpdateMaintenanceResponse, error) {
+	var res v1.UpdateMaintenanceResponse
+	if err := c.client.CallUnary(ctx, statusServiceUpdateMaintenanceSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *statusServiceClient) DeleteMaintenance(ctx context.Context, req *v1.DeleteMaintenanceRequest) (*v1.DeleteMaintenanceResponse, error) {
+	var res v1.DeleteMaintenanceResponse
+	if err := c.client.CallUnary(ctx, statusServiceDeleteMaintenanceSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *statusServiceClient) CreateIncident(ctx context.Context, req *v1.CreateIncidentRequest) (*v1.CreateIncidentResponse, error) {
+	var res v1.CreateIncidentResponse
+	if err := c.client.CallUnary(ctx, statusServiceCreateIncidentSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *statusServiceClient) UpdateIncident(ctx context.Context, req *v1.UpdateIncidentRequest) (*v1.UpdateIncidentResponse, error) {
+	var res v1.UpdateIncidentResponse
+	if err := c.client.CallUnary(ctx, statusServiceUpdateIncidentSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *statusServiceClient) DeleteIncident(ctx context.Context, req *v1.DeleteIncidentRequest) (*v1.DeleteIncidentResponse, error) {
+	var res v1.DeleteIncidentResponse
+	if err := c.client.CallUnary(ctx, statusServiceDeleteIncidentSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type statusServiceHandler struct{ svc StatusServiceHandler }
+
+func (h statusServiceHandler) listComponents(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListComponentsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListComponents(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h statusServiceHandler) listMaintenances(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListMaintenancesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListMaintenances(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h statusServiceHandler) listIncidents(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListIncidentsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListIncidents(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h statusServiceHandler) createComponent(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.CreateComponentRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.CreateComponent(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h statusServiceHandler) updateComponent(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateComponentRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateComponent(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h statusServiceHandler) deleteComponent(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DeleteComponentRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeleteComponent(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h statusServiceHandler) createMaintenance(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.CreateMaintenanceRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.CreateMaintenance(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h statusServiceHandler) updateMaintenance(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateMaintenanceRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateMaintenance(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h statusServiceHandler) deleteMaintenance(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DeleteMaintenanceRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeleteMaintenance(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h statusServiceHandler) createIncident(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.CreateIncidentRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.CreateIncident(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h statusServiceHandler) updateIncident(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateIncidentRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateIncident(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h statusServiceHandler) deleteIncident(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DeleteIncidentRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeleteIncident(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
 }

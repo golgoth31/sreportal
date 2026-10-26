@@ -25,7 +25,8 @@ import (
 	"sort"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	sreportalv1alpha1 "github.com/golgoth31/sreportal/api/v1alpha1"
@@ -114,6 +115,15 @@ func NewClient(opts ...Option) *Client {
 	return c
 }
 
+// newConnectClient builds a Connect client for baseURL using this client's HTTP transport.
+func (c *Client) newConnectClient(baseURL string) *connect.Client {
+	return connect.NewClient(connecthttp.NewTransport(
+		c.httpClient,
+		baseURL,
+		connecthttp.WithReadMaxBytes(0),
+	))
+}
+
 // FetchResult contains the result of fetching data from a remote portal.
 type FetchResult struct {
 	// Groups contains the FQDN groups fetched from the remote portal.
@@ -153,26 +163,18 @@ func (c *Client) FetchFQDNs(ctx context.Context, baseURL string, portalName stri
 }
 
 func (c *Client) doFetchFQDNs(ctx context.Context, baseURL string, portalName string) (*FetchResult, error) {
-	// Create DNS service client
-	dnsClient := sreportalv1connect.NewDNSServiceClient(
-		c.httpClient,
-		baseURL,
-	)
-
-	// Create portal service client to get portal info
-	portalClient := sreportalv1connect.NewPortalServiceClient(
-		c.httpClient,
-		baseURL,
-	)
+	conn := c.newConnectClient(baseURL)
+	dnsClient := sreportalv1connect.NewDNSServiceClient(conn)
+	portalClient := sreportalv1connect.NewPortalServiceClient(conn)
 
 	// Fetch portal info to get title and features
 	var remoteTitle string
 	var remoteFeatures *sreportalv1alpha1.PortalFeaturesStatus
-	portalResp, err := portalClient.ListPortals(ctx, connect.NewRequest(&sreportalv1.ListPortalsRequest{}))
+	portalResp, err := portalClient.ListPortals(ctx, &sreportalv1.ListPortalsRequest{})
 	if err == nil {
 		// Find the portal with the given name, or use the main portal
 		var matched *sreportalv1.Portal
-		for _, p := range portalResp.Msg.Portals {
+		for _, p := range portalResp.Portals {
 			if portalName != "" && p.Name == portalName {
 				matched = p
 				break
@@ -197,9 +199,9 @@ func (c *Client) doFetchFQDNs(ctx context.Context, baseURL string, portalName st
 	}
 
 	// Fetch FQDNs
-	req := connect.NewRequest(&sreportalv1.ListFQDNsRequest{
+	req := &sreportalv1.ListFQDNsRequest{
 		Portal: portalName,
-	})
+	}
 
 	resp, err := dnsClient.ListFQDNs(ctx, req)
 	if err != nil {
@@ -207,12 +209,12 @@ func (c *Client) doFetchFQDNs(ctx context.Context, baseURL string, portalName st
 	}
 
 	// Convert to FQDNGroupStatus format
-	groups := convertToGroups(resp.Msg.Fqdns)
+	groups := convertToGroups(resp.Fqdns)
 
 	return &FetchResult{
 		Groups:         groups,
 		RemoteTitle:    remoteTitle,
-		FQDNCount:      len(resp.Msg.Fqdns),
+		FQDNCount:      len(resp.Fqdns),
 		RemoteFeatures: remoteFeatures,
 	}, nil
 }
@@ -263,20 +265,17 @@ func (c *Client) DiscoverAlertmanagers(ctx context.Context, baseURL string, port
 }
 
 func (c *Client) doDiscoverAlertmanagers(ctx context.Context, baseURL string, portalName string) ([]RemoteAlertmanagerInfo, error) {
-	alertsClient := sreportalv1connect.NewAlertmanagerServiceClient(
-		c.httpClient,
-		baseURL,
-	)
+	alertsClient := sreportalv1connect.NewAlertmanagerServiceClient(c.newConnectClient(baseURL))
 
-	resp, err := alertsClient.ListAlerts(ctx, connect.NewRequest(&sreportalv1.ListAlertsRequest{
+	resp, err := alertsClient.ListAlerts(ctx, &sreportalv1.ListAlertsRequest{
 		Portal: portalName,
-	}))
+	})
 	if err != nil {
 		return nil, fmt.Errorf("list alertmanagers from remote portal: %w", err)
 	}
 
-	infos := make([]RemoteAlertmanagerInfo, 0, len(resp.Msg.Alertmanagers))
-	for _, resource := range resp.Msg.Alertmanagers {
+	infos := make([]RemoteAlertmanagerInfo, 0, len(resp.Alertmanagers))
+	for _, resource := range resp.Alertmanagers {
 		infos = append(infos, RemoteAlertmanagerInfo{
 			Name:      resource.Name,
 			Namespace: resource.Namespace,
@@ -315,14 +314,11 @@ func (c *Client) FetchAlerts(ctx context.Context, baseURL string, portalName str
 }
 
 func (c *Client) doFetchAlerts(ctx context.Context, baseURL string, portalName string, alertmanagerName string) (*AlertsFetchResult, error) {
-	alertsClient := sreportalv1connect.NewAlertmanagerServiceClient(
-		c.httpClient,
-		baseURL,
-	)
+	alertsClient := sreportalv1connect.NewAlertmanagerServiceClient(c.newConnectClient(baseURL))
 
-	resp, err := alertsClient.ListAlerts(ctx, connect.NewRequest(&sreportalv1.ListAlertsRequest{
+	resp, err := alertsClient.ListAlerts(ctx, &sreportalv1.ListAlertsRequest{
 		Portal: portalName,
-	}))
+	})
 	if err != nil {
 		return nil, fmt.Errorf("fetch alerts from remote portal: %w", err)
 	}
@@ -330,7 +326,7 @@ func (c *Client) doFetchAlerts(ctx context.Context, baseURL string, portalName s
 	var allAlerts []sreportalv1alpha1.AlertStatus
 	var allSilences []sreportalv1alpha1.SilenceStatus
 
-	for _, resource := range resp.Msg.Alertmanagers {
+	for _, resource := range resp.Alertmanagers {
 		// Filter by alertmanager name if specified.
 		if alertmanagerName != "" && resource.Name != alertmanagerName {
 			continue
@@ -426,18 +422,15 @@ func (c *Client) FetchNetworkPolicies(ctx context.Context, baseURL string) (*Net
 }
 
 func (c *Client) doFetchNetworkPolicies(ctx context.Context, baseURL string) (*NetworkFlowsFetchResult, error) {
-	netpolClient := sreportalv1connect.NewNetworkPolicyServiceClient(
-		c.httpClient,
-		baseURL,
-	)
+	netpolClient := sreportalv1connect.NewNetworkPolicyServiceClient(c.newConnectClient(baseURL))
 
-	resp, err := netpolClient.ListNetworkPolicies(ctx, connect.NewRequest(&sreportalv1.ListNetworkPoliciesRequest{}))
+	resp, err := netpolClient.ListNetworkPolicies(ctx, &sreportalv1.ListNetworkPoliciesRequest{})
 	if err != nil {
 		return nil, fmt.Errorf("fetch network policies from remote portal: %w", err)
 	}
 
-	nodes := make([]sreportalv1alpha1.FlowNode, 0, len(resp.Msg.Nodes))
-	for _, n := range resp.Msg.Nodes {
+	nodes := make([]sreportalv1alpha1.FlowNode, 0, len(resp.Nodes))
+	for _, n := range resp.Nodes {
 		nodes = append(nodes, sreportalv1alpha1.FlowNode{
 			ID:        n.Id,
 			Label:     n.Label,
@@ -447,8 +440,8 @@ func (c *Client) doFetchNetworkPolicies(ctx context.Context, baseURL string) (*N
 		})
 	}
 
-	edges := make([]sreportalv1alpha1.FlowEdge, 0, len(resp.Msg.Edges))
-	for _, e := range resp.Msg.Edges {
+	edges := make([]sreportalv1alpha1.FlowEdge, 0, len(resp.Edges))
+	for _, e := range resp.Edges {
 		edges = append(edges, sreportalv1alpha1.FlowEdge{
 			From:      e.From,
 			To:        e.To,
@@ -543,20 +536,17 @@ func (c *Client) FetchImages(ctx context.Context, baseURL string, portalName str
 }
 
 func (c *Client) doFetchImages(ctx context.Context, baseURL string, portalName string) (*ImagesFetchResult, error) {
-	imageClient := sreportalv1connect.NewImageServiceClient(
-		c.httpClient,
-		baseURL,
-	)
+	imageClient := sreportalv1connect.NewImageServiceClient(c.newConnectClient(baseURL))
 
-	resp, err := imageClient.ListImages(ctx, connect.NewRequest(&sreportalv1.ListImagesRequest{
+	resp, err := imageClient.ListImages(ctx, &sreportalv1.ListImagesRequest{
 		Portal: portalName,
-	}))
+	})
 	if err != nil {
 		return nil, fmt.Errorf("fetch images from remote portal: %w", err)
 	}
 
-	images := make([]*RemoteImage, 0, len(resp.Msg.Images))
-	for _, in := range resp.Msg.Images {
+	images := make([]*RemoteImage, 0, len(resp.Images))
+	for _, in := range resp.Images {
 		workloads := make([]RemoteImageWorkload, 0, len(in.Workloads))
 		for _, w := range in.Workloads {
 			workloads = append(workloads, RemoteImageWorkload{
@@ -592,12 +582,9 @@ func (c *Client) doFetchImages(ctx context.Context, baseURL string, portalName s
 
 // HealthCheck performs a health check on a remote portal by attempting to list portals.
 func (c *Client) HealthCheck(ctx context.Context, baseURL string) error {
-	portalClient := sreportalv1connect.NewPortalServiceClient(
-		c.httpClient,
-		baseURL,
-	)
+	portalClient := sreportalv1connect.NewPortalServiceClient(c.newConnectClient(baseURL))
 
-	_, err := portalClient.ListPortals(ctx, connect.NewRequest(&sreportalv1.ListPortalsRequest{}))
+	_, err := portalClient.ListPortals(ctx, &sreportalv1.ListPortalsRequest{})
 	if err != nil {
 		return fmt.Errorf("health check failed: %w", err)
 	}

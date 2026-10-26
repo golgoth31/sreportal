@@ -23,7 +23,8 @@ import (
 	"sync"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -45,15 +46,15 @@ type fetchRemoteImagesMockService struct {
 
 func (m *fetchRemoteImagesMockService) ListImages(
 	_ context.Context,
-	_ *connect.Request[sreportalv1.ListImagesRequest],
-) (*connect.Response[sreportalv1.ListImagesResponse], error) {
+	_ *sreportalv1.ListImagesRequest,
+) (*sreportalv1.ListImagesResponse, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
-	return connect.NewResponse(&sreportalv1.ListImagesResponse{
+	return &sreportalv1.ListImagesResponse{
 		Images:     m.images,
 		TotalCount: int32(len(m.images)),
-	}), nil
+	}, nil
 }
 
 // fakeImageWriter records calls to ReplaceForNamespace / RemoveForNamespace so
@@ -133,7 +134,9 @@ func TestFetchRemoteImagesHandlerPopulatesFromRemote(t *testing.T) {
 			},
 		},
 	}
-	mux.Handle(sreportalv1connect.NewImageServiceHandler(mockSvc))
+	srv := connect.NewServer()
+	sreportalv1connect.RegisterImageServiceHandler(srv, mockSvc)
+	connecthttp.Mount(mux, srv, connecthttp.WithReadMaxBytes(0))
 	server := httptest.NewServer(mux)
 	defer server.Close()
 
@@ -250,7 +253,9 @@ func TestFetchRemoteImagesHandlerBucketsByHostAndNamespace(t *testing.T) {
 			},
 		},
 	}
-	mux.Handle(sreportalv1connect.NewImageServiceHandler(mockSvc))
+	srv := connect.NewServer()
+	sreportalv1connect.RegisterImageServiceHandler(srv, mockSvc)
+	connecthttp.Mount(mux, srv, connecthttp.WithReadMaxBytes(0))
 	server := httptest.NewServer(mux)
 	defer server.Close()
 
@@ -316,7 +321,9 @@ func TestFetchRemoteImagesHandlerDropsMissingScopes(t *testing.T) {
 			},
 		},
 	}
-	mux.Handle(sreportalv1connect.NewImageServiceHandler(mockSvc))
+	srv := connect.NewServer()
+	sreportalv1connect.RegisterImageServiceHandler(srv, mockSvc)
+	connecthttp.Mount(mux, srv, connecthttp.WithReadMaxBytes(0))
 	server := httptest.NewServer(mux)
 	defer server.Close()
 

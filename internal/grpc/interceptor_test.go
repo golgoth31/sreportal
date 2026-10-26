@@ -18,11 +18,10 @@ package grpc_test
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -35,13 +34,13 @@ func TestLoggingInterceptor_WhenHandlerReturnsError_LogsWarning(t *testing.T) {
 
 	interceptor := internalgrpc.LoggingInterceptor()
 
-	handlerErr := connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("entry is required"))
-	next := func(_ context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
-		return nil, handlerErr
+	handlerErr := connect.Errorf(connect.CodeInvalidArgument, "entry is required")
+	next := func(_ context.Context, _ connect.Spec, _ connect.ServerStream) error {
+		return handlerErr
 	}
 
-	req := connect.NewRequest[any](nil)
-	_, err := interceptor(next)(context.Background(), req)
+	spec := connect.Spec{Procedure: "/test.Service/Method"}
+	err := interceptor(next)(context.Background(), spec, nil)
 
 	require.ErrorIs(t, err, handlerErr)
 	require.Len(t, handler.records, 1)
@@ -55,12 +54,12 @@ func TestLoggingInterceptor_WhenHandlerSucceeds_DoesNotLog(t *testing.T) {
 
 	interceptor := internalgrpc.LoggingInterceptor()
 
-	next := func(_ context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
-		return connect.NewResponse[any](nil), nil
+	next := func(_ context.Context, _ connect.Spec, _ connect.ServerStream) error {
+		return nil
 	}
 
-	req := connect.NewRequest[any](nil)
-	_, err := interceptor(next)(context.Background(), req)
+	spec := connect.Spec{Procedure: "/test.Service/Method"}
+	err := interceptor(next)(context.Background(), spec, nil)
 
 	require.NoError(t, err)
 	assert.Empty(t, handler.records)
