@@ -1,7 +1,20 @@
-import { ActivityIcon, AlertTriangleIcon, BarChart3Icon, ContainerIcon, LinkIcon, RocketIcon, ShieldIcon } from "lucide-react";
+import {
+  ActivityIcon,
+  AlertTriangleIcon,
+  BarChart3Icon,
+  ChevronsLeftIcon,
+  ChevronsRightIcon,
+  ContainerIcon,
+  LinkIcon,
+  RocketIcon,
+  ShieldIcon,
+  type LucideIcon,
+} from "lucide-react";
 import { NavLink } from "react-router";
 
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useSidebarCollapsed } from "@/hooks/useSidebarCollapsed";
 
 import type { Portal } from "@/features/portal/domain/portal.types";
 import { cn } from "@/lib/utils";
@@ -15,6 +28,7 @@ export function PortalSidebar({
   portalName,
   portals,
 }: PortalSidebarProps) {
+  const { collapsed, toggle } = useSidebarCollapsed();
   const currentPortal = portals.find(
     (p) => (p.subPath || p.name) === portalName
   );
@@ -30,74 +44,105 @@ export function PortalSidebar({
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
-      "relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+      "relative flex items-center rounded-md py-2 text-sm font-medium transition-colors",
+      collapsed ? "justify-center px-2" : "gap-3 px-3",
       "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-4 before:w-[3px] before:rounded-r before:bg-primary before:opacity-0 before:transition-opacity",
       isActive
         ? "bg-primary/10 text-foreground before:opacity-100"
         : "text-muted-foreground hover:bg-accent hover:text-foreground"
     );
 
+  const renderItem = (
+    to: string,
+    label: string,
+    Icon: LucideIcon,
+    opts: { end?: boolean; badge?: string } = {},
+  ) => {
+    const link = (
+      <NavLink to={to} end={opts.end} className={linkClass}>
+        <Icon className="size-4 shrink-0" aria-hidden="true" />
+        <span className={collapsed ? "sr-only" : undefined}>{label}</span>
+        {opts.badge &&
+          (collapsed ? (
+            <span
+              className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-primary"
+              aria-hidden="true"
+              data-testid="sidebar-badge-dot"
+            />
+          ) : (
+            <Badge
+              variant="outline"
+              className="ml-auto text-[10px] px-1.5 py-0 font-mono uppercase tracking-wider"
+            >
+              {opts.badge}
+            </Badge>
+          ))}
+      </NavLink>
+    );
+    if (!collapsed) return link;
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{link}</TooltipTrigger>
+        <TooltipContent side="right">
+          {label}
+          {opts.badge ? ` (${opts.badge})` : ""}
+        </TooltipContent>
+      </Tooltip>
+    );
+  };
+
+  const sectionTitleClass = cn(
+    "text-[10px] font-mono uppercase tracking-[0.08em] text-muted-foreground",
+    collapsed && "sr-only",
+  );
+
   return (
-    <aside
-      className="w-48 shrink-0 border-r border-border bg-sidebar flex flex-col py-4 overflow-y-auto"
-      aria-label="Portal menu"
-    >
-      <div className="px-3 pb-3 mb-2 border-b border-border">
-        <p className="text-[10px] font-mono uppercase tracking-[0.08em] text-muted-foreground">
-          Resources
-        </p>
-      </div>
-      <nav className="flex flex-col gap-0.5 px-2" aria-label="Links and Alerts">
-        {showDNS && (
-          <NavLink to={`${basePath}/links`} end className={linkClass}>
-            <LinkIcon className="size-4 shrink-0" aria-hidden="true" />
-            <span>DNS</span>
-          </NavLink>
+    <TooltipProvider>
+      <aside
+        className={cn(
+          "shrink-0 border-r border-border bg-sidebar flex flex-col py-4 overflow-y-auto transition-[width]",
+          collapsed ? "w-[var(--sidebar-width-collapsed)]" : "w-[var(--sidebar-width)]",
         )}
-        {showReleases && (
-          <NavLink to={`${basePath}/releases`} className={linkClass}>
-            <RocketIcon className="size-4 shrink-0" aria-hidden="true" />
-            <span>Releases</span>
-          </NavLink>
-        )}
-        {showNetworkPolicy && (
-          <NavLink to={`${basePath}/netpol`} className={linkClass}>
-            <ShieldIcon className="size-4 shrink-0" aria-hidden="true" />
-            <span>Network Policies</span>
-          </NavLink>
-        )}
-        {showAlerts && (
-          <NavLink to={`${basePath}/alerts`} className={linkClass}>
-            <AlertTriangleIcon className="size-4 shrink-0" aria-hidden="true" />
-            <span>Alerts</span>
-          </NavLink>
-        )}
-        {showStatusPage && (
-          <NavLink to={`${basePath}/status`} className={linkClass}>
-            <ActivityIcon className="size-4 shrink-0" aria-hidden="true" />
-            <span>Status</span>
-            <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0 font-mono uppercase tracking-wider">alpha</Badge>
-          </NavLink>
-        )}
-        {showImageInventory && (
-          <NavLink to={`${basePath}/images`} className={linkClass}>
-            <ContainerIcon className="size-4 shrink-0" aria-hidden="true" />
-            <span>Images</span>
-          </NavLink>
-        )}
-      </nav>
-      <div className="mt-auto px-3 pt-3 mb-2 border-t border-border">
-        <p className="text-[10px] font-mono uppercase tracking-[0.08em] text-muted-foreground">
-          System
-        </p>
-      </div>
-      <nav className="px-2" aria-label="Portal statistics">
-        <NavLink to={`${basePath}/dashboard`} className={linkClass}>
-          <BarChart3Icon className="size-4 shrink-0" aria-hidden="true" />
-          <span>Statistics</span>
-          <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0 font-mono uppercase tracking-wider">beta</Badge>
-        </NavLink>
-      </nav>
-    </aside>
+        aria-label="Portal menu"
+      >
+        <div className={cn("pb-3 mb-2 border-b border-border", collapsed ? "px-2" : "px-3")}>
+          <p className={sectionTitleClass}>Resources</p>
+        </div>
+        <nav className="flex flex-col gap-0.5 px-2" aria-label="Links and Alerts">
+          {showDNS && renderItem(`${basePath}/links`, "DNS", LinkIcon, { end: true })}
+          {showReleases && renderItem(`${basePath}/releases`, "Releases", RocketIcon)}
+          {showNetworkPolicy && renderItem(`${basePath}/netpol`, "Network Policies", ShieldIcon)}
+          {showAlerts && renderItem(`${basePath}/alerts`, "Alerts", AlertTriangleIcon)}
+          {showStatusPage &&
+            renderItem(`${basePath}/status`, "Status", ActivityIcon, { badge: "alpha" })}
+          {showImageInventory && renderItem(`${basePath}/images`, "Images", ContainerIcon)}
+        </nav>
+        <div className={cn("mt-auto pt-3 mb-2 border-t border-border", collapsed ? "px-2" : "px-3")}>
+          <p className={sectionTitleClass}>System</p>
+        </div>
+        <nav className="px-2" aria-label="Portal statistics">
+          {renderItem(`${basePath}/dashboard`, "Statistics", BarChart3Icon, { badge: "beta" })}
+        </nav>
+        <div className="px-2 pt-2">
+          <button
+            type="button"
+            className={cn(
+              "flex w-full items-center rounded-md py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+              collapsed ? "justify-center px-2" : "gap-3 px-3",
+            )}
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            onClick={toggle}
+          >
+            {collapsed ? (
+              <ChevronsRightIcon className="size-4 shrink-0" aria-hidden="true" />
+            ) : (
+              <ChevronsLeftIcon className="size-4 shrink-0" aria-hidden="true" />
+            )}
+            {!collapsed && <span>Collapse</span>}
+          </button>
+        </div>
+      </aside>
+    </TooltipProvider>
   );
 }

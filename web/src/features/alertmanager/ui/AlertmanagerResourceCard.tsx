@@ -37,7 +37,7 @@ export function AlertmanagerResourceCard({ resource }: AlertmanagerResourceCardP
         <CollapsibleTrigger asChild>
           <Button
             variant="ghost"
-            className="w-full flex items-center justify-between px-4 py-3 h-auto rounded-none hover:bg-muted/40 bg-gradient-to-r from-primary/[0.04] to-transparent"
+            className="w-full flex items-center justify-between px-3 py-2 h-auto rounded-none hover:bg-muted/40 bg-gradient-to-r from-primary/[0.04] to-transparent"
           >
             <div className="flex items-center gap-3 flex-wrap">
               <AlertTriangleIcon className="size-4 text-primary/70 shrink-0" />

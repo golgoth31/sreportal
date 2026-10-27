@@ -28,14 +28,14 @@ export function FqdnGroupCard({ group }: FqdnGroupCardProps) {
         <CollapsibleTrigger asChild>
           <Button
             variant="ghost"
-            className="w-full flex items-center justify-between px-4 py-3 h-auto rounded-none hover:bg-muted/40 bg-gradient-to-r from-primary/[0.04] to-transparent"
+            className="w-full flex items-center justify-between px-3 py-2 h-auto rounded-none hover:bg-muted/40 bg-gradient-to-r from-primary/[0.04] to-transparent"
           >
             <div className="flex items-center gap-3">
               <SourceIcon className="size-4 text-primary/70 shrink-0" />
               <span className="font-mono text-sm font-semibold text-foreground tracking-tight">
                 {group.name}
               </span>
-              <span className="text-muted-foreground text-[11px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-muted/60">
+              <span className="text-muted-foreground text-[11px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-md bg-muted/60">
                 {group.fqdns.length}{" "}
                 {group.fqdns.length === 1 ? "entry" : "entries"}
               </span>
@@ -49,9 +49,9 @@ export function FqdnGroupCard({ group }: FqdnGroupCardProps) {
           </Button>
         </CollapsibleTrigger>
 
-        {/* Content grid */}
+        {/* Content list */}
         <CollapsibleContent>
-          <div className="border-t border-border/60 p-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="border-t border-border/60 p-2 flex flex-col gap-[var(--density-gap)]">
             {group.fqdns.map((fqdn) => (
               <FqdnCard key={fqdn.name} fqdn={fqdn} />
             ))}

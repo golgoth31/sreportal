@@ -134,7 +134,7 @@ export function AlertGroupCard({ group }: AlertGroupCardProps) {
                       <TruncatedCopyTooltipText
                         text={receiversText}
                         enableCopy={false}
-                        triggerClassName="max-w-[10rem]"
+                        triggerClassName="max-w-[10rem] font-mono"
                       />
                     ) : (
                       "\u2014"
@@ -148,13 +148,13 @@ export function AlertGroupCard({ group }: AlertGroupCardProps) {
                       <TruncatedCopyTooltipText
                         text={summaryText}
                         copyAriaLabel="Click to copy summary"
-                        triggerClassName="max-w-[16rem]"
+                        triggerClassName="max-w-[16rem] font-mono"
                       />
                     ) : (
                       "\u2014"
                     )}
                   </TableCell>
-                  <TableCell className="text-muted-foreground text-xs hidden md:table-cell max-w-[12rem] truncate">
+                  <TableCell className="text-muted-foreground text-xs font-mono hidden md:table-cell max-w-[12rem] truncate">
                     {alert.labels["instance"] ?? "\u2014"}
                   </TableCell>
                 </TableRow>

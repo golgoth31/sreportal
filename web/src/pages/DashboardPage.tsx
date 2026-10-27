@@ -69,36 +69,42 @@ export function DashboardPage() {
       {error && <ErrorAlert title="Failed to load metrics" error={error} />}
 
       {/* Row 1 — Stat Cards */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <StatCard
           title="Total FQDNs"
           value={stats.totalFqdns}
           icon={GlobeIcon}
+          density="compact"
         />
         <StatCard
           title="Active Alerts"
           value={stats.activeAlerts}
           icon={ShieldAlertIcon}
+          density="compact"
         />
         <StatCard
           title="Portals"
           value={stats.totalPortals}
           icon={NetworkIcon}
+          density="compact"
         />
         <StatCard
           title="HTTP In-Flight"
           value={stats.httpInFlight}
           icon={ActivityIcon}
+          density="compact"
         />
         <StatCard
           title="MCP Sessions"
           value={stats.mcpSessions}
           icon={RadioIcon}
+          density="compact"
         />
         <StatCard
           title="Source Endpoints"
           value={stats.sourceEndpoints}
           icon={WaypointsIcon}
+          density="compact"
         />
       </div>
 

@@ -66,4 +66,12 @@ describe("soft material tokens", () => {
     expect(oklchHue(token("--accent"))).toBe(260);
     expect(oklchHue(token("--accent-foreground"))).toBe(260);
   });
+
+  it("defines Soft Material density tokens on :root", () => {
+    expect(token("--row-height")).toBe("2rem");
+    expect(token("--row-height-tight")).toBe("1.75rem");
+    expect(token("--density-gap")).toBe("0.25rem");
+    expect(token("--sidebar-width")).toBe("12rem");
+    expect(token("--sidebar-width-collapsed")).toBe("3.5rem");
+  });
 });
