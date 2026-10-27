@@ -55,10 +55,10 @@ function IncidentCard({
   return (
     <div
       className={cn(
-        "rounded-lg border p-4 backdrop-blur-sm",
+        "surface p-4",
         isActive
           ? "border-rose-500/40 bg-rose-500/5 dark:border-rose-500/30 dark:bg-rose-500/10"
-          : "border-border/70 bg-card/60"
+          : ""
       )}
     >
       <div className="flex items-start justify-between gap-3">

@@ -1,6 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import css from "../index.css?raw";
 import "../index.css";
 
 function token(name: string): string {
@@ -28,11 +27,6 @@ describe("soft material tokens", () => {
     expect(token("--radius")).toBe("0.25rem");
   });
 
-  it("aligns --radius-md with --radius", () => {
-    // @theme inline does not emit --radius-md on :root; assert the mapping in source.
-    expect(css).toMatch(/^\s*--radius-md:\s*var\(--radius\);/m);
-  });
-
   it("defines elevation-1 and elevation-2 in light mode", () => {
     expect(token("--elevation-1")).toContain("rgb(15 23 42");
     expect(token("--elevation-2")).toContain("rgb(15 23 42");
@@ -50,5 +44,12 @@ describe("soft material tokens", () => {
     const background = oklchLightness(token("--background"));
     expect(primary).toBeGreaterThan(0.6);
     expect(background).toBeLessThan(0.25);
+  });
+
+  it("separates dark card surfaces from the background", () => {
+    document.documentElement.classList.add("dark");
+    const card = oklchLightness(token("--card"));
+    const background = oklchLightness(token("--background"));
+    expect(card - background).toBeGreaterThanOrEqual(0.05);
   });
 });

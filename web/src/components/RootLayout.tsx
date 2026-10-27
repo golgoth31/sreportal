@@ -42,7 +42,7 @@ export function RootLayout() {
             <span className="h-6 w-px bg-border/80 shrink-0" aria-hidden="true" />
 
             {/* Portal navigation */}
-            <div className="flex-1 min-w-0 overflow-x-auto">
+            <div className="flex-1 min-w-0 h-full flex items-center overflow-x-auto overflow-y-hidden [scrollbar-width:thin]">
               <PortalNav portals={portals} isLoading={isLoading} />
             </div>
 

@@ -28,7 +28,7 @@ export function FqdnCard({ fqdn }: FqdnCardProps) {
       : "DNS not in sync";
 
   return (
-    <div className="group rounded-lg border border-border/70 bg-card/60 backdrop-blur-sm p-4 flex flex-col gap-3 transition-all hover:border-primary/40 hover:bg-card hover:shadow-md hover:shadow-primary/5">
+    <div className="group surface p-4 flex flex-col gap-3 transition-shadow hover:border-primary/40 hover:shadow-[var(--elevation-2)]">
       {/* FQDN name + sync dot + copy */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">

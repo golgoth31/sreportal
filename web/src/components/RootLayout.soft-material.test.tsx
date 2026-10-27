@@ -26,7 +26,10 @@ describe("RootLayout soft material shell", () => {
     const header = container.querySelector("header");
     expect(header?.className).not.toMatch(/backdrop-blur/);
     expect(header?.className).toMatch(/bg-background/);
-    expect(header?.className).toMatch(/shadow-\[var\(--elevation-2\)\]|shadow-\[var\(--elevation-1\)\]/);
+    expect(header?.className).toMatch(/shadow-\[var\(--elevation-2\)\]/);
+    const nav = header?.querySelector('nav[aria-label="Portal navigation"]');
+    expect(nav?.className).toMatch(/flex-nowrap/);
+    expect(nav?.parentElement?.className).toMatch(/overflow-y-hidden/);
     expect(screen.getAllByText(/SRE/i).length).toBeGreaterThan(0);
   });
 });

@@ -13,6 +13,13 @@ describe("soft material chrome", () => {
     expect(btn?.className).not.toMatch(/active:translate-y-px/);
   });
 
+  it("filled button has hover and press feedback on plain buttons", () => {
+    const { container } = render(<Button>Save</Button>);
+    const btn = container.querySelector('[data-slot="button"]');
+    expect(btn?.className).toMatch(/(^|\s)hover:bg-primary\/90(\s|$)/);
+    expect(btn?.className).toMatch(/(^|\s)active:/);
+  });
+
   it("card uses elevation shadow token class and not foreground ring", () => {
     const { container } = render(<Card>Body</Card>);
     const card = container.querySelector('[data-slot="card"]');

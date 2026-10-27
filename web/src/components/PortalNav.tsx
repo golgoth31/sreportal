@@ -100,7 +100,7 @@ export function PortalNav({ portals, isLoading }: PortalNavProps) {
 
   return (
     <nav
-      className="flex items-center gap-3 flex-wrap"
+      className="flex items-center gap-3 flex-nowrap"
       aria-label="Portal navigation"
     >
       {mainPortal && (

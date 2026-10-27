@@ -49,7 +49,7 @@
 .dark {
     --background: oklch(0.16 0.015 260);
     --foreground: oklch(0.93 0.01 240);
-    --card: oklch(0.2 0.02 260);
+    --card: oklch(0.215 0.02 260);
     --card-foreground: oklch(0.93 0.01 240);
     --popover: oklch(0.22 0.02 260);
     --popover-foreground: oklch(0.93 0.01 240);
@@ -63,8 +63,8 @@
     --accent: oklch(0.27 0.015 260);
     --accent-foreground: oklch(0.93 0.01 240);
     --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 8%);
-    --input: oklch(1 0 0 / 12%);
+    --border: oklch(1 0 0 / 13%);
+    --input: oklch(1 0 0 / 16%);
     --ring: oklch(0.6 0.12 290);
     --chart-1: oklch(0.865 0.127 207.078);
     --chart-2: oklch(0.715 0.143 215.221);
@@ -77,10 +77,11 @@
     --sidebar-primary-foreground: oklch(0.22 0.05 290);
     --sidebar-accent: oklch(0.27 0.015 260);
     --sidebar-accent-foreground: oklch(0.93 0.01 240);
-    --sidebar-border: oklch(1 0 0 / 8%);
+    --sidebar-border: oklch(1 0 0 / 13%);
     --sidebar-ring: oklch(0.6 0.12 290);
-    --elevation-1: 0 1px 2px rgb(0 0 0 / 0.45), 0 1px 3px rgb(0 0 0 / 0.35);
-    --elevation-2: 0 1px 3px rgb(0 0 0 / 0.5), 0 2px 8px rgb(0 0 0 / 0.4);
+    /* Black shadows vanish on near-black surfaces; a faint top highlight keeps elevation readable. */
+    --elevation-1: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 1px 2px rgb(0 0 0 / 0.5), 0 1px 3px rgb(0 0 0 / 0.4);
+    --elevation-2: inset 0 1px 0 rgb(255 255 255 / 0.07), 0 2px 4px rgb(0 0 0 / 0.55), 0 4px 12px rgb(0 0 0 / 0.45);
 }
 
 @theme inline {
@@ -126,6 +127,15 @@
     --radius-3xl: calc(var(--radius) + 12px);
     --radius-4xl: calc(var(--radius) + 16px);
     --font-heading: var(--font-sans);
+}
+
+/* Shared Soft Material card surface for feature cards that do not use <Card>. */
+@utility surface {
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background-color: var(--card);
+    color: var(--card-foreground);
+    box-shadow: var(--elevation-1);
 }
 
 @layer base {
