@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.37.1](https://github.com/golgoth31/sreportal/compare/v1.37.0...v1.37.1) (2026-10-27)
+
+
+### Bug Fixes
+
+* **ci:** bump golangci-lint to v2.15.0 ([#383](https://github.com/golgoth31/sreportal/issues/383)) ([01482d4](https://github.com/golgoth31/sreportal/commit/01482d44e332903e1d59514c471d91771a8a16d0))
+* **deps:** update web-deps ([#380](https://github.com/golgoth31/sreportal/issues/380)) ([31176e8](https://github.com/golgoth31/sreportal/commit/31176e823f532f868a99fc7b9177a2fbe72a6b6d))
+* **web:** polish Soft Material dark hue and nav bar ([#381](https://github.com/golgoth31/sreportal/issues/381)) ([79c3159](https://github.com/golgoth31/sreportal/commit/79c31594db0b482c2211c5991046bb95029d4d00))
+
 ## [1.37.0](https://github.com/golgoth31/sreportal/compare/v1.36.5...v1.37.0) (2026-10-27)
 
 
