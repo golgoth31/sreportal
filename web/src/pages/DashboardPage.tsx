@@ -74,37 +74,31 @@ export function DashboardPage() {
           title="Total FQDNs"
           value={stats.totalFqdns}
           icon={GlobeIcon}
-          density="compact"
         />
         <StatCard
           title="Active Alerts"
           value={stats.activeAlerts}
           icon={ShieldAlertIcon}
-          density="compact"
         />
         <StatCard
           title="Portals"
           value={stats.totalPortals}
           icon={NetworkIcon}
-          density="compact"
         />
         <StatCard
           title="HTTP In-Flight"
           value={stats.httpInFlight}
           icon={ActivityIcon}
-          density="compact"
         />
         <StatCard
           title="MCP Sessions"
           value={stats.mcpSessions}
           icon={RadioIcon}
-          density="compact"
         />
         <StatCard
           title="Source Endpoints"
           value={stats.sourceEndpoints}
           icon={WaypointsIcon}
-          density="compact"
         />
       </div>
 

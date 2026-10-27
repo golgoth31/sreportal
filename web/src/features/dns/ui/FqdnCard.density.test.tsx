@@ -45,6 +45,6 @@ describe("Fqdn dense Soft Material rows", () => {
     const grid = container.querySelector(".border-t");
     expect(grid?.className).not.toMatch(/sm:grid-cols-2/);
     expect(grid?.className).not.toMatch(/lg:grid-cols-3/);
-    expect(grid?.className).toMatch(/flex-col|gap-\[var\(--density-gap\)\]|space-y|flex/);
+    expect(grid?.className).toMatch(/gap-\[var\(--density-gap\)\]/);
   });
 });

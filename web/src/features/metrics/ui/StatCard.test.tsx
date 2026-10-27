@@ -43,9 +43,9 @@ describe("StatCard", () => {
     ).toHaveLength(0);
   });
 
-  it("applies compact density classes when requested", () => {
+  it("applies compact density classes", () => {
     const { container } = render(
-      <StatCard title="Total FQDNs" value={12} icon={Globe} density="compact" />,
+      <StatCard title="Total FQDNs" value={12} icon={Globe} />,
     );
     const card = container.firstElementChild;
     expect(card?.className).toMatch(/data-\[size=sm\]:gap-1/);
