@@ -59,7 +59,7 @@ describe("Image dense Soft Material table", () => {
     expect(within(table).getByText("semver").className).toMatch(/font-mono/);
   });
 
-  it("shows upgrade version beside the image ref and on the upgrade icon", () => {
+  it("shows upgrade version in the status column and on the upgrade icon", () => {
     const { container } = renderWithTooltip(
       <ImageGroupCard
         group={{
@@ -73,7 +73,12 @@ describe("Image dense Soft Material table", () => {
     expect(
       within(table).getByLabelText("Upgrade available: 1.3.0"),
     ).toBeInTheDocument();
-    expect(within(table).getByText("1.3.0")).toBeInTheDocument();
+    const version = within(table).getByText("1.3.0");
+    expect(version.className).toMatch(/text-emerald/);
+    // Status cell is the 5th td (upgrade | name | image | type | status | …).
+    expect(version.closest("td")).toBe(
+      within(table).getAllByRole("cell")[4],
+    );
   });
 
   it("leaves the upgrade cell empty when no upgrade is available", () => {

@@ -140,14 +140,7 @@ export function ImageCard({ image }: ImageCardProps) {
           {shortName}
         </TableCell>
         <TableCell className="max-w-[20rem]">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <CopyableImageRef display={display} fullRef={fullRef} className="min-w-0" />
-            {upgradeVersion && (
-              <span className="shrink-0 font-mono text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
-                {upgradeVersion}
-              </span>
-            )}
-          </div>
+          <CopyableImageRef display={display} fullRef={fullRef} className="min-w-0" />
         </TableCell>
         <TableCell className="w-[5.5rem]">
           <Badge
@@ -160,8 +153,14 @@ export function ImageCard({ image }: ImageCardProps) {
             {image.tagType}
           </Badge>
         </TableCell>
-        <TableCell className="text-muted-foreground font-mono text-[11px] max-w-[10rem] truncate">
-          {statusHint}
+        <TableCell className="font-mono text-[11px] max-w-[10rem] truncate">
+          {upgradeVersion ? (
+            <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+              {upgradeVersion}
+            </span>
+          ) : statusHint ? (
+            <span className="text-muted-foreground opacity-60">{statusHint}</span>
+          ) : null}
         </TableCell>
         <TableCell className="w-16">
           <div className="flex items-center gap-1.5">
