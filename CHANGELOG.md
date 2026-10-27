@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.37.0](https://github.com/golgoth31/sreportal/compare/v1.36.5...v1.37.0) (2026-10-27)
+
+
+### Features
+
+* **web:** Soft Material UI tokens-first restyle ([#378](https://github.com/golgoth31/sreportal/issues/378)) ([4399987](https://github.com/golgoth31/sreportal/commit/43999871b0f365332f676e3b9926a593ab9c76bf))
+
 ## [1.36.5](https://github.com/golgoth31/sreportal/compare/v1.36.4...v1.36.5) (2026-10-27)
 
 
