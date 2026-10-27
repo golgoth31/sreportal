@@ -7,6 +7,13 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Table,
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import type { FqdnGroup } from "../domain/dns.types";
 import { FqdnCard } from "./FqdnCard";
@@ -24,7 +31,6 @@ export function FqdnGroupCard({ group }: FqdnGroupCardProps) {
   return (
     <Collapsible open={open} onOpenChange={setOpen} className="w-full">
       <div className="surface overflow-hidden">
-        {/* Header */}
         <CollapsibleTrigger asChild>
           <Button
             variant="ghost"
@@ -49,12 +55,29 @@ export function FqdnGroupCard({ group }: FqdnGroupCardProps) {
           </Button>
         </CollapsibleTrigger>
 
-        {/* Content list */}
         <CollapsibleContent>
-          <div className="border-t border-border/60 p-2 flex flex-col gap-[var(--density-gap)]">
-            {group.fqdns.map((fqdn) => (
-              <FqdnCard key={fqdn.name} fqdn={fqdn} />
-            ))}
+          <div className="border-t border-border/60">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-8">
+                    <span className="sr-only">Sync</span>
+                  </TableHead>
+                  <TableHead>FQDN</TableHead>
+                  <TableHead className="w-[4.5rem]">Type</TableHead>
+                  <TableHead>Target</TableHead>
+                  <TableHead className="w-[7.5rem]">Source</TableHead>
+                  <TableHead className="w-10">
+                    <span className="sr-only">Copy</span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {group.fqdns.map((fqdn) => (
+                  <FqdnCard key={fqdn.name} fqdn={fqdn} />
+                ))}
+              </TableBody>
+            </Table>
           </div>
         </CollapsibleContent>
       </div>

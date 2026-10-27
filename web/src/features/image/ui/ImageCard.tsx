@@ -19,6 +19,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { TableCell, TableRow } from "@/components/ui/table";
 import {
   Tooltip,
   TooltipContent,
@@ -111,125 +112,131 @@ export function ImageCard({ image }: ImageCardProps) {
 
   return (
     <>
-      <div
+      <TableRow
         className={cn(
-          "group surface surface-interactive min-h-[var(--row-height)] px-3 py-1 flex flex-row items-center gap-2",
           image.hasMutation &&
-            "border-amber-300/70 dark:border-amber-700/60 hover:border-amber-400 dark:hover:border-amber-600",
+            "border-amber-300/70 dark:border-amber-700/60",
           !image.hasMutation &&
             image.hasInjection &&
-            "border-violet-300/70 dark:border-violet-700/60 hover:border-violet-400 dark:hover:border-violet-600",
+            "border-violet-300/70 dark:border-violet-700/60",
         )}
       >
-        {image.upgradeAvailable && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span
-                className="inline-flex items-center text-emerald-600 dark:text-emerald-400 shrink-0"
-                aria-label={upgradeTooltip}
-              >
-                <ArrowUpCircleIcon className="size-3.5" />
-              </span>
-            </TooltipTrigger>
-            <TooltipContent side="top">{upgradeTooltip}</TooltipContent>
-          </Tooltip>
-        )}
-
-        <p className="font-medium text-sm tracking-tight truncate shrink-0 max-w-[8rem]">
+        <TableCell className="w-8">
+          {image.upgradeAvailable ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  className="inline-flex items-center text-emerald-600 dark:text-emerald-400"
+                  aria-label={upgradeTooltip}
+                >
+                  <ArrowUpCircleIcon className="size-3.5" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top">{upgradeTooltip}</TooltipContent>
+            </Tooltip>
+          ) : (
+            "\u2014"
+          )}
+        </TableCell>
+        <TableCell className="font-medium text-sm max-w-[8rem] truncate">
           {shortName}
-        </p>
-
-        <div className="flex min-w-0 flex-1 items-center gap-1.5">
-          <CopyableImageRef display={display} fullRef={fullRef} className="min-w-0" />
-          {upgradeVersion && (
-            <span className="shrink-0 font-mono text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
-              {upgradeVersion}
-            </span>
-          )}
-        </div>
-
-        <Badge
-          variant="outline"
-          className={cn(
-            "shrink-0 font-mono uppercase text-[10px] tracking-wider",
-            tagTypeBadgeClass(image.tagType),
-          )}
-        >
-          {image.tagType}
-        </Badge>
-
-        {statusHint && (
-          <span className="font-mono text-[11px] truncate min-w-0 max-w-[10rem] text-muted-foreground opacity-60">
-            {statusHint}
-          </span>
-        )}
-
-        {image.hasMutation && (
+        </TableCell>
+        <TableCell className="max-w-[20rem]">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <CopyableImageRef display={display} fullRef={fullRef} className="min-w-0" />
+            {upgradeVersion && (
+              <span className="shrink-0 font-mono text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                {upgradeVersion}
+              </span>
+            )}
+          </div>
+        </TableCell>
+        <TableCell className="w-[5.5rem]">
+          <Badge
+            variant="outline"
+            className={cn(
+              "font-mono uppercase text-[10px] tracking-wider",
+              tagTypeBadgeClass(image.tagType),
+            )}
+          >
+            {image.tagType}
+          </Badge>
+        </TableCell>
+        <TableCell className="text-muted-foreground font-mono text-[11px] max-w-[10rem] truncate">
+          {statusHint ?? "\u2014"}
+        </TableCell>
+        <TableCell className="w-16">
+          <div className="flex items-center gap-1.5">
+            {image.hasMutation && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    className="inline-flex items-center text-amber-600 dark:text-amber-400"
+                    aria-label="Image mutated by a MutatingWebhook"
+                  >
+                    <WandSparklesIcon className="size-3.5" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p className="text-xs">Image mutated by a MutatingWebhook</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+            {image.hasInjection && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    className="inline-flex items-center text-violet-600 dark:text-violet-400"
+                    aria-label="Container injected by a MutatingWebhook"
+                  >
+                    <PackagePlusIcon className="size-3.5" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p className="text-xs">Container injected by a MutatingWebhook</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+            {!image.hasMutation && !image.hasInjection && "\u2014"}
+          </div>
+        </TableCell>
+        <TableCell className="w-[7.5rem]">
           <Tooltip>
             <TooltipTrigger asChild>
-              <span
-                className="inline-flex items-center text-amber-600 dark:text-amber-400 shrink-0"
-                aria-label="Image mutated by a MutatingWebhook"
+              <button
+                type="button"
+                onClick={() => setOpen(true)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5",
+                  "text-xs text-muted-foreground transition-colors",
+                  "hover:border-border hover:bg-muted/60 hover:text-foreground",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                )}
+                aria-label={`View ${total} workload${total > 1 ? "s" : ""} using this image`}
               >
-                <WandSparklesIcon className="size-3.5" />
-              </span>
+                <LayersIcon className="size-3" />
+                <span>
+                  {total} workload{total > 1 ? "s" : ""}
+                </span>
+                <ExternalLinkIcon className="size-2.5 opacity-60" />
+              </button>
             </TooltipTrigger>
-            <TooltipContent side="top">
-              <p className="text-xs">Image mutated by a MutatingWebhook</p>
-            </TooltipContent>
-          </Tooltip>
-        )}
-        {image.hasInjection && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span
-                className="inline-flex items-center text-violet-600 dark:text-violet-400 shrink-0"
-                aria-label="Container injected by a MutatingWebhook"
-              >
-                <PackagePlusIcon className="size-3.5" />
-              </span>
-            </TooltipTrigger>
-            <TooltipContent side="top">
-              <p className="text-xs">Container injected by a MutatingWebhook</p>
-            </TooltipContent>
-          </Tooltip>
-        )}
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={() => setOpen(true)}
-              className={cn(
-                "inline-flex shrink-0 items-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5",
-                "text-xs text-muted-foreground transition-colors",
-                "hover:border-border hover:bg-muted/60 hover:text-foreground",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              )}
-              aria-label={`View ${total} workload${total > 1 ? "s" : ""} using this image`}
-            >
-              <LayersIcon className="size-3" />
-              <span>
-                {total} workload{total > 1 ? "s" : ""}
-              </span>
-              <ExternalLinkIcon className="size-2.5 opacity-60" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top" align="end">
-            <div className="flex flex-col gap-1.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
-                Source resources
-              </p>
-              <WorkloadList workloads={preview} variant="compact" />
-              {remaining > 0 && (
-                <p className="text-[11px] italic opacity-70">
-                  +{remaining} more — click to view all
+            <TooltipContent side="top" align="end">
+              <div className="flex flex-col gap-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
+                  Source resources
                 </p>
-              )}
-            </div>
-          </TooltipContent>
-        </Tooltip>
-      </div>
+                <WorkloadList workloads={preview} variant="compact" />
+                {remaining > 0 && (
+                  <p className="text-[11px] italic opacity-70">
+                    +{remaining} more — click to view all
+                  </p>
+                )}
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TableCell>
+      </TableRow>
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent>
@@ -251,7 +258,6 @@ export function ImageCard({ image }: ImageCardProps) {
             </div>
           </SheetHeader>
           <SheetBody className="mt-4 space-y-4">
-            {/* Registry details section */}
             {(image.originalImage ||
               mutatedImage ||
               image.latestVersion ||

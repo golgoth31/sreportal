@@ -1,6 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import type { ReactElement } from "react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import { cleanup } from "@testing-library/react";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { Fqdn } from "../domain/dns.types";
@@ -24,28 +25,26 @@ function renderWithTooltip(ui: ReactElement) {
   return render(<TooltipProvider>{ui}</TooltipProvider>);
 }
 
-describe("Fqdn dense Soft Material rows", () => {
-  it("renders a dense mono row shell", () => {
-    const { container } = renderWithTooltip(<FqdnCard fqdn={fqdn} />);
-    const root = container.firstElementChild as HTMLElement;
-    expect(root.className).toMatch(/min-h-\[var\(--row-height\)\]/);
-    expect(root.className).toMatch(/flex-row/);
-    expect(screen.getByRole("link", { name: /api\.example\.com/i }).className).toMatch(
-      /font-mono/,
-    );
-    expect(screen.getByText("10.0.0.1").className).toMatch(/font-mono/);
-  });
+afterEach(() => {
+  cleanup();
+});
 
-  it("lists FQDNs in a single column (no multi-col grid)", () => {
+describe("Fqdn dense Soft Material table", () => {
+  it("renders aligned table columns for a group", () => {
     const { container } = renderWithTooltip(
       <FqdnGroupCard
         group={{ name: "prod", source: "external-dns", fqdns: [fqdn] }}
       />,
     );
-    const grid = container.querySelector(".border-t");
-    expect(grid?.className).not.toMatch(/sm:grid-cols-2/);
-    expect(grid?.className).not.toMatch(/lg:grid-cols-3/);
-    expect(grid?.className).toMatch(/gap-\[var\(--density-gap\)\]/);
+    const table = within(container).getByRole("table");
+    expect(within(table).getByRole("columnheader", { name: "FQDN" })).toBeInTheDocument();
+    expect(within(table).getByRole("columnheader", { name: "Type" })).toBeInTheDocument();
+    expect(within(table).getByRole("columnheader", { name: "Target" })).toBeInTheDocument();
+    expect(within(table).getByRole("columnheader", { name: "Source" })).toBeInTheDocument();
+    expect(within(table).getByRole("link", { name: /api\.example\.com/i }).className).toMatch(
+      /font-mono/,
+    );
+    expect(within(table).getByText("10.0.0.1").className).toMatch(/truncate/);
   });
 
   it("puts source info on the source badge trigger", () => {
@@ -53,11 +52,26 @@ describe("Fqdn dense Soft Material rows", () => {
       ...fqdn,
       originRef: { kind: "Service", namespace: "default", name: "api" },
     };
-    const { container } = renderWithTooltip(<FqdnCard fqdn={withOrigin} />);
-    const row = container.firstElementChild as HTMLElement;
-    const badge = within(row).getByText("External DNS");
+    const { container } = renderWithTooltip(
+      <FqdnGroupCard
+        group={{ name: "prod", source: "external-dns", fqdns: [withOrigin] }}
+      />,
+    );
+    const table = within(container).getByRole("table");
+    const badge = within(table).getByText("External DNS");
     expect(badge.className).toMatch(/font-mono/);
-    // Source badge is the tooltip trigger (Radix may omit data-slot on asChild).
-    expect(badge.getAttribute("data-state") ?? badge.parentElement?.getAttribute("data-state")).toBeTruthy();
+    expect(badge).toHaveAttribute("data-slot", "tooltip-trigger");
+  });
+
+  it("renders a table row for a single FQDN when wrapped in a table body", () => {
+    const { container } = renderWithTooltip(
+      <table>
+        <tbody>
+          <FqdnCard fqdn={fqdn} />
+        </tbody>
+      </table>,
+    );
+    expect(container.querySelector("tr")).toBeTruthy();
+    expect(container.querySelectorAll("td").length).toBeGreaterThanOrEqual(5);
   });
 });
