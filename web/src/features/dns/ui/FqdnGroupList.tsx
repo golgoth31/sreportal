@@ -1,7 +1,9 @@
 import { SearchXIcon } from "lucide-react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Table, TableBody } from "@/components/ui/table";
 import type { FqdnGroup } from "../domain/dns.types";
 import { FqdnGroupCard } from "./FqdnGroupCard";
 
@@ -18,11 +20,18 @@ export function FqdnGroupList({
   hasFilters,
   onClearFilters,
 }: FqdnGroupListProps) {
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+
   if (isLoading) {
     return (
-      <div className="space-y-3" aria-label="Loading FQDN groups">
+      <div
+        className="flex flex-col gap-[var(--density-gap)]"
+        aria-label="Loading FQDN groups"
+      >
         {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-14 w-full rounded-lg" />
+          <Skeleton key={i} className="h-[var(--row-height)] w-full rounded-md" />
         ))}
       </div>
     );
@@ -43,10 +52,37 @@ export function FqdnGroupList({
   }
 
   return (
-    <div className="space-y-3">
-      {groups.map((group) => (
-        <FqdnGroupCard key={group.name} group={group} />
-      ))}
+    <div className="surface overflow-hidden">
+      <Table className="table-fixed">
+        <colgroup>
+          <col className="w-8" />
+          <col />
+          <col className="w-[4.5rem]" />
+          <col />
+          <col className="w-[7.5rem]" />
+          <col className="w-10" />
+        </colgroup>
+        <TableBody>
+          {groups.map((group) => {
+            const open = !collapsed.has(group.name);
+            return (
+              <FqdnGroupCard
+                key={group.name}
+                group={group}
+                open={open}
+                onOpenChange={(next) => {
+                  setCollapsed((prev) => {
+                    const nextSet = new Set(prev);
+                    if (next) nextSet.delete(group.name);
+                    else nextSet.add(group.name);
+                    return nextSet;
+                  });
+                }}
+              />
+            );
+          })}
+        </TableBody>
+      </Table>
     </div>
   );
 }

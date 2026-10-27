@@ -68,7 +68,9 @@ Touch only what the Soft Material shell needs:
 
 Do **not** introduce MUI or new primitive packages. Do **not** rewrite feature pages in pass 1.
 
-## 6. Pass 2 (explicitly deferred)
+## 6. Pass 2 (shipped)
+
+Pass 2 implemented — see `2026-10-27-soft-material-ui-pass-2-design.md`. Original scope below.
 
 Optional follow-up after pass 1 ships and is reviewed in-product:
 

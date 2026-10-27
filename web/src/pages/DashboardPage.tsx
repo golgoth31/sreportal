@@ -69,7 +69,7 @@ export function DashboardPage() {
       {error && <ErrorAlert title="Failed to load metrics" error={error} />}
 
       {/* Row 1 — Stat Cards */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <StatCard
           title="Total FQDNs"
           value={stats.totalFqdns}

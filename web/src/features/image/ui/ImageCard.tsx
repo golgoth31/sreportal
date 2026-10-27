@@ -19,6 +19,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { TableCell, TableRow } from "@/components/ui/table";
 import {
   Tooltip,
   TooltipContent,
@@ -44,28 +45,32 @@ interface CopyableImageRefProps {
   display: string;
   fullRef: string;
   className?: string;
+  // Wrap long refs instead of truncating (detail views).
+  wrap?: boolean;
 }
 
-function CopyableImageRef({ display, fullRef, className }: CopyableImageRefProps) {
+function CopyableImageRef({ display, fullRef, className, wrap }: CopyableImageRefProps) {
   const { copied, copy } = useCopyToClipboard(fullRef);
   return (
     <button
       type="button"
       onClick={copy}
       className={cn(
-        "group/copy -mx-1.5 inline-flex w-fit items-start gap-1 rounded-md border border-transparent px-1.5 py-0.5",
-        "text-left text-xs text-muted-foreground font-mono break-all transition-colors",
+        "group/copy -mx-1.5 inline-flex min-w-0 max-w-full items-center gap-1 rounded-md border border-transparent px-1.5 py-0.5",
+        "text-left text-xs text-muted-foreground font-mono transition-colors",
+        !wrap && "truncate",
         "hover:border-border hover:bg-muted/60 hover:text-foreground",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         className,
       )}
       aria-label={`Copy ${fullRef} to clipboard`}
+      title={wrap ? undefined : fullRef}
     >
-      <span className="flex-1">{display}</span>
+      <span className={cn("min-w-0", wrap ? "break-all" : "truncate")}>{display}</span>
       {copied ? (
-        <CheckIcon className="mt-0.5 size-3 shrink-0 text-green-600" />
+        <CheckIcon className="size-3 shrink-0 text-green-600" />
       ) : (
-        <CopyIcon className="mt-0.5 size-3 shrink-0 opacity-0 transition-opacity group-hover/copy:opacity-70" />
+        <CopyIcon className="size-3 shrink-0 opacity-0 transition-opacity group-hover/copy:opacity-70" />
       )}
     </button>
   );
@@ -89,31 +94,84 @@ export function ImageCard({ image }: ImageCardProps) {
   const mutatedImage =
     image.changeType === "mutated" ? image.mutatedImage ?? fullRef : undefined;
 
+  const upgradeVersion =
+    image.upgradeAvailable && image.latestVersion ? image.latestVersion : null;
+  const upgradeTooltip = upgradeVersion
+    ? `Upgrade available: ${upgradeVersion}`
+    : "Upgrade available";
+
+  let statusText: string;
+  let statusEmphasized = false;
+  if (upgradeVersion) {
+    statusText = upgradeVersion;
+    statusEmphasized = true;
+  } else if (image.upgradeAvailable) {
+    statusText = "Upgrade available";
+    statusEmphasized = true;
+  } else if (image.latestError) {
+    statusText = "Lookup failed";
+  } else if (image.tagType === "semver") {
+    statusText = image.latestVersion ? "No upgrade available" : "Not checked";
+  } else {
+    statusText = tagTypeHint(image.tagType) || "Tracked";
+  }
+
   return (
     <>
-      <div
+      <TableRow
         className={cn(
-          "group surface surface-interactive p-4 flex flex-col gap-2",
           image.hasMutation &&
-          "border-amber-300/70 dark:border-amber-700/60 hover:border-amber-400 dark:hover:border-amber-600",
+            "border-amber-300/70 dark:border-amber-700/60",
           !image.hasMutation &&
-          image.hasInjection &&
-          "border-violet-300/70 dark:border-violet-700/60 hover:border-violet-400 dark:hover:border-violet-600",
+            image.hasInjection &&
+            "border-violet-300/70 dark:border-violet-700/60",
         )}
       >
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 min-w-0">
-            {image.upgradeAvailable && (
-              <span
-                className="inline-flex items-center text-emerald-600 dark:text-emerald-400 shrink-0"
-                aria-label="Latest available"
-              >
-                <ArrowUpCircleIcon className="size-3.5" />
-              </span>
+        <TableCell className="w-8">
+          {image.upgradeAvailable ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  className="inline-flex items-center text-emerald-600 dark:text-emerald-400"
+                  aria-label={upgradeTooltip}
+                >
+                  <ArrowUpCircleIcon className="size-3.5" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top">{upgradeTooltip}</TooltipContent>
+            </Tooltip>
+          ) : null}
+        </TableCell>
+        <TableCell className="font-medium text-sm max-w-[8rem] truncate">
+          {shortName}
+        </TableCell>
+        <TableCell className="max-w-[20rem]">
+          <CopyableImageRef display={display} fullRef={fullRef} className="min-w-0" />
+        </TableCell>
+        <TableCell className="w-[5.5rem]">
+          <Badge
+            variant="outline"
+            className={cn(
+              "font-mono uppercase text-[10px] tracking-wider",
+              tagTypeBadgeClass(image.tagType),
             )}
-            <p className="font-medium text-sm tracking-tight truncate">{shortName}</p>
-          </div>
-          <div className="flex items-center gap-1.5 shrink-0">
+          >
+            {image.tagType}
+          </Badge>
+        </TableCell>
+        <TableCell className="font-mono text-[11px] max-w-[10rem] truncate">
+          <span
+            className={
+              statusEmphasized
+                ? "font-semibold text-emerald-700 dark:text-emerald-400"
+                : "text-muted-foreground opacity-60"
+            }
+          >
+            {statusText}
+          </span>
+        </TableCell>
+        <TableCell className="w-16">
+          <div className="flex items-center gap-1.5">
             {image.hasMutation && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -144,82 +202,45 @@ export function ImageCard({ image }: ImageCardProps) {
                 </TooltipContent>
               </Tooltip>
             )}
-            <Badge
-              variant="outline"
-              className={cn(
-                "font-mono uppercase text-[10px] tracking-wider",
-                tagTypeBadgeClass(image.tagType),
-              )}
-            >
-              {image.tagType}
-            </Badge>
           </div>
-        </div>
-
-        <CopyableImageRef display={display} fullRef={fullRef} />
-
-        {/* Registry version lookup row */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {image.tagType === "semver" ? (
-            <span className="font-mono text-[11px] text-muted-foreground">
-              {image.latestVersion && image.upgradeAvailable ? (
-                <>
-                  Upgrade available:{" "}
-                  <span
-                    className={cn(
-                      "font-semibold",
-                      "text-emerald-700 dark:text-emerald-400",
-                    )}
-                  >
-                    {image.latestVersion}
-                  </span>
-                </>
-              ) : (
-                <span className="opacity-40">No upgrade available</span>
-              )}
-            </span>
-          ) : (
-            <span className="text-[11px] text-muted-foreground opacity-60">
-              {tagTypeHint(image.tagType)}
-            </span>
-          )}
-        </div>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={() => setOpen(true)}
-              className={cn(
-                "group/wl mt-1 inline-flex w-fit items-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5 -mx-1.5",
-                "text-xs text-muted-foreground transition-colors",
-                "hover:border-border hover:bg-muted/60 hover:text-foreground",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              )}
-              aria-label={`View ${total} workload${total > 1 ? "s" : ""} using this image`}
-            >
-              <LayersIcon className="size-3" />
-              <span>
-                {total} workload{total > 1 ? "s" : ""}
-              </span>
-              <ExternalLinkIcon className="size-2.5 opacity-0 transition-opacity group-hover/wl:opacity-70" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top" align="start">
-            <div className="flex flex-col gap-1.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
-                Source resources
-              </p>
-              <WorkloadList workloads={preview} variant="compact" />
-              {remaining > 0 && (
-                <p className="text-[11px] italic opacity-70">
-                  +{remaining} more — click to view all
+        </TableCell>
+        <TableCell className="w-[7.5rem]">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => setOpen(true)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5",
+                  "text-xs text-muted-foreground transition-colors",
+                  "hover:border-border hover:bg-muted/60 hover:text-foreground",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                )}
+                aria-label={`View ${total} workload${total > 1 ? "s" : ""} using this image`}
+              >
+                <LayersIcon className="size-3" />
+                <span>
+                  {total} workload{total > 1 ? "s" : ""}
+                </span>
+                <ExternalLinkIcon className="size-2.5 opacity-60" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" align="end">
+              <div className="flex flex-col gap-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
+                  Source resources
                 </p>
-              )}
-            </div>
-          </TooltipContent>
-        </Tooltip>
-      </div>
+                <WorkloadList workloads={preview} variant="compact" />
+                {remaining > 0 && (
+                  <p className="text-[11px] italic opacity-70">
+                    +{remaining} more — click to view all
+                  </p>
+                )}
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TableCell>
+      </TableRow>
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent>
@@ -229,7 +250,7 @@ export function ImageCard({ image }: ImageCardProps) {
               Source resources
             </SheetTitle>
             <SheetDescription asChild>
-              <CopyableImageRef display={display} fullRef={fullRef} />
+              <CopyableImageRef display={display} fullRef={fullRef} wrap />
             </SheetDescription>
             <div className="mt-2 flex items-center gap-2 flex-wrap">
               <Badge variant="outline" className={cn(tagTypeBadgeClass(image.tagType))}>
@@ -241,81 +262,81 @@ export function ImageCard({ image }: ImageCardProps) {
             </div>
           </SheetHeader>
           <SheetBody className="mt-4 space-y-4">
-            {/* Registry details section */}
             {(image.originalImage ||
               mutatedImage ||
               image.latestVersion ||
               image.latestError) && (
-                <section
-                  className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2.5 space-y-2"
-                  aria-label="Registry details"
-                >
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Registry details
-                  </p>
-                  {image.originalImage && (
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
-                        Original image
-                      </span>
-                      <CopyableImageRef
-                        display={image.originalImage}
-                        fullRef={image.originalImage}
-                      />
-                    </div>
-                  )}
-                  {mutatedImage && (
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
-                        Mutated image (running)
-                      </span>
-                      <CopyableImageRef display={mutatedImage} fullRef={mutatedImage} />
-                    </div>
-                  )}
-                  {image.tagType === "semver" && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
-                        Latest version
-                      </span>
-                      <span
-                        className={cn(
-                          "font-mono text-xs",
-                          image.upgradeAvailable
-                            ? "text-emerald-700 dark:text-emerald-400 font-semibold"
-                            : "text-muted-foreground",
-                        )}
-                      >
-                        {image.latestVersion ?? "—"}
-                      </span>
-                      {image.upgradeAvailable && (
-                        <ArrowUpCircleIcon
-                          className="size-3.5 text-emerald-600 dark:text-emerald-400"
-                          aria-label="Upgrade available"
-                        />
+              <section
+                className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2.5 space-y-2"
+                aria-label="Registry details"
+              >
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Registry details
+                </p>
+                {image.originalImage && (
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                      Original image
+                    </span>
+                    <CopyableImageRef
+                      display={image.originalImage}
+                      fullRef={image.originalImage}
+                      wrap
+                    />
+                  </div>
+                )}
+                {mutatedImage && (
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                      Mutated image (running)
+                    </span>
+                    <CopyableImageRef display={mutatedImage} fullRef={mutatedImage} wrap />
+                  </div>
+                )}
+                {image.tagType === "semver" && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                      Latest version
+                    </span>
+                    <span
+                      className={cn(
+                        "font-mono text-xs",
+                        image.upgradeAvailable
+                          ? "text-emerald-700 dark:text-emerald-400 font-semibold"
+                          : "text-muted-foreground",
                       )}
-                    </div>
-                  )}
-                  {relativeTime && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
-                        Last checked
-                      </span>
-                      <span className="font-mono text-xs text-muted-foreground">{relativeTime}</span>
-                    </div>
-                  )}
-                  {image.latestError && (
-                    <div
-                      className="flex items-start gap-1.5 rounded bg-destructive/10 border border-destructive/20 px-2 py-1.5"
-                      role="alert"
                     >
-                      <AlertCircleIcon className="size-3.5 mt-0.5 shrink-0 text-destructive" aria-hidden="true" />
-                      <p className="font-mono text-[11px] text-destructive break-all">
-                        {image.latestError}
-                      </p>
-                    </div>
-                  )}
-                </section>
-              )}
+                      {image.latestVersion ?? "—"}
+                    </span>
+                    {image.upgradeAvailable && (
+                      <ArrowUpCircleIcon
+                        className="size-3.5 text-emerald-600 dark:text-emerald-400"
+                        aria-label="Upgrade available"
+                      />
+                    )}
+                  </div>
+                )}
+                {relativeTime && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                      Last checked
+                    </span>
+                    <span className="font-mono text-xs text-muted-foreground">{relativeTime}</span>
+                  </div>
+                )}
+                {image.latestError && (
+                  <div
+                    className="flex items-start gap-1.5 rounded bg-destructive/10 border border-destructive/20 px-2 py-1.5"
+                    role="alert"
+                  >
+                    <AlertCircleIcon className="size-3.5 mt-0.5 shrink-0 text-destructive" aria-hidden="true" />
+                    <p className="font-mono text-[11px] text-destructive break-all">
+                      {image.latestError}
+                    </p>
+                  </div>
+                )}
+              </section>
+            )}
             <WorkloadList workloads={visibleWorkloads} variant="full" />
           </SheetBody>
         </SheetContent>

@@ -5,6 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 describe("soft material chrome", () => {
   it("button root does not use translate-y press motion", () => {
@@ -39,5 +45,23 @@ describe("soft material chrome", () => {
     const el = container.querySelector('[data-slot="input"]');
     expect(el?.className).toMatch(/rounded-md/);
     expect(el?.className).not.toMatch(/rounded-lg/);
+  });
+
+  it("tooltip uses Soft Material overlay surface, not inverted foreground", () => {
+    const { container } = render(
+      <TooltipProvider>
+        <Tooltip defaultOpen>
+          <TooltipTrigger asChild>
+            <button type="button">tip</button>
+          </TooltipTrigger>
+          <TooltipContent>Hello</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>,
+    );
+    const tip = container.ownerDocument.querySelector(
+      '[data-slot="tooltip-content"]',
+    );
+    expect(tip?.className).toMatch(/surface-overlay/);
+    expect(tip?.className).not.toMatch(/bg-foreground/);
   });
 });

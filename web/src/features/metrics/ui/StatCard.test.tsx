@@ -42,4 +42,16 @@ describe("StatCard", () => {
       container.querySelectorAll(".text-xs.text-muted-foreground"),
     ).toHaveLength(0);
   });
+
+  it("applies compact density classes", () => {
+    const { container } = render(
+      <StatCard title="Total FQDNs" value={12} icon={Globe} />,
+    );
+    const card = container.firstElementChild;
+    expect(card?.className).toMatch(/data-\[size=sm\]:gap-1/);
+    expect(card?.className).toMatch(/data-\[size=sm\]:py-1\.5/);
+    const value = screen.getByLabelText("Total FQDNs: 12");
+    expect(value.className).toMatch(/text-2xl/);
+    expect(value.className).not.toMatch(/text-4xl/);
+  });
 });

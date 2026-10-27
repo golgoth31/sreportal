@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 
+import { readStorage, writeStorage } from "@/lib/storage";
+
 export type ThemeMode = "light" | "dark" | "system";
 
 const STORAGE_KEY = "sreportal-theme";
 
 function getInitialMode(): ThemeMode {
   if (typeof window === "undefined") return "system";
-  const stored = localStorage.getItem(STORAGE_KEY);
+  const stored = readStorage(STORAGE_KEY);
   if (stored === "light" || stored === "dark" || stored === "system") {
     return stored;
   }
@@ -27,7 +29,7 @@ export function useTheme() {
 
   useEffect(() => {
     applyTheme(mode);
-    localStorage.setItem(STORAGE_KEY, mode);
+    writeStorage(STORAGE_KEY, mode);
   }, [mode]);
 
   // Listen for system preference changes when in "system" mode

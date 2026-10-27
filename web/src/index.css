@@ -44,6 +44,11 @@
     --sidebar-ring: oklch(0.6 0.15 277);
     --elevation-1: 0 1px 2px rgb(15 23 42 / 0.06), 0 1px 3px rgb(15 23 42 / 0.04);
     --elevation-2: 0 1px 2px rgb(15 23 42 / 0.08), 0 2px 6px rgb(15 23 42 / 0.06);
+    --row-height: 2rem;
+    --row-height-tight: 1.75rem;
+    --density-gap: 0.25rem;
+    --sidebar-width: 12rem;
+    --sidebar-width-collapsed: 3.5rem;
 }
 
 .dark {
