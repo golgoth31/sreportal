@@ -51,7 +51,7 @@ Keep chart token roles; only retune if contrast fails on the new dark background
 
 ### `PortalSidebar` / `PortalNav`
 
-- Active item: surface fill + 3px inset primary bar (existing pattern, align radius to 4px).
+- Active item: surface fill + 2px inset primary bar (existing pattern, align radius to 4px).
 - Inactive: muted; hover via `--accent` / muted surface — no pill shapes.
 - Sidebar background from `--sidebar` tokens after retune.
 

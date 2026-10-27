@@ -31,7 +31,7 @@ export function RootLayout() {
       <div className="h-screen flex flex-col bg-background">
         {/* Header */}
         <header className="sticky top-0 z-40 h-12 border-b border-border bg-background shadow-[var(--elevation-2)]">
-          <div className="flex h-12 items-center gap-3 px-3 max-w-screen-xl mx-auto w-full">
+          <div className="flex h-full items-center gap-3 px-3 max-w-screen-xl mx-auto w-full">
             {/* Brand */}
             <div className="flex items-center gap-2 shrink-0">
               <SrePortalIcon className="size-5" />

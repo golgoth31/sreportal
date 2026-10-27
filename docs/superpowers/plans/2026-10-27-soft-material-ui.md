@@ -8,7 +8,7 @@
 
 **Tech Stack:** React 19, Vite, Tailwind CSS v4, shadcn/ui, Vitest + happy-dom (`css: true`).
 
-**Reference:** Design doc `docs/superpowers/specs/2026-10-27-soft-material-ui-design.md`. Preview intent: `web/public/material-preview.html` (relocated in Task 5).
+**Reference:** Design doc `docs/superpowers/specs/2026-10-27-soft-material-ui-design.md`. Preview intent: `docs/superpowers/previews/material-preview.html`.
 
 ## Global Constraints
 
@@ -34,7 +34,7 @@
 | `web/src/components/RootLayout.tsx` | Opaque AppBar ~48px, soft elev, calmer footer |
 | `web/src/components/PortalSidebar.tsx` | 4px nav radius, token-aligned active state |
 | `web/src/components/PortalNav.tsx` | Radius/tracking aligned to Soft Material |
-| `docs/superpowers/previews/material-preview.html` | Design reference (moved from `web/public`) |
+| `docs/superpowers/previews/material-preview.html` | Design reference (lives here; never in `web/public`) |
 
 ---
 
@@ -486,28 +486,17 @@ EOF
 
 ---
 
-### Task 5: Relocate preview + full web verification
+### Task 5: Full web verification
 
 **Files:**
-- Move: `web/public/material-preview.html` → `docs/superpowers/previews/material-preview.html`
+- Verify: `docs/superpowers/previews/material-preview.html` stays outside `web/public`
 - (No production UI code in this task)
 
 **Interfaces:**
 - Consumes: completed pass 1 styling
 - Produces: preview not shipped via Vite `public/`; verification evidence for acceptance criteria
 
-- [ ] **Step 1: Move preview file**
-
-```bash
-mkdir -p docs/superpowers/previews
-git mv web/public/material-preview.html docs/superpowers/previews/material-preview.html
-```
-
-If `git mv` unavailable because untracked: `mv` then `git add` / ensure `web/public/material-preview.html` is gone.
-
-Update the design doc preview path line in `docs/superpowers/specs/2026-10-27-soft-material-ui-design.md` to `docs/superpowers/previews/material-preview.html`.
-
-- [ ] **Step 2: Run full web unit tests + typecheck**
+- [ ] **Step 1: Run full web unit tests + typecheck**
 
 ```bash
 npm test --prefix web
@@ -516,7 +505,7 @@ npm exec --prefix web -- tsc -b --pretty false
 
 Expected: all tests PASS; `tsc` exit 0.
 
-- [ ] **Step 3: Manual visual checklist (human or browser)**
+- [ ] **Step 2: Manual visual checklist (human or browser)**
 
 Open app light + dark:
 
@@ -527,7 +516,7 @@ Open app light + dark:
 5. Sidebar active state: bar + fill, not pill.
 6. DNS + Alerts pages still usable (layout may look denser from tokens only — OK for pass 1).
 
-- [ ] **Step 4: Commit** (when executing with commit approval)
+- [ ] **Step 3: Commit** (when executing with commit approval)
 
 ```bash
 git add docs/superpowers/previews/material-preview.html docs/superpowers/specs/2026-10-27-soft-material-ui-design.md
