@@ -93,7 +93,7 @@ export function ImageCard({ image }: ImageCardProps) {
     <>
       <div
         className={cn(
-          "group surface p-4 flex flex-col gap-2 transition-shadow hover:border-primary/40 hover:shadow-[var(--elevation-2)]",
+          "group surface surface-interactive p-4 flex flex-col gap-2",
           image.hasMutation &&
           "border-amber-300/70 dark:border-amber-700/60 hover:border-amber-400 dark:hover:border-amber-600",
           !image.hasMutation &&

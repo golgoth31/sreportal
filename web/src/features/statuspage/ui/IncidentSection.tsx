@@ -56,9 +56,8 @@ function IncidentCard({
     <div
       className={cn(
         "surface p-4",
-        isActive
-          ? "border-rose-500/40 bg-rose-500/5 dark:border-rose-500/30 dark:bg-rose-500/10"
-          : ""
+        isActive &&
+          "border-rose-500/40 bg-rose-500/5 dark:border-rose-500/30 dark:bg-rose-500/10"
       )}
     >
       <div className="flex items-start justify-between gap-3">

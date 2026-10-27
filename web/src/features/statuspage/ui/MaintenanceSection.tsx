@@ -39,9 +39,7 @@ function MaintenanceCard({ maintenance }: { maintenance: Maintenance }) {
     <div
       className={cn(
         "surface p-4",
-        isActive
-          ? "border-primary/40 bg-primary/5"
-          : ""
+        isActive && "border-primary/40 bg-primary/5"
       )}
     >
       <div className="flex items-start justify-between gap-3">

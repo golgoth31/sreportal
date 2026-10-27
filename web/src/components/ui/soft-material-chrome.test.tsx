@@ -20,10 +20,10 @@ describe("soft material chrome", () => {
     expect(btn?.className).toMatch(/(^|\s)active:/);
   });
 
-  it("card uses elevation shadow token class and not foreground ring", () => {
+  it("card uses the shared surface chrome and not foreground ring", () => {
     const { container } = render(<Card>Body</Card>);
     const card = container.querySelector('[data-slot="card"]');
-    expect(card?.className).toMatch(/shadow-\[var\(--elevation-1\)\]/);
+    expect(card?.className).toMatch(/(^|\s)surface(\s|$)/);
     expect(card?.className).not.toMatch(/ring-1/);
   });
 

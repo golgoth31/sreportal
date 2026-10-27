@@ -129,13 +129,32 @@
     --font-heading: var(--font-sans);
 }
 
-/* Shared Soft Material card surface for feature cards that do not use <Card>. */
+/* Soft Material card chrome: single source for <Card> and feature cards. */
 @utility surface {
     border-radius: var(--radius);
     border: 1px solid var(--border);
     background-color: var(--card);
     color: var(--card-foreground);
     box-shadow: var(--elevation-1);
+}
+
+/* Hover lift for clickable surfaces. */
+@utility surface-interactive {
+    transition-property: box-shadow, border-color;
+    transition-duration: 150ms;
+    &:hover {
+        border-color: color-mix(in oklab, var(--primary) 40%, transparent);
+        box-shadow: var(--elevation-2);
+    }
+}
+
+/* Floating overlay chrome shared by popover, select and chart tooltip. */
+@utility surface-overlay {
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+    box-shadow: var(--elevation-2);
 }
 
 @layer base {
