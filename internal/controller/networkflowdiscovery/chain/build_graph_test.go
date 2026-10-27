@@ -252,10 +252,10 @@ var _ = Describe("BuildGraphHandler", func() {
 	Context("when a service and a cron share a name in the same namespace", func() {
 		It("should order nodes the same way on every reconcile", func() {
 			jobEgressPolicy := &networkingv1.NetworkPolicy{
-				ObjectMeta: metav1.ObjectMeta{Name: "job-egress-policy", Namespace: tCore},
+				Name: "job-egress-policy", Namespace: tCore,
 			}
 			webIngressPolicy := &networkingv1.NetworkPolicy{
-				ObjectMeta: metav1.ObjectMeta{Name: tWebIngressPolicy, Namespace: tCore},
+				Name: tWebIngressPolicy, Namespace: tCore,
 				Spec: networkingv1.NetworkPolicySpec{
 					PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
 					Ingress: []networkingv1.NetworkPolicyIngressRule{{
@@ -285,7 +285,7 @@ var _ = Describe("BuildGraphHandler", func() {
 				for _, n := range rc.Data.Nodes {
 					ids = append(ids, n.ID)
 				}
-				Expect(ids).To(Equal([]string{"cron:core:job", "service:core:job", "service:core:web"}))
+				Expect(ids).To(Equal([]string{"cron:core:job", "service:core:job", tServiceCoreWeb}))
 			}
 		})
 	})

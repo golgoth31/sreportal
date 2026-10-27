@@ -21,7 +21,7 @@ import (
 	"context"
 	"slices"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	domainnetpol "github.com/golgoth31/sreportal/internal/domain/netpol"
 	domainportal "github.com/golgoth31/sreportal/internal/domain/portal"
@@ -45,34 +45,34 @@ func NewNetworkPolicyService(reader domainnetpol.FlowGraphReader, portalReader d
 // ListNetworkPolicies returns the flow graph filtered by portal, namespace, and search.
 func (s *NetworkPolicyService) ListNetworkPolicies(
 	ctx context.Context,
-	req *connect.Request[netpolv1.ListNetworkPoliciesRequest],
-) (*connect.Response[netpolv1.ListNetworkPoliciesResponse], error) {
-	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, req.Msg.Portal, CheckNetworkPolicy); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+	req *netpolv1.ListNetworkPoliciesRequest,
+) (*netpolv1.ListNetworkPoliciesResponse, error) {
+	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, req.Portal, CheckNetworkPolicy); err != nil {
+		return nil, wrapError(connect.CodeInternal, err)
 	} else if !enabled {
-		return connect.NewResponse(&netpolv1.ListNetworkPoliciesResponse{}), nil
+		return &netpolv1.ListNetworkPoliciesResponse{}, nil
 	}
 
 	filters := domainnetpol.FlowGraphFilters{
-		Portal:    req.Msg.Portal,
-		Namespace: req.Msg.Namespace,
-		Search:    req.Msg.Search,
+		Portal:    req.Portal,
+		Namespace: req.Namespace,
+		Search:    req.Search,
 	}
 
 	nodes, err := s.reader.ListNodes(ctx, filters)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, wrapError(connect.CodeInternal, err)
 	}
 
 	edges, err := s.reader.ListEdges(ctx, filters)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, wrapError(connect.CodeInternal, err)
 	}
 
-	return connect.NewResponse(&netpolv1.ListNetworkPoliciesResponse{
+	return &netpolv1.ListNetworkPoliciesResponse{
 		Nodes: sortedProtoNodes(nodes),
 		Edges: sortedProtoEdges(edges),
-	}), nil
+	}, nil
 }
 
 func flowNodeToProto(n domainnetpol.FlowNode) *netpolv1.NetpolNode {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"connectrpc.com/connect"
 	"github.com/stretchr/testify/require"
 
 	domainimage "github.com/golgoth31/sreportal/internal/domain/image"
@@ -27,13 +26,13 @@ func TestListImages(t *testing.T) {
 	}))
 
 	svc := svcgrpc.NewImageService(store, nil)
-	resp, err := svc.ListImages(context.Background(), connect.NewRequest(&imagev1.ListImagesRequest{
+	resp, err := svc.ListImages(context.Background(), &imagev1.ListImagesRequest{
 		Portal:         tPortalMain,
 		Search:         "acme/",
 		RegistryFilter: "ghcr.io",
 		TagTypeFilter:  "semver",
-	}))
+	})
 	require.NoError(t, err)
-	require.Len(t, resp.Msg.Images, 1)
-	require.Equal(t, int32(1), resp.Msg.TotalCount)
+	require.Len(t, resp.Images, 1)
+	require.Equal(t, int32(1), resp.TotalCount)
 }

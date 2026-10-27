@@ -3,7 +3,7 @@ package grpc
 import (
 	"context"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	domainimage "github.com/golgoth31/sreportal/internal/domain/image"
@@ -40,22 +40,22 @@ func NewImageService(reader domainimage.ImageReader, portalReader domainportal.P
 
 func (s *ImageService) ListImages(
 	ctx context.Context,
-	req *connect.Request[imagev1.ListImagesRequest],
-) (*connect.Response[imagev1.ListImagesResponse], error) {
-	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, req.Msg.Portal, CheckImages); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+	req *imagev1.ListImagesRequest,
+) (*imagev1.ListImagesResponse, error) {
+	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, req.Portal, CheckImages); err != nil {
+		return nil, wrapError(connect.CodeInternal, err)
 	} else if !enabled {
-		return connect.NewResponse(&imagev1.ListImagesResponse{}), nil
+		return &imagev1.ListImagesResponse{}, nil
 	}
 
 	views, err := s.reader.List(ctx, domainimage.ImageFilters{
-		Portal:   req.Msg.Portal,
-		Search:   req.Msg.Search,
-		Registry: req.Msg.RegistryFilter,
-		TagType:  req.Msg.TagTypeFilter,
+		Portal:   req.Portal,
+		Search:   req.Search,
+		Registry: req.RegistryFilter,
+		TagType:  req.TagTypeFilter,
 	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, wrapError(connect.CodeInternal, err)
 	}
 
 	images := make([]*imagev1.Image, 0, len(views))
@@ -89,8 +89,8 @@ func (s *ImageService) ListImages(
 		images = append(images, img)
 	}
 
-	return connect.NewResponse(&imagev1.ListImagesResponse{
+	return &imagev1.ListImagesResponse{
 		Images:     images,
 		TotalCount: int32(len(images)),
-	}), nil
+	}, nil
 }

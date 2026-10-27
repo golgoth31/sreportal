@@ -5,136 +5,163 @@
 package sreportalv1connect
 
 import (
-	connect "connectrpc.com/connect"
+	connect "connectrpc.com/connect/v2"
 	context "context"
-	errors "errors"
 	v1 "github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1"
-	http "net/http"
-	strings "strings"
+	sync "sync"
 )
-
-// This is a compile-time assertion to ensure that this generated file and the connect package are
-// compatible. If you get a compiler error that this constant is not defined, this code was
-// generated with a version of connect newer than the one compiled into your binary. You can fix the
-// problem by either regenerating this code with an older version of connect or updating the connect
-// version compiled into your binary.
-const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// DNSServiceName is the fully-qualified name of the DNSService service.
 	DNSServiceName = "sreportal.v1.DNSService"
 )
 
-// These constants are the fully-qualified names of the RPCs defined in this package. They're
-// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+// These constants are the procedure names of the RPCs defined in this package. They're exposed at
+// runtime as Spec.Procedure and as the final two segments of the HTTP route.
 //
 // Note that these are different from the fully-qualified method names used by
 // google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// DNSServiceListFQDNsProcedure is the fully-qualified name of the DNSService's ListFQDNs RPC.
+	// DNSServiceListFQDNsProcedure is the procedure name of the DNSService's ListFQDNs RPC.
 	DNSServiceListFQDNsProcedure = "/sreportal.v1.DNSService/ListFQDNs"
-	// DNSServiceStreamFQDNsProcedure is the fully-qualified name of the DNSService's StreamFQDNs RPC.
+	// DNSServiceStreamFQDNsProcedure is the procedure name of the DNSService's StreamFQDNs RPC.
 	DNSServiceStreamFQDNsProcedure = "/sreportal.v1.DNSService/StreamFQDNs"
+)
+
+var (
+	dNSServiceListFQDNsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_sreportal_v1_dns_proto.Services().ByName("DNSService").Methods().ByName("ListFQDNs"),
+			Procedure:  DNSServiceListFQDNsProcedure,
+		}
+	})
+	dNSServiceStreamFQDNsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeServer,
+			Schema:     v1.File_sreportal_v1_dns_proto.Services().ByName("DNSService").Methods().ByName("StreamFQDNs"),
+			Procedure:  DNSServiceStreamFQDNsProcedure,
+		}
+	})
 )
 
 // DNSServiceClient is a client for the sreportal.v1.DNSService service.
 type DNSServiceClient interface {
 	// ListFQDNs returns all aggregated FQDNs from DNS resources
-	ListFQDNs(context.Context, *connect.Request[v1.ListFQDNsRequest]) (*connect.Response[v1.ListFQDNsResponse], error)
+	ListFQDNs(context.Context, *v1.ListFQDNsRequest) (*v1.ListFQDNsResponse, error)
 	// StreamFQDNs streams FQDN updates in real-time
-	StreamFQDNs(context.Context, *connect.Request[v1.StreamFQDNsRequest]) (*connect.ServerStreamForClient[v1.StreamFQDNsResponse], error)
+	StreamFQDNs(context.Context, *v1.StreamFQDNsRequest) (DNSServiceStreamFQDNsClientStream, error)
 }
 
-// NewDNSServiceClient constructs a client for the sreportal.v1.DNSService service. By default, it
-// uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses, and sends
-// uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or
-// connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewDNSServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) DNSServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	dNSServiceMethods := v1.File_sreportal_v1_dns_proto.Services().ByName("DNSService").Methods()
-	return &dNSServiceClient{
-		listFQDNs: connect.NewClient[v1.ListFQDNsRequest, v1.ListFQDNsResponse](
-			httpClient,
-			baseURL+DNSServiceListFQDNsProcedure,
-			connect.WithSchema(dNSServiceMethods.ByName("ListFQDNs")),
-			connect.WithClientOptions(opts...),
-		),
-		streamFQDNs: connect.NewClient[v1.StreamFQDNsRequest, v1.StreamFQDNsResponse](
-			httpClient,
-			baseURL+DNSServiceStreamFQDNsProcedure,
-			connect.WithSchema(dNSServiceMethods.ByName("StreamFQDNs")),
-			connect.WithClientOptions(opts...),
-		),
+// NewDNSServiceClient constructs a client for the sreportal.v1.DNSService service. Multiple service
+// clients may share a single connect.Client.
+func NewDNSServiceClient(client *connect.Client) DNSServiceClient {
+	return &dNSServiceClient{client: client}
+}
+
+// DNSServiceStreamFQDNsClientStream is the client stream for the DNSService's StreamFQDNs RPC.
+type DNSServiceStreamFQDNsClientStream struct {
+	stream connect.ClientStream
+}
+
+// Receive returns the next response message from the server.
+func (s DNSServiceStreamFQDNsClientStream) Receive() (*v1.StreamFQDNsResponse, error) {
+	var res v1.StreamFQDNsResponse
+	if err := s.stream.Receive(&res); err != nil {
+		return nil, err
 	}
+	return &res, nil
 }
 
-// dNSServiceClient implements DNSServiceClient.
-type dNSServiceClient struct {
-	listFQDNs   *connect.Client[v1.ListFQDNsRequest, v1.ListFQDNsResponse]
-	streamFQDNs *connect.Client[v1.StreamFQDNsRequest, v1.StreamFQDNsResponse]
-}
-
-// ListFQDNs calls sreportal.v1.DNSService.ListFQDNs.
-func (c *dNSServiceClient) ListFQDNs(ctx context.Context, req *connect.Request[v1.ListFQDNsRequest]) (*connect.Response[v1.ListFQDNsResponse], error) {
-	return c.listFQDNs.CallUnary(ctx, req)
-}
-
-// StreamFQDNs calls sreportal.v1.DNSService.StreamFQDNs.
-func (c *dNSServiceClient) StreamFQDNs(ctx context.Context, req *connect.Request[v1.StreamFQDNsRequest]) (*connect.ServerStreamForClient[v1.StreamFQDNsResponse], error) {
-	return c.streamFQDNs.CallServerStream(ctx, req)
+// Close releases the stream's resources. It is idempotent and is typically deferred to clean up a
+// stream abandoned before io.EOF.
+func (s DNSServiceStreamFQDNsClientStream) Close() error {
+	return s.stream.Close()
 }
 
 // DNSServiceHandler is an implementation of the sreportal.v1.DNSService service.
 type DNSServiceHandler interface {
 	// ListFQDNs returns all aggregated FQDNs from DNS resources
-	ListFQDNs(context.Context, *connect.Request[v1.ListFQDNsRequest]) (*connect.Response[v1.ListFQDNsResponse], error)
+	ListFQDNs(context.Context, *v1.ListFQDNsRequest) (*v1.ListFQDNsResponse, error)
 	// StreamFQDNs streams FQDN updates in real-time
-	StreamFQDNs(context.Context, *connect.Request[v1.StreamFQDNsRequest], *connect.ServerStream[v1.StreamFQDNsResponse]) error
+	StreamFQDNs(context.Context, *v1.StreamFQDNsRequest, DNSServiceStreamFQDNsServerStream) error
 }
 
-// NewDNSServiceHandler builds an HTTP handler from the service implementation. It returns the path
-// on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewDNSServiceHandler(svc DNSServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	dNSServiceMethods := v1.File_sreportal_v1_dns_proto.Services().ByName("DNSService").Methods()
-	dNSServiceListFQDNsHandler := connect.NewUnaryHandler(
-		DNSServiceListFQDNsProcedure,
-		svc.ListFQDNs,
-		connect.WithSchema(dNSServiceMethods.ByName("ListFQDNs")),
-		connect.WithHandlerOptions(opts...),
+// RegisterDNSServiceHandler registers svc as the sreportal.v1.DNSService implementation on server.
+func RegisterDNSServiceHandler(server *connect.Server, svc DNSServiceHandler) {
+	adapter := dNSServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: dNSServiceListFQDNsSpec(), Handler: adapter.listFQDNs},
+		connect.Method{Spec: dNSServiceStreamFQDNsSpec(), Handler: adapter.streamFQDNs},
 	)
-	dNSServiceStreamFQDNsHandler := connect.NewServerStreamHandler(
-		DNSServiceStreamFQDNsProcedure,
-		svc.StreamFQDNs,
-		connect.WithSchema(dNSServiceMethods.ByName("StreamFQDNs")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/sreportal.v1.DNSService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case DNSServiceListFQDNsProcedure:
-			dNSServiceListFQDNsHandler.ServeHTTP(w, r)
-		case DNSServiceStreamFQDNsProcedure:
-			dNSServiceStreamFQDNsHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
+}
+
+// DNSServiceStreamFQDNsServerStream is the server stream for the DNSService's StreamFQDNs RPC.
+type DNSServiceStreamFQDNsServerStream struct {
+	stream connect.ServerStream
+}
+
+// SendHeaders flushes the response headers without a message. The first Send does this implicitly.
+func (s DNSServiceStreamFQDNsServerStream) SendHeaders() error {
+	return s.stream.SendHeaders()
+}
+
+// Send sends a response message to the client.
+func (s DNSServiceStreamFQDNsServerStream) Send(res *v1.StreamFQDNsResponse) error {
+	return s.stream.Send(res)
 }
 
 // UnimplementedDNSServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedDNSServiceHandler struct{}
 
-func (UnimplementedDNSServiceHandler) ListFQDNs(context.Context, *connect.Request[v1.ListFQDNsRequest]) (*connect.Response[v1.ListFQDNsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sreportal.v1.DNSService.ListFQDNs is not implemented"))
+func (UnimplementedDNSServiceHandler) ListFQDNs(context.Context, *v1.ListFQDNsRequest) (*v1.ListFQDNsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "sreportal.v1.DNSService.ListFQDNs is not implemented")
 }
 
-func (UnimplementedDNSServiceHandler) StreamFQDNs(context.Context, *connect.Request[v1.StreamFQDNsRequest], *connect.ServerStream[v1.StreamFQDNsResponse]) error {
-	return connect.NewError(connect.CodeUnimplemented, errors.New("sreportal.v1.DNSService.StreamFQDNs is not implemented"))
+func (UnimplementedDNSServiceHandler) StreamFQDNs(context.Context, *v1.StreamFQDNsRequest, DNSServiceStreamFQDNsServerStream) error {
+	return connect.NewError(connect.CodeUnimplemented, "sreportal.v1.DNSService.StreamFQDNs is not implemented")
+}
+
+type dNSServiceClient struct {
+	client *connect.Client
+}
+
+func (c *dNSServiceClient) ListFQDNs(ctx context.Context, req *v1.ListFQDNsRequest) (*v1.ListFQDNsResponse, error) {
+	var res v1.ListFQDNsResponse
+	if err := c.client.CallUnary(ctx, dNSServiceListFQDNsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *dNSServiceClient) StreamFQDNs(ctx context.Context, req *v1.StreamFQDNsRequest) (DNSServiceStreamFQDNsClientStream, error) {
+	stream, err := c.client.CallServerStream(ctx, dNSServiceStreamFQDNsSpec(), req)
+	if err != nil {
+		return DNSServiceStreamFQDNsClientStream{}, err
+	}
+	return DNSServiceStreamFQDNsClientStream{stream: stream}, nil
+}
+
+type dNSServiceHandler struct{ svc DNSServiceHandler }
+
+func (h dNSServiceHandler) listFQDNs(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListFQDNsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListFQDNs(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h dNSServiceHandler) streamFQDNs(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.StreamFQDNsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	return h.svc.StreamFQDNs(ctx, &req, DNSServiceStreamFQDNsServerStream{stream: stream})
 }

@@ -23,7 +23,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -41,14 +42,14 @@ type mockDNSServiceHandler struct {
 
 func (m *mockDNSServiceHandler) ListFQDNs(
 	_ context.Context,
-	_ *connect.Request[sreportalv1.ListFQDNsRequest],
-) (*connect.Response[sreportalv1.ListFQDNsResponse], error) {
+	_ *sreportalv1.ListFQDNsRequest,
+) (*sreportalv1.ListFQDNsResponse, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
-	return connect.NewResponse(&sreportalv1.ListFQDNsResponse{
+	return &sreportalv1.ListFQDNsResponse{
 		Fqdns: m.fqdns,
-	}), nil
+	}, nil
 }
 
 // mockPortalServiceHandler implements the Portal service for testing.
@@ -60,14 +61,14 @@ type mockPortalServiceHandler struct {
 
 func (m *mockPortalServiceHandler) ListPortals(
 	_ context.Context,
-	_ *connect.Request[sreportalv1.ListPortalsRequest],
-) (*connect.Response[sreportalv1.ListPortalsResponse], error) {
+	_ *sreportalv1.ListPortalsRequest,
+) (*sreportalv1.ListPortalsResponse, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
-	return connect.NewResponse(&sreportalv1.ListPortalsResponse{
+	return &sreportalv1.ListPortalsResponse{
 		Portals: m.portals,
-	}), nil
+	}, nil
 }
 
 // mockImageServiceHandler implements the Image service for testing.
@@ -79,15 +80,15 @@ type mockImageServiceHandler struct {
 
 func (m *mockImageServiceHandler) ListImages(
 	_ context.Context,
-	_ *connect.Request[sreportalv1.ListImagesRequest],
-) (*connect.Response[sreportalv1.ListImagesResponse], error) {
+	_ *sreportalv1.ListImagesRequest,
+) (*sreportalv1.ListImagesResponse, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
-	return connect.NewResponse(&sreportalv1.ListImagesResponse{
+	return &sreportalv1.ListImagesResponse{
 		Images:     m.images,
 		TotalCount: int32(len(m.images)),
-	}), nil
+	}, nil
 }
 
 func TestNewClient(t *testing.T) {
@@ -166,8 +167,10 @@ func TestFetchFQDNs(t *testing.T) {
 		}
 
 		mux := http.NewServeMux()
-		mux.Handle(sreportalv1connect.NewDNSServiceHandler(dnsHandler))
-		mux.Handle(sreportalv1connect.NewPortalServiceHandler(portalHandler))
+		srv := connect.NewServer()
+		sreportalv1connect.RegisterDNSServiceHandler(srv, dnsHandler)
+		sreportalv1connect.RegisterPortalServiceHandler(srv, portalHandler)
+		connecthttp.Mount(mux, srv, connecthttp.WithReadMaxBytes(0))
 
 		server := httptest.NewServer(mux)
 		defer server.Close()
@@ -192,8 +195,10 @@ func TestFetchFQDNs(t *testing.T) {
 		}
 
 		mux := http.NewServeMux()
-		mux.Handle(sreportalv1connect.NewDNSServiceHandler(dnsHandler))
-		mux.Handle(sreportalv1connect.NewPortalServiceHandler(portalHandler))
+		srv := connect.NewServer()
+		sreportalv1connect.RegisterDNSServiceHandler(srv, dnsHandler)
+		sreportalv1connect.RegisterPortalServiceHandler(srv, portalHandler)
+		connecthttp.Mount(mux, srv, connecthttp.WithReadMaxBytes(0))
 
 		server := httptest.NewServer(mux)
 		defer server.Close()
@@ -235,8 +240,10 @@ func TestFetchFQDNs(t *testing.T) {
 		}
 
 		mux := http.NewServeMux()
-		mux.Handle(sreportalv1connect.NewDNSServiceHandler(dnsHandler))
-		mux.Handle(sreportalv1connect.NewPortalServiceHandler(portalHandler))
+		srv := connect.NewServer()
+		sreportalv1connect.RegisterDNSServiceHandler(srv, dnsHandler)
+		sreportalv1connect.RegisterPortalServiceHandler(srv, portalHandler)
+		connecthttp.Mount(mux, srv, connecthttp.WithReadMaxBytes(0))
 
 		server := httptest.NewServer(mux)
 		defer server.Close()
@@ -261,7 +268,7 @@ func TestFetchFQDNs(t *testing.T) {
 
 	t.Run("error from DNS service", func(t *testing.T) {
 		dnsHandler := &mockDNSServiceHandler{
-			err: connect.NewError(connect.CodeInternal, assert.AnError),
+			err: connect.NewError(connect.CodeInternal, assert.AnError.Error()).WithCause(assert.AnError),
 		}
 
 		portalHandler := &mockPortalServiceHandler{
@@ -269,8 +276,10 @@ func TestFetchFQDNs(t *testing.T) {
 		}
 
 		mux := http.NewServeMux()
-		mux.Handle(sreportalv1connect.NewDNSServiceHandler(dnsHandler))
-		mux.Handle(sreportalv1connect.NewPortalServiceHandler(portalHandler))
+		srv := connect.NewServer()
+		sreportalv1connect.RegisterDNSServiceHandler(srv, dnsHandler)
+		sreportalv1connect.RegisterPortalServiceHandler(srv, portalHandler)
+		connecthttp.Mount(mux, srv, connecthttp.WithReadMaxBytes(0))
 
 		server := httptest.NewServer(mux)
 		defer server.Close()
@@ -292,8 +301,10 @@ func TestFetchFQDNs(t *testing.T) {
 		}
 
 		mux := http.NewServeMux()
-		mux.Handle(sreportalv1connect.NewDNSServiceHandler(dnsHandler))
-		mux.Handle(sreportalv1connect.NewPortalServiceHandler(portalHandler))
+		srv := connect.NewServer()
+		sreportalv1connect.RegisterDNSServiceHandler(srv, dnsHandler)
+		sreportalv1connect.RegisterPortalServiceHandler(srv, portalHandler)
+		connecthttp.Mount(mux, srv, connecthttp.WithReadMaxBytes(0))
 
 		server := httptest.NewServer(mux)
 		defer server.Close()
@@ -322,7 +333,9 @@ func TestHealthCheck(t *testing.T) {
 		}
 
 		mux := http.NewServeMux()
-		mux.Handle(sreportalv1connect.NewPortalServiceHandler(portalHandler))
+		srv := connect.NewServer()
+		sreportalv1connect.RegisterPortalServiceHandler(srv, portalHandler)
+		connecthttp.Mount(mux, srv, connecthttp.WithReadMaxBytes(0))
 
 		server := httptest.NewServer(mux)
 		defer server.Close()
@@ -343,11 +356,13 @@ func TestHealthCheck(t *testing.T) {
 
 	t.Run("failed health check - service error", func(t *testing.T) {
 		portalHandler := &mockPortalServiceHandler{
-			err: connect.NewError(connect.CodeUnavailable, assert.AnError),
+			err: connect.NewError(connect.CodeUnavailable, assert.AnError.Error()).WithCause(assert.AnError),
 		}
 
 		mux := http.NewServeMux()
-		mux.Handle(sreportalv1connect.NewPortalServiceHandler(portalHandler))
+		srv := connect.NewServer()
+		sreportalv1connect.RegisterPortalServiceHandler(srv, portalHandler)
+		connecthttp.Mount(mux, srv, connecthttp.WithReadMaxBytes(0))
 
 		server := httptest.NewServer(mux)
 		defer server.Close()
@@ -528,7 +543,9 @@ func TestFetchImages(t *testing.T) {
 		}
 
 		mux := http.NewServeMux()
-		mux.Handle(sreportalv1connect.NewImageServiceHandler(imageHandler))
+		srv := connect.NewServer()
+		sreportalv1connect.RegisterImageServiceHandler(srv, imageHandler)
+		connecthttp.Mount(mux, srv, connecthttp.WithReadMaxBytes(0))
 
 		server := httptest.NewServer(mux)
 		defer server.Close()
@@ -547,11 +564,13 @@ func TestFetchImages(t *testing.T) {
 
 	t.Run("returns error when remote returns failure", func(t *testing.T) {
 		imageHandler := &mockImageServiceHandler{
-			err: connect.NewError(connect.CodeInternal, assert.AnError),
+			err: connect.NewError(connect.CodeInternal, assert.AnError.Error()).WithCause(assert.AnError),
 		}
 
 		mux := http.NewServeMux()
-		mux.Handle(sreportalv1connect.NewImageServiceHandler(imageHandler))
+		srv := connect.NewServer()
+		sreportalv1connect.RegisterImageServiceHandler(srv, imageHandler)
+		connecthttp.Mount(mux, srv, connecthttp.WithReadMaxBytes(0))
 
 		server := httptest.NewServer(mux)
 		defer server.Close()

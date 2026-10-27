@@ -26,7 +26,8 @@ import (
 	"strings"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
 	"github.com/prometheus/client_golang/prometheus"
@@ -153,74 +154,47 @@ func New(cfg Config, c client.Client, operatorConfig *config.OperatorConfig, all
 
 // setupRoutes configures all routes
 func (s *Server) setupRoutes() {
-	// Shared Connect interceptor — logs handler errors at WARN level since
-	// Connect returns HTTP 200 even on coded errors, making them invisible
-	// to the Echo request logger middleware.
-	connectOpts := connect.WithInterceptors(grpc.LoggingInterceptor())
+	// Connect returns HTTP 200 even on coded errors, so the logging interceptor
+	// logs them at WARN — they are invisible to the Echo request logger
+	// middleware. The auth interceptor only guards auth.WriteProcedures.
+	interceptors := []connect.ServerInterceptor{grpc.LoggingInterceptor()}
+	if s.config.AuthChain != nil {
+		interceptors = append(interceptors, auth.AuthInterceptor(s.config.AuthChain))
+	}
 
-	// Mount Connect handlers for gRPC/Connect protocol
-	dnsService := grpc.NewDNSService(s.config.FQDNReader, s.config.PortalReader)
-	dnsPath, dnsHandler := sreportalv1connect.NewDNSServiceHandler(dnsService, connectOpts)
-	s.echo.Any(dnsPath+"*", echo.WrapHandler(dnsHandler))
-
-	portalService := grpc.NewPortalService(s.config.PortalReader)
-	portalPath, portalHandler := sreportalv1connect.NewPortalServiceHandler(portalService, connectOpts)
-	s.echo.Any(portalPath+"*", echo.WrapHandler(portalHandler))
-
-	alertmanagerService := grpc.NewAlertmanagerService(s.config.AlertmanagerReader, s.config.PortalReader)
-	amPath, amHandler := sreportalv1connect.NewAlertmanagerServiceHandler(alertmanagerService, connectOpts)
-	s.echo.Any(amPath+"*", echo.WrapHandler(amHandler))
-
-	netpolService := grpc.NewNetworkPolicyService(s.config.FlowGraphReader, s.config.PortalReader)
-	netpolPath, netpolHandler := sreportalv1connect.NewNetworkPolicyServiceHandler(netpolService, connectOpts)
-	s.echo.Any(netpolPath+"*", echo.WrapHandler(netpolHandler))
-
-	versionService := grpc.NewVersionService()
-	versionPath, versionHandler := sreportalv1connect.NewVersionServiceHandler(versionService, connectOpts)
-	s.echo.Any(versionPath+"*", echo.WrapHandler(versionHandler))
-
-	emojiService := grpc.NewEmojiService(s.config.EmojiReader)
-	emojiPath, emojiHandler := sreportalv1connect.NewEmojiServiceHandler(emojiService, connectOpts)
-	s.echo.Any(emojiPath+"*", echo.WrapHandler(emojiHandler))
-
+	srv := connect.NewServer(interceptors...)
+	sreportalv1connect.RegisterDNSServiceHandler(srv, grpc.NewDNSService(s.config.FQDNReader, s.config.PortalReader))
+	sreportalv1connect.RegisterPortalServiceHandler(srv, grpc.NewPortalService(s.config.PortalReader))
+	sreportalv1connect.RegisterAlertmanagerServiceHandler(srv, grpc.NewAlertmanagerService(s.config.AlertmanagerReader, s.config.PortalReader))
+	sreportalv1connect.RegisterNetworkPolicyServiceHandler(srv, grpc.NewNetworkPolicyService(s.config.FlowGraphReader, s.config.PortalReader))
+	sreportalv1connect.RegisterVersionServiceHandler(srv, grpc.NewVersionService())
+	sreportalv1connect.RegisterEmojiServiceHandler(srv, grpc.NewEmojiService(s.config.EmojiReader))
 	if s.config.ImageReader != nil {
-		imageService := grpc.NewImageService(s.config.ImageReader, s.config.PortalReader)
-		imagePath, imageHandler := sreportalv1connect.NewImageServiceHandler(imageService, connectOpts)
-		s.echo.Any(imagePath+"*", echo.WrapHandler(imageHandler))
+		sreportalv1connect.RegisterImageServiceHandler(srv, grpc.NewImageService(s.config.ImageReader, s.config.PortalReader))
 	}
-
 	if s.config.Gatherer != nil {
-		metricsService := grpc.NewMetricsService(s.config.Gatherer)
-		metricsPath, metricsHandler := sreportalv1connect.NewMetricsServiceHandler(metricsService, connectOpts)
-		s.echo.Any(metricsPath+"*", echo.WrapHandler(metricsHandler))
+		sreportalv1connect.RegisterMetricsServiceHandler(srv, grpc.NewMetricsService(s.config.Gatherer))
 	}
-
 	if s.config.ReleaseReader != nil {
-		releaseGRPC := grpc.NewReleaseService(s.config.ReleaseReader, s.config.ReleaseService, s.config.ReleaseTTL, s.config.ReleaseAllowedTypes, s.config.PortalReader)
-		releaseOpts := []connect.HandlerOption{connectOpts}
-		if s.config.AuthChain != nil {
-			releaseOpts = append(releaseOpts, connect.WithInterceptors(auth.AuthInterceptor(s.config.AuthChain)))
-		}
-		releasePath, releaseHandler := sreportalv1connect.NewReleaseServiceHandler(releaseGRPC, releaseOpts...)
-		s.echo.Any(releasePath+"*", echo.WrapHandler(releaseHandler))
+		sreportalv1connect.RegisterReleaseServiceHandler(srv, grpc.NewReleaseService(
+			s.config.ReleaseReader, s.config.ReleaseService, s.config.ReleaseTTL, s.config.ReleaseAllowedTypes, s.config.PortalReader,
+		))
 	}
-
-	// Status page service (read + write, write endpoints are auth-protected)
 	if s.config.ComponentReader != nil {
-		statusService := grpc.NewStatusService(
+		sreportalv1connect.RegisterStatusServiceHandler(srv, grpc.NewStatusService(
 			s.config.ComponentReader,
 			s.config.MaintenanceReader,
 			s.config.IncidentReader,
 			s.config.StatusPageService,
 			s.config.PortalReader,
-		)
-		statusOpts := []connect.HandlerOption{connectOpts}
-		if s.config.AuthChain != nil {
-			statusOpts = append(statusOpts, connect.WithInterceptors(auth.AuthInterceptor(s.config.AuthChain)))
-		}
-		statusPath, statusHandler := sreportalv1connect.NewStatusServiceHandler(statusService, statusOpts...)
-		s.echo.Any(statusPath+"*", echo.WrapHandler(statusHandler))
+		))
 	}
+
+	// Connect routes live on a standard mux; Echo forwards the whole
+	// /sreportal.v1.* namespace to it and keeps routing SPA, swagger and MCP.
+	connectMux := http.NewServeMux()
+	connecthttp.Mount(connectMux, srv)
+	s.echo.Any("/sreportal.v1.*", echo.WrapHandler(connectMux))
 
 	// Swagger UI — serve embedded OpenAPI files at /swagger
 	swaggerFS, _ := fs.Sub(openapi.Swagger, "swagger")

@@ -19,7 +19,7 @@ package grpc
 import (
 	"context"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/prometheus/client_golang/prometheus"
 
 	domainmetrics "github.com/golgoth31/sreportal/internal/domain/metrics"
@@ -41,11 +41,11 @@ func NewMetricsService(g prometheus.Gatherer) *MetricsService {
 // ListMetrics returns current values of sreportal custom metrics.
 func (s *MetricsService) ListMetrics(
 	_ context.Context,
-	req *connect.Request[metricsv1.ListMetricsRequest],
-) (*connect.Response[metricsv1.ListMetricsResponse], error) {
-	families, err := domainmetrics.Gather(s.gatherer, req.Msg.Subsystem, req.Msg.Search)
+	req *metricsv1.ListMetricsRequest,
+) (*metricsv1.ListMetricsResponse, error) {
+	families, err := domainmetrics.Gather(s.gatherer, req.Subsystem, req.Search)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, wrapError(connect.CodeInternal, err)
 	}
 
 	protoFamilies := make([]*metricsv1.MetricFamily, 0, len(families))
@@ -53,9 +53,9 @@ func (s *MetricsService) ListMetrics(
 		protoFamilies = append(protoFamilies, toProtoMetricFamily(f))
 	}
 
-	return connect.NewResponse(&metricsv1.ListMetricsResponse{
+	return &metricsv1.ListMetricsResponse{
 		Families: protoFamilies,
-	}), nil
+	}, nil
 }
 
 func toProtoMetricFamily(f domainmetrics.MetricFamily) *metricsv1.MetricFamily {

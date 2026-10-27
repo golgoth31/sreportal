@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -70,16 +70,16 @@ func TestAddRelease_CreatesEntry(t *testing.T) {
 	grpcSvc := svcgrpc.NewReleaseService(store, svc, 30*24*time.Hour, nil, nil)
 
 	date := time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC)
-	resp, err := grpcSvc.AddRelease(ctx, connect.NewRequest(&releasev1.ReleaseEntry{
+	resp, err := grpcSvc.AddRelease(ctx, &releasev1.ReleaseEntry{
 		Type:    tKindDeployment,
 		Version: tVerV1,
 		Origin:  tNameCICD,
 		Date:    timestamppb.New(date),
-	}))
+	})
 
 	require.NoError(t, err)
-	assert.Equal(t, tDate20260321, resp.Msg.Day)
-	assert.Equal(t, int32(1), resp.Msg.EntryCount)
+	assert.Equal(t, tDate20260321, resp.Day)
+	assert.Equal(t, int32(1), resp.EntryCount)
 }
 
 func TestAddRelease_EmptyType(t *testing.T) {
@@ -90,12 +90,12 @@ func TestAddRelease_EmptyType(t *testing.T) {
 	store := releasereadstore.NewReleaseStore()
 	grpcSvc := svcgrpc.NewReleaseService(store, svc, 30*24*time.Hour, nil, nil)
 
-	_, err := grpcSvc.AddRelease(ctx, connect.NewRequest(&releasev1.ReleaseEntry{
+	_, err := grpcSvc.AddRelease(ctx, &releasev1.ReleaseEntry{
 		Type:    "",
 		Version: tVerV1,
 		Origin:  tNameCICD,
 		Date:    timestamppb.New(time.Now()),
-	}))
+	})
 
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
@@ -110,7 +110,7 @@ func TestAddRelease_WithOptionalFields(t *testing.T) {
 	grpcSvc := svcgrpc.NewReleaseService(store, svc, 30*24*time.Hour, nil, nil)
 
 	date := time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC)
-	resp, err := grpcSvc.AddRelease(ctx, connect.NewRequest(&releasev1.ReleaseEntry{
+	resp, err := grpcSvc.AddRelease(ctx, &releasev1.ReleaseEntry{
 		Type:    tKindDeployment,
 		Version: tVerV1,
 		Origin:  tNameCICD,
@@ -118,11 +118,11 @@ func TestAddRelease_WithOptionalFields(t *testing.T) {
 		Author:  "alice",
 		Message: "fix login bug",
 		Link:    "https://github.com/example/repo/pull/42",
-	}))
+	})
 
 	require.NoError(t, err)
-	assert.Equal(t, tDate20260321, resp.Msg.Day)
-	assert.Equal(t, int32(1), resp.Msg.EntryCount)
+	assert.Equal(t, tDate20260321, resp.Day)
+	assert.Equal(t, int32(1), resp.EntryCount)
 }
 
 func TestListReleases_ReturnsEntries(t *testing.T) {
@@ -134,15 +134,15 @@ func TestListReleases_ReturnsEntries(t *testing.T) {
 	})
 	grpcSvc := svcgrpc.NewReleaseService(store, nil, 30*24*time.Hour, nil, nil)
 
-	resp, err := grpcSvc.ListReleases(ctx, connect.NewRequest(&releasev1.ListReleasesRequest{
+	resp, err := grpcSvc.ListReleases(ctx, &releasev1.ListReleasesRequest{
 		Day: tDate20260321,
-	}))
+	})
 
 	require.NoError(t, err)
-	assert.Equal(t, tDate20260321, resp.Msg.Day)
-	assert.Len(t, resp.Msg.Entries, 2)
-	assert.Equal(t, tKindDeployment, resp.Msg.Entries[0].Type)
-	assert.Equal(t, tStatusRollback, resp.Msg.Entries[1].Type)
+	assert.Equal(t, tDate20260321, resp.Day)
+	assert.Len(t, resp.Entries, 2)
+	assert.Equal(t, tKindDeployment, resp.Entries[0].Type)
+	assert.Equal(t, tStatusRollback, resp.Entries[1].Type)
 }
 
 func TestListReleases_EmptyDayReturnsLatest(t *testing.T) {
@@ -156,13 +156,13 @@ func TestListReleases_EmptyDayReturnsLatest(t *testing.T) {
 	})
 	grpcSvc := svcgrpc.NewReleaseService(store, nil, 30*24*time.Hour, nil, nil)
 
-	resp, err := grpcSvc.ListReleases(ctx, connect.NewRequest(&releasev1.ListReleasesRequest{}))
+	resp, err := grpcSvc.ListReleases(ctx, &releasev1.ListReleasesRequest{})
 
 	require.NoError(t, err)
-	assert.Equal(t, tDate20260321, resp.Msg.Day)
-	assert.Len(t, resp.Msg.Entries, 1)
-	assert.Equal(t, "2026-03-20", resp.Msg.PreviousDay)
-	assert.Empty(t, resp.Msg.NextDay)
+	assert.Equal(t, tDate20260321, resp.Day)
+	assert.Len(t, resp.Entries, 1)
+	assert.Equal(t, "2026-03-20", resp.PreviousDay)
+	assert.Empty(t, resp.NextDay)
 }
 
 func TestListReleases_DayNavigation(t *testing.T) {
@@ -179,14 +179,14 @@ func TestListReleases_DayNavigation(t *testing.T) {
 	})
 	grpcSvc := svcgrpc.NewReleaseService(store, nil, 30*24*time.Hour, nil, nil)
 
-	resp, err := grpcSvc.ListReleases(ctx, connect.NewRequest(&releasev1.ListReleasesRequest{
+	resp, err := grpcSvc.ListReleases(ctx, &releasev1.ListReleasesRequest{
 		Day: "2026-03-20",
-	}))
+	})
 
 	require.NoError(t, err)
-	assert.Equal(t, "2026-03-20", resp.Msg.Day)
-	assert.Equal(t, "2026-03-19", resp.Msg.PreviousDay)
-	assert.Equal(t, tDate20260321, resp.Msg.NextDay)
+	assert.Equal(t, "2026-03-20", resp.Day)
+	assert.Equal(t, "2026-03-19", resp.PreviousDay)
+	assert.Equal(t, tDate20260321, resp.NextDay)
 }
 
 func TestAddRelease_WithoutVersion(t *testing.T) {
@@ -198,15 +198,15 @@ func TestAddRelease_WithoutVersion(t *testing.T) {
 	grpcSvc := svcgrpc.NewReleaseService(store, svc, 30*24*time.Hour, nil, nil)
 
 	date := time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC)
-	resp, err := grpcSvc.AddRelease(ctx, connect.NewRequest(&releasev1.ReleaseEntry{
+	resp, err := grpcSvc.AddRelease(ctx, &releasev1.ReleaseEntry{
 		Type:   tKindDeployment,
 		Origin: tNameCICD,
 		Date:   timestamppb.New(date),
-	}))
+	})
 
 	require.NoError(t, err)
-	assert.Equal(t, tDate20260321, resp.Msg.Day)
-	assert.Equal(t, int32(1), resp.Msg.EntryCount)
+	assert.Equal(t, tDate20260321, resp.Day)
+	assert.Equal(t, int32(1), resp.EntryCount)
 }
 
 func TestAddRelease_TypeNotAllowed(t *testing.T) {
@@ -219,12 +219,12 @@ func TestAddRelease_TypeNotAllowed(t *testing.T) {
 		{Name: tKindDeployment}, {Name: tStatusRollback},
 	}, nil)
 
-	_, err := grpcSvc.AddRelease(ctx, connect.NewRequest(&releasev1.ReleaseEntry{
+	_, err := grpcSvc.AddRelease(ctx, &releasev1.ReleaseEntry{
 		Type:    "hotfix",
 		Version: tVerV1,
 		Origin:  tNameCICD,
 		Date:    timestamppb.New(time.Now()),
-	}))
+	})
 
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
@@ -242,15 +242,15 @@ func TestAddRelease_TypeAllowed(t *testing.T) {
 	}, nil)
 
 	date := time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC)
-	resp, err := grpcSvc.AddRelease(ctx, connect.NewRequest(&releasev1.ReleaseEntry{
+	resp, err := grpcSvc.AddRelease(ctx, &releasev1.ReleaseEntry{
 		Type:    tKindDeployment,
 		Version: tVerV1,
 		Origin:  tNameCICD,
 		Date:    timestamppb.New(date),
-	}))
+	})
 
 	require.NoError(t, err)
-	assert.Equal(t, tDate20260321, resp.Msg.Day)
+	assert.Equal(t, tDate20260321, resp.Day)
 }
 
 func TestListReleaseDays_ReturnsDaysAndTTL(t *testing.T) {
@@ -264,9 +264,9 @@ func TestListReleaseDays_ReturnsDaysAndTTL(t *testing.T) {
 	})
 	grpcSvc := svcgrpc.NewReleaseService(store, nil, 30*24*time.Hour, nil, nil)
 
-	resp, err := grpcSvc.ListReleaseDays(ctx, connect.NewRequest(&releasev1.ListReleaseDaysRequest{}))
+	resp, err := grpcSvc.ListReleaseDays(ctx, &releasev1.ListReleaseDaysRequest{})
 
 	require.NoError(t, err)
-	assert.Equal(t, []string{"2026-03-19", tDate20260321}, resp.Msg.Days)
-	assert.Equal(t, int32(30), resp.Msg.TtlDays)
+	assert.Equal(t, []string{"2026-03-19", tDate20260321}, resp.Days)
+	assert.Equal(t, int32(30), resp.TtlDays)
 }

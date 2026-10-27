@@ -6,34 +6,43 @@
   },
   "tags": [
     {
-      "name": "AlertmanagerService"
+      "name": "AlertmanagerService",
+      "description": "AlertmanagerService provides access to Alertmanager alert data"
     },
     {
-      "name": "DNSService"
+      "name": "DNSService",
+      "description": "DNSService provides DNS record management and discovery"
     },
     {
-      "name": "EmojiService"
+      "name": "EmojiService",
+      "description": "EmojiService provides custom emoji resolution from external sources (e.g. Slack)"
     },
     {
       "name": "ImageService"
     },
     {
-      "name": "MetricsService"
+      "name": "MetricsService",
+      "description": "MetricsService provides access to Prometheus metrics"
     },
     {
-      "name": "NetworkPolicyService"
+      "name": "NetworkPolicyService",
+      "description": "NetworkPolicyService provides access to Kubernetes NetworkPolicy and FQDNNetworkPolicy resources"
     },
     {
-      "name": "PortalService"
+      "name": "PortalService",
+      "description": "PortalService provides portal management"
     },
     {
-      "name": "ReleaseService"
+      "name": "ReleaseService",
+      "description": "ReleaseService provides access to release tracking data"
     },
     {
-      "name": "StatusService"
+      "name": "StatusService",
+      "description": "StatusService provides access to platform status page data\n\n--- Read RPCs (public) ---"
     },
     {
-      "name": "VersionService"
+      "name": "VersionService",
+      "description": "VersionService provides build version information"
     }
   ],
   "consumes": [
@@ -852,7 +861,7 @@
           "type": "string"
         }
       },
-      "additionalProperties": {}
+      "additionalProperties": true
     },
     "rpcStatus": {
       "type": "object",
@@ -1064,7 +1073,7 @@
         "COMPONENT_STATUS_MAINTENANCE"
       ],
       "default": "COMPONENT_STATUS_UNSPECIFIED",
-      "title": "ComponentStatus describes the operational status of a platform component"
+      "description": "ComponentStatus describes the operational status of a platform component"
     },
     "v1CreateComponentRequest": {
       "type": "object",
@@ -1432,7 +1441,7 @@
         "INCIDENT_PHASE_RESOLVED"
       ],
       "default": "INCIDENT_PHASE_UNSPECIFIED",
-      "title": "IncidentPhase describes the resolution stage of an incident"
+      "description": "IncidentPhase describes the resolution stage of an incident"
     },
     "v1IncidentResource": {
       "type": "object",
@@ -1489,7 +1498,7 @@
         "INCIDENT_SEVERITY_MINOR"
       ],
       "default": "INCIDENT_SEVERITY_UNSPECIFIED",
-      "title": "IncidentSeverity describes how severe an incident is"
+      "description": "IncidentSeverity describes how severe an incident is"
     },
     "v1IncidentUpdate": {
       "type": "object",
@@ -1912,7 +1921,7 @@
         "MAINTENANCE_PHASE_COMPLETED"
       ],
       "default": "MAINTENANCE_PHASE_UNSPECIFIED",
-      "title": "MaintenancePhase describes the lifecycle of a maintenance window"
+      "description": "MaintenancePhase describes the lifecycle of a maintenance window"
     },
     "v1MaintenanceResource": {
       "type": "object",
@@ -2444,7 +2453,7 @@
         "UPDATE_TYPE_DELETED"
       ],
       "default": "UPDATE_TYPE_UNSPECIFIED",
-      "title": "UpdateType represents the type of update"
+      "description": "UpdateType represents the type of update"
     },
     "v1WorkloadRef": {
       "type": "object",

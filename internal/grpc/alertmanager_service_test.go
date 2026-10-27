@@ -21,7 +21,6 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -66,11 +65,11 @@ func TestListAlerts_ReturnsAlertmanagerResources(t *testing.T) {
 
 	svc := svcgrpc.NewAlertmanagerService(store, nil)
 
-	resp, err := svc.ListAlerts(ctx, connect.NewRequest(&alertmanagerv1.ListAlertsRequest{}))
+	resp, err := svc.ListAlerts(ctx, &alertmanagerv1.ListAlertsRequest{})
 	require.NoError(t, err)
-	require.Len(t, resp.Msg.Alertmanagers, 1)
+	require.Len(t, resp.Alertmanagers, 1)
 
-	res := resp.Msg.Alertmanagers[0]
+	res := resp.Alertmanagers[0]
 	assert.Equal(t, "am-prod", res.Name)
 	assert.Equal(t, "monitoring", res.Namespace)
 	assert.Equal(t, tPortalMain, res.PortalRef)
@@ -98,10 +97,10 @@ func TestListAlerts_FiltersByPortal(t *testing.T) {
 
 	svc := svcgrpc.NewAlertmanagerService(store, nil)
 
-	resp, err := svc.ListAlerts(ctx, connect.NewRequest(&alertmanagerv1.ListAlertsRequest{Portal: tPortalMain}))
+	resp, err := svc.ListAlerts(ctx, &alertmanagerv1.ListAlertsRequest{Portal: tPortalMain})
 	require.NoError(t, err)
-	require.Len(t, resp.Msg.Alertmanagers, 1)
-	assert.Equal(t, "am-main", resp.Msg.Alertmanagers[0].Name)
+	require.Len(t, resp.Alertmanagers, 1)
+	assert.Equal(t, "am-main", resp.Alertmanagers[0].Name)
 }
 
 func TestListAlerts_FiltersBySearch(t *testing.T) {
@@ -120,11 +119,11 @@ func TestListAlerts_FiltersBySearch(t *testing.T) {
 
 	svc := svcgrpc.NewAlertmanagerService(store, nil)
 
-	resp, err := svc.ListAlerts(ctx, connect.NewRequest(&alertmanagerv1.ListAlertsRequest{Search: "cpu"}))
+	resp, err := svc.ListAlerts(ctx, &alertmanagerv1.ListAlertsRequest{Search: "cpu"})
 	require.NoError(t, err)
-	require.Len(t, resp.Msg.Alertmanagers, 1)
-	require.Len(t, resp.Msg.Alertmanagers[0].Alerts, 1)
-	assert.Equal(t, tFingerprintA, resp.Msg.Alertmanagers[0].Alerts[0].Fingerprint)
+	require.Len(t, resp.Alertmanagers, 1)
+	require.Len(t, resp.Alertmanagers[0].Alerts, 1)
+	assert.Equal(t, tFingerprintA, resp.Alertmanagers[0].Alerts[0].Fingerprint)
 }
 
 func TestListAlerts_FiltersByState(t *testing.T) {
@@ -143,11 +142,11 @@ func TestListAlerts_FiltersByState(t *testing.T) {
 
 	svc := svcgrpc.NewAlertmanagerService(store, nil)
 
-	resp, err := svc.ListAlerts(ctx, connect.NewRequest(&alertmanagerv1.ListAlertsRequest{State: "suppressed"}))
+	resp, err := svc.ListAlerts(ctx, &alertmanagerv1.ListAlertsRequest{State: "suppressed"})
 	require.NoError(t, err)
-	require.Len(t, resp.Msg.Alertmanagers, 1)
-	require.Len(t, resp.Msg.Alertmanagers[0].Alerts, 1)
-	assert.Equal(t, tFingerprintB, resp.Msg.Alertmanagers[0].Alerts[0].Fingerprint)
+	require.Len(t, resp.Alertmanagers, 1)
+	require.Len(t, resp.Alertmanagers[0].Alerts, 1)
+	assert.Equal(t, tFingerprintB, resp.Alertmanagers[0].Alerts[0].Fingerprint)
 }
 
 func TestListAlerts_UsesSpecRemoteURL(t *testing.T) {
@@ -166,10 +165,10 @@ func TestListAlerts_UsesSpecRemoteURL(t *testing.T) {
 
 	svc := svcgrpc.NewAlertmanagerService(store, nil)
 
-	resp, err := svc.ListAlerts(ctx, connect.NewRequest(&alertmanagerv1.ListAlertsRequest{}))
+	resp, err := svc.ListAlerts(ctx, &alertmanagerv1.ListAlertsRequest{})
 	require.NoError(t, err)
-	require.Len(t, resp.Msg.Alertmanagers, 1)
-	assert.Equal(t, "https://real-alertmanager.example.com", resp.Msg.Alertmanagers[0].RemoteUrl)
+	require.Len(t, resp.Alertmanagers, 1)
+	assert.Equal(t, "https://real-alertmanager.example.com", resp.Alertmanagers[0].RemoteUrl)
 }
 
 func TestListAlerts_WhenNoAlertmanagers_ReturnsEmpty(t *testing.T) {
@@ -177,7 +176,7 @@ func TestListAlerts_WhenNoAlertmanagers_ReturnsEmpty(t *testing.T) {
 	store := amstore.NewAlertmanagerStore()
 	svc := svcgrpc.NewAlertmanagerService(store, nil)
 
-	resp, err := svc.ListAlerts(ctx, connect.NewRequest(&alertmanagerv1.ListAlertsRequest{}))
+	resp, err := svc.ListAlerts(ctx, &alertmanagerv1.ListAlertsRequest{})
 	require.NoError(t, err)
-	assert.Empty(t, resp.Msg.Alertmanagers)
+	assert.Empty(t, resp.Alertmanagers)
 }

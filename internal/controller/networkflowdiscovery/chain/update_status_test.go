@@ -63,10 +63,10 @@ var _ = Describe("UpdateStatusHandler", func() {
 
 			nodes := []sreportalv1alpha1.FlowNode{
 				{ID: "service:core:api", Label: tNameAPI, Namespace: tCore, NodeType: tNodeTypeService, Group: tCore},
-				{ID: "service:core:web", Label: "web", Namespace: tCore, NodeType: tNodeTypeService, Group: tCore},
+				{ID: tServiceCoreWeb, Label: "web", Namespace: tCore, NodeType: tNodeTypeService, Group: tCore},
 			}
 			edges := []sreportalv1alpha1.FlowEdge{
-				{From: "service:core:api", To: "service:core:web", EdgeType: "internal"},
+				{From: "service:core:api", To: tServiceCoreWeb, EdgeType: "internal"},
 			}
 
 			rc := &reconciler.ReconcileContext[*sreportalv1alpha1.NetworkFlowDiscovery, nfdchain.ChainData]{

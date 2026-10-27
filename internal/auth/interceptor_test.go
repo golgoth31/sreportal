@@ -23,7 +23,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -52,20 +53,28 @@ func setupReleaseServer(t *testing.T, chain *auth.Chain) sreportalv1connect.Rele
 	reader := readstorerelease.NewReleaseStore()
 	grpcSvc := svcgrpc.NewReleaseService(reader, svc, 30*24*time.Hour, nil, nil)
 
-	var opts []connect.HandlerOption
+	var interceptors []connect.ServerInterceptor
 	if chain != nil {
-		opts = append(opts, connect.WithInterceptors(auth.AuthInterceptor(chain)))
+		interceptors = []connect.ServerInterceptor{auth.AuthInterceptor(chain)}
 	}
 
 	mux := http.NewServeMux()
-	path, handler := sreportalv1connect.NewReleaseServiceHandler(grpcSvc, opts...)
-	mux.Handle(path, handler)
+	srv := connect.NewServer(interceptors...)
+	sreportalv1connect.RegisterReleaseServiceHandler(srv, grpcSvc)
+	connecthttp.Mount(mux, srv, connecthttp.WithReadMaxBytes(0))
 
 	server := httptest.NewServer(mux)
 	t.Cleanup(server.Close)
 
-	client := sreportalv1connect.NewReleaseServiceClient(server.Client(), server.URL)
-	return client
+	return sreportalv1connect.NewReleaseServiceClient(connect.NewClient(
+		connecthttp.NewTransport(server.Client(), server.URL, connecthttp.WithReadMaxBytes(0)),
+	))
+}
+
+func clientCtxWithHeader(key, value string) context.Context {
+	ctx, info := connect.NewClientContext(context.Background())
+	info.RequestHeader().Set(key, value)
+	return ctx
 }
 
 func TestInterceptor_ProtectedEndpoint_NoAuth_Rejected(t *testing.T) {
@@ -74,12 +83,12 @@ func TestInterceptor_ProtectedEndpoint_NoAuth_Rejected(t *testing.T) {
 	)
 	client := setupReleaseServer(t, chain)
 
-	_, err := client.AddRelease(context.Background(), connect.NewRequest(&releasev1.ReleaseEntry{
+	_, err := client.AddRelease(context.Background(), &releasev1.ReleaseEntry{
 		Type:    tKindDeployment,
 		Version: tVerV1,
 		Origin:  "ci",
 		Date:    timestamppb.New(time.Now()),
-	}))
+	})
 
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeUnauthenticated, connect.CodeOf(err))
@@ -91,17 +100,14 @@ func TestInterceptor_ProtectedEndpoint_ValidAuth_Passes(t *testing.T) {
 	)
 	client := setupReleaseServer(t, chain)
 
-	req := connect.NewRequest(&releasev1.ReleaseEntry{
+	resp, err := client.AddRelease(clientCtxWithHeader("X-API-Key", "my-secret-key"), &releasev1.ReleaseEntry{
 		Type:    tKindDeployment,
 		Version: tVerV1,
 		Origin:  "ci",
 		Date:    timestamppb.New(time.Now()),
 	})
-	req.Header().Set("X-API-Key", "my-secret-key")
-
-	resp, err := client.AddRelease(context.Background(), req)
 	require.NoError(t, err)
-	assert.NotEmpty(t, resp.Msg.Day)
+	assert.NotEmpty(t, resp.Day)
 }
 
 func TestInterceptor_ReadEndpoint_NoAuth_Passes(t *testing.T) {
@@ -110,25 +116,23 @@ func TestInterceptor_ReadEndpoint_NoAuth_Passes(t *testing.T) {
 	)
 	client := setupReleaseServer(t, chain)
 
-	// ListReleaseDays is a read endpoint, should NOT require auth
-	resp, err := client.ListReleaseDays(context.Background(), connect.NewRequest(&releasev1.ListReleaseDaysRequest{}))
+	resp, err := client.ListReleaseDays(context.Background(), &releasev1.ListReleaseDaysRequest{})
 	require.NoError(t, err)
-	assert.NotNil(t, resp.Msg)
+	assert.NotNil(t, resp)
 }
 
 func TestInterceptor_NoChain_NoProcedureProtection(t *testing.T) {
 	client := setupReleaseServer(t, nil)
 
-	// Without auth interceptor, AddRelease should work without credentials
 	date := time.Date(2026, 3, 25, 10, 0, 0, 0, time.UTC)
-	resp, err := client.AddRelease(context.Background(), connect.NewRequest(&releasev1.ReleaseEntry{
+	resp, err := client.AddRelease(context.Background(), &releasev1.ReleaseEntry{
 		Type:    tKindDeployment,
 		Version: tVerV1,
 		Origin:  "ci",
 		Date:    timestamppb.New(date),
-	}))
+	})
 	require.NoError(t, err)
-	assert.Equal(t, "2026-03-25", resp.Msg.Day)
+	assert.Equal(t, "2026-03-25", resp.Day)
 }
 
 func TestInterceptor_APIKey_OnProtectedEndpoint(t *testing.T) {
@@ -137,29 +141,25 @@ func TestInterceptor_APIKey_OnProtectedEndpoint(t *testing.T) {
 	)
 	client := setupReleaseServer(t, chain)
 
-	req := connect.NewRequest(&releasev1.ReleaseEntry{
+	resp, err := client.AddRelease(clientCtxWithHeader("X-Custom-Auth", "my-secret-key"), &releasev1.ReleaseEntry{
 		Type:    tKindDeployment,
 		Version: tVerV1,
 		Origin:  "ci",
 		Date:    timestamppb.New(time.Now()),
 	})
-	req.Header().Set("X-Custom-Auth", "my-secret-key")
-
-	resp, err := client.AddRelease(context.Background(), req)
 	require.NoError(t, err)
-	assert.NotEmpty(t, resp.Msg.Day)
+	assert.NotEmpty(t, resp.Day)
 }
 
 func TestInterceptor_ListReleases_NoAuth_Passes(t *testing.T) {
-	// Verify ListReleases (also a read endpoint) passes without auth
 	chain := auth.NewChain(
 		auth.NewAPIKeyAuthenticator("", "my-secret-key"),
 	)
 	client := setupReleaseServer(t, chain)
 
-	resp, err := client.ListReleases(context.Background(), connect.NewRequest(&releasev1.ListReleasesRequest{
+	resp, err := client.ListReleases(context.Background(), &releasev1.ListReleasesRequest{
 		Day: "2026-03-25",
-	}))
+	})
 	require.NoError(t, err)
-	assert.NotNil(t, resp.Msg)
+	assert.NotNil(t, resp)
 }

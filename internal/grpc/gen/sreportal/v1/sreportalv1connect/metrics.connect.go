@@ -5,107 +5,95 @@
 package sreportalv1connect
 
 import (
-	connect "connectrpc.com/connect"
+	connect "connectrpc.com/connect/v2"
 	context "context"
-	errors "errors"
 	v1 "github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1"
-	http "net/http"
-	strings "strings"
+	sync "sync"
 )
-
-// This is a compile-time assertion to ensure that this generated file and the connect package are
-// compatible. If you get a compiler error that this constant is not defined, this code was
-// generated with a version of connect newer than the one compiled into your binary. You can fix the
-// problem by either regenerating this code with an older version of connect or updating the connect
-// version compiled into your binary.
-const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// MetricsServiceName is the fully-qualified name of the MetricsService service.
 	MetricsServiceName = "sreportal.v1.MetricsService"
 )
 
-// These constants are the fully-qualified names of the RPCs defined in this package. They're
-// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+// These constants are the procedure names of the RPCs defined in this package. They're exposed at
+// runtime as Spec.Procedure and as the final two segments of the HTTP route.
 //
 // Note that these are different from the fully-qualified method names used by
 // google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// MetricsServiceListMetricsProcedure is the fully-qualified name of the MetricsService's
-	// ListMetrics RPC.
+	// MetricsServiceListMetricsProcedure is the procedure name of the MetricsService's ListMetrics RPC.
 	MetricsServiceListMetricsProcedure = "/sreportal.v1.MetricsService/ListMetrics"
+)
+
+var (
+	metricsServiceListMetricsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_sreportal_v1_metrics_proto.Services().ByName("MetricsService").Methods().ByName("ListMetrics"),
+			Procedure:  MetricsServiceListMetricsProcedure,
+		}
+	})
 )
 
 // MetricsServiceClient is a client for the sreportal.v1.MetricsService service.
 type MetricsServiceClient interface {
 	// ListMetrics returns current values of sreportal custom metrics
-	ListMetrics(context.Context, *connect.Request[v1.ListMetricsRequest]) (*connect.Response[v1.ListMetricsResponse], error)
+	ListMetrics(context.Context, *v1.ListMetricsRequest) (*v1.ListMetricsResponse, error)
 }
 
-// NewMetricsServiceClient constructs a client for the sreportal.v1.MetricsService service. By
-// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
-// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
-// connect.WithGRPC() or connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewMetricsServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) MetricsServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	metricsServiceMethods := v1.File_sreportal_v1_metrics_proto.Services().ByName("MetricsService").Methods()
-	return &metricsServiceClient{
-		listMetrics: connect.NewClient[v1.ListMetricsRequest, v1.ListMetricsResponse](
-			httpClient,
-			baseURL+MetricsServiceListMetricsProcedure,
-			connect.WithSchema(metricsServiceMethods.ByName("ListMetrics")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// metricsServiceClient implements MetricsServiceClient.
-type metricsServiceClient struct {
-	listMetrics *connect.Client[v1.ListMetricsRequest, v1.ListMetricsResponse]
-}
-
-// ListMetrics calls sreportal.v1.MetricsService.ListMetrics.
-func (c *metricsServiceClient) ListMetrics(ctx context.Context, req *connect.Request[v1.ListMetricsRequest]) (*connect.Response[v1.ListMetricsResponse], error) {
-	return c.listMetrics.CallUnary(ctx, req)
+// NewMetricsServiceClient constructs a client for the sreportal.v1.MetricsService service. Multiple
+// service clients may share a single connect.Client.
+func NewMetricsServiceClient(client *connect.Client) MetricsServiceClient {
+	return &metricsServiceClient{client: client}
 }
 
 // MetricsServiceHandler is an implementation of the sreportal.v1.MetricsService service.
 type MetricsServiceHandler interface {
 	// ListMetrics returns current values of sreportal custom metrics
-	ListMetrics(context.Context, *connect.Request[v1.ListMetricsRequest]) (*connect.Response[v1.ListMetricsResponse], error)
+	ListMetrics(context.Context, *v1.ListMetricsRequest) (*v1.ListMetricsResponse, error)
 }
 
-// NewMetricsServiceHandler builds an HTTP handler from the service implementation. It returns the
-// path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewMetricsServiceHandler(svc MetricsServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	metricsServiceMethods := v1.File_sreportal_v1_metrics_proto.Services().ByName("MetricsService").Methods()
-	metricsServiceListMetricsHandler := connect.NewUnaryHandler(
-		MetricsServiceListMetricsProcedure,
-		svc.ListMetrics,
-		connect.WithSchema(metricsServiceMethods.ByName("ListMetrics")),
-		connect.WithHandlerOptions(opts...),
+// RegisterMetricsServiceHandler registers svc as the sreportal.v1.MetricsService implementation on
+// server.
+func RegisterMetricsServiceHandler(server *connect.Server, svc MetricsServiceHandler) {
+	adapter := metricsServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: metricsServiceListMetricsSpec(), Handler: adapter.listMetrics},
 	)
-	return "/sreportal.v1.MetricsService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case MetricsServiceListMetricsProcedure:
-			metricsServiceListMetricsHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedMetricsServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedMetricsServiceHandler struct{}
 
-func (UnimplementedMetricsServiceHandler) ListMetrics(context.Context, *connect.Request[v1.ListMetricsRequest]) (*connect.Response[v1.ListMetricsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sreportal.v1.MetricsService.ListMetrics is not implemented"))
+func (UnimplementedMetricsServiceHandler) ListMetrics(context.Context, *v1.ListMetricsRequest) (*v1.ListMetricsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "sreportal.v1.MetricsService.ListMetrics is not implemented")
+}
+
+type metricsServiceClient struct {
+	client *connect.Client
+}
+
+func (c *metricsServiceClient) ListMetrics(ctx context.Context, req *v1.ListMetricsRequest) (*v1.ListMetricsResponse, error) {
+	var res v1.ListMetricsResponse
+	if err := c.client.CallUnary(ctx, metricsServiceListMetricsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type metricsServiceHandler struct{ svc MetricsServiceHandler }
+
+func (h metricsServiceHandler) listMetrics(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListMetricsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListMetrics(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
 }

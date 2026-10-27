@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"connectrpc.com/connect"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -21,20 +20,20 @@ func TestEmojiService_ListCustomEmojis_WithData(t *testing.T) {
 	})
 
 	svc := grpchandler.NewEmojiService(store)
-	resp, err := svc.ListCustomEmojis(context.Background(), connect.NewRequest(&portalv1.ListCustomEmojisRequest{}))
+	resp, err := svc.ListCustomEmojis(context.Background(), &portalv1.ListCustomEmojisRequest{})
 
 	require.NoError(t, err)
-	assert.Equal(t, "https://emoji.slack.com/rabbitmq.png", resp.Msg.Emojis["rabbitmq"])
-	assert.Equal(t, "https://emoji.slack.com/golang.png", resp.Msg.Emojis["golang"])
-	assert.Len(t, resp.Msg.Emojis, 2)
+	assert.Equal(t, "https://emoji.slack.com/rabbitmq.png", resp.Emojis["rabbitmq"])
+	assert.Equal(t, "https://emoji.slack.com/golang.png", resp.Emojis["golang"])
+	assert.Len(t, resp.Emojis, 2)
 }
 
 func TestEmojiService_ListCustomEmojis_EmptyStore(t *testing.T) {
 	store := emojistore.NewEmojiStore()
 	svc := grpchandler.NewEmojiService(store)
 
-	resp, err := svc.ListCustomEmojis(context.Background(), connect.NewRequest(&portalv1.ListCustomEmojisRequest{}))
+	resp, err := svc.ListCustomEmojis(context.Background(), &portalv1.ListCustomEmojisRequest{})
 
 	require.NoError(t, err)
-	assert.Empty(t, resp.Msg.Emojis)
+	assert.Empty(t, resp.Emojis)
 }

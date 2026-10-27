@@ -25,6 +25,7 @@ const (
 	tNameNFDEdges    = "test-nfd-edges"
 	tOldVal          = "old"
 	tNodeTypeService = "service"
+	tServiceCoreWeb  = "service:core:web"
 
 	tWebIngressPolicy = "web-ingress-policy"
 	tLabelAppKey      = "app.kubernetes.io/name"

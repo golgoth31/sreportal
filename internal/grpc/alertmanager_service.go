@@ -21,7 +21,7 @@ import (
 	"sort"
 	"strings"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	domainalertmanager "github.com/golgoth31/sreportal/internal/domain/alertmanagerreadmodel"
@@ -45,27 +45,27 @@ func NewAlertmanagerService(reader domainalertmanager.AlertmanagerReader, portal
 // ListAlerts returns all active alerts from Alertmanager resources.
 func (s *AlertmanagerService) ListAlerts(
 	ctx context.Context,
-	req *connect.Request[alertmanagerv1.ListAlertsRequest],
-) (*connect.Response[alertmanagerv1.ListAlertsResponse], error) {
-	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, req.Msg.Portal, CheckAlerts); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+	req *alertmanagerv1.ListAlertsRequest,
+) (*alertmanagerv1.ListAlertsResponse, error) {
+	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, req.Portal, CheckAlerts); err != nil {
+		return nil, wrapError(connect.CodeInternal, err)
 	} else if !enabled {
-		return connect.NewResponse(&alertmanagerv1.ListAlertsResponse{}), nil
+		return &alertmanagerv1.ListAlertsResponse{}, nil
 	}
 
 	filters := domainalertmanager.AlertmanagerFilters{
-		Portal:    req.Msg.Portal,
-		Namespace: req.Msg.Namespace,
+		Portal:    req.Portal,
+		Namespace: req.Namespace,
 	}
 
 	views, err := s.reader.List(ctx, filters)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, wrapError(connect.CodeInternal, err)
 	}
 
 	resources := make([]*alertmanagerv1.AlertmanagerResource, 0, len(views))
 	for _, v := range views {
-		alerts := alertViewsToProto(v.Alerts, req.Msg.Search, req.Msg.State)
+		alerts := alertViewsToProto(v.Alerts, req.Search, req.State)
 
 		resource := &alertmanagerv1.AlertmanagerResource{
 			Name:      v.Name,
@@ -92,9 +92,9 @@ func (s *AlertmanagerService) ListAlerts(
 		return resources[i].Namespace < resources[j].Namespace
 	})
 
-	return connect.NewResponse(&alertmanagerv1.ListAlertsResponse{
+	return &alertmanagerv1.ListAlertsResponse{
 		Alertmanagers: resources,
-	}), nil
+	}, nil
 }
 
 func alertViewsToProto(views []domainalertmanager.AlertView, search, stateFilter string) []*alertmanagerv1.Alert {

@@ -21,7 +21,6 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -71,14 +70,14 @@ func TestListFQDNs_ReturnsAllFQDNs(t *testing.T) {
 
 	resp, err := svc.ListFQDNs(
 		context.Background(),
-		connect.NewRequest(&dnsv1.ListFQDNsRequest{}),
+		&dnsv1.ListFQDNsRequest{},
 	)
 
 	require.NoError(t, err)
-	require.Len(t, resp.Msg.Fqdns, 3)
+	require.Len(t, resp.Fqdns, 3)
 
-	fqdnsByName := make(map[string]*dnsv1.FQDN, len(resp.Msg.Fqdns))
-	for _, f := range resp.Msg.Fqdns {
+	fqdnsByName := make(map[string]*dnsv1.FQDN, len(resp.Fqdns))
+	for _, f := range resp.Fqdns {
 		fqdnsByName[f.Name] = f
 	}
 
@@ -94,11 +93,11 @@ func TestListFQDNs_NoDuplicateGroups(t *testing.T) {
 
 	resp, err := svc.ListFQDNs(
 		context.Background(),
-		connect.NewRequest(&dnsv1.ListFQDNsRequest{}),
+		&dnsv1.ListFQDNsRequest{},
 	)
 
 	require.NoError(t, err)
-	for _, fqdn := range resp.Msg.Fqdns {
+	for _, fqdn := range resp.Fqdns {
 		if fqdn.Name == tFQDNAPI {
 			assert.Len(t, fqdn.Groups, 1,
 				"api.example.com should have exactly 1 group, got %v", fqdn.Groups)
@@ -113,13 +112,13 @@ func TestListFQDNs_OriginRef_IsPopulated(t *testing.T) {
 
 	resp, err := svc.ListFQDNs(
 		context.Background(),
-		connect.NewRequest(&dnsv1.ListFQDNsRequest{}),
+		&dnsv1.ListFQDNsRequest{},
 	)
 
 	require.NoError(t, err)
 
 	var apiFQDN *dnsv1.FQDN
-	for _, f := range resp.Msg.Fqdns {
+	for _, f := range resp.Fqdns {
 		if f.Name == tFQDNAPI {
 			apiFQDN = f
 			break
@@ -139,12 +138,12 @@ func TestListFQDNs_OriginRef_IsNil_ForManualEntries(t *testing.T) {
 
 	resp, err := svc.ListFQDNs(
 		context.Background(),
-		connect.NewRequest(&dnsv1.ListFQDNsRequest{}),
+		&dnsv1.ListFQDNsRequest{},
 	)
 
 	require.NoError(t, err)
 
-	for _, f := range resp.Msg.Fqdns {
+	for _, f := range resp.Fqdns {
 		if f.Name == tFQDNInternal {
 			assert.Nil(t, f.OriginRef, "manual entries must not have OriginRef")
 		}
@@ -163,14 +162,14 @@ func TestListFQDNs_ReturnsBothRecordTypes(t *testing.T) {
 
 	resp, err := svc.ListFQDNs(
 		context.Background(),
-		connect.NewRequest(&dnsv1.ListFQDNsRequest{}),
+		&dnsv1.ListFQDNsRequest{},
 	)
 
 	require.NoError(t, err)
-	require.Len(t, resp.Msg.Fqdns, 2, "A and CNAME for the same hostname must both be returned")
+	require.Len(t, resp.Fqdns, 2, "A and CNAME for the same hostname must both be returned")
 
 	recordTypes := make(map[string]string)
-	for _, f := range resp.Msg.Fqdns {
+	for _, f := range resp.Fqdns {
 		assert.Equal(t, tFQDNAPI, f.Name)
 		recordTypes[f.RecordType] = f.Targets[0]
 	}
@@ -212,13 +211,13 @@ func TestListFQDNs_FiltersWork(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			resp, err := svc.ListFQDNs(
 				context.Background(),
-				connect.NewRequest(tc.request),
+				tc.request,
 			)
 			require.NoError(t, err)
-			assert.Len(t, resp.Msg.Fqdns, tc.wantLen)
+			assert.Len(t, resp.Fqdns, tc.wantLen)
 
 			var found bool
-			for _, f := range resp.Msg.Fqdns {
+			for _, f := range resp.Fqdns {
 				if f.Name == tc.wantFQDN {
 					found = true
 					break
@@ -235,9 +234,9 @@ func TestListFQDNs_TotalSize_ReflectsFullCount(t *testing.T) {
 
 	resp, err := svc.ListFQDNs(
 		context.Background(),
-		connect.NewRequest(&dnsv1.ListFQDNsRequest{}),
+		&dnsv1.ListFQDNsRequest{},
 	)
 
 	require.NoError(t, err)
-	assert.Equal(t, int32(3), resp.Msg.TotalSize)
+	assert.Equal(t, int32(3), resp.TotalSize)
 }

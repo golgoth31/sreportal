@@ -20,7 +20,6 @@ import (
 	"context"
 	"testing"
 
-	"connectrpc.com/connect"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -47,13 +46,13 @@ func TestListMetrics_ReturnsOnlySreportalMetrics(t *testing.T) {
 	goGauge.Set(100)
 
 	svc := svcgrpc.NewMetricsService(reg)
-	resp, err := svc.ListMetrics(context.Background(), connect.NewRequest(&metricsv1.ListMetricsRequest{}))
+	resp, err := svc.ListMetrics(context.Background(), &metricsv1.ListMetricsRequest{})
 	require.NoError(t, err)
-	require.Len(t, resp.Msg.Families, 1)
-	assert.Equal(t, "sreportal_dns_fqdns_total", resp.Msg.Families[0].Name)
-	assert.Equal(t, "GAUGE", resp.Msg.Families[0].Type)
-	require.Len(t, resp.Msg.Families[0].Metrics, 1)
-	assert.Equal(t, 42.0, resp.Msg.Families[0].Metrics[0].Value)
+	require.Len(t, resp.Families, 1)
+	assert.Equal(t, "sreportal_dns_fqdns_total", resp.Families[0].Name)
+	assert.Equal(t, "GAUGE", resp.Families[0].Type)
+	require.Len(t, resp.Families[0].Metrics, 1)
+	assert.Equal(t, 42.0, resp.Families[0].Metrics[0].Value)
 }
 
 func TestListMetrics_SubsystemFilter(t *testing.T) {
@@ -74,12 +73,12 @@ func TestListMetrics_SubsystemFilter(t *testing.T) {
 	reg.MustRegister(dnsGauge, controllerCounter)
 
 	svc := svcgrpc.NewMetricsService(reg)
-	resp, err := svc.ListMetrics(context.Background(), connect.NewRequest(&metricsv1.ListMetricsRequest{
+	resp, err := svc.ListMetrics(context.Background(), &metricsv1.ListMetricsRequest{
 		Subsystem: "controller",
-	}))
+	})
 	require.NoError(t, err)
-	require.Len(t, resp.Msg.Families, 1)
-	assert.Equal(t, "sreportal_controller_reconcile_total", resp.Msg.Families[0].Name)
+	require.Len(t, resp.Families, 1)
+	assert.Equal(t, "sreportal_controller_reconcile_total", resp.Families[0].Name)
 }
 
 func TestListMetrics_SearchFilter(t *testing.T) {
@@ -100,12 +99,12 @@ func TestListMetrics_SearchFilter(t *testing.T) {
 	reg.MustRegister(fqdnGauge, groupGauge)
 
 	svc := svcgrpc.NewMetricsService(reg)
-	resp, err := svc.ListMetrics(context.Background(), connect.NewRequest(&metricsv1.ListMetricsRequest{
+	resp, err := svc.ListMetrics(context.Background(), &metricsv1.ListMetricsRequest{
 		Search: "fqdn",
-	}))
+	})
 	require.NoError(t, err)
-	require.Len(t, resp.Msg.Families, 1)
-	assert.Equal(t, "sreportal_dns_fqdns_total", resp.Msg.Families[0].Name)
+	require.Len(t, resp.Families, 1)
+	assert.Equal(t, "sreportal_dns_fqdns_total", resp.Families[0].Name)
 }
 
 func TestListMetrics_HistogramValues(t *testing.T) {
@@ -123,13 +122,13 @@ func TestListMetrics_HistogramValues(t *testing.T) {
 	hist.Observe(0.5)
 
 	svc := svcgrpc.NewMetricsService(reg)
-	resp, err := svc.ListMetrics(context.Background(), connect.NewRequest(&metricsv1.ListMetricsRequest{}))
+	resp, err := svc.ListMetrics(context.Background(), &metricsv1.ListMetricsRequest{})
 	require.NoError(t, err)
-	require.Len(t, resp.Msg.Families, 1)
-	assert.Equal(t, "HISTOGRAM", resp.Msg.Families[0].Type)
-	require.Len(t, resp.Msg.Families[0].Metrics, 1)
+	require.Len(t, resp.Families, 1)
+	assert.Equal(t, "HISTOGRAM", resp.Families[0].Type)
+	require.Len(t, resp.Families[0].Metrics, 1)
 
-	m := resp.Msg.Families[0].Metrics[0]
+	m := resp.Families[0].Metrics[0]
 	require.NotNil(t, m.Histogram)
 	assert.Equal(t, uint64(2), m.Histogram.SampleCount)
 	assert.Equal(t, 0.55, m.Histogram.SampleSum)
@@ -140,7 +139,7 @@ func TestListMetrics_EmptyRegistry(t *testing.T) {
 	reg := prometheus.NewRegistry()
 
 	svc := svcgrpc.NewMetricsService(reg)
-	resp, err := svc.ListMetrics(context.Background(), connect.NewRequest(&metricsv1.ListMetricsRequest{}))
+	resp, err := svc.ListMetrics(context.Background(), &metricsv1.ListMetricsRequest{})
 	require.NoError(t, err)
-	assert.Empty(t, resp.Msg.Families)
+	assert.Empty(t, resp.Families)
 }

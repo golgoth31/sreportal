@@ -19,7 +19,7 @@ package grpc
 import (
 	"context"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	domainportal "github.com/golgoth31/sreportal/internal/domain/portal"
 	portalv1 "github.com/golgoth31/sreportal/internal/grpc/gen/sreportal/v1"
@@ -40,15 +40,15 @@ func NewPortalService(reader domainportal.PortalReader) *PortalService {
 // ListPortals returns all available portals
 func (s *PortalService) ListPortals(
 	ctx context.Context,
-	req *connect.Request[portalv1.ListPortalsRequest],
-) (*connect.Response[portalv1.ListPortalsResponse], error) {
+	req *portalv1.ListPortalsRequest,
+) (*portalv1.ListPortalsResponse, error) {
 	filters := domainportal.PortalFilters{
-		Namespace: req.Msg.Namespace,
+		Namespace: req.Namespace,
 	}
 
 	views, err := s.reader.List(ctx, filters)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, wrapError(connect.CodeInternal, err)
 	}
 
 	portals := make([]*portalv1.Portal, 0, len(views))
@@ -56,9 +56,9 @@ func (s *PortalService) ListPortals(
 		portals = append(portals, portalViewToProto(v))
 	}
 
-	return connect.NewResponse(&portalv1.ListPortalsResponse{
+	return &portalv1.ListPortalsResponse{
 		Portals: portals,
-	}), nil
+	}, nil
 }
 
 func portalViewToProto(v domainportal.PortalView) *portalv1.Portal {

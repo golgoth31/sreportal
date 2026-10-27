@@ -18,10 +18,9 @@ package grpc
 
 import (
 	"context"
-	"fmt"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/golgoth31/sreportal/internal/config"
@@ -64,84 +63,83 @@ func NewReleaseService(
 // AddRelease appends a release entry to the day's Release CR.
 func (s *ReleaseService) AddRelease(
 	ctx context.Context,
-	req *connect.Request[releasev1.ReleaseEntry],
-) (*connect.Response[releasev1.AddReleaseResponse], error) {
-	e := req.Msg
-	portal := e.GetPortal()
+	req *releasev1.ReleaseEntry,
+) (*releasev1.AddReleaseResponse, error) {
+	portal := req.GetPortal()
 	if portal == "" {
 		portal = portalctrl.MainPortalName
 	}
 	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, portal, CheckReleases); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, wrapError(connect.CodeInternal, err)
 	} else if !enabled {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("releases feature is disabled for portal %q", portal))
+		return nil, connect.Errorf(connect.CodeFailedPrecondition, "releases feature is disabled for portal %q", portal)
 	}
 
-	date := e.Date.AsTime()
-	entry, err := domainrelease.NewEntry(e.Type, e.Version, e.Origin, date)
+	date := req.Date.AsTime()
+	entry, err := domainrelease.NewEntry(req.Type, req.Version, req.Origin, date)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, wrapError(connect.CodeInvalidArgument, err)
 	}
 	allowedNames := make([]string, len(s.allowedTypes))
 	for i, t := range s.allowedTypes {
 		allowedNames[i] = t.Name
 	}
-	if err := domainrelease.ValidateType(e.Type, allowedNames); err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	if err := domainrelease.ValidateType(req.Type, allowedNames); err != nil {
+		return nil, wrapError(connect.CodeInvalidArgument, err)
 	}
-	entry.Author = e.Author
-	entry.Message = e.Message
-	entry.Link = e.Link
+	entry.Author = req.Author
+	entry.Message = req.Message
+	entry.Link = req.Link
 	entry.PortalRef = portal
 
 	day, count, created, err := s.writer.AddEntry(ctx, entry)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, wrapError(connect.CodeInternal, err)
 	}
 
 	if created {
 		logger := log.Default().WithName("release-service")
-		logger.Info("release CR created", "day", day, "type", e.Type, "version", e.Version, "origin", e.Origin)
+		logger.Info("release CR created", "day", day, "type", req.Type, "version", req.Version, "origin", req.Origin)
 	}
 
-	return connect.NewResponse(&releasev1.AddReleaseResponse{
+	return &releasev1.AddReleaseResponse{
 		Day:        day,
 		EntryCount: int32(count),
-	}), nil
+	}, nil
 }
 
 // ListReleases returns release entries paginated by day.
 func (s *ReleaseService) ListReleases(
 	ctx context.Context,
-	req *connect.Request[releasev1.ListReleasesRequest],
-) (*connect.Response[releasev1.ListReleasesResponse], error) {
-	day := req.Msg.Day
-	portal := req.Msg.GetPortal()
+	req *releasev1.ListReleasesRequest,
+) (*releasev1.ListReleasesResponse, error) {
+	day := req.Day
+	portal := req.GetPortal()
 	if portal == "" {
 		portal = portalctrl.MainPortalName
 	}
 
 	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, portal, CheckReleases); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, wrapError(connect.CodeInternal, err)
 	} else if !enabled {
-		return connect.NewResponse(&releasev1.ListReleasesResponse{}), nil
+		return &releasev1.ListReleasesResponse{}, nil
 	}
 
 	// If no day specified, use the latest available day
 	if day == "" {
 		days, err := s.reader.ListDays(ctx, portal)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
+			return nil, wrapError(connect.CodeInternal, err)
 		}
 		if len(days) == 0 {
-			return connect.NewResponse(&releasev1.ListReleasesResponse{}), nil
+			return &releasev1.ListReleasesResponse{}, nil
 		}
 		day = days[len(days)-1]
 	}
 
 	entries, err := s.reader.ListEntries(ctx, day, portal)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, wrapError(connect.CodeInternal, err)
 	}
 
 	// Build proto entries
@@ -153,7 +151,7 @@ func (s *ReleaseService) ListReleases(
 	// Determine previous/next day navigation
 	days, err := s.reader.ListDays(ctx, portal)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, wrapError(connect.CodeInternal, err)
 	}
 
 	var prevDay, nextDay string
@@ -169,33 +167,33 @@ func (s *ReleaseService) ListReleases(
 		}
 	}
 
-	return connect.NewResponse(&releasev1.ListReleasesResponse{
+	return &releasev1.ListReleasesResponse{
 		Day:         day,
 		Entries:     protoEntries,
 		PreviousDay: prevDay,
 		NextDay:     nextDay,
-	}), nil
+	}, nil
 }
 
 // ListReleaseDays returns all days that have releases and the TTL window.
 func (s *ReleaseService) ListReleaseDays(
 	ctx context.Context,
-	req *connect.Request[releasev1.ListReleaseDaysRequest],
-) (*connect.Response[releasev1.ListReleaseDaysResponse], error) {
-	portal := req.Msg.GetPortal()
+	req *releasev1.ListReleaseDaysRequest,
+) (*releasev1.ListReleaseDaysResponse, error) {
+	portal := req.GetPortal()
 	if portal == "" {
 		portal = portalctrl.MainPortalName
 	}
 
 	if enabled, err := IsFeatureEnabled(ctx, s.portalReader, portal, CheckReleases); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, wrapError(connect.CodeInternal, err)
 	} else if !enabled {
-		return connect.NewResponse(&releasev1.ListReleaseDaysResponse{}), nil
+		return &releasev1.ListReleaseDaysResponse{}, nil
 	}
 
 	days, err := s.reader.ListDays(ctx, portal)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, wrapError(connect.CodeInternal, err)
 	}
 
 	ttlDays := int32(s.ttl.Hours() / 24)
@@ -205,11 +203,11 @@ func (s *ReleaseService) ListReleaseDays(
 		protoTypes[i] = &releasev1.ReleaseTypeConfig{Name: t.Name, Color: t.Color}
 	}
 
-	return connect.NewResponse(&releasev1.ListReleaseDaysResponse{
+	return &releasev1.ListReleaseDaysResponse{
 		Days:    days,
 		TtlDays: ttlDays,
 		Types:   protoTypes,
-	}), nil
+	}, nil
 }
 
 func entryViewToProto(e domainrelease.EntryView) *releasev1.ReleaseEntry {
