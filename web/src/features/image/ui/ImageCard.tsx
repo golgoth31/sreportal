@@ -44,9 +44,11 @@ interface CopyableImageRefProps {
   display: string;
   fullRef: string;
   className?: string;
+  // Wrap long refs instead of truncating (detail views).
+  wrap?: boolean;
 }
 
-function CopyableImageRef({ display, fullRef, className }: CopyableImageRefProps) {
+function CopyableImageRef({ display, fullRef, className, wrap }: CopyableImageRefProps) {
   const { copied, copy } = useCopyToClipboard(fullRef);
   return (
     <button
@@ -54,14 +56,16 @@ function CopyableImageRef({ display, fullRef, className }: CopyableImageRefProps
       onClick={copy}
       className={cn(
         "group/copy -mx-1.5 inline-flex min-w-0 max-w-full items-center gap-1 rounded-md border border-transparent px-1.5 py-0.5",
-        "text-left text-xs text-muted-foreground font-mono truncate transition-colors",
+        "text-left text-xs text-muted-foreground font-mono transition-colors",
+        !wrap && "truncate",
         "hover:border-border hover:bg-muted/60 hover:text-foreground",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         className,
       )}
       aria-label={`Copy ${fullRef} to clipboard`}
+      title={wrap ? undefined : fullRef}
     >
-      <span className="min-w-0 truncate">{display}</span>
+      <span className={cn("min-w-0", wrap ? "break-all" : "truncate")}>{display}</span>
       {copied ? (
         <CheckIcon className="size-3 shrink-0 text-green-600" />
       ) : (
@@ -89,12 +93,18 @@ export function ImageCard({ image }: ImageCardProps) {
   const mutatedImage =
     image.changeType === "mutated" ? image.mutatedImage ?? fullRef : undefined;
 
-  const upgradeLabel =
-    image.tagType === "semver"
-      ? image.latestVersion && image.upgradeAvailable
-        ? `↑ ${image.latestVersion}`
-        : null
-      : tagTypeHint(image.tagType);
+  let upgradeLabel: string | null = tagTypeHint(image.tagType);
+  if (image.tagType === "semver") {
+    if (image.upgradeAvailable && image.latestVersion) {
+      upgradeLabel = `↑ ${image.latestVersion}`;
+    } else if (image.latestError) {
+      upgradeLabel = "Lookup failed";
+    } else if (image.latestVersion) {
+      upgradeLabel = "No upgrade available";
+    } else {
+      upgradeLabel = null;
+    }
+  }
 
   return (
     <>
@@ -117,14 +127,12 @@ export function ImageCard({ image }: ImageCardProps) {
           </span>
         )}
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <p className="font-medium text-sm tracking-tight truncate shrink-0 max-w-[8rem]">
-              {shortName}
-            </p>
-          </TooltipTrigger>
-          <TooltipContent side="top">{shortName}</TooltipContent>
-        </Tooltip>
+        <p
+          className="font-medium text-sm tracking-tight truncate shrink-0 max-w-[8rem]"
+          title={shortName}
+        >
+          {shortName}
+        </p>
 
         <CopyableImageRef
           display={display}
@@ -145,7 +153,7 @@ export function ImageCard({ image }: ImageCardProps) {
         {upgradeLabel && (
           <span
             className={cn(
-              "hidden sm:inline font-mono text-[11px] truncate min-w-0 max-w-[10rem]",
+              "font-mono text-[11px] truncate min-w-0 max-w-[10rem]",
               image.upgradeAvailable
                 ? "text-emerald-700 dark:text-emerald-400 font-semibold"
                 : "text-muted-foreground opacity-60",
@@ -192,7 +200,7 @@ export function ImageCard({ image }: ImageCardProps) {
               type="button"
               onClick={() => setOpen(true)}
               className={cn(
-                "ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5",
+                "inline-flex shrink-0 items-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5",
                 "text-xs text-muted-foreground transition-colors",
                 "hover:border-border hover:bg-muted/60 hover:text-foreground",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -201,7 +209,7 @@ export function ImageCard({ image }: ImageCardProps) {
             >
               <LayersIcon className="size-3" />
               <span>
-                {total}
+                {total} workload{total > 1 ? "s" : ""}
               </span>
               <ExternalLinkIcon className="size-2.5 opacity-60" />
             </button>
@@ -230,7 +238,7 @@ export function ImageCard({ image }: ImageCardProps) {
               Source resources
             </SheetTitle>
             <SheetDescription asChild>
-              <CopyableImageRef display={display} fullRef={fullRef} />
+              <CopyableImageRef display={display} fullRef={fullRef} wrap />
             </SheetDescription>
             <div className="mt-2 flex items-center gap-2 flex-wrap">
               <Badge variant="outline" className={cn(tagTypeBadgeClass(image.tagType))}>
@@ -262,6 +270,7 @@ export function ImageCard({ image }: ImageCardProps) {
                     <CopyableImageRef
                       display={image.originalImage}
                       fullRef={image.originalImage}
+                      wrap
                     />
                   </div>
                 )}
@@ -270,7 +279,7 @@ export function ImageCard({ image }: ImageCardProps) {
                     <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
                       Mutated image (running)
                     </span>
-                    <CopyableImageRef display={mutatedImage} fullRef={mutatedImage} />
+                    <CopyableImageRef display={mutatedImage} fullRef={mutatedImage} wrap />
                   </div>
                 )}
                 {image.tagType === "semver" && (

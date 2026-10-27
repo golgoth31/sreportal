@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { MemoryRouter } from "react-router";
 
 import { PortalSidebar } from "@/components/PortalSidebar";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import type { Portal } from "@/features/portal/domain/portal.types";
 
 const portal: Portal = {
@@ -37,7 +38,9 @@ describe("PortalSidebar soft material", () => {
   it("active nav indicator uses a 3px inset bar", () => {
     const { container } = render(
       <MemoryRouter initialEntries={["/main/links"]}>
+        <TooltipProvider>
         <PortalSidebar portalName="main" portals={[portal]} />
+        </TooltipProvider>
       </MemoryRouter>,
     );
     const link = container.querySelector('a[href="/main/links"]');
@@ -48,7 +51,9 @@ describe("PortalSidebar soft material", () => {
   it("uses expanded sidebar width token by default", () => {
     const { container } = render(
       <MemoryRouter initialEntries={["/main/links"]}>
+        <TooltipProvider>
         <PortalSidebar portalName="main" portals={[portal]} />
+        </TooltipProvider>
       </MemoryRouter>,
     );
     const aside = container.querySelector("aside");
@@ -59,7 +64,9 @@ describe("PortalSidebar soft material", () => {
     localStorage.setItem("sreportal-sidebar-collapsed", "true");
     const { container } = render(
       <MemoryRouter initialEntries={["/main/links"]}>
+        <TooltipProvider>
         <PortalSidebar portalName="main" portals={[portal]} />
+        </TooltipProvider>
       </MemoryRouter>,
     );
     const aside = container.querySelector("aside");
@@ -69,7 +76,9 @@ describe("PortalSidebar soft material", () => {
   it("exposes an aria-expanded toggle", () => {
     const { getByRole } = render(
       <MemoryRouter initialEntries={["/main/links"]}>
+        <TooltipProvider>
         <PortalSidebar portalName="main" portals={[portal]} />
+        </TooltipProvider>
       </MemoryRouter>,
     );
     expect(getByRole("button", { name: /collapse sidebar|expand sidebar/i })).toHaveAttribute(
@@ -81,7 +90,9 @@ describe("PortalSidebar soft material", () => {
   it("toggles collapsed state and updates label", () => {
     const { getByRole } = render(
       <MemoryRouter initialEntries={["/main/links"]}>
+        <TooltipProvider>
         <PortalSidebar portalName="main" portals={[portal]} />
+        </TooltipProvider>
       </MemoryRouter>,
     );
     fireEvent.click(getByRole("button", { name: "Collapse sidebar" }));

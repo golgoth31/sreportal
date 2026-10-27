@@ -10,27 +10,31 @@ import {
   ShieldIcon,
   type LucideIcon,
 } from "lucide-react";
+import type { ReactNode } from "react";
 import { NavLink } from "react-router";
 
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useSidebarCollapsed } from "@/hooks/useSidebarCollapsed";
 
 import type { Portal } from "@/features/portal/domain/portal.types";
 import { cn } from "@/lib/utils";
+
+const SIDEBAR_ID = "portal-sidebar";
 
 interface PortalSidebarProps {
   portalName: string;
   portals: Portal[];
 }
 
-export function PortalSidebar({
-  portalName,
-  portals,
-}: PortalSidebarProps) {
+export function PortalSidebar({ portalName, portals }: PortalSidebarProps) {
   const { collapsed, toggle } = useSidebarCollapsed();
   const currentPortal = portals.find(
-    (p) => (p.subPath || p.name) === portalName
+    (p) => (p.subPath || p.name) === portalName,
   );
   const basePath = currentPortal
     ? `/${currentPortal.subPath || currentPortal.name}`
@@ -46,6 +50,17 @@ export function PortalSidebar({
   const sectionPadding = collapsed ? "px-2" : "px-3";
   const ToggleIcon = collapsed ? ChevronsRightIcon : ChevronsLeftIcon;
 
+  // Icon-only items need a tooltip to stay identifiable when collapsed.
+  const withCollapsedTooltip = (node: ReactNode, content: ReactNode) => {
+    if (!collapsed) return node;
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{node}</TooltipTrigger>
+        <TooltipContent side="right">{content}</TooltipContent>
+      </Tooltip>
+    );
+  };
+
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
       "relative flex items-center rounded-md py-2 text-sm font-medium transition-colors",
@@ -53,7 +68,7 @@ export function PortalSidebar({
       "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-4 before:w-[3px] before:rounded-r before:bg-primary before:opacity-0 before:transition-opacity",
       isActive
         ? "bg-primary/10 text-foreground before:opacity-100"
-        : "text-muted-foreground hover:bg-accent hover:text-foreground"
+        : "text-muted-foreground hover:bg-accent hover:text-foreground",
     );
 
   const renderItem = (
@@ -88,15 +103,9 @@ export function PortalSidebar({
         {badge}
       </NavLink>
     );
-    if (!collapsed) return link;
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>{link}</TooltipTrigger>
-        <TooltipContent side="right">
-          {label}
-          {opts.badge ? ` (${opts.badge})` : ""}
-        </TooltipContent>
-      </Tooltip>
+    return withCollapsedTooltip(
+      link,
+      opts.badge ? `${label} (${opts.badge})` : label,
     );
   };
 
@@ -106,33 +115,50 @@ export function PortalSidebar({
   );
 
   return (
-    <TooltipProvider>
-      <aside
+    <aside
+      id={SIDEBAR_ID}
+      className={cn(
+        "shrink-0 border-r border-border bg-sidebar flex flex-col py-4 overflow-y-auto transition-[width]",
+        collapsed
+          ? "w-[var(--sidebar-width-collapsed)]"
+          : "w-[var(--sidebar-width)]",
+      )}
+      aria-label="Portal menu"
+    >
+      <div className={cn("pb-3 mb-2 border-b border-border", sectionPadding)}>
+        <p className={sectionTitleClass}>Resources</p>
+      </div>
+      <nav className="flex flex-col gap-0.5 px-2" aria-label="Links and Alerts">
+        {showDNS &&
+          renderItem(`${basePath}/links`, "DNS", LinkIcon, { end: true })}
+        {showReleases &&
+          renderItem(`${basePath}/releases`, "Releases", RocketIcon)}
+        {showNetworkPolicy &&
+          renderItem(`${basePath}/netpol`, "Network Policies", ShieldIcon)}
+        {showAlerts &&
+          renderItem(`${basePath}/alerts`, "Alerts", AlertTriangleIcon)}
+        {showStatusPage &&
+          renderItem(`${basePath}/status`, "Status", ActivityIcon, {
+            badge: "alpha",
+          })}
+        {showImageInventory &&
+          renderItem(`${basePath}/images`, "Images", ContainerIcon)}
+      </nav>
+      <div
         className={cn(
-          "shrink-0 border-r border-border bg-sidebar flex flex-col py-4 overflow-y-auto transition-[width]",
-          collapsed ? "w-[var(--sidebar-width-collapsed)]" : "w-[var(--sidebar-width)]",
+          "mt-auto pt-3 mb-2 border-t border-border",
+          sectionPadding,
         )}
-        aria-label="Portal menu"
       >
-        <div className={cn("pb-3 mb-2 border-b border-border", sectionPadding)}>
-          <p className={sectionTitleClass}>Resources</p>
-        </div>
-        <nav className="flex flex-col gap-0.5 px-2" aria-label="Links and Alerts">
-          {showDNS && renderItem(`${basePath}/links`, "DNS", LinkIcon, { end: true })}
-          {showReleases && renderItem(`${basePath}/releases`, "Releases", RocketIcon)}
-          {showNetworkPolicy && renderItem(`${basePath}/netpol`, "Network Policies", ShieldIcon)}
-          {showAlerts && renderItem(`${basePath}/alerts`, "Alerts", AlertTriangleIcon)}
-          {showStatusPage &&
-            renderItem(`${basePath}/status`, "Status", ActivityIcon, { badge: "alpha" })}
-          {showImageInventory && renderItem(`${basePath}/images`, "Images", ContainerIcon)}
-        </nav>
-        <div className={cn("mt-auto pt-3 mb-2 border-t border-border", sectionPadding)}>
-          <p className={sectionTitleClass}>System</p>
-        </div>
-        <nav className="px-2" aria-label="Portal statistics">
-          {renderItem(`${basePath}/dashboard`, "Statistics", BarChart3Icon, { badge: "beta" })}
-        </nav>
-        <div className="px-2 pt-2">
+        <p className={sectionTitleClass}>System</p>
+      </div>
+      <nav className="px-2" aria-label="Portal statistics">
+        {renderItem(`${basePath}/dashboard`, "Statistics", BarChart3Icon, {
+          badge: "beta",
+        })}
+      </nav>
+      <div className="px-2 pt-2">
+        {withCollapsedTooltip(
           <button
             type="button"
             className={cn(
@@ -140,14 +166,16 @@ export function PortalSidebar({
               itemLayout,
             )}
             aria-expanded={!collapsed}
+            aria-controls={SIDEBAR_ID}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             onClick={toggle}
           >
             <ToggleIcon className="size-4 shrink-0" aria-hidden="true" />
             {!collapsed && <span>Collapse</span>}
-          </button>
-        </div>
-      </aside>
-    </TooltipProvider>
+          </button>,
+          "Expand sidebar",
+        )}
+      </div>
+    </aside>
   );
 }

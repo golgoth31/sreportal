@@ -30,9 +30,7 @@ export function FqdnCard({ fqdn }: FqdnCardProps) {
   const originLabel = fqdn.originRef
     ? `${fqdn.originRef.kind}/${fqdn.originRef.namespace}/${fqdn.originRef.name}`
     : "";
-  const detailTooltip = [fqdn.description, originLabel]
-    .filter(Boolean)
-    .join(" · ");
+  const detail = [fqdn.description, originLabel].filter(Boolean).join(" · ");
 
   const fqdnLink = (
     <a
@@ -63,16 +61,13 @@ export function FqdnCard({ fqdn }: FqdnCardProps) {
           <TooltipContent>{syncTooltip}</TooltipContent>
         </Tooltip>
       )}
-      {detailTooltip ? (
-        <Tooltip>
-          <TooltipTrigger asChild>{fqdnLink}</TooltipTrigger>
-          <TooltipContent side="top" align="start" className="max-w-sm">
-            {detailTooltip}
-          </TooltipContent>
-        </Tooltip>
-      ) : (
-        fqdnLink
-      )}
+      <Tooltip>
+        <TooltipTrigger asChild>{fqdnLink}</TooltipTrigger>
+        <TooltipContent side="top" align="start" className="max-w-sm">
+          <p className="font-mono break-all">{fqdn.name}</p>
+          {detail && <p className="opacity-80">{detail}</p>}
+        </TooltipContent>
+      </Tooltip>
       {fqdn.recordType && (
         <Badge
           variant="outline"
@@ -82,7 +77,10 @@ export function FqdnCard({ fqdn }: FqdnCardProps) {
         </Badge>
       )}
       {fqdn.targets.length === 1 && (
-        <span className="text-muted-foreground font-mono text-xs truncate min-w-0">
+        <span
+          className="text-muted-foreground font-mono text-xs truncate min-w-0"
+          title={fqdn.targets[0]}
+        >
           {fqdn.targets[0]}
         </span>
       )}
@@ -108,6 +106,14 @@ export function FqdnCard({ fqdn }: FqdnCardProps) {
             </div>
           </TooltipContent>
         </Tooltip>
+      )}
+      {detail && (
+        <span
+          className="text-muted-foreground text-xs truncate min-w-0"
+          title={detail}
+        >
+          {detail}
+        </span>
       )}
       <Badge
         variant="secondary"

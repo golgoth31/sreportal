@@ -25,7 +25,7 @@ export function ImageGroupList({
         aria-label="Loading image groups"
       >
         {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-8 w-full rounded-md" />
+          <Skeleton key={i} className="h-[var(--row-height)] w-full rounded-md" />
         ))}
       </div>
     );
