@@ -122,7 +122,7 @@ export function PortalNav({ portals, isLoading }: PortalNavProps) {
 
       {localPortals.length > 0 && (
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
+          <span className="text-[10px] font-mono uppercase tracking-[0.08em] text-muted-foreground">
             Local
           </span>
           <PortalSelect
@@ -136,7 +136,7 @@ export function PortalNav({ portals, isLoading }: PortalNavProps) {
 
       {remotePortals.length > 0 && (
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
+          <span className="text-[10px] font-mono uppercase tracking-[0.08em] text-muted-foreground">
             Remote
           </span>
           <PortalSelect
