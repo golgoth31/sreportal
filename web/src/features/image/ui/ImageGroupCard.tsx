@@ -16,7 +16,7 @@ export function ImageGroupCard({ group }: ImageGroupCardProps) {
   const { stats } = group;
   return (
     <Collapsible open={open} onOpenChange={setOpen} className="w-full">
-      <div className="rounded-lg border border-border/70 bg-card/40 backdrop-blur-sm overflow-hidden">
+      <div className="surface overflow-hidden">
         <CollapsibleTrigger asChild>
           <Button
             variant="ghost"

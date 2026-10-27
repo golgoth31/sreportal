@@ -100,7 +100,7 @@ export function WorkloadList({
                 <li
                   key={`${w.kind}/${w.name}/${w.container}/${i}`}
                   className={cn(
-                    "flex items-start gap-2 rounded-md border bg-card/50 px-2.5 py-1.5",
+                    "flex items-start gap-2 rounded-md border bg-card px-2.5 py-1.5",
                     tone === "mutated" &&
                       "border-amber-300 bg-amber-50 dark:border-amber-700/60 dark:bg-amber-900/20",
                     tone === "injected" &&

@@ -30,8 +30,8 @@ export function RootLayout() {
     <TooltipProvider>
       <div className="h-screen flex flex-col bg-background">
         {/* Header */}
-        <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
-          <div className="flex h-14 items-center gap-4 px-4 max-w-screen-xl mx-auto w-full">
+        <header className="sticky top-0 z-40 h-12 border-b border-border bg-background shadow-[var(--elevation-2)]">
+          <div className="flex h-full items-center gap-3 px-3 max-w-screen-xl mx-auto w-full">
             {/* Brand */}
             <div className="flex items-center gap-2 shrink-0">
               <SrePortalIcon className="size-5" />
@@ -42,7 +42,7 @@ export function RootLayout() {
             <span className="h-6 w-px bg-border/80 shrink-0" aria-hidden="true" />
 
             {/* Portal navigation */}
-            <div className="flex-1 min-w-0 overflow-x-auto">
+            <div className="flex-1 min-w-0 h-full flex items-center overflow-x-auto overflow-y-hidden [scrollbar-width:thin]">
               <PortalNav portals={portals} isLoading={isLoading} />
             </div>
 
@@ -52,7 +52,7 @@ export function RootLayout() {
                 to="/help"
                 className={({ isActive }) =>
                   cn(
-                    "inline-flex items-center justify-center rounded-md size-9 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+                    "inline-flex items-center justify-center rounded-md size-8 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
                     isActive && "bg-accent"
                   )
                 }
@@ -86,8 +86,8 @@ export function RootLayout() {
         </div>
 
         {/* Footer */}
-        <footer className="border-t border-border/60 py-3 px-4">
-          <p className="text-center text-[11px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
+        <footer className="border-t border-border py-2 px-4">
+          <p className="text-center text-[11px] font-mono text-muted-foreground">
             SRE Portal{version ? ` · ${version}` : ""}
           </p>
         </footer>

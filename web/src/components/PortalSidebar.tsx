@@ -39,11 +39,11 @@ export function PortalSidebar({
 
   return (
     <aside
-      className="w-48 shrink-0 border-r border-border/60 bg-sidebar/40 flex flex-col py-4 overflow-y-auto"
+      className="w-48 shrink-0 border-r border-border bg-sidebar flex flex-col py-4 overflow-y-auto"
       aria-label="Portal menu"
     >
-      <div className="px-3 pb-3 mb-2 border-b border-border/60">
-        <p className="text-[10px] font-mono uppercase tracking-[0.16em] text-muted-foreground">
+      <div className="px-3 pb-3 mb-2 border-b border-border">
+        <p className="text-[10px] font-mono uppercase tracking-[0.08em] text-muted-foreground">
           Resources
         </p>
       </div>
@@ -86,8 +86,8 @@ export function PortalSidebar({
           </NavLink>
         )}
       </nav>
-      <div className="mt-auto px-3 pt-3 mb-2 border-t border-border/60">
-        <p className="text-[10px] font-mono uppercase tracking-[0.16em] text-muted-foreground">
+      <div className="mt-auto px-3 pt-3 mb-2 border-t border-border">
+        <p className="text-[10px] font-mono uppercase tracking-[0.08em] text-muted-foreground">
           System
         </p>
       </div>
