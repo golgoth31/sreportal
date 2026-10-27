@@ -93,18 +93,21 @@ export function ImageCard({ image }: ImageCardProps) {
   const mutatedImage =
     image.changeType === "mutated" ? image.mutatedImage ?? fullRef : undefined;
 
-  let upgradeLabel: string | null = tagTypeHint(image.tagType);
-  if (image.tagType === "semver") {
-    if (image.upgradeAvailable && image.latestVersion) {
-      upgradeLabel = `↑ ${image.latestVersion}`;
-    } else if (image.latestError) {
-      upgradeLabel = "Lookup failed";
-    } else if (image.latestVersion) {
-      upgradeLabel = "No upgrade available";
-    } else {
-      upgradeLabel = null;
-    }
-  }
+  const statusHint =
+    image.tagType === "semver"
+      ? image.upgradeAvailable
+        ? null
+        : image.latestError
+          ? "Lookup failed"
+          : image.latestVersion
+            ? "No upgrade available"
+            : null
+      : tagTypeHint(image.tagType);
+  const upgradeVersion =
+    image.upgradeAvailable && image.latestVersion ? image.latestVersion : null;
+  const upgradeTooltip = upgradeVersion
+    ? `Upgrade available: ${upgradeVersion}`
+    : "Upgrade available";
 
   return (
     <>
@@ -119,12 +122,17 @@ export function ImageCard({ image }: ImageCardProps) {
         )}
       >
         {image.upgradeAvailable && (
-          <span
-            className="inline-flex items-center text-emerald-600 dark:text-emerald-400 shrink-0"
-            aria-label="Latest available"
-          >
-            <ArrowUpCircleIcon className="size-3.5" />
-          </span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                className="inline-flex items-center text-emerald-600 dark:text-emerald-400 shrink-0"
+                aria-label={upgradeTooltip}
+              >
+                <ArrowUpCircleIcon className="size-3.5" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top">{upgradeTooltip}</TooltipContent>
+          </Tooltip>
         )}
 
         <p
@@ -134,11 +142,14 @@ export function ImageCard({ image }: ImageCardProps) {
           {shortName}
         </p>
 
-        <CopyableImageRef
-          display={display}
-          fullRef={fullRef}
-          className="flex-1"
-        />
+        <div className="flex min-w-0 flex-1 items-center gap-1.5">
+          <CopyableImageRef display={display} fullRef={fullRef} className="min-w-0" />
+          {upgradeVersion && (
+            <span className="shrink-0 font-mono text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+              {upgradeVersion}
+            </span>
+          )}
+        </div>
 
         <Badge
           variant="outline"
@@ -150,16 +161,9 @@ export function ImageCard({ image }: ImageCardProps) {
           {image.tagType}
         </Badge>
 
-        {upgradeLabel && (
-          <span
-            className={cn(
-              "font-mono text-[11px] truncate min-w-0 max-w-[10rem]",
-              image.upgradeAvailable
-                ? "text-emerald-700 dark:text-emerald-400 font-semibold"
-                : "text-muted-foreground opacity-60",
-            )}
-          >
-            {upgradeLabel}
+        {statusHint && (
+          <span className="font-mono text-[11px] truncate min-w-0 max-w-[10rem] text-muted-foreground opacity-60">
+            {statusHint}
           </span>
         )}
 

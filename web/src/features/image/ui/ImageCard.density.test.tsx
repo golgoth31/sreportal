@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { describe, expect, it } from "vitest";
 
@@ -39,6 +39,16 @@ describe("Image dense Soft Material rows", () => {
       screen.getByRole("button", { name: /Copy ghcr\.io\/org\/api:1\.2\.3/ }).className,
     ).toMatch(/font-mono/);
     expect(screen.getByText("semver").className).toMatch(/font-mono/);
+  });
+
+  it("shows upgrade version beside the image ref and on the upgrade icon", () => {
+    const { container } = renderWithTooltip(<ImageCard image={image} />);
+    const row = container.firstElementChild as HTMLElement;
+    expect(
+      within(row).getByLabelText("Upgrade available: 1.3.0"),
+    ).toBeInTheDocument();
+    // Version text appears as the inline label next to the current tag.
+    expect(within(row).getByText("1.3.0")).toBeInTheDocument();
   });
 
   it("lists images in a single column (no multi-col grid)", () => {

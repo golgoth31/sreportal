@@ -30,18 +30,6 @@ export function FqdnCard({ fqdn }: FqdnCardProps) {
   const originLabel = fqdn.originRef
     ? `${fqdn.originRef.kind}/${fqdn.originRef.namespace}/${fqdn.originRef.name}`
     : "";
-  const detail = [fqdn.description, originLabel].filter(Boolean).join(" · ");
-
-  const fqdnLink = (
-    <a
-      href={`https://${fqdn.name}`}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-foreground hover:text-primary font-mono text-[13px] font-medium hover:underline underline-offset-4 decoration-primary/40 truncate min-w-0 transition-colors"
-    >
-      {fqdn.name}
-    </a>
-  );
 
   return (
     <div className="surface surface-interactive min-h-[var(--row-height)] px-3 py-1 flex flex-row items-center gap-2">
@@ -62,10 +50,21 @@ export function FqdnCard({ fqdn }: FqdnCardProps) {
         </Tooltip>
       )}
       <Tooltip>
-        <TooltipTrigger asChild>{fqdnLink}</TooltipTrigger>
+        <TooltipTrigger asChild>
+          <a
+            href={`https://${fqdn.name}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-foreground hover:text-primary font-mono text-[13px] font-medium hover:underline underline-offset-4 decoration-primary/40 truncate min-w-0 transition-colors"
+          >
+            {fqdn.name}
+          </a>
+        </TooltipTrigger>
         <TooltipContent side="top" align="start" className="max-w-sm">
           <p className="font-mono break-all">{fqdn.name}</p>
-          {detail && <p className="opacity-80">{detail}</p>}
+          {fqdn.description && (
+            <p className="opacity-80">{fqdn.description}</p>
+          )}
         </TooltipContent>
       </Tooltip>
       {fqdn.recordType && (
@@ -107,24 +106,28 @@ export function FqdnCard({ fqdn }: FqdnCardProps) {
           </TooltipContent>
         </Tooltip>
       )}
-      {detail && (
-        <span
-          className="text-muted-foreground text-xs truncate min-w-0"
-          title={detail}
-        >
-          {detail}
-        </span>
-      )}
-      <Badge
-        variant="secondary"
-        className={cn(
-          "ml-auto shrink-0 text-[10px] font-mono uppercase tracking-wider",
-          fqdn.source === "manual" &&
-            "bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20"
-        )}
-      >
-        {sourceLabel}
-      </Badge>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Badge
+            variant="secondary"
+            className={cn(
+              "ml-auto shrink-0 text-[10px] font-mono uppercase tracking-wider cursor-default",
+              fqdn.source === "manual" &&
+                "bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20"
+            )}
+          >
+            {sourceLabel}
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent side="top" align="end" className="max-w-sm">
+          <p>{sourceLabel}</p>
+          {originLabel && (
+            <p className="font-mono text-[11px] opacity-80 break-all">
+              {originLabel}
+            </p>
+          )}
+        </TooltipContent>
+      </Tooltip>
       <Tooltip>
         <TooltipTrigger asChild>
           <Button

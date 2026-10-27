@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { describe, expect, it } from "vitest";
 
@@ -46,5 +46,18 @@ describe("Fqdn dense Soft Material rows", () => {
     expect(grid?.className).not.toMatch(/sm:grid-cols-2/);
     expect(grid?.className).not.toMatch(/lg:grid-cols-3/);
     expect(grid?.className).toMatch(/gap-\[var\(--density-gap\)\]/);
+  });
+
+  it("puts source info on the source badge trigger", () => {
+    const withOrigin: Fqdn = {
+      ...fqdn,
+      originRef: { kind: "Service", namespace: "default", name: "api" },
+    };
+    const { container } = renderWithTooltip(<FqdnCard fqdn={withOrigin} />);
+    const row = container.firstElementChild as HTMLElement;
+    const badge = within(row).getByText("External DNS");
+    expect(badge.className).toMatch(/font-mono/);
+    // Source badge is the tooltip trigger (Radix may omit data-slot on asChild).
+    expect(badge.getAttribute("data-state") ?? badge.parentElement?.getAttribute("data-state")).toBeTruthy();
   });
 });
