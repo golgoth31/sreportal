@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.36.5](https://github.com/golgoth31/sreportal/compare/v1.36.4...v1.36.5) (2026-10-27)
+
+
+### Bug Fixes
+
+* **deps:** update go-deps ([#366](https://github.com/golgoth31/sreportal/issues/366)) ([803e23e](https://github.com/golgoth31/sreportal/commit/803e23e4faf11ebb46f409783c0e3dcd009f7fd7))
+* **deps:** update module connectrpc.com/connect to v2 ([#371](https://github.com/golgoth31/sreportal/issues/371)) ([06ba087](https://github.com/golgoth31/sreportal/commit/06ba0875effed699729b44d94bfc510f34d5cec8))
+* **deps:** update web-deps ([#367](https://github.com/golgoth31/sreportal/issues/367)) ([e03557b](https://github.com/golgoth31/sreportal/commit/e03557bdde90de0a48076484600ad899f82e4967))
+* **deps:** update web-deps ([#377](https://github.com/golgoth31/sreportal/issues/377)) ([52b6a2e](https://github.com/golgoth31/sreportal/commit/52b6a2e4bd128e9b87563f871165f458725bce0d))
+* **networkflowdiscovery:** stop the status self-trigger loop and sort the graph deterministically ([#373](https://github.com/golgoth31/sreportal/issues/373)) ([a5c428c](https://github.com/golgoth31/sreportal/commit/a5c428c62f7373324633e0639066c78b37ca4b83))
+
 ## [1.36.4](https://github.com/golgoth31/sreportal/compare/v1.36.3...v1.36.4) (2026-10-17)
 
 
