@@ -94,21 +94,27 @@ export function ImageCard({ image }: ImageCardProps) {
   const mutatedImage =
     image.changeType === "mutated" ? image.mutatedImage ?? fullRef : undefined;
 
-  const statusHint =
-    image.tagType === "semver"
-      ? image.upgradeAvailable
-        ? null
-        : image.latestError
-          ? "Lookup failed"
-          : image.latestVersion
-            ? "No upgrade available"
-            : null
-      : tagTypeHint(image.tagType);
   const upgradeVersion =
     image.upgradeAvailable && image.latestVersion ? image.latestVersion : null;
   const upgradeTooltip = upgradeVersion
     ? `Upgrade available: ${upgradeVersion}`
     : "Upgrade available";
+
+  let statusText: string;
+  let statusEmphasized = false;
+  if (upgradeVersion) {
+    statusText = upgradeVersion;
+    statusEmphasized = true;
+  } else if (image.upgradeAvailable) {
+    statusText = "Upgrade available";
+    statusEmphasized = true;
+  } else if (image.latestError) {
+    statusText = "Lookup failed";
+  } else if (image.tagType === "semver") {
+    statusText = image.latestVersion ? "No upgrade available" : "Not checked";
+  } else {
+    statusText = tagTypeHint(image.tagType) || "Tracked";
+  }
 
   return (
     <>
@@ -154,13 +160,15 @@ export function ImageCard({ image }: ImageCardProps) {
           </Badge>
         </TableCell>
         <TableCell className="font-mono text-[11px] max-w-[10rem] truncate">
-          {upgradeVersion ? (
-            <span className="font-semibold text-emerald-700 dark:text-emerald-400">
-              {upgradeVersion}
-            </span>
-          ) : statusHint ? (
-            <span className="text-muted-foreground opacity-60">{statusHint}</span>
-          ) : null}
+          <span
+            className={
+              statusEmphasized
+                ? "font-semibold text-emerald-700 dark:text-emerald-400"
+                : "text-muted-foreground opacity-60"
+            }
+          >
+            {statusText}
+          </span>
         </TableCell>
         <TableCell className="w-16">
           <div className="flex items-center gap-1.5">

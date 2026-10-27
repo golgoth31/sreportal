@@ -50,11 +50,9 @@ export function FqdnCard({ fqdn }: FqdnCardProps) {
             </TooltipTrigger>
             <TooltipContent>{syncTooltip}</TooltipContent>
           </Tooltip>
-        ) : (
-          "\u2014"
-        )}
+        ) : null}
       </TableCell>
-      <TableCell className="font-mono text-[13px] max-w-[18rem]">
+      <TableCell className="font-mono text-[13px]">
         <a
           href={`https://${fqdn.name}`}
           target="_blank"

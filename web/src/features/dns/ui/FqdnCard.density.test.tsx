@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { Fqdn } from "../domain/dns.types";
 import { FqdnCard } from "./FqdnCard";
-import { FqdnGroupCard } from "./FqdnGroupCard";
+import { FqdnGroupList } from "./FqdnGroupList";
 
 const fqdn: Fqdn = {
   name: "api.example.com",
@@ -20,6 +20,13 @@ const fqdn: Fqdn = {
   portals: ["main"],
 };
 
+const fqdnB: Fqdn = {
+  ...fqdn,
+  name: "web.example.com",
+  groups: ["edge"],
+  targets: ["10.0.0.2"],
+};
+
 function renderWithTooltip(ui: ReactElement) {
   return render(<TooltipProvider>{ui}</TooltipProvider>);
 }
@@ -29,21 +36,26 @@ afterEach(() => {
 });
 
 describe("Fqdn dense Soft Material table", () => {
-  it("renders aligned table columns for a group", () => {
+  it("uses one page-level headerless table across groups", () => {
     const { container } = renderWithTooltip(
-      <FqdnGroupCard
-        group={{ name: "prod", source: "external-dns", fqdns: [fqdn] }}
+      <FqdnGroupList
+        groups={[
+          { name: "prod", source: "external-dns", fqdns: [fqdn] },
+          { name: "edge", source: "external-dns", fqdns: [fqdnB] },
+        ]}
+        isLoading={false}
+        hasFilters={false}
+        onClearFilters={() => {}}
       />,
     );
+    expect(within(container).getAllByRole("table")).toHaveLength(1);
     const table = within(container).getByRole("table");
-    expect(within(table).getByRole("columnheader", { name: "FQDN" })).toBeInTheDocument();
-    expect(within(table).getByRole("columnheader", { name: "Type" })).toBeInTheDocument();
-    expect(within(table).getByRole("columnheader", { name: "Target" })).toBeInTheDocument();
-    expect(within(table).getByRole("columnheader", { name: "Source" })).toBeInTheDocument();
+    expect(within(table).queryByRole("columnheader")).toBeNull();
+    expect(table.className).toMatch(/table-fixed/);
     expect(within(table).getByRole("link", { name: /api\.example\.com/i }).className).toMatch(
       /font-mono/,
     );
-    expect(within(table).getByText("10.0.0.1").className).toMatch(/truncate/);
+    expect(within(table).getByRole("link", { name: /web\.example\.com/i })).toBeInTheDocument();
   });
 
   it("puts source info on the source badge trigger", () => {
@@ -52,8 +64,11 @@ describe("Fqdn dense Soft Material table", () => {
       originRef: { kind: "Service", namespace: "default", name: "api" },
     };
     const { container } = renderWithTooltip(
-      <FqdnGroupCard
-        group={{ name: "prod", source: "external-dns", fqdns: [withOrigin] }}
+      <FqdnGroupList
+        groups={[{ name: "prod", source: "external-dns", fqdns: [withOrigin] }]}
+        isLoading={false}
+        hasFilters={false}
+        onClearFilters={() => {}}
       />,
     );
     const table = within(container).getByRole("table");

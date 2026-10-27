@@ -1,29 +1,37 @@
-import { ArrowUpCircleIcon, ChevronDownIcon, PackagePlusIcon, WandSparklesIcon } from "lucide-react";
-import { useState } from "react";
+import {
+  ArrowUpCircleIcon,
+  ChevronDownIcon,
+  PackagePlusIcon,
+  WandSparklesIcon,
+} from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Table, TableBody } from "@/components/ui/table";
+import { TableCell, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import type { ImageGroup } from "../domain/image.types";
 import { ImageCard } from "./ImageCard";
 
+export const IMAGE_TABLE_COL_COUNT = 7;
+
 interface ImageGroupCardProps {
   group: ImageGroup;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
-export function ImageGroupCard({ group }: ImageGroupCardProps) {
-  const [open, setOpen] = useState(true);
+/** Group header + data rows for a parent page-level Soft Material table. */
+export function ImageGroupCard({ group, open, onOpenChange }: ImageGroupCardProps) {
   const { stats } = group;
+
   return (
-    <Collapsible open={open} onOpenChange={setOpen} className="w-full">
-      <div className="surface overflow-hidden">
-        <CollapsibleTrigger asChild>
-          <Button
-            variant="ghost"
-            className="w-full flex items-center justify-between px-3 py-2 h-auto rounded-none hover:bg-muted/40 bg-gradient-to-r from-primary/[0.04] to-transparent"
+    <>
+      <TableRow className="hover:bg-muted/40 bg-gradient-to-r from-primary/[0.04] to-transparent border-b border-border/60">
+        <TableCell colSpan={IMAGE_TABLE_COL_COUNT} className="p-0">
+          <button
+            type="button"
+            className="w-full flex items-center justify-between px-3 py-2 text-left"
             aria-expanded={open}
             aria-controls={`group-${group.registry}`}
+            onClick={() => onOpenChange(!open)}
           >
             <div className="flex items-center gap-3 flex-wrap">
               <span className="font-mono text-sm font-semibold text-foreground tracking-tight">
@@ -67,23 +75,16 @@ export function ImageGroupCard({ group }: ImageGroupCardProps) {
               )}
               aria-hidden="true"
             />
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent id={`group-${group.registry}`}>
-          <div className="border-t border-border/60">
-            <Table>
-              <TableBody>
-                {group.images.map((img) => (
-                  <ImageCard
-                    key={`${img.registry}/${img.repository}:${img.tag}`}
-                    image={img}
-                  />
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CollapsibleContent>
-      </div>
-    </Collapsible>
+          </button>
+        </TableCell>
+      </TableRow>
+      {open &&
+        group.images.map((img) => (
+          <ImageCard
+            key={`${img.registry}/${img.repository}:${img.tag}`}
+            image={img}
+          />
+        ))}
+    </>
   );
 }
