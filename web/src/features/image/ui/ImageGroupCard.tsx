@@ -3,13 +3,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import type { ImageGroup } from "../domain/image.types";
 import { ImageCard } from "./ImageCard";
@@ -78,19 +72,6 @@ export function ImageGroupCard({ group }: ImageGroupCardProps) {
         <CollapsibleContent id={`group-${group.registry}`}>
           <div className="border-t border-border/60">
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-8">
-                    <span className="sr-only">Upgrade</span>
-                  </TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Image</TableHead>
-                  <TableHead className="w-[5.5rem]">Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-16">Flags</TableHead>
-                  <TableHead className="w-[7.5rem]">Workloads</TableHead>
-                </TableRow>
-              </TableHeader>
               <TableBody>
                 {group.images.map((img) => (
                   <ImageCard

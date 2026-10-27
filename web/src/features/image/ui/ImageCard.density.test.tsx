@@ -25,6 +25,13 @@ const image: Image = {
   latestVersion: "1.3.0",
 };
 
+const imageNoUpgrade: Image = {
+  ...image,
+  tag: "2.0.0",
+  upgradeAvailable: false,
+  latestVersion: "2.0.0",
+};
+
 function renderWithTooltip(ui: ReactElement) {
   return render(<TooltipProvider>{ui}</TooltipProvider>);
 }
@@ -34,7 +41,7 @@ afterEach(() => {
 });
 
 describe("Image dense Soft Material table", () => {
-  it("renders aligned table columns for a group", () => {
+  it("renders a headerless table with mono image ref", () => {
     const { container } = renderWithTooltip(
       <ImageGroupCard
         group={{
@@ -45,9 +52,7 @@ describe("Image dense Soft Material table", () => {
       />,
     );
     const table = within(container).getByRole("table");
-    expect(within(table).getByRole("columnheader", { name: "Name" })).toBeInTheDocument();
-    expect(within(table).getByRole("columnheader", { name: "Image" })).toBeInTheDocument();
-    expect(within(table).getByRole("columnheader", { name: "Type" })).toBeInTheDocument();
+    expect(within(table).queryByRole("columnheader")).toBeNull();
     expect(
       within(table).getByRole("button", { name: /Copy ghcr\.io\/org\/api:1\.2\.3/ }).className,
     ).toMatch(/font-mono/);
@@ -69,6 +74,21 @@ describe("Image dense Soft Material table", () => {
       within(table).getByLabelText("Upgrade available: 1.3.0"),
     ).toBeInTheDocument();
     expect(within(table).getByText("1.3.0")).toBeInTheDocument();
+  });
+
+  it("leaves the upgrade cell empty when no upgrade is available", () => {
+    const { container } = renderWithTooltip(
+      <ImageGroupCard
+        group={{
+          registry: "ghcr.io",
+          images: [imageNoUpgrade],
+          stats: { total: 1, upgrades: 0, mutated: 0, injected: 0 },
+        }}
+      />,
+    );
+    const table = within(container).getByRole("table");
+    expect(within(table).queryByLabelText(/Upgrade available/)).toBeNull();
+    expect(within(table).queryByText("—")).toBeNull();
   });
 
   it("renders a table row for a single image when wrapped in a table body", () => {

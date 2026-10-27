@@ -134,9 +134,7 @@ export function ImageCard({ image }: ImageCardProps) {
               </TooltipTrigger>
               <TooltipContent side="top">{upgradeTooltip}</TooltipContent>
             </Tooltip>
-          ) : (
-            "\u2014"
-          )}
+          ) : null}
         </TableCell>
         <TableCell className="font-medium text-sm max-w-[8rem] truncate">
           {shortName}
@@ -163,7 +161,7 @@ export function ImageCard({ image }: ImageCardProps) {
           </Badge>
         </TableCell>
         <TableCell className="text-muted-foreground font-mono text-[11px] max-w-[10rem] truncate">
-          {statusHint ?? "\u2014"}
+          {statusHint}
         </TableCell>
         <TableCell className="w-16">
           <div className="flex items-center gap-1.5">
@@ -197,7 +195,6 @@ export function ImageCard({ image }: ImageCardProps) {
                 </TooltipContent>
               </Tooltip>
             )}
-            {!image.hasMutation && !image.hasInjection && "\u2014"}
           </div>
         </TableCell>
         <TableCell className="w-[7.5rem]">
