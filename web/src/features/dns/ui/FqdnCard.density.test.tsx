@@ -1,7 +1,6 @@
-import { render, screen, within } from "@testing-library/react";
+import { cleanup, render, within } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { afterEach, describe, expect, it } from "vitest";
-import { cleanup } from "@testing-library/react";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { Fqdn } from "../domain/dns.types";
