@@ -1,8 +1,6 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
-
 import { beforeAll, describe, expect, it } from "vitest";
 
+import css from "../index.css?raw";
 import "../index.css";
 
 describe("soft material tokens", () => {
@@ -19,10 +17,7 @@ describe("soft material tokens", () => {
 
   it("aligns --radius-md with --radius", () => {
     // @theme inline does not emit --radius-md on :root; assert the mapping in source.
-    const css = readFileSync(path.join(process.cwd(), "src/index.css"), "utf8");
-    const theme = css.slice(css.indexOf("@theme inline"));
-    const radiusMd = theme.match(/--radius-md:\s*([^;]+);/)?.[1]?.trim();
-    expect(radiusMd).toBe("var(--radius)");
+    expect(css).toContain("--radius-md: var(--radius)");
   });
 
   it("defines elevation-1 for floating surfaces", () => {
