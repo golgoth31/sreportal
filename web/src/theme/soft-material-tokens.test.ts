@@ -14,6 +14,12 @@ function oklchLightness(value: string): number {
   return Number(match[1]);
 }
 
+function oklchHue(value: string): number {
+  const match = /^oklch\(\s*[\d.]+\s+[\d.]+\s+([\d.]+)/.exec(value);
+  if (!match) throw new Error(`not an oklch color with hue: "${value}"`);
+  return Number(match[1]);
+}
+
 describe("soft material tokens", () => {
   beforeAll(() => {
     document.documentElement.classList.remove("dark");
@@ -51,5 +57,13 @@ describe("soft material tokens", () => {
     const card = oklchLightness(token("--card"));
     const background = oklchLightness(token("--background"));
     expect(card - background).toBeGreaterThanOrEqual(0.05);
+  });
+
+  it("keeps dark popover and accent on indigo hue 260", () => {
+    document.documentElement.classList.add("dark");
+    expect(oklchHue(token("--popover"))).toBe(260);
+    expect(oklchHue(token("--popover-foreground"))).toBe(260);
+    expect(oklchHue(token("--accent"))).toBe(260);
+    expect(oklchHue(token("--accent-foreground"))).toBe(260);
   });
 });

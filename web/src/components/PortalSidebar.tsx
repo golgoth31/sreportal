@@ -31,7 +31,7 @@ export function PortalSidebar({
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
       "relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-      "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-4 before:w-[2px] before:rounded-r before:bg-primary before:opacity-0 before:transition-opacity",
+      "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-4 before:w-[3px] before:rounded-r before:bg-primary before:opacity-0 before:transition-opacity",
       isActive
         ? "bg-primary/10 text-foreground before:opacity-100"
         : "text-muted-foreground hover:bg-accent hover:text-foreground"
