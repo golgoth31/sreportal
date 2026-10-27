@@ -135,10 +135,7 @@ export function ImageCard({ image }: ImageCardProps) {
           </Tooltip>
         )}
 
-        <p
-          className="font-medium text-sm tracking-tight truncate shrink-0 max-w-[8rem]"
-          title={shortName}
-        >
+        <p className="font-medium text-sm tracking-tight truncate shrink-0 max-w-[8rem]">
           {shortName}
         </p>
 

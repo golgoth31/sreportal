@@ -49,24 +49,14 @@ export function FqdnCard({ fqdn }: FqdnCardProps) {
           <TooltipContent>{syncTooltip}</TooltipContent>
         </Tooltip>
       )}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <a
-            href={`https://${fqdn.name}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-foreground hover:text-primary font-mono text-[13px] font-medium hover:underline underline-offset-4 decoration-primary/40 truncate min-w-0 transition-colors"
-          >
-            {fqdn.name}
-          </a>
-        </TooltipTrigger>
-        <TooltipContent side="top" align="start" className="max-w-sm">
-          <p className="font-mono break-all">{fqdn.name}</p>
-          {fqdn.description && (
-            <p className="opacity-80">{fqdn.description}</p>
-          )}
-        </TooltipContent>
-      </Tooltip>
+      <a
+        href={`https://${fqdn.name}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-foreground hover:text-primary font-mono text-[13px] font-medium hover:underline underline-offset-4 decoration-primary/40 truncate min-w-0 transition-colors"
+      >
+        {fqdn.name}
+      </a>
       {fqdn.recordType && (
         <Badge
           variant="outline"
