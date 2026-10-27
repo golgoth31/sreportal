@@ -48,3 +48,7 @@ web/src/features/emoji/ui/shortcode-map.json
 
 # Serena local tool config
 .serena/
+
+# Superpowers local plans and previews
+docs/superpowers/plans/
+docs/superpowers/previews/
