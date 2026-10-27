@@ -55,9 +55,13 @@ Optional: thin `@utility` helpers only if they reduce duplication; otherwise use
 - Resource / group headers: ~`py-2`.
 - No filter/data model changes.
 
+### Image inventory (follow-up to pass 2)
+
+Same dense-row treatment as FQDN: `ImageCard` is a single Soft Material row; `ImageGroupCard` is a single-column list (`gap-[var(--density-gap)]`); workload Sheet unchanged.
+
 ### Explicitly untouched (feature layouts)
 
-Image inventory card grid, netpol matrix collapse UX, status banner / page composition — no pass-2 redesign beyond any shared `table.tsx` side effect.
+Netpol matrix collapse UX, status banner / page composition — no pass-2 redesign beyond any shared `table.tsx` side effect.
 
 ## 5. Compact KPI (`StatCard` + dashboard)
 

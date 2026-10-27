@@ -20,9 +20,12 @@ export function ImageGroupList({
 }: ImageGroupListProps) {
   if (isLoading) {
     return (
-      <div className="space-y-3" aria-label="Loading image groups">
+      <div
+        className="flex flex-col gap-[var(--density-gap)]"
+        aria-label="Loading image groups"
+      >
         {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-14 w-full rounded-lg" />
+          <Skeleton key={i} className="h-8 w-full rounded-md" />
         ))}
       </div>
     );

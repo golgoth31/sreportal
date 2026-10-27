@@ -20,7 +20,7 @@ export function ImageGroupCard({ group }: ImageGroupCardProps) {
         <CollapsibleTrigger asChild>
           <Button
             variant="ghost"
-            className="w-full flex items-center justify-between px-4 py-3 h-auto rounded-none hover:bg-muted/40 bg-gradient-to-r from-primary/[0.04] to-transparent"
+            className="w-full flex items-center justify-between px-3 py-2 h-auto rounded-none hover:bg-muted/40 bg-gradient-to-r from-primary/[0.04] to-transparent"
             aria-expanded={open}
             aria-controls={`group-${group.registry}`}
           >
@@ -28,7 +28,7 @@ export function ImageGroupCard({ group }: ImageGroupCardProps) {
               <span className="font-mono text-sm font-semibold text-foreground tracking-tight">
                 {group.registry}
               </span>
-              <span className="text-muted-foreground text-[11px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-muted/60">
+              <span className="text-muted-foreground text-[11px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-md bg-muted/60">
                 {stats.total} {stats.total === 1 ? "image" : "images"}
               </span>
               {stats.upgrades > 0 && (
@@ -69,7 +69,7 @@ export function ImageGroupCard({ group }: ImageGroupCardProps) {
           </Button>
         </CollapsibleTrigger>
         <CollapsibleContent id={`group-${group.registry}`}>
-          <div className="border-t border-border/60 p-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="border-t border-border/60 p-2 flex flex-col gap-[var(--density-gap)]">
             {group.images.map((img) => (
               <ImageCard key={`${img.registry}/${img.repository}:${img.tag}`} image={img} />
             ))}
