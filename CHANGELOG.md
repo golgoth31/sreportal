@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.38.0](https://github.com/golgoth31/sreportal/compare/v1.37.1...v1.38.0) (2026-10-27)
+
+
+### Features
+
+* **web:** Soft Material pass-2 density shell ([#384](https://github.com/golgoth31/sreportal/issues/384)) ([b75dd6a](https://github.com/golgoth31/sreportal/commit/b75dd6a5f1db61d0366d0da5e196bebd42f554a5))
+
 ## [1.37.1](https://github.com/golgoth31/sreportal/compare/v1.37.0...v1.37.1) (2026-10-27)
 
 
