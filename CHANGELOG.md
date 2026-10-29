@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.38.1](https://github.com/golgoth31/sreportal/compare/v1.38.0...v1.38.1) (2026-10-29)
+
+
+### Bug Fixes
+
+* **deps:** update go-deps ([#387](https://github.com/golgoth31/sreportal/issues/387)) ([bf37d9d](https://github.com/golgoth31/sreportal/commit/bf37d9da5c81b86ca779ff9a1124dc0f8659be60))
+* **deps:** update web-deps ([#388](https://github.com/golgoth31/sreportal/issues/388)) ([3636f82](https://github.com/golgoth31/sreportal/commit/3636f8278842812bf7cbc2b70299bc1b2c37f494))
+
 ## [1.38.0](https://github.com/golgoth31/sreportal/compare/v1.37.1...v1.38.0) (2026-10-27)
 
 
